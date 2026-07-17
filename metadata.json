@@ -1,0 +1,6 @@
+{
+  "name": "KILO Fuel Gauge",
+  "description": "Real-time developer AI token utility tracker",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
