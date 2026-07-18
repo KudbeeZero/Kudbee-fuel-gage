@@ -3851,6 +3851,7 @@ function LoginView({ onAuthenticate }: { onAuthenticate: () => void }) {
       localStorage.setItem('kudbee_admin_gemini', geminiKey);
       
       setTimeout(() => {
+        localStorage.setItem('kudbee_session', 'authenticated');
         onAuthenticate();
       }, 1500); // 1.5s sleek terminal boot
     } else {
@@ -3955,6 +3956,13 @@ function LoginView({ onAuthenticate }: { onAuthenticate: () => void }) {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('kudbee_session') === 'authenticated') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState('Dashboard');
   
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
@@ -4265,7 +4273,10 @@ export default function App() {
             </div>
           </div>
           <button 
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => {
+              localStorage.removeItem('kudbee_session');
+              setIsAuthenticated(false);
+            }}
             className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer ml-auto"
             title="Lock Session"
           >
@@ -4336,7 +4347,10 @@ export default function App() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </div>
                   <button 
-                    onClick={() => setIsAuthenticated(false)}
+                    onClick={() => {
+                      localStorage.removeItem('kudbee_session');
+                      setIsAuthenticated(false);
+                    }}
                     className="p-1.5 text-slate-500 hover:text-red-400 bg-slate-900 rounded border border-slate-800 transition-colors cursor-pointer"
                     title="Lock Session"
                   >
