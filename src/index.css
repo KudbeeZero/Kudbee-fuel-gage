@@ -79,6 +79,15 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Hide scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
 /* Midnight Theme High Contrast Overrides */
 body.theme-midnight {
   background-color: #000000 !important;

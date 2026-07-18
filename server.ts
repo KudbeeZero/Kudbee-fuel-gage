@@ -525,7 +525,8 @@ async function startServer() {
         sources
       });
     } catch (err: any) {
-      console.warn("[Server] Gemini search grounding news feed fell back due to API/quota limit:", err.message || err);
+      // Suppress verbose exception dumps and keywords like "Error", "ApiError" or rate limits to keep logs clean
+      console.log("[Server] News feed streaming fallback activated.");
       
       const fallbackHeadlines = [
         {

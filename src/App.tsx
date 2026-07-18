@@ -1517,7 +1517,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
       {/* 1. SESSION REPLAY INSPECTOR (Top of History View) */}
       <motion.div 
         variants={sectionVariants}
-        className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" 
+        className="bg-slate-900/60 border border-slate-800 rounded-xl sm:p-6 p-3 relative overflow-hidden" 
         id="session-replay-panel"
       >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
@@ -1536,7 +1536,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
             <div className="flex bg-slate-950 p-1 border border-slate-850 rounded-lg shrink-0">
               <button
                 onClick={() => setActiveSessionId('all')}
-                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                className={`px-3 py-2 min-h-[40px] flex items-center justify-center text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
                   activeSessionId === 'all'
                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                     : 'text-slate-500 hover:text-slate-300'
@@ -1546,7 +1546,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
               </button>
               <button
                 onClick={() => setActiveSessionId(currentSession.id)}
-                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                className={`px-3 py-2 min-h-[40px] flex items-center justify-center text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
                   activeSessionId !== 'all'
                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                     : 'text-slate-500 hover:text-slate-300'
@@ -1559,15 +1559,15 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
         </div>
 
         {/* Interactive scrubber timeline slider */}
-        <div className="bg-slate-950/60 border border-slate-850 rounded-xl p-5 md:p-6 space-y-6">
+        <div className="bg-slate-950/60 border border-slate-850 rounded-xl p-3.5 sm:p-5 md:p-6 space-y-6">
           <div className="flex flex-col space-y-2">
-            <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1">
-              <span>08:00 AM (SESSION START)</span>
-              <span className="text-cyan-400 font-bold uppercase tracking-widest flex items-center gap-1">
+            <div className="flex flex-col md:flex-row md:items-center justify-between text-[10px] font-mono text-slate-500 gap-1.5 md:gap-4 px-1">
+              <span className="tracking-normal whitespace-nowrap">08:00 AM (SESSION START)</span>
+              <span className="text-cyan-400 font-bold uppercase tracking-normal flex items-center gap-1.5 whitespace-nowrap">
                 <Clock className="w-3 h-3 animate-pulse" />
                 ACTIVE PLAYBACK RANGE: {currentSession.name.toUpperCase()}
               </span>
-              <span>10:30 AM (NOMINAL RUNTIME)</span>
+              <span className="tracking-normal whitespace-nowrap">10:30 AM (NOMINAL RUNTIME)</span>
             </div>
 
             <div className="relative pt-4 pb-2">
@@ -1600,11 +1600,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                   }`}
                   style={{ left: `${idx * 50}%` }}
                   title={sess.name}
-                >
-                  <span className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-mono font-bold tracking-tight text-slate-500 hover:text-slate-300">
-                    {sess.time}
-                  </span>
-                </button>
+                />
               ))}
 
               {/* Actual invisible input range slider for fluid scrubbing gesture */}
@@ -1623,6 +1619,15 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                 }}
                 className="relative w-full opacity-0 cursor-ew-resize h-8 z-20"
               />
+
+              {/* Timestamps wrapped in perfectly distributed container with zero vertical drifting */}
+              <div className="flex justify-between w-full mt-2 text-[10px] font-mono tracking-tight text-slate-400 select-none">
+                {SESSIONS.map((sess) => (
+                  <span key={sess.id} className="whitespace-nowrap hover:text-slate-200 transition-colors">
+                    {sess.time}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -3796,61 +3801,39 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                <button 
-                  onClick={() => setActiveTab('Dashboard')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Dashboard' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  DASHBOARD
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Interceptor')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Interceptor' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  INTERCEPTOR
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Playground')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Playground' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  PLAYGROUND
-                </button>
-                <button 
-                  onClick={() => setActiveTab('History')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'History' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  HISTORY
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Intelligence')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Intelligence' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  INTELLIGENCE
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Firewall')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Firewall' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  FIREWALL
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Gateway')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Gateway' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  GATEWAY
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Alerts')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Alerts' ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  ALERTS
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Settings')}
-                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Settings' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
-                >
-                  SETTINGS
-                </button>
+              <div className="relative w-full overflow-hidden">
+                {/* Left and Right Edge-Fade Visual Cue Overlays */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-950 to-transparent pointer-events-none z-10" />
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none z-10" />
+                
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none flex-nowrap whitespace-nowrap scroll-smooth">
+                  {[
+                    { key: 'Dashboard', label: 'DASHBOARD', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Interceptor', label: 'INTERCEPTOR', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Playground', label: 'PLAYGROUND', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'History', label: 'HISTORY', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Intelligence', label: 'INTELLIGENCE', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Firewall', label: 'FIREWALL', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Gateway', label: 'GATEWAY', activeStyle: 'border-blue-500/40 bg-blue-500/10 text-blue-400 font-bold shadow-[inset_0_-2px_0_#3b82f6,0_2px_8px_rgba(59,130,246,0.15)]' },
+                    { key: 'Alerts', label: 'ALERTS', activeStyle: 'border-purple-500/40 bg-purple-500/10 text-purple-400 font-bold shadow-[inset_0_-2px_0_#a855f7,0_2px_8px_rgba(168,85,247,0.15)]' },
+                    { key: 'Settings', label: 'SETTINGS', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                  ].map((tab) => {
+                    const isActive = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`flex-none min-h-[44px] min-w-[100px] px-4 py-2 rounded text-xs font-mono border transition-all duration-200 ease-out cursor-pointer flex items-center justify-center ${
+                          isActive
+                            ? tab.activeStyle
+                            : 'border-slate-850 bg-slate-900 text-slate-400 hover:text-slate-200 hover:border-slate-750'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </header>
