@@ -4484,6 +4484,52 @@ export default function App() {
                 {/* SUBSCRIPTION BUDGET LEDGER & HEALTH QUOTAS */}
                 <div className="xl:col-span-4 space-y-6 flex flex-col justify-between">
                   
+                  {/* SYSTEM INCIDENT & EVENT NOTIFICATION HUB */}
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col relative" id="event-notification-hub">
+                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+                     <div className="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
+                       <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-emerald-400" />
+                          <h3 className="font-display font-semibold text-slate-200 text-sm">Event Notification Hub</h3>
+                       </div>
+                       <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
+                          Live Sync
+                       </span>
+                     </div>
+                     <div className="p-3">
+                        <div className="max-h-60 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                           {[
+                              { id: 1, type: 'info', label: 'SYNC', message: 'API Gateway Context Synchronized', time: 'Just now' },
+                              { id: 2, type: 'warning', label: 'WARN', message: 'Trace Diagnostic Log Committed', time: '2m ago' },
+                              { id: 3, type: 'slate', label: 'SYS', message: 'Webhook Subscription Initialized', time: '5m ago' },
+                              { id: 4, type: 'slate', label: 'SYS', message: 'Cache Eviction Cycle Complete', time: '12m ago' },
+                              { id: 5, type: 'info', label: 'SYNC', message: 'Vector Database Re-Indexed', time: '1h ago' },
+                              { id: 6, type: 'warning', label: 'WARN', message: 'High Payload Latency Detected', time: '2h ago' }
+                           ].map(event => (
+                             <div key={event.id} className="flex items-start gap-3 p-2.5 bg-slate-950/40 border border-slate-850/50 hover:bg-slate-800/40 hover:border-slate-700/50 rounded-lg transition-all group">
+                                <div className="mt-0.5 flex-shrink-0">
+                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-widest border ${
+                                     event.type === 'info' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(52,211,153,0.15)]' :
+                                     event.type === 'warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_8px_rgba(251,191,36,0.15)]' : 
+                                     'bg-slate-800/50 text-slate-400 border-slate-700'
+                                   }`}>
+                                     {event.label}
+                                   </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                   <p className="text-[11px] font-medium leading-relaxed text-slate-300 group-hover:text-slate-200 transition-colors">
+                                     {event.message}
+                                   </p>
+                                </div>
+                                <div className="flex-shrink-0 text-[9px] font-mono text-slate-500 group-hover:text-slate-400 transition-colors mt-0.5">
+                                   {event.time}
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+
                   {/* SUBSCRIPTION BUDGET LEDGER CARD (ROADMAP PHASE 3 GAP FIX) */}
                   <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden" id="subscription-budget-ledger">
                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
