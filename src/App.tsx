@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
+import { DiagnosticTicker } from './components/dashboard/DiagnosticTicker';
 import { LatencyHistogram } from './components/LatencyHistogram';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
@@ -3668,6 +3669,9 @@ export default function App() {
 
               {/* DYNAMIC GROUNDED INTEL HUD TICKER */}
               <TerminalHUDTicker />
+
+              {/* OTel INGESTION DIAGNOSTIC TICKER */}
+              <DiagnosticTicker />
 
               {/* CENTER ROW: MATRIX + HEALTH */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
