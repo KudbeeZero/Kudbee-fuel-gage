@@ -1666,7 +1666,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
 
   const sectionVariants = {
     hidden: { opacity: 0, y: 15 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+    visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } }
   };
 
   const staggerContainer = {
@@ -1681,7 +1681,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 120, damping: 14 } }
+    visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 120, damping: 14 } }
   };
 
   return (
@@ -2498,9 +2498,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                       {/* Trace ID Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Trace ID:</span>
-                                        {log.traceId || traceId ? (
+                                        {(log as any).traceId || traceId ? (
                                           <span className="text-emerald-400 font-semibold selection:bg-emerald-500/30">
-                                            {log.traceId || traceId}
+                                            {(log as any).traceId || traceId}
                                           </span>
                                         ) : (
                                           <span className="text-slate-600 italic uppercase">UNKNOWN_TRACE_ID</span>
@@ -2510,9 +2510,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                       {/* Service Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Service:</span>
-                                        {log.service || log.project ? (
+                                        {(log as any).service || log.project ? (
                                           <span className="text-slate-100 font-semibold">
-                                            {log.service || `${log.project}-service`}
+                                            {(log as any).service || `${log.project}-service`}
                                           </span>
                                         ) : (
                                           <span className="text-slate-600 italic uppercase">UNKNOWN_SERVICE</span>
@@ -2534,9 +2534,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                       {/* SDK Version Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">SDK Version:</span>
-                                        {log.sdkVersion || log.sdk_version ? (
+                                        {(log as any).sdkVersion || (log as any).sdk_version ? (
                                           <span className="text-indigo-400 font-semibold">
-                                            {log.sdkVersion || log.sdk_version}
+                                            {(log as any).sdkVersion || (log as any).sdk_version}
                                           </span>
                                         ) : (
                                           <span className="text-indigo-400/80 font-medium">@opentelemetry/sdk-node@1.24.0</span>

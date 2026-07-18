@@ -13,7 +13,7 @@
       "user_id": 1,
       "provider": "Anthropic",
       "total_allowance": 500000,
-      "used_allowance": 302582,
+      "used_allowance": 306747,
       "reset_timestamp": "2026-07-19T00:50:35.418Z"
     },
     "1-Cursor": {
@@ -21,7 +21,7 @@
       "user_id": 1,
       "provider": "Cursor",
       "total_allowance": 500,
-      "used_allowance": 453,
+      "used_allowance": 460,
       "reset_timestamp": "2026-07-18T22:50:35.418Z"
     },
     "1-Google": {
@@ -29,7 +29,7 @@
       "user_id": 1,
       "provider": "Google",
       "total_allowance": 1000000,
-      "used_allowance": 252428,
+      "used_allowance": 255379,
       "reset_timestamp": "2026-07-19T07:50:35.418Z"
     },
     "1-DeepSeek": {
@@ -37,7 +37,7 @@
       "user_id": 1,
       "provider": "DeepSeek",
       "total_allowance": 2000000,
-      "used_allowance": 550537,
+      "used_allowance": 553279,
       "reset_timestamp": "2026-07-19T19:50:35.418Z"
     }
   },
@@ -12130,7 +12130,359 @@
       "calculated_cost": 0.00381,
       "project_name": "frontier-core",
       "timestamp": "2026-07-18T21:04:02.999Z"
+    },
+    {
+      "id": 1100,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 268,
+      "output_tokens": 76,
+      "calculated_cost": 0.001944,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:07.000Z"
+    },
+    {
+      "id": 1101,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 411,
+      "output_tokens": 34,
+      "calculated_cost": 0.001743,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:11.001Z"
+    },
+    {
+      "id": 1102,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 468,
+      "output_tokens": 65,
+      "calculated_cost": 0.00091,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:19.756Z"
+    },
+    {
+      "id": 1103,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 370,
+      "output_tokens": 19,
+      "calculated_cost": 0.000245,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:04:23.756Z"
+    },
+    {
+      "id": 1104,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 440,
+      "output_tokens": 46,
+      "calculated_cost": 0.00201,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:04:27.757Z"
+    },
+    {
+      "id": 1105,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 215,
+      "output_tokens": 118,
+      "calculated_cost": 0.000377,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:04:31.758Z"
+    },
+    {
+      "id": 1106,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 98,
+      "output_tokens": 125,
+      "calculated_cost": 0.000328,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:35.760Z"
+    },
+    {
+      "id": 1107,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 300,
+      "output_tokens": 88,
+      "calculated_cost": 0.00222,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:04:39.761Z"
+    },
+    {
+      "id": 1108,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 86,
+      "output_tokens": 31,
+      "calculated_cost": 0.000895,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:04:43.760Z"
+    },
+    {
+      "id": 1109,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 284,
+      "output_tokens": 109,
+      "calculated_cost": 0.000395,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:04:47.762Z"
+    },
+    {
+      "id": 1110,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 240,
+      "output_tokens": 65,
+      "calculated_cost": 0.000625,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:04:51.763Z"
+    },
+    {
+      "id": 1111,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 232,
+      "output_tokens": 121,
+      "calculated_cost": 0.000393,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:55.764Z"
+    },
+    {
+      "id": 1112,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 292,
+      "output_tokens": 122,
+      "calculated_cost": 0.000975,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:04:59.764Z"
+    },
+    {
+      "id": 1113,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 53,
+      "output_tokens": 71,
+      "calculated_cost": 0.00133,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:05:03.765Z"
+    },
+    {
+      "id": 1114,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 265,
+      "output_tokens": 77,
+      "calculated_cost": 0.000716,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:07.766Z"
+    },
+    {
+      "id": 1115,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 414,
+      "output_tokens": 21,
+      "calculated_cost": 0.000623,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:11.765Z"
+    },
+    {
+      "id": 1116,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 445,
+      "output_tokens": 73,
+      "calculated_cost": 0.00243,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:05:15.765Z"
+    },
+    {
+      "id": 1117,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 333,
+      "output_tokens": 107,
+      "calculated_cost": 0.002604,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:05:19.765Z"
+    },
+    {
+      "id": 1118,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 164,
+      "output_tokens": 112,
+      "calculated_cost": 0.002172,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:23.765Z"
+    },
+    {
+      "id": 1119,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 457,
+      "output_tokens": 110,
+      "calculated_cost": 0.000492,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:05:27.767Z"
+    },
+    {
+      "id": 1120,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 182,
+      "output_tokens": 42,
+      "calculated_cost": 0.000192,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:05:31.767Z"
+    },
+    {
+      "id": 1121,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 498,
+      "output_tokens": 69,
+      "calculated_cost": 0.000968,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:05:35.770Z"
+    },
+    {
+      "id": 1122,
+      "user_id": 1,
+      "provider": "DeepSeek",
+      "model_name": "deepseek-r1",
+      "input_tokens": 189,
+      "output_tokens": 71,
+      "calculated_cost": 0.000259,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:39.768Z"
+    },
+    {
+      "id": 1123,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 307,
+      "output_tokens": 47,
+      "calculated_cost": 0.00224,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:05:43.769Z"
+    },
+    {
+      "id": 1124,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 185,
+      "output_tokens": 111,
+      "calculated_cost": 0.00222,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:05:47.770Z"
+    },
+    {
+      "id": 1125,
+      "user_id": 1,
+      "provider": "Google",
+      "model_name": "gemini-1.5-pro",
+      "input_tokens": 263,
+      "output_tokens": 92,
+      "calculated_cost": 0.000789,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:05:51.770Z"
+    },
+    {
+      "id": 1126,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 358,
+      "output_tokens": 142,
+      "calculated_cost": 0.00392,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:55.772Z"
+    },
+    {
+      "id": 1127,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 146,
+      "output_tokens": 136,
+      "calculated_cost": 0.00277,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:05:59.773Z"
+    },
+    {
+      "id": 1128,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 406,
+      "output_tokens": 47,
+      "calculated_cost": 0.001923,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:06:03.774Z"
+    },
+    {
+      "id": 1129,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 423,
+      "output_tokens": 42,
+      "calculated_cost": 0.002745,
+      "project_name": "mesh-globe-3d",
+      "timestamp": "2026-07-18T21:06:07.774Z"
+    },
+    {
+      "id": 1130,
+      "user_id": 1,
+      "provider": "Cursor",
+      "model_name": "gpt-4o",
+      "input_tokens": 302,
+      "output_tokens": 107,
+      "calculated_cost": 0.003115,
+      "project_name": "frontier-core",
+      "timestamp": "2026-07-18T21:06:11.782Z"
+    },
+    {
+      "id": 1131,
+      "user_id": 1,
+      "provider": "Anthropic",
+      "model_name": "claude-3-5-sonnet",
+      "input_tokens": 496,
+      "output_tokens": 23,
+      "calculated_cost": 0.001833,
+      "project_name": "kilo-fuel-gauge",
+      "timestamp": "2026-07-18T21:06:15.775Z"
     }
   ],
-  "next_log_id": 1100
+  "next_log_id": 1132
 }
