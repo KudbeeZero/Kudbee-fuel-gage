@@ -35,10 +35,12 @@ import {
   Network,
   Server,
   Lock,
-  Globe
+  Globe,
+  EyeOff
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
+import { LatencyHistogram } from './components/LatencyHistogram';
 import {
   AreaChart,
   Area,
@@ -52,7 +54,9 @@ import {
   Cell,
   BarChart,
   Bar,
-  Legend
+  Legend,
+  LineChart,
+  Line
 } from 'recharts';
 
 // --- CURRENCY UTILITY ENGINE ---
@@ -83,6 +87,39 @@ export interface PendingApproval {
 export function useAgentInterceptor() {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
+  // Poll backend for actual proxy HTTP requests
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/proxy/pending');
+        if (res.ok) {
+          const data = await res.json();
+          setPendingApprovals(prev => {
+            const merged = [...prev];
+            data.forEach((item: any) => {
+              if (!merged.find(p => p.id === item.id)) {
+                merged.push({
+                  id: item.id,
+                  agentId: 'HTTP_PROXY_CLIENT',
+                  triggeredRule: 'API_INTERCEPT',
+                  actionJson: item.payload,
+                  resolve: () => {},
+                  reject: () => {},
+                  timestamp: new Date()
+                });
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (e) {
+        // silently ignore polling errors
+      }
+    };
+    const interval = setInterval(poll, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
   const executeAgentTool = React.useCallback((agentId: string, triggeredRule: string, actionJson: any) => {
     return new Promise((resolve, reject) => {
       const id = "agent-tx-" + Math.floor(1000 + Math.random() * 9000);
@@ -99,21 +136,38 @@ export function useAgentInterceptor() {
     });
   }, []);
 
-  const resolveApproval = React.useCallback((id: string) => {
+  const resolveApproval = React.useCallback(async (id: string, actionJson?: any) => {
     setPendingApprovals(prev => {
       const approval = prev.find(p => p.id === id);
       if (approval) {
-        approval.resolve(true);
+        // If it's a backend proxy request
+        if (approval.agentId === 'HTTP_PROXY_CLIENT') {
+           fetch('/api/proxy/resolve', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ id, action: 'approve', modifiedPayload: actionJson || approval.actionJson })
+           }).catch(console.error);
+        } else {
+           approval.resolve(actionJson || true);
+        }
       }
       return prev.filter(p => p.id !== id);
     });
   }, []);
 
-  const rejectApproval = React.useCallback((id: string) => {
+  const rejectApproval = React.useCallback(async (id: string, rejectReason?: string) => {
     setPendingApprovals(prev => {
       const approval = prev.find(p => p.id === id);
       if (approval) {
-        approval.reject(new Error("Execution Denied"));
+        if (approval.agentId === 'HTTP_PROXY_CLIENT') {
+           fetch('/api/proxy/resolve', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ id, action: 'reject', rejectReason })
+           }).catch(console.error);
+        } else {
+           approval.reject(new Error(rejectReason || "Execution Denied"));
+        }
       }
       return prev.filter(p => p.id !== id);
     });
@@ -297,12 +351,22 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
     fetchLogs();
   }, []);
 
-  // Auto-scroll logic
+  const [isAutoScrollLocked, setIsAutoScrollLocked] = useState(true);
+
+  // Auto-scroll logic with smart intent check
   useEffect(() => {
-    if (terminalEndRef.current && !isPaused) {
+    if (!isPaused && isAutoScrollLocked && terminalEndRef.current) {
       terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs, isPaused]);
+  }, [logs, isPaused, isAutoScrollLocked]);
+
+  // Handle scroll events to detect user intent
+  const handleTerminalScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    // If scrolled up from the bottom more than ~20px, lock the scroll
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+    setIsAutoScrollLocked(isAtBottom);
+  };
 
   // Simulate incoming live telemetry stream
   useEffect(() => {
@@ -469,8 +533,14 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
               <span className={`animate-pulse absolute inline-flex h-full w-full rounded-full ${isPaused ? 'bg-amber-400/55 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-400/55 shadow-[0_0_8px_rgba(52,211,153,0.5)]'} opacity-75`}></span>
               <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPaused ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.7)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]'}`}></span>
             </span>
-            <h2 className="font-display font-semibold text-slate-200 text-sm tracking-wide uppercase">
-              OTel Ingestion Stream Terminal {isPaused && <span className="text-amber-500 text-xs ml-2">[PAUSED]</span>}
+            <h2 className="font-display font-semibold text-slate-200 text-sm tracking-wide uppercase flex items-center gap-2">
+              OTel Ingestion Stream Terminal
+              {isPaused && <span className="text-amber-500 text-xs">[PAUSED]</span>}
+              {!isPaused && (
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider font-bold border transition-colors ${isAutoScrollLocked ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_6px_rgba(52,211,153,0.2)]' : 'text-amber-400 bg-amber-500/10 border-amber-500/30'}`}>
+                  {isAutoScrollLocked ? '[● LIVE AUTO-SCROLL]' : '[▲ STREAM FROZEN]'}
+                </span>
+              )}
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -500,7 +570,10 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
         </div>
 
         {/* Mock Terminal Workspace */}
-        <div className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 animate-none">
+        <div 
+          className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 animate-none"
+          onScroll={handleTerminalScroll}
+        >
           <div className="text-emerald-500/50">{"[system] Initializing Kudbee Fuel Gauge telemetry daemon..."}</div>
           <div className="text-emerald-500/50">{"[system] Pipeline SQLite collector online, routing stream logs..."}</div>
           {isPaused && (
@@ -1193,6 +1266,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
   const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
 
   // CSV Drag-and-Drop / Log import state variables
   const [isCsvExpanded, setIsCsvExpanded] = useState(false);
@@ -1414,11 +1489,28 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
         const sIds = ['sess-alpha', 'sess-beta', 'sess-gamma'];
         sessionId = sIds[index % sIds.length];
       }
-      return { ...log, sessionId };
+
+      // Infer model provider
+      const mLower = log.model.toLowerCase();
+      let provider = "Anthropic";
+      if (mLower.includes('claude') || mLower.includes('anthropic')) provider = "Anthropic";
+      else if (mLower.includes('gpt') || mLower.includes('openai')) provider = "OpenAI";
+      else if (mLower.includes('gemini') || mLower.includes('google')) provider = "Google";
+      else if (mLower.includes('deepseek')) provider = "DeepSeek";
+
+      // Infer model execution status (assign interesting statuses to mock traces for visual depth)
+      let status = "OK";
+      if (index % 5 === 1) {
+        status = "INTERCEPTED";
+      } else if (index % 6 === 2) {
+        status = "RATE_LIMITED";
+      }
+
+      return { ...log, sessionId, provider, status };
     });
   }, [dbLogs]);
 
-  // Filter logs based on search query, timeframe, and selected session id (if isolating)
+  // Filter logs based on search query, timeframe, selected session id, provider and status
   const filteredLogs = mergedLogs.filter(log => {
     const matchesSearch = 
       log.project.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -1433,8 +1525,95 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
 
     const matchesSession = activeSessionId === 'all' || log.sessionId === activeSessionId;
 
-    return matchesSearch && matchesTimeframe && matchesSession;
+    const matchesProvider = selectedProviders.length === 0 || selectedProviders.includes(log.provider);
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(log.status);
+
+    return matchesSearch && matchesTimeframe && matchesSession && matchesProvider && matchesStatus;
   });
+
+  // helper to get the execution status details
+  const getExecutionStatusInfo = (log: any) => {
+    const isHighCost = log.cost > 0.50 || log.tokens_in > 100000;
+    const isFailed = log.status === 'RATE_LIMITED' || log.status === 'FAILED' || log.status === 'INTERCEPTED';
+    
+    if (isHighCost) {
+      return {
+        symbol: '[!]',
+        label: 'High Priority / Critical Path',
+        colorClass: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+        aria: 'Execution Status: High Priority / Critical Path'
+      };
+    } else if (isFailed) {
+      return {
+        symbol: '[x]',
+        label: 'Failed / Dead-Lettered',
+        colorClass: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
+        aria: 'Execution Status: Failed or Dead-Lettered'
+      };
+    } else {
+      return {
+        symbol: '[✓]',
+        label: 'Healthy',
+        colorClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+        aria: 'Execution Status: Healthy'
+      };
+    }
+  };
+
+  // Memoized stats for queue health over the last 15 minutes
+  const queueHealthStats = React.useMemo(() => {
+    const now = new Date();
+    
+    let successCount = 0;
+    let failureCount = 0;
+    let highPriorityCount = 0;
+    
+    filteredLogs.forEach(log => {
+      const logTime = new Date(log.timestamp).getTime();
+      const isRecent = (now.getTime() - logTime) <= 15 * 60 * 1000;
+      
+      const isFailed = log.status === 'RATE_LIMITED' || log.status === 'FAILED' || log.status === 'INTERCEPTED';
+      const isHighPriority = log.cost > 0.50 || log.tokens_in > 100000;
+      
+      if (isRecent) {
+        if (isFailed) {
+          failureCount++;
+        } else {
+          successCount++;
+        }
+        if (isHighPriority) {
+          highPriorityCount++;
+        }
+      }
+    });
+
+    // If we have 0 recent logs, fall back to calculating from the entire visible dataset
+    if (successCount === 0 && failureCount === 0) {
+      filteredLogs.forEach(log => {
+        const isFailed = log.status === 'RATE_LIMITED' || log.status === 'FAILED' || log.status === 'INTERCEPTED';
+        const isHighPriority = log.cost > 0.50 || log.tokens_in > 100000;
+        if (isFailed) {
+          failureCount++;
+        } else {
+          successCount++;
+        }
+        if (isHighPriority) {
+          highPriorityCount++;
+        }
+      });
+    }
+
+    const total = successCount + failureCount;
+    const ratio = total > 0 ? (successCount / total) * 100 : 100;
+    
+    return {
+      success: successCount,
+      failure: failureCount,
+      total,
+      ratio: Math.round(ratio),
+      highPriority: highPriorityCount
+    };
+  }, [filteredLogs]);
 
   // Rollup stats logic
   const projectStats = filteredLogs.reduce((acc, log) => {
@@ -1909,51 +2088,129 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
         </AnimatePresence>
       </motion.div>
 
-      {/* 3. INTERACTIVE FILTERING & EXPORT CONTROL BAR */}
+      {/* 3. INTERACTIVE FILTERING & EXPORT CONTROL BAR WITH ADVANCED FILTER CHIPS */}
       <motion.div 
         variants={sectionVariants}
-        className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4" 
+        className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col gap-4" 
         id="history-filter-box"
       >
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* Search bar */}
-          <div className="relative w-full md:w-64">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="w-4 h-4 text-slate-500" />
-            </span>
-            <input
-              type="text"
-              id="history-search-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search project or model ID..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/40 font-mono transition-colors"
-            />
+        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 w-full">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Search bar */}
+            <div className="relative w-full md:w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="w-4 h-4 text-slate-500" />
+              </span>
+              <input
+                type="text"
+                id="history-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search project or model ID..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/40 font-mono transition-colors"
+              />
+            </div>
+
+            {/* Timeframe selector dropdown */}
+            <select
+              id="history-timeframe-dropdown"
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as any)}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/40 font-mono"
+            >
+              <option value="all">Timeframe: All Time</option>
+              <option value="7d">Timeframe: Last 7 Days</option>
+              <option value="24h">Timeframe: Last 24h</option>
+            </select>
           </div>
 
-          {/* Timeframe selector dropdown */}
-          <select
-            id="history-timeframe-dropdown"
-            value={timeframe}
-            onChange={(e) => setTimeframe(e.target.value as any)}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/40 font-mono"
+          {/* Export Button */}
+          <button
+            id="history-export-btn"
+            onClick={handleExport}
+            disabled={exporting || filteredLogs.length === 0}
+            className="flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 border cursor-pointer border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto shadow-[0_0_8px_rgba(52,211,153,0.15)] hover:shadow-[0_0_12px_rgba(52,211,153,0.3)]"
           >
-            <option value="all">Timeframe: All Time</option>
-            <option value="7d">Timeframe: Last 7 Days</option>
-            <option value="24h">Timeframe: Last 24h</option>
-          </select>
+            <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
+            <span>{exporting ? 'GENERATING CSV...' : 'Export Logs to CSV'}</span>
+          </button>
         </div>
 
-        {/* Export Button */}
-        <button
-          id="history-export-btn"
-          onClick={handleExport}
-          disabled={exporting || filteredLogs.length === 0}
-          className="flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 border cursor-pointer border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto shadow-[0_0_8px_rgba(52,211,153,0.15)] hover:shadow-[0_0_12px_rgba(52,211,153,0.3)]"
-        >
-          <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-          <span>{exporting ? 'GENERATING CSV...' : 'Export Logs to CSV'}</span>
-        </button>
+        {/* Advanced Filter Chips Sub-Row */}
+        <div className="border-t border-slate-800/50 pt-3 flex flex-col lg:flex-row lg:items-center gap-4 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-500 text-[10px] uppercase tracking-wider mr-1">PROVIDER:</span>
+            {['Anthropic', 'OpenAI', 'Google', 'DeepSeek'].map((prov) => {
+              const isSelected = selectedProviders.includes(prov);
+              return (
+                <button
+                  key={prov}
+                  onClick={() => {
+                    setSelectedProviders(prev => 
+                      prev.includes(prov) ? prev.filter(p => p !== prov) : [...prev, prov]
+                    );
+                  }}
+                  className={`px-2.5 py-1 text-[10px] rounded font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected 
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold shadow-[0_0_6px_rgba(52,211,153,0.1)]' 
+                      : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-300 hover:border-slate-800'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+                  {prov.toUpperCase()}
+                </button>
+              );
+            })}
+            {selectedProviders.length > 0 && (
+              <button 
+                onClick={() => setSelectedProviders([])}
+                className="text-[9px] text-slate-500 hover:text-slate-300 underline cursor-pointer ml-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 lg:border-l lg:border-slate-800/80 lg:pl-4">
+            <span className="text-slate-500 text-[10px] uppercase tracking-wider mr-1">STATUS:</span>
+            {['OK', 'INTERCEPTED', 'RATE_LIMITED'].map((st) => {
+              const isSelected = selectedStatuses.includes(st);
+              const getStatusColors = (status: string, active: boolean) => {
+                if (!active) return 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-300 hover:border-slate-800';
+                if (status === 'OK') return 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold shadow-[0_0_6px_rgba(52,211,153,0.1)]';
+                if (status === 'INTERCEPTED') return 'bg-amber-500/15 border-amber-500/40 text-amber-400 font-bold shadow-[0_0_6px_rgba(245,158,11,0.1)]';
+                return 'bg-rose-500/15 border-rose-500/40 text-rose-400 font-bold shadow-[0_0_6px_rgba(244,63,94,0.1)]';
+              };
+              const getDotColor = (status: string) => {
+                if (status === 'OK') return 'bg-emerald-400';
+                if (status === 'INTERCEPTED') return 'bg-amber-400';
+                return 'bg-rose-400';
+              };
+              return (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setSelectedStatuses(prev => 
+                      prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st]
+                    );
+                  }}
+                  className={`px-2.5 py-1 text-[10px] rounded font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${getStatusColors(st, isSelected)}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${getDotColor(st)} ${isSelected ? 'animate-pulse' : 'opacity-60'}`} />
+                  {st.replace('_', ' ').toUpperCase()}
+                </button>
+              );
+            })}
+            {selectedStatuses.length > 0 && (
+              <button 
+                onClick={() => setSelectedStatuses([])}
+                className="text-[9px] text-slate-500 hover:text-slate-300 underline cursor-pointer ml-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
       </motion.div>
 
       {/* 4. HISTORICAL TRACES DATA GRID */}
@@ -1964,7 +2221,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
       >
         <div className="px-6 py-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
           <div className="flex items-center gap-3">
-            <span className="flex h-2.5 w-2.5 relative">
+            <span className="flex h-2.5 w-2.5 relative" aria-label="Historical traces synchronization indicator active">
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
             <h2 className="font-display font-semibold text-slate-200 text-sm tracking-wide uppercase">
@@ -1978,6 +2235,59 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
           )}
         </div>
 
+        {/* Queue Health & Priority Mapping Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 border-b border-slate-800/50 bg-slate-950/20" id="queue-health-summary-panel">
+          {/* Ratio Progress Circle/Bar */}
+          <div className="md:col-span-2 flex flex-col justify-between bg-slate-900/40 border border-slate-800/60 rounded-xl p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-semibold">OTel Queue Ingestion Health (15m)</span>
+              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${
+                queueHealthStats.ratio >= 90 
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' 
+                  : queueHealthStats.ratio >= 70 
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' 
+                    : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+              }`}>
+                {queueHealthStats.ratio}% HEALTHY
+              </span>
+            </div>
+            <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+              <div 
+                className={`h-full transition-all duration-500 rounded-full ${
+                  queueHealthStats.ratio >= 90 ? 'bg-emerald-500' : queueHealthStats.ratio >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                }`}
+                style={{ width: `${queueHealthStats.ratio}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center mt-2.5 text-[10px] font-mono text-slate-500">
+              <span>ACTIVE PIPELINE kole-fuel-gauge</span>
+              <span>SUCCESS RATIO: {queueHealthStats.success} OK / {queueHealthStats.failure} FAIL</span>
+            </div>
+          </div>
+
+          {/* Healthy Traces Count */}
+          <div className="flex items-center gap-3 bg-slate-900/40 border border-slate-800/60 rounded-xl p-4">
+            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 font-mono font-bold text-sm">
+              [✓]
+            </div>
+            <div>
+              <span className="block text-[10px] font-mono uppercase text-slate-400">HEALTHY QUEUE TRACES</span>
+              <span className="font-mono text-lg font-bold text-slate-100">{queueHealthStats.success}</span>
+            </div>
+          </div>
+
+          {/* Failed / Dead-Lettered Traces Count */}
+          <div className="flex items-center gap-3 bg-slate-900/40 border border-slate-800/60 rounded-xl p-4">
+            <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 font-mono font-bold text-sm">
+              [x]
+            </div>
+            <div>
+              <span className="block text-[10px] font-mono uppercase text-slate-400">DEAD-LETTER / FAILED</span>
+              <span className="font-mono text-lg font-bold text-slate-100">{queueHealthStats.failure}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Data Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
@@ -1987,6 +2297,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Timestamp</th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Project Name</th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Model</th>
+                <th className="px-6 py-4 font-medium border-b border-slate-800">Provider</th>
+                <th className="px-6 py-4 font-medium border-b border-slate-800">Status</th>
+                <th className="px-6 py-4 font-medium border-b border-slate-800">Execution Status</th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Input Tokens</th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Output Tokens</th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800 text-right">Total Cost</th>
@@ -1995,7 +2308,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
             <tbody className="text-xs divide-y divide-slate-800/50">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center font-mono text-slate-500">
+                  <td colSpan={10} className="px-6 py-12 text-center font-mono text-slate-500">
                     No historical traces matched the current filtering criteria.
                   </td>
                 </tr>
@@ -2030,7 +2343,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             <ChevronRight className={`w-4 h-4 ${isExpanded ? 'text-emerald-400' : 'text-slate-500'}`} />
                           </motion.div>
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-400">
+                        <td className="px-6 py-3 font-mono text-slate-100">
                           {new Date(log.timestamp).toLocaleString()}
                         </td>
                         <td className="px-6 py-3 font-mono text-slate-300 font-semibold flex items-center gap-1.5">
@@ -2039,8 +2352,47 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" title="Selected session telemetry matches" />
                           )}
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-400">
+                        <td className="px-6 py-3 font-mono text-slate-100">
                           {log.model}
+                        </td>
+                        <td className="px-6 py-3 font-mono">
+                          <span className="px-2 py-0.5 text-[10px] bg-slate-950 border border-slate-800/60 text-slate-300 rounded font-semibold uppercase">
+                            {log.provider}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 font-mono">
+                          <span 
+                            aria-label={
+                              log.status === 'OK'
+                                ? "Trace Completed Successfully"
+                                : log.status === 'INTERCEPTED'
+                                  ? "Trace Intercepted by Guardrails"
+                                  : "Trace Failed or Rate Limited"
+                            }
+                            className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase border ${
+                              log.status === 'OK' 
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]' 
+                                : log.status === 'INTERCEPTED'
+                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                                  : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                            }`}
+                          >
+                            {log.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 font-mono">
+                          {(() => {
+                            const execStatus = getExecutionStatusInfo(log);
+                            return (
+                              <span 
+                                aria-label={execStatus.aria}
+                                className={`px-2 py-1 text-[9px] rounded font-bold border flex items-center gap-1.5 w-max ${execStatus.colorClass}`}
+                              >
+                                <span className="font-extrabold">{execStatus.symbol}</span>
+                                <span className="text-[9px] uppercase tracking-wider">{execStatus.label}</span>
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-3 font-mono text-slate-300">
                           {log.tokens_in.toLocaleString()}
@@ -2064,7 +2416,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                       <AnimatePresence initial={false}>
                         {isExpanded && (
                           <tr className="bg-slate-950/70 border-b border-slate-800/80" id={`expanded-detail-${idx}`}>
-                            <td colSpan={7} className="p-0 overflow-hidden">
+                            <td colSpan={10} className="p-0 overflow-hidden">
                               <motion.div
                                 key={`expanded-div-${idx}`}
                                 initial={{ height: 0, opacity: 0 }}
@@ -2137,22 +2489,58 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                       </motion.div>
                                     </div>
                                     
-                                    <div className="space-y-1.5 text-xs text-slate-400 font-mono bg-slate-900/20 p-3 rounded-lg border border-slate-800/40">
-                                      <div className="flex justify-between">
+                                    <div className="space-y-2 text-xs text-slate-300 font-mono bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
+                                      <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-900 pb-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        Active OTel Ingestion Context
+                                      </div>
+
+                                      {/* Trace ID Field */}
+                                      <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Trace ID:</span>
-                                        <span className="text-slate-300">{traceId}</span>
+                                        {log.traceId || traceId ? (
+                                          <span className="text-emerald-400 font-semibold selection:bg-emerald-500/30">
+                                            {log.traceId || traceId}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-600 italic uppercase">UNKNOWN_TRACE_ID</span>
+                                        )}
                                       </div>
-                                      <div className="flex justify-between">
+
+                                      {/* Service Field */}
+                                      <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Service:</span>
-                                        <span className="text-slate-300">otel-pipeline-collector</span>
+                                        {log.service || log.project ? (
+                                          <span className="text-slate-100 font-semibold">
+                                            {log.service || `${log.project}-service`}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-600 italic uppercase">UNKNOWN_SERVICE</span>
+                                        )}
                                       </div>
-                                      <div className="flex justify-between">
+
+                                      {/* Region Field */}
+                                      <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Region:</span>
-                                        <span className="text-slate-300">{getRegion(log.project)}</span>
+                                        {getRegion(log.project) ? (
+                                          <span className="text-slate-100 font-medium bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/60 text-[10px]">
+                                            {getRegion(log.project)}
+                                          </span>
+                                        ) : (
+                                          <span className="text-rose-400/50 italic uppercase font-semibold text-[10px] bg-rose-950/20 px-1.5 py-0.5 rounded border border-rose-900/30">UNKNOWN_REGION</span>
+                                        )}
                                       </div>
-                                      <div className="flex justify-between">
+
+                                      {/* SDK Version Field */}
+                                      <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">SDK Version:</span>
-                                        <span className="text-slate-300">@opentelemetry/sdk-node@1.24.0</span>
+                                        {log.sdkVersion || log.sdk_version ? (
+                                          <span className="text-indigo-400 font-semibold">
+                                            {log.sdkVersion || log.sdk_version}
+                                          </span>
+                                        ) : (
+                                          <span className="text-indigo-400/80 font-medium">@opentelemetry/sdk-node@1.24.0</span>
+                                        )}
                                       </div>
                                     </div>
                                   </motion.div>
@@ -2364,6 +2752,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
         </div>
       </motion.div>
 
+      {/* Latency Distribution Histogram Section */}
+      <LatencyHistogram logs={filteredLogs} />
+
     </motion.div>
   );
 }
@@ -2373,8 +2764,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
 interface FirewallViewProps {
   showToast: (msg: string, type?: 'warning' | 'info' | 'success') => void;
   pendingApprovals: PendingApproval[];
-  resolveApproval: (id: string) => void;
-  rejectApproval: (id: string) => void;
+  resolveApproval: (id: string, actionJson?: any) => void;
+  rejectApproval: (id: string, rejectReason?: string) => void;
   executeAgentTool: (agentId: string, rule: string, json: any) => Promise<any>;
 }
 
@@ -2391,13 +2782,13 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
   const [confidenceGateEnabled, setConfidenceGateEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(85);
 
-  const handleApprove = (id: string) => {
-    resolveApproval(id);
+  const handleApprove = (id: string, actionJson?: any) => {
+    resolveApproval(id, actionJson);
     showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
   };
 
-  const handleDeny = (id: string) => {
-    rejectApproval(id);
+  const handleDeny = (id: string, reason?: string) => {
+    rejectApproval(id, reason);
     showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
   };
 
@@ -2712,26 +3103,65 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
 
                   <div className="mt-5 space-y-2">
                     <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">Drafted Shell Execution Command Payload:</span>
-                    <div className="bg-slate-950/90 border border-slate-850 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-emerald-400 overflow-x-auto">
-                      <pre>{JSON.stringify(item.actionJson, null, 2)}</pre>
+                    <div className="bg-slate-950/90 border border-slate-850 rounded-lg p-4 font-mono text-[11px] leading-relaxed overflow-x-auto relative group">
+                      <textarea 
+                        className="w-full min-h-[120px] bg-transparent text-emerald-400 font-mono resize-y outline-none border-none focus:ring-1 focus:ring-emerald-500/50 p-2 rounded"
+                        defaultValue={JSON.stringify(item.actionJson, null, 2)}
+                        id={`payload-editor-${item.id}`}
+                      />
                     </div>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => handleApprove(item.id)}
-                      className="w-full py-3 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Approve &amp; Resume Execution
-                    </button>
-                    <button
-                      onClick={() => handleDeny(item.id)}
-                      className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <AlertTriangle className="w-4 h-4 animate-pulse" />
-                      Deny &amp; Terminate
-                    </button>
+                  <div className="mt-6 flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 flex flex-col gap-2">
+                      <button
+                        onClick={() => handleApprove(item.id)}
+                        className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById(`payload-editor-${item.id}`) as HTMLTextAreaElement;
+                          if (el) {
+                            let modifiedJson = item.actionJson;
+                            try {
+                              modifiedJson = JSON.parse(el.value);
+                            } catch (e) {
+                              modifiedJson = el.value;
+                            }
+                            handleApprove(item.id, modifiedJson);
+                          }
+                        }}
+                        className="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_8px_rgba(245,158,11,0.15)] hover:shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                      >
+                        <Activity className="w-4 h-4" />
+                        Modify &amp; Resume
+                      </button>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-900/60 pt-4 md:pt-0 md:pl-4">
+                      <input 
+                        type="text" 
+                        placeholder="Inject Agent Correction..." 
+                        id={`reject-msg-${item.id}`}
+                        className="w-full bg-slate-900 text-slate-300 font-mono text-[10px] px-3 py-2.5 rounded border border-slate-800 focus:border-rose-500/50 focus:outline-none mb-1"
+                      />
+                      <button
+                        onClick={() => {
+                           const el = document.getElementById(`reject-msg-${item.id}`) as HTMLInputElement;
+                           const reason = el && el.value ? el.value : undefined;
+                           handleDeny(item.id, reason);
+                           if (reason) {
+                             showToast(`Correction injected: "${reason}"`, 'warning');
+                           }
+                        }}
+                        className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <AlertTriangle className="w-4 h-4 animate-pulse" />
+                        Deny &amp; Terminate
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -2897,6 +3327,8 @@ interface SettingsViewProps {
   showToast: (msg: string) => void;
   theme: 'Deep Space' | 'Midnight';
   setTheme: (t: 'Deep Space' | 'Midnight') => void;
+  reducedMotion: boolean;
+  setReducedMotion: (r: boolean) => void;
 }
 
 function SettingsView({
@@ -2910,7 +3342,9 @@ function SettingsView({
   onPurgeCompleted,
   showToast,
   theme,
-  setTheme
+  setTheme,
+  reducedMotion,
+  setReducedMotion
 }: SettingsViewProps) {
   const [subTab, setSubTab] = useState<'System Engine Settings' | 'Threshold Alert Rules'>(initialSubTab);
 
@@ -3135,6 +3569,45 @@ function SettingsView({
                     {t.toUpperCase()}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Reduced Motion Toggle Card */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="reduced-motion-settings-card">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <EyeOff className="w-5 h-5 text-rose-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">Reduced Motion Accessibility</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Disable all animation-pulse effects and screen-flicker scanline overlays for users with vestibular sensitivities.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-850 rounded-lg">
+                <div className="space-y-1 pr-4">
+                  <span className="block text-xs font-semibold text-slate-300">Vestibular Motion & Flicker Suppression</span>
+                  <span className="block text-[10px] text-slate-500">
+                    Activates static high-contrast border states instead of animations, pulsing badges, and CRT/scanline overlay effects.
+                  </span>
+                </div>
+                <button
+                  id="reduced-motion-toggle-btn"
+                  onClick={() => {
+                    setReducedMotion(!reducedMotion);
+                    showToast(!reducedMotion ? "Reduced Motion enabled. Pulsing and scanlines disabled." : "Reduced Motion disabled.");
+                  }}
+                  className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    reducedMotion ? 'bg-rose-500' : 'bg-slate-800'
+                  }`}
+                  aria-label="Toggle Reduced Motion mode"
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      reducedMotion ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 
@@ -3501,12 +3974,26 @@ export default function App() {
   const [simulateTelemetry, setSimulateTelemetry] = useState(true);
   const [toast, setToast] = useState<{ id: number; message: string; type: string } | null>(null);
   const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
+  const [reducedMotion, setReducedMotion] = useState<boolean>(() => localStorage.getItem('kudbee_reduced_motion') === 'true');
 
   const handleSetTheme = (newTheme: 'Deep Space' | 'Midnight') => {
     setTheme(newTheme);
     localStorage.setItem('kudbee_theme', newTheme);
     showToast(`Global Theme set to ${newTheme} mode.`, 'success');
   };
+
+  const handleSetReducedMotion = (val: boolean) => {
+    setReducedMotion(val);
+    localStorage.setItem('kudbee_reduced_motion', String(val));
+  };
+
+  useEffect(() => {
+    if (reducedMotion) {
+      document.body.classList.add('reduced-motion');
+    } else {
+      document.body.classList.remove('reduced-motion');
+    }
+  }, [reducedMotion]);
 
   useEffect(() => {
     if (theme === 'Midnight') {
@@ -3667,6 +4154,62 @@ export default function App() {
     return points;
   }, [dbLogs]);
 
+  // Derive circuit breaker real-time success vs failure request counts for the last 60 minutes
+  const circuitBreakerData = React.useMemo(() => {
+    const now = new Date();
+    // 12 buckets of 5 minutes covering 60 minutes
+    const bins = Array.from({ length: 12 }, (_, i) => {
+      const minutesAgo = (11 - i) * 5;
+      const binTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+      return {
+        name: `${minutesAgo === 0 ? 'now' : `${minutesAgo}m`}`,
+        timestamp: binTime.getTime(),
+        success: 0,
+        failure: 0,
+      };
+    });
+
+    // Populate from dbLogs
+    if (dbLogs && dbLogs.length > 0) {
+      dbLogs.forEach((log: any) => {
+        const logTime = new Date(log.timestamp).getTime();
+        const oneHourAgo = now.getTime() - 60 * 60 * 1000;
+        if (logTime >= oneHourAgo && logTime <= now.getTime()) {
+          // Find closest bin
+          let closestBin = bins[0];
+          let minDiff = Math.abs(logTime - bins[0].timestamp);
+          for (let i = 1; i < bins.length; i++) {
+            const diff = Math.abs(logTime - bins[i].timestamp);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestBin = bins[i];
+            }
+          }
+          
+          // Determine success vs failure deterministically
+          const isFailure = (log.id % 9 === 0) || (log.provider === 'Anthropic' && log.id % 13 === 0);
+          if (isFailure) {
+            closestBin.failure += 1;
+          } else {
+            closestBin.success += 1;
+          }
+        }
+      });
+    }
+
+    // Add randomized/simulated baseline so it is fully populated with nice values
+    bins.forEach((bin, idx) => {
+      const seed = (idx + now.getMinutes()) % 10;
+      const baseSuccess = 15 + (seed * 3) + Math.floor(Math.sin(idx * 2) * 4);
+      const baseFailure = Math.max(0, 1 + Math.floor(Math.cos(idx * 1.5) * 2) + (seed % 3));
+      
+      bin.success += baseSuccess;
+      bin.failure += baseFailure;
+    });
+
+    return bins;
+  }, [dbLogs]);
+
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard' },
     { icon: Activity, label: 'Interceptor' },
@@ -3696,8 +4239,8 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <>
-        <div className="crt-overlay" />
-        <div className="crt-scanline" />
+        {!reducedMotion && <div className="crt-overlay" />}
+        {!reducedMotion && <div className="crt-scanline" />}
         <LoginView onAuthenticate={() => setIsAuthenticated(true)} />
       </>
     );
@@ -3705,8 +4248,8 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex overflow-hidden selection:bg-emerald-500/30`}>
-      <div className="crt-overlay" />
-      <div className="crt-scanline" />
+      {!reducedMotion && <div className="crt-overlay" />}
+      {!reducedMotion && <div className="crt-scanline" />}
       
       {/* LEFT SIDEBAR */}
       <aside className="w-64 border-r border-slate-800/60 bg-slate-950 flex flex-col shrink-0 hidden md:flex z-10" id="main-sidebar">
@@ -3772,7 +4315,7 @@ export default function App() {
       <main className="flex-1 h-screen overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
         
-        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 ${
+        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-24 sm:pb-32 ${
           displayDensity === 'Compact' 
             ? 'p-4 space-y-4 text-xs' 
             : displayDensity === 'Comfortable' 
@@ -3893,8 +4436,12 @@ export default function App() {
                               <div className="font-medium text-slate-200">{m.name}</div>
                               <div className="text-[11px] text-slate-500 mt-0.5">{m.org}</div>
                             </td>
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} font-mono text-slate-300 tracking-wide`}>
-                              {getFormattedCost(parseFloat(m.costIn), currency, 2)} <span className="text-slate-600 mx-1">|</span> {getFormattedCost(parseFloat(m.costOut), currency, 2)}
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
+                              <div className="flex flex-col md:flex-row md:items-center font-mono text-slate-300 tracking-wide">
+                                <span>{getFormattedCost(parseFloat(m.costIn), currency, 2)}</span>
+                                <span className="text-slate-600 mx-1 hidden md:inline">|</span>
+                                <span>{getFormattedCost(parseFloat(m.costOut), currency, 2)}</span>
+                              </div>
                             </td>
                             <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
                               <div className="w-24 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
@@ -4068,61 +4615,133 @@ export default function App() {
                 </div>
               </div>
 
-              {/* BOTTOM ROW: HISTORICAL TIME-SERIES CONTAINER */}
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-3">
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
-                  </span>
-                </div>
+              {/* BOTTOM ROW: DUAL TELEMETRY & GATEWAY CHARTS */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                <div className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mb-6 flex justify-between items-end">
-                  <span>24-Hour Telemetry & Ingestion Trajectory</span>
-                  <span className="text-emerald-500/70 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded">Live DB Sync</span>
+                {/* 24-HOUR TELEMETRY CONTAINER */}
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-3">
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
+                    </span>
+                  </div>
+                  
+                  <div className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mb-6 flex justify-between items-end">
+                    <span>24-Hour Telemetry & Ingestion Trajectory</span>
+                    <span className="text-emerald-500/70 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded">Live DB Sync</span>
+                  </div>
+                  
+                  <div className="h-44 w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#475569" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          stroke="#475569" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '8px' }}
+                          labelStyle={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}
+                          itemStyle={{ color: '#34d399', fontFamily: 'monospace', fontSize: '11px' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="tokens" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorTokens)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                
-                <div className="h-44 w-full mt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#475569" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        dy={10}
-                      />
-                      <YAxis 
-                        stroke="#475569" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                      />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '8px' }}
-                        labelStyle={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}
-                        itemStyle={{ color: '#34d399', fontFamily: 'monospace', fontSize: '11px' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="tokens" 
-                        stroke="#10b981" 
-                        strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorTokens)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+
+                {/* API GATEWAY CIRCUIT BREAKER HEALTH LINE CHART */}
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="circuit-breaker-health-chart">
+                  <div className="absolute top-0 right-0 p-3">
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.7)]"></span>
+                    </span>
+                  </div>
+                  
+                  <div className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mb-6 flex justify-between items-end">
+                    <span>API Gateway Rate Success vs Failure (60m)</span>
+                    <span className="text-rose-500/70 border border-rose-500/20 bg-rose-500/5 px-2 py-1 rounded">Circuit Breaker</span>
+                  </div>
+                  
+                  <div className="h-44 w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={circuitBreakerData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#475569" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          stroke="#475569" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '8px' }}
+                          labelStyle={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}
+                          itemStyle={{ fontFamily: 'monospace', fontSize: '11px' }}
+                        />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={36} 
+                          iconType="circle" 
+                          iconSize={8}
+                          wrapperStyle={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="success" 
+                          name="Success (200 OK)" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          dot={{ r: 3, strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="failure" 
+                          name="Failed / Blocked" 
+                          stroke="#ef4444" 
+                          strokeWidth={2}
+                          dot={{ r: 3, strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
+
               </div>
             </>
           )}
@@ -4166,6 +4785,8 @@ export default function App() {
               showToast={showToast}
               theme={theme}
               setTheme={handleSetTheme}
+              reducedMotion={reducedMotion}
+              setReducedMotion={handleSetReducedMotion}
             />
           )}
 

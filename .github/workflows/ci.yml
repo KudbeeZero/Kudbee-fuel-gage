@@ -1,0 +1,41 @@
+name: KUDBEE Enterprise CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-build:
+    name: Type Check, Lint, and Compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Initialize Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Secure Dependencies
+        run: npm ci
+
+      - name: Execute TypeScript Validation
+        run: npx tsc --noEmit
+
+      - name: Run Code Linter
+        run: npm run lint
+
+      - name: Compile Production Bundle
+        run: npm run build
+        env:
+          CI: true

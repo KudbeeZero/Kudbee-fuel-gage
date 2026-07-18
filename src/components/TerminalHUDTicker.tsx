@@ -102,7 +102,7 @@ export function TerminalHUDTicker() {
       {/* Decorative scanner lines to match mechanical/tactical theme */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_95%,rgba(16,185,129,0.02)_98%,rgba(16,185,129,0.02)_100%)] bg-[size:100%_4px] pointer-events-none"></div>
       
-      <div className="flex items-start md:items-center gap-3 min-w-0 flex-1">
+      <div className="flex items-start md:items-center gap-3 min-w-0 flex-1 w-full">
         <div className="p-1.5 bg-slate-900 rounded border border-slate-800 shrink-0 flex items-center justify-center">
           <Terminal className="w-4 h-4 text-emerald-500 animate-pulse" />
         </div>
@@ -111,8 +111,8 @@ export function TerminalHUDTicker() {
           <span className="text-slate-500 uppercase tracking-widest text-[10px]">INTEL_STREAMS:</span>
         </div>
 
-        {/* Carousel Transition area */}
-        <div className="min-w-0 flex-1 relative h-5 flex items-center overflow-hidden">
+        {/* Carousel Transition area - enlarged h-auto and padded to prevent any vertical text clipping */}
+        <div className="min-w-0 flex-1 relative h-auto md:h-6 py-2 flex items-center overflow-hidden w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
@@ -120,7 +120,7 @@ export function TerminalHUDTicker() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -15, opacity: 0 }}
               transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className="flex flex-wrap items-center gap-2 text-xs font-mono w-full truncate"
+              className="flex flex-wrap items-center gap-2 text-xs font-mono w-full leading-relaxed"
             >
               <span className={`text-[10px] uppercase font-bold tracking-wider shrink-0 px-1.5 py-0.5 rounded border ${style.badge}`}>
                 {style.prefix}
@@ -128,7 +128,7 @@ export function TerminalHUDTicker() {
               <span className="text-slate-500 text-[10px] shrink-0">
                 ({currentHeadline.source})
               </span>
-              <span className={`truncate text-[11px] sm:text-xs ${style.text}`}>
+              <span className={`text-[11px] sm:text-xs leading-relaxed ${style.text}`}>
                 {currentHeadline.title}
               </span>
               <span className={`${cursorBlink ? 'opacity-100' : 'opacity-0'} ${style.text} shrink-0`}>_</span>
@@ -137,10 +137,10 @@ export function TerminalHUDTicker() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+      <div className="flex items-center gap-2 shrink-0 self-end md:self-auto w-full md:w-auto justify-end border-t border-slate-900/60 md:border-t-0 pt-2 md:pt-0">
         <button 
           onClick={fetchHeadlines}
-          className="p-1.5 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded text-slate-500 hover:text-emerald-400 transition-all cursor-pointer"
+          className="p-1.5 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded text-slate-500 hover:text-emerald-400 transition-all cursor-pointer flex items-center justify-center"
           title="Manually force intel refresh"
         >
           <RefreshCw className="w-3.5 h-3.5" />

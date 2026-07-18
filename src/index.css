@@ -176,3 +176,18 @@ body.theme-midnight {
   border-color: #27272a !important;
   color: #e4e4e7 !important;
 }
+
+/* Reduced Motion Overrides for Vestibular Sensitivity */
+.reduced-motion, .reduced-motion * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Static high-contrast border states to replace pulsing elements under reduced motion */
+.reduced-motion .animate-pulse,
+.reduced-motion [class*="animate-pulse"] {
+  animation: none !important;
+  border: 2px solid #e2e8f0 !important;
+  background-color: #0f172a !important;
+}
+
