@@ -31,7 +31,7 @@ function ProgressRing({ percentage, label, sublabel, colorClass, strokeClass }: 
             className={`${strokeClass} transition-all duration-1000 ease-out`}
           />
         </svg>
-        <div className={`absolute font-mono text-sm font-semibold ${colorClass}`}>
+        <div className={`absolute font-mono text-sm font-semibold tracking-tighter ${colorClass} drop-shadow-[0_0_6px_rgba(52,211,153,0.15)]`}>
           {percentage}%
         </div>
       </div>

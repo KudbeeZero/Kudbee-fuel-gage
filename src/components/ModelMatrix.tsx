@@ -61,10 +61,10 @@ export function ModelMatrix() {
                     </div>
                   </div>
                 </td>
-                <td className="py-4 font-mono text-slate-300">
+                <td className="py-4 font-mono text-slate-300 tracking-wide">
                   {model.inputCost} / {model.outputCost}
                 </td>
-                <td className="py-4 font-mono text-slate-300">
+                <td className="py-4 font-mono text-slate-300 tracking-wider">
                   {model.speed}
                 </td>
                 <td className="py-4">

@@ -463,8 +463,8 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
         <div className="px-6 py-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
           <div className="flex items-center gap-3">
             <span className="flex h-2.5 w-2.5 relative">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+              <span className={`animate-pulse absolute inline-flex h-full w-full rounded-full ${isPaused ? 'bg-amber-400/55 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-400/55 shadow-[0_0_8px_rgba(52,211,153,0.5)]'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPaused ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.7)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]'}`}></span>
             </span>
             <h2 className="font-display font-semibold text-slate-200 text-sm tracking-wide uppercase">
               OTel Ingestion Stream Terminal {isPaused && <span className="text-amber-500 text-xs ml-2">[PAUSED]</span>}
@@ -508,17 +508,44 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
           
           {logs.map((log, idx) => {
             const formattedCostWithSymbol = getFormattedCost(log.cost, currency, 6);
+            
+            // Derive a simulated OTel ingestion status
+            let status = "OK";
+            if (log.tokens_in > 800) {
+              status = "RATE_LIMITED";
+            } else if (log.tokens_out > 350) {
+              status = "INTERCEPTED";
+            }
+
             const traceObj = {
               ...log,
+              status,
               cost: currency === 'USD' ? log.cost : `${formattedCostWithSymbol} (equiv)`
             };
+
+            let badgeColorClass = "text-emerald-500/70 bg-emerald-950/40 border-emerald-900/40";
+            let textColorClass = "text-emerald-400/90 drop-shadow-[0_0_4px_rgba(52,211,153,0.15)]";
+            let badgeText = "TRACE OK";
+
+            if (status === "INTERCEPTED") {
+              badgeColorClass = "text-amber-400/90 bg-amber-950/40 border-amber-900/40 animate-pulse";
+              textColorClass = "text-amber-400/90 drop-shadow-[0_0_4px_rgba(245,158,11,0.25)]";
+              badgeText = "TRACE INTERCEPTED";
+            } else if (status === "RATE_LIMITED") {
+              badgeColorClass = "text-rose-400/90 bg-rose-950/40 border-rose-900/40";
+              textColorClass = "text-rose-400/90 drop-shadow-[0_0_4px_rgba(244,63,94,0.25)]";
+              badgeText = "CIRCUIT BREAKER";
+            }
+
             return (
               <div key={idx} className="space-y-1 py-1 border-b border-slate-950">
-                <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                <div className="flex items-center justify-between text-slate-500 text-[10px] font-mono tracking-tight">
                   <span>{log.timestamp}</span>
-                  <span className="text-emerald-500/70 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-900/40">TRACE OK</span>
+                  <span className={`px-1.5 py-0.5 rounded border font-semibold tracking-wider text-[9px] ${badgeColorClass}`}>
+                    {badgeText}
+                  </span>
                 </div>
-                <pre className="text-emerald-400/90 overflow-x-auto whitespace-pre-wrap">
+                <pre className={`overflow-x-auto whitespace-pre-wrap font-mono tracking-wide ${textColorClass}`}>
                   {JSON.stringify(traceObj, null, 2)}
                 </pre>
               </div>
@@ -3450,7 +3477,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   
   if (!isAuthenticated) {
-    return <LoginView onAuthenticate={() => setIsAuthenticated(true)} />;
+    return (
+      <>
+        <div className="crt-overlay" />
+        <div className="crt-scanline" />
+        <LoginView onAuthenticate={() => setIsAuthenticated(true)} />
+      </>
+    );
   }
 
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
@@ -3661,6 +3694,8 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex overflow-hidden selection:bg-emerald-500/30`}>
+      <div className="crt-overlay" />
+      <div className="crt-scanline" />
       
       {/* LEFT SIDEBAR */}
       <aside className="w-64 border-r border-slate-800/60 bg-slate-950 flex flex-col shrink-0 hidden md:flex z-10" id="main-sidebar">
@@ -3714,10 +3749,10 @@ export default function App() {
         <div className="p-5 border-t border-slate-800/60 bg-slate-900/20">
           <div className="flex items-center gap-3">
             <div className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
             </div>
-            <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest">System Status: Nominal</span>
+            <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest drop-shadow-[0_0_4px_rgba(52,211,153,0.25)]">System Status: Nominal</span>
           </div>
         </div>
       </aside>
@@ -3743,8 +3778,8 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </div>
                   <button 
                     onClick={() => setIsAuthenticated(false)}
@@ -3846,32 +3881,32 @@ export default function App() {
                     <table className="w-full text-left border-collapse min-w-[700px]">
                       <thead>
                         <tr className="text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/50">
-                          <th className="px-6 py-4 font-medium border-b border-slate-800">Model Framework</th>
-                          <th className="px-6 py-4 font-medium border-b border-slate-800">Cost / 1M (In|Out)</th>
-                          <th className="px-6 py-4 font-medium border-b border-slate-800">Speed Velocity</th>
-                          <th className="px-6 py-4 font-medium border-b border-slate-800">Output Quality</th>
-                          <th className="px-6 py-4 font-medium border-b border-slate-800 text-right">Route State</th>
+                          <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Model Framework</th>
+                          <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Cost / 1M (In|Out)</th>
+                          <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Speed Velocity</th>
+                          <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Output Quality</th>
+                          <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800 text-right`}>Route State</th>
                         </tr>
                       </thead>
                       <tbody className="text-sm divide-y divide-slate-800/50">
                         {models.map((m, i) => (
-                          <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
-                            <td className="px-6 py-4">
+                           <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
                               <div className="font-medium text-slate-200">{m.name}</div>
                               <div className="text-[11px] text-slate-500 mt-0.5">{m.org}</div>
                             </td>
-                            <td className="px-6 py-4 font-mono text-slate-300">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} font-mono text-slate-300 tracking-wide`}>
                               {getFormattedCost(parseFloat(m.costIn), currency, 2)} <span className="text-slate-600 mx-1">|</span> {getFormattedCost(parseFloat(m.costOut), currency, 2)}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
                               <div className="w-24 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
                                 <div className="absolute top-0 left-0 h-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" style={{ width: `${m.speed}%` }}></div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'}`}>
                               <StarRating rating={m.quality} />
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} text-right`}>
                               <span className={`inline-flex items-center px-2 py-1 text-[9px] font-mono uppercase tracking-widest rounded border ${
                                 m.status === 'ACTIVE' 
                                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.15)]' 
@@ -4039,8 +4074,8 @@ export default function App() {
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-3">
                   <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </span>
                 </div>
                 

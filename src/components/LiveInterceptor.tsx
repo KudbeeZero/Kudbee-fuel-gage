@@ -26,8 +26,8 @@ export function LiveInterceptor() {
         </h2>
         <div className="flex items-center gap-2">
            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400/40 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.4)]"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.6)]"></span>
            </span>
            <span className="font-mono text-xs text-emerald-400 uppercase tracking-widest">Streaming</span>
         </div>
@@ -36,7 +36,7 @@ export function LiveInterceptor() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-950 rounded-xl p-5 border border-slate-800/50">
            <div className="text-slate-500 text-sm mb-2 font-medium">Input Tokens</div>
-           <div className="font-mono text-3xl text-slate-200">
+           <div className="font-mono text-3xl text-slate-200 tracking-tight">
              {inputTokens.toLocaleString()}
            </div>
         </div>
@@ -46,7 +46,7 @@ export function LiveInterceptor() {
              <ArrowRightLeft className="w-4 h-4 text-slate-400" />
            </div>
            <div className="text-slate-500 text-sm mb-2 font-medium">Output Tokens</div>
-           <div className="font-mono text-3xl text-slate-200">
+           <div className="font-mono text-3xl text-slate-200 tracking-tight">
              {outputTokens.toLocaleString()}
            </div>
         </div>
@@ -55,7 +55,7 @@ export function LiveInterceptor() {
            <div className="text-emerald-500/70 text-sm mb-2 font-medium flex items-center gap-1">
              <DollarSign className="w-4 h-4" /> Real-time Cost
            </div>
-           <div className="font-mono text-3xl text-emerald-400">
+           <div className="font-mono text-3xl text-emerald-400 tracking-tight">
              ${cost.toFixed(4)}
            </div>
         </div>
