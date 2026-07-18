@@ -1262,7 +1262,7 @@ function getRawJson(log: any) {
   };
 }
 
-function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[]; onNewLogTriggered?: () => void }) {
+function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[]; onNewLogTriggered?: () => void; onTraceSelect?: (trace: any) => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | 'all'>('all');
   const [exporting, setExporting] = useState(false);
@@ -2626,7 +2626,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                             whileTap={{ scale: 0.95 }}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setSelectedTraceForDrawer(log);
+                                              onTraceSelect?.(log);
                                             }}
                                             className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 rounded border border-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5 animate-none"
                                           >
@@ -4896,7 +4896,7 @@ export default function App() {
           
           {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
-          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} onNewLogTriggered={fetchTelemetryData} />}
+          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} onNewLogTriggered={fetchTelemetryData} onTraceSelect={setSelectedTraceForDrawer} />}
 
           {activeTab === 'Intelligence' && <IntelligenceView />}
 
@@ -5051,8 +5051,7 @@ export default function App() {
                   onClick={() => {
                     const jsonStr = JSON.stringify(selectedTraceForDrawer, null, 2);
                     navigator.clipboard.writeText(jsonStr);
-                    setToast({ message: "✓ Copied full trace JSON to clipboard" });
-                    setTimeout(() => setToast(null), 2500);
+                    showToast("✓ Copied full trace JSON to clipboard", "success");
                   }}
                   className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
@@ -5089,26 +5088,47 @@ export default function App() {
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
       <div 
-        className={`fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 flex flex-col transition-all duration-300 ease-in-out ${
-          consoleExpanded ? 'h-64' : 'h-12'
-        } pb-safe`}
+        className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 flex flex-col transition-all duration-300 ease-in-out pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.5)]"
+        style={{ height: consoleExpanded ? '18rem' : 'calc(3rem + env(safe-area-inset-bottom))' }}
       >
         {/* Toggle handle header */}
         <div 
           onClick={() => setConsoleExpanded(!consoleExpanded)}
-          className="h-12 flex items-center justify-between px-6 border-b border-slate-900 bg-slate-950/40 cursor-pointer select-none"
+          className="h-12 flex items-center justify-between px-6 border-b border-slate-900 bg-slate-950/40 cursor-pointer select-none shrink-0"
         >
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="font-mono text-xs font-bold tracking-wider text-slate-200">LIVE_CONSOLE_INGESTION_STREAM</span>
-            <span className="hidden sm:inline font-mono text-[9px] text-slate-500 uppercase tracking-widest">[pipeline online]</span>
-          </div>
-          <div className="flex items-center gap-3">
+          {consoleExpanded ? (
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-mono text-xs font-bold tracking-wider text-slate-200">LIVE_CONSOLE_INGESTION_STREAM</span>
+              <span className="hidden sm:inline font-mono text-[9px] text-slate-500 uppercase tracking-widest">[pipeline online]</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <div className="flex items-center gap-2 font-mono text-[11px] truncate text-slate-300 flex-1">
+                <span className="text-emerald-400 shrink-0 select-none font-bold animate-pulse">&gt;</span>
+                {eventLogs.length > 0 ? (
+                  <>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 select-none">{eventLogs[0].label}</span>
+                    <span className="truncate text-slate-200">{eventLogs[0].message}</span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">Idle - awaiting pipeline synchronisation...</span>
+                )}
+                <span className="w-1.5 h-3.5 bg-emerald-400 inline-block animate-terminal-blink shrink-0 ml-1"></span>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-3 shrink-0 select-none">
             <span className="font-mono text-[9px] text-slate-500 uppercase tracking-widest">
-              {consoleExpanded ? 'CLICK TO COLLAPSE' : 'CLICK TO EXPAND'}
+              {consoleExpanded ? 'COLLAPSE' : 'EXPAND'}
             </span>
             <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${consoleExpanded ? 'rotate-0' : 'rotate-180'}`} />
           </div>
