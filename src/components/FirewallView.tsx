@@ -218,7 +218,6 @@ export function FirewallView({
   const [selectedBlockedLog, setSelectedBlockedLog] = useState<BlockedLog | null>(null);
   const [copiedPayloadId, setCopiedPayloadId] = useState<string | null>(null);
   const throttleRef = useRef<number | null>(null);
-  const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Throttled sync layer: ingest into ref, sync to state every ~150ms
   const ingestBlockedLog = useCallback((log: BlockedLog) => {
@@ -240,10 +239,12 @@ export function FirewallView({
     return () => clearInterval(interval);
   }, [isTerminalPaused, ingestBlockedLog]);
 
-  // Auto-scroll terminal
+  // Auto-scroll terminal (strictly confined to inner container)
+  const terminalContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (!isTerminalPaused && terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!isTerminalPaused && terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
     }
   }, [visibleBlockedLogs, isTerminalPaused]);
 
@@ -460,7 +461,8 @@ export function FirewallView({
 
         {/* Terminal Feed */}
         <div
-          className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto overscroll-contain space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 max-h-96"
+          ref={terminalContainerRef}
+          className="h-80 bg-black p-4 font-mono text-xs overflow-y-auto overscroll-contain space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800"
         >
           <div className="text-emerald-500/50">[system] Initializing multi-model security gateway intercept stream...</div>
           <div className="text-emerald-500/50">[system] Semantic firewall active. Ingesting high-frequency threat telemetry...</div>
@@ -504,7 +506,6 @@ export function FirewallView({
               </div>
             );
           })}
-          <div ref={terminalEndRef} />
         </div>
       </div>
 
