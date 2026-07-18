@@ -10,7 +10,7 @@ interface LatencyHistogramProps {
 export function LatencyHistogram({ logs }: LatencyHistogramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height: 240 });
+  const [dimensions, setDimensions] = useState({ width: 500, height: 220 });
 
   // Safe D3 data array extractor: maps over both successful and failed metrics safely
   const safeLogs = Array.isArray(logs) ? logs : [];
@@ -56,19 +56,9 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
     return sorted[Math.max(0, index)];
   })() : 0;
 
-  // Responsive observer
+  // Static dimensions to ensure perfect responsive scaling
   useEffect(() => {
-    if (!containerRef.current) return;
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (!entries || entries.length === 0) return;
-      const { width } = entries[0].contentRect;
-      setDimensions({
-        width: Math.max(width, 280),
-        height: 240
-      });
-    });
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
+    setDimensions({ width: 500, height: 220 });
   }, []);
 
   // Render SVG using D3
@@ -389,14 +379,14 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
 
       <div 
         ref={containerRef} 
-        className="w-full bg-slate-950/40 border border-slate-850 rounded-lg p-2 overflow-x-auto relative"
+        className="w-full bg-slate-950/40 border border-slate-850 rounded-lg p-2 overflow-hidden relative"
         id="histogram-svg-wrapper"
       >
         <svg 
           ref={svgRef} 
-          width={dimensions.width} 
-          height={dimensions.height}
-          className="mx-auto block overflow-visible"
+          viewBox="0 0 500 220"
+          preserveAspectRatio="xMidYMid meet"
+          className="mx-auto block overflow-visible w-full h-auto"
         />
       </div>
 

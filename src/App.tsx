@@ -526,7 +526,7 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
       </div>
 
       {/* 2. LIVE TERMINAL INGESTION STREAM */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[400px]" id="live-stream-box">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col max-h-80 overscroll-contain h-80" id="live-stream-box">
         <div className="px-6 py-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
           <div className="flex items-center gap-3">
             <span className="flex h-2.5 w-2.5 relative">
@@ -571,7 +571,7 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
 
         {/* Mock Terminal Workspace */}
         <div 
-          className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 animate-none"
+          className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto overscroll-contain space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 animate-none"
           onScroll={handleTerminalScroll}
         >
           <div className="text-emerald-500/50">{"[system] Initializing Kudbee Fuel Gauge telemetry daemon..."}</div>
@@ -2024,8 +2024,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                       <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Calculated locally</span>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[500px]">
-                        <thead>
+                      <table className="w-full text-left border-collapse md:min-w-[500px] block md:table">
+                        <thead className="hidden md:table-header-group">
                           <tr className="text-slate-500 text-[10px] font-mono uppercase bg-slate-900/40">
                             <th className="px-4 py-2 border-b border-slate-800">Timestamp</th>
                             <th className="px-4 py-2 border-b border-slate-800">Project</th>
@@ -2034,18 +2034,29 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             <th className="px-4 py-2 border-b border-slate-800 text-right">Provider</th>
                           </tr>
                         </thead>
-                        <tbody className="text-xs divide-y divide-slate-800/40">
+                        <tbody className="text-xs divide-y divide-slate-800/40 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
                           {parsedLogs.slice(0, 5).map((log, index) => (
-                            <tr key={index} className="hover:bg-slate-900/20 transition-colors">
-                              <td className="px-4 py-2 font-mono text-slate-400 text-[10px] truncate max-w-[150px]" title={log.timestamp}>
-                                {log.timestamp}
+                            <tr key={index} className="hover:bg-slate-900/20 transition-colors block md:table-row bg-slate-900/60 border border-slate-800 md:border-none rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none">
+                              <td className="px-4 py-2 font-mono text-slate-400 text-[10px] truncate max-w-[150px] md:max-w-none flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0" title={log.timestamp}>
+                                <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Timestamp:</span>
+                                <span className="text-right md:text-left truncate">{log.timestamp}</span>
                               </td>
-                              <td className="px-4 py-2 text-slate-300">{log.project}</td>
-                              <td className="px-4 py-2 text-slate-200 font-mono text-[11px]">{log.model}</td>
-                              <td className="px-4 py-2 font-mono text-slate-400">
-                                {log.tokens_in} <span className="text-slate-700">|</span> {log.tokens_out}
+                              <td className="px-4 py-2 text-slate-300 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                                <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Project:</span>
+                                <span className="text-right md:text-left">{log.project}</span>
                               </td>
-                              <td className="px-4 py-2 text-right font-mono text-slate-400 text-[11px]">{log.provider}</td>
+                              <td className="px-4 py-2 text-slate-200 font-mono text-[11px] flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                                <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Model ID:</span>
+                                <span className="text-right md:text-left text-emerald-400">{log.model}</span>
+                              </td>
+                              <td className="px-4 py-2 font-mono text-slate-400 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                                <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Tokens (In|Out):</span>
+                                <span className="text-right md:text-left">{log.tokens_in} <span className="text-slate-700">|</span> {log.tokens_out}</span>
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono text-slate-400 text-[11px] flex md:table-cell justify-between md:justify-end items-center w-full md:w-auto">
+                                <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Provider:</span>
+                                <span className="text-right">{log.provider}</span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -2289,9 +2300,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead>
+        <div className="overflow-x-auto max-h-80 overscroll-contain overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+          <table className="w-full text-left border-collapse md:min-w-[700px] block md:table">
+            <thead className="hidden md:table-header-group">
               <tr className="text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/50">
                 <th className="px-4 py-4 w-10 border-b border-slate-800"></th>
                 <th className="px-6 py-4 font-medium border-b border-slate-800">Timestamp</th>
@@ -2305,10 +2316,10 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                 <th className="px-6 py-4 font-medium border-b border-slate-800 text-right">Total Cost</th>
               </tr>
             </thead>
-            <tbody className="text-xs divide-y divide-slate-800/50">
+            <tbody className="text-xs divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
               {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center font-mono text-slate-500">
+                <tr className="block md:table-row">
+                  <td colSpan={10} className="px-6 py-12 text-center font-mono text-slate-500 block md:table-cell">
                     No historical traces matched the current filtering criteria.
                   </td>
                 </tr>
@@ -2326,15 +2337,16 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                     <React.Fragment key={log.timestamp}>
                       <tr 
                         onClick={() => setExpandedRow(isExpanded ? null : log.timestamp)}
-                        className={`cursor-pointer transition-all duration-300 ease-in-out select-none border-l-2 ${
+                        className={`cursor-pointer transition-all duration-300 ease-in-out select-none border-l-2 md:border-l-2 ${
                           isExpanded 
                             ? 'bg-gradient-to-r from-emerald-500/10 via-slate-800/30 to-transparent text-slate-100 border-emerald-500 shadow-[inset_1px_0_12px_rgba(52,211,153,0.1)]' 
                             : belongsToActiveSession
                               ? 'bg-cyan-500/[0.04] border-cyan-500/40 text-slate-200 hover:bg-slate-800/25'
                               : 'bg-transparent border-transparent hover:bg-slate-800/25 hover:border-emerald-500/40 hover:text-slate-200'
-                        }`}
+                        } block md:table-row bg-slate-900/60 border border-slate-800 md:border-y-0 md:border-r-0 md:border-transparent rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2.5 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none`}
                       >
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold">Actions:</span>
                           <motion.div
                             animate={{ rotate: isExpanded ? 90 : 0, scale: isExpanded ? 1.15 : 1 }}
                             transition={{ type: "spring", stiffness: 220, damping: 14 }}
@@ -2343,24 +2355,31 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             <ChevronRight className={`w-4 h-4 ${isExpanded ? 'text-emerald-400' : 'text-slate-500'}`} />
                           </motion.div>
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-100">
-                          {new Date(log.timestamp).toLocaleString()}
+                        <td className="px-6 py-3 font-mono text-slate-100 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Timestamp:</span>
+                          <span className="text-right md:text-left">{new Date(log.timestamp).toLocaleString()}</span>
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-300 font-semibold flex items-center gap-1.5">
-                          {log.project}
-                          {belongsToActiveSession && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" title="Selected session telemetry matches" />
-                          )}
+                        <td className="px-6 py-3 font-mono text-slate-300 font-semibold flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0 gap-1.5">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Project:</span>
+                          <div className="flex items-center gap-1.5 text-right md:text-left">
+                            {log.project}
+                            {belongsToActiveSession && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" title="Selected session telemetry matches" />
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-100">
-                          {log.model}
+                        <td className="px-6 py-3 font-mono text-slate-100 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Model:</span>
+                          <span className="text-right md:text-left text-emerald-400">{log.model}</span>
                         </td>
-                        <td className="px-6 py-3 font-mono">
-                          <span className="px-2 py-0.5 text-[10px] bg-slate-950 border border-slate-800/60 text-slate-300 rounded font-semibold uppercase">
+                        <td className="px-6 py-3 font-mono flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Provider:</span>
+                          <span className="px-2 py-0.5 text-[10px] bg-slate-950 border border-slate-800/60 text-slate-300 rounded font-semibold uppercase text-right md:text-left">
                             {log.provider}
                           </span>
                         </td>
-                        <td className="px-6 py-3 font-mono">
+                        <td className="px-6 py-3 font-mono flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Status:</span>
                           <span 
                             aria-label={
                               log.status === 'OK'
@@ -2369,7 +2388,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                   ? "Trace Intercepted by Guardrails"
                                   : "Trace Failed or Rate Limited"
                             }
-                            className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase border ${
+                            className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase border text-right md:text-left ${
                               log.status === 'OK' 
                                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]' 
                                 : log.status === 'INTERCEPTED'
@@ -2380,7 +2399,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             {log.status}
                           </span>
                         </td>
-                        <td className="px-6 py-3 font-mono">
+                        <td className="px-6 py-3 font-mono flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Execution:</span>
                           {(() => {
                             const execStatus = getExecutionStatusInfo(log);
                             return (
@@ -2394,13 +2414,16 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                             );
                           })()}
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-300">
-                          {log.tokens_in.toLocaleString()}
+                        <td className="px-6 py-3 font-mono text-slate-300 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Input Tokens:</span>
+                          <span className="text-right md:text-left">{log.tokens_in.toLocaleString()}</span>
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-300">
-                          {log.tokens_out.toLocaleString()}
+                        <td className="px-6 py-3 font-mono text-slate-300 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Output Tokens:</span>
+                          <span className="text-right md:text-left">{log.tokens_out.toLocaleString()}</span>
                         </td>
-                        <td className="px-6 py-3 text-right font-mono">
+                        <td className="px-6 py-3 text-right font-mono flex md:table-cell justify-between md:justify-end items-center w-full md:w-auto">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Total Cost:</span>
                           {isHighCost ? (
                             <span className="text-amber-400 font-bold flex items-center justify-end gap-1" title="Cost exceeds limit warning">
                               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -2415,8 +2438,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                       </tr>
                       <AnimatePresence initial={false}>
                         {isExpanded && (
-                          <tr className="bg-slate-950/70 border-b border-slate-800/80" id={`expanded-detail-${idx}`}>
-                            <td colSpan={10} className="p-0 overflow-hidden">
+                          <tr className="bg-slate-950/70 border-b border-slate-800/80 block md:table-row" id={`expanded-detail-${idx}`}>
+                            <td colSpan={10} className="p-0 overflow-hidden block md:table-cell">
                               <motion.div
                                 key={`expanded-div-${idx}`}
                                 initial={{ height: 0, opacity: 0 }}
@@ -4377,35 +4400,37 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="relative w-full overflow-hidden">
-                {/* Left and Right Edge-Fade Visual Cue Overlays */}
-                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-950 to-transparent pointer-events-none z-10" />
-                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none z-10" />
-                
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none flex-nowrap whitespace-nowrap scroll-smooth">
+              <div className="w-full">
+                <div className="grid grid-cols-3 w-full gap-2" id="tactical-navigation-grid">
                   {[
-                    { key: 'Dashboard', label: 'DASHBOARD', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'Interceptor', label: 'INTERCEPTOR', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'Playground', label: 'PLAYGROUND', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'History', label: 'HISTORY', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'Intelligence', label: 'INTELLIGENCE', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'Firewall', label: 'FIREWALL', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
-                    { key: 'Gateway', label: 'GATEWAY', activeStyle: 'border-blue-500/40 bg-blue-500/10 text-blue-400 font-bold shadow-[inset_0_-2px_0_#3b82f6,0_2px_8px_rgba(59,130,246,0.15)]' },
-                    { key: 'Alerts', label: 'ALERTS', activeStyle: 'border-purple-500/40 bg-purple-500/10 text-purple-400 font-bold shadow-[inset_0_-2px_0_#a855f7,0_2px_8px_rgba(168,85,247,0.15)]' },
-                    { key: 'Settings', label: 'SETTINGS', activeStyle: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold shadow-[inset_0_-2px_0_#10b981,0_2px_8px_rgba(52,211,153,0.15)]' },
+                    { key: 'Dashboard', label: 'DASHBOARD' },
+                    { key: 'Interceptor', label: 'INTERCEPTOR' },
+                    { key: 'Playground', label: 'PLAYGROUND' },
+                    { key: 'History', label: 'HISTORY' },
+                    { key: 'Intelligence', label: 'INTELLIGENCE' },
+                    { key: 'Firewall', label: 'FIREWALL' },
+                    { key: 'Gateway', label: 'GATEWAY' },
+                    { key: 'Alerts', label: 'ALERTS' },
+                    { key: 'Settings', label: 'SETTINGS' },
                   ].map((tab) => {
                     const isActive = activeTab === tab.key;
                     return (
                       <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`flex-none min-h-[44px] min-w-[100px] px-4 py-2 rounded text-xs font-mono border transition-all duration-200 ease-out cursor-pointer flex items-center justify-center ${
+                        className={`min-h-[44px] px-2 py-1.5 rounded text-[10px] font-mono border transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-1.5 ${
                           isActive
-                            ? tab.activeStyle
-                            : 'border-slate-850 bg-slate-900 text-slate-400 hover:text-slate-200 hover:border-slate-750'
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-500 hover:text-slate-300 hover:border-slate-700'
                         }`}
                       >
-                        {tab.label}
+                        {isActive && (
+                          <span className="relative flex h-1.5 w-1.5 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                          </span>
+                        )}
+                        <span>{tab.label}</span>
                       </button>
                     );
                   })}
@@ -4452,8 +4477,8 @@ export default function App() {
                     </div>
                   </div>
                   <div className="p-0 overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[700px]">
-                      <thead>
+                    <table className="w-full text-left border-collapse md:min-w-[700px] block md:table">
+                      <thead className="hidden md:table-header-group">
                         <tr className="text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/50">
                           <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Model Framework</th>
                           <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800`}>Cost / 1M (In|Out)</th>
@@ -4462,29 +4487,36 @@ export default function App() {
                           <th className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} font-medium border-b border-slate-800 text-right`}>Route State</th>
                         </tr>
                       </thead>
-                      <tbody className="text-sm divide-y divide-slate-800/50">
+                      <tbody className="text-sm divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0">
                         {models.map((m, i) => (
-                           <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
-                              <div className="font-medium text-slate-200">{m.name}</div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">{m.org}</div>
+                           <tr key={i} className="hover:bg-slate-800/20 transition-colors group block md:table-row bg-slate-900/60 border border-slate-800 md:border-none rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2.5 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none">
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2.5 md:pb-0`}>
+                              <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Model:</span>
+                              <div className="text-right md:text-left">
+                                <div className="font-medium text-slate-200">{m.name}</div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">{m.org}</div>
+                              </div>
                             </td>
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2.5 md:pb-0`}>
+                              <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Cost/1M:</span>
                               <div className="flex flex-col md:flex-row md:items-center font-mono text-slate-300 tracking-wide">
                                 <span>{getFormattedCost(parseFloat(m.costIn), currency, 2)}</span>
                                 <span className="text-slate-600 mx-1 hidden md:inline">|</span>
                                 <span>{getFormattedCost(parseFloat(m.costOut), currency, 2)}</span>
                               </div>
                             </td>
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'}`}>
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2.5 md:pb-0`}>
+                              <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Speed:</span>
                               <div className="w-24 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
                                 <div className="absolute top-0 left-0 h-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" style={{ width: `${m.speed}%` }}></div>
                               </div>
                             </td>
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'}`}>
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5' : 'px-6 py-4'} flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2.5 md:pb-0`}>
+                              <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Quality:</span>
                               <StarRating rating={m.quality} />
                             </td>
-                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} text-right`}>
+                            <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} text-right flex md:table-cell justify-between md:justify-end items-center w-full md:w-auto`}>
+                              <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">State:</span>
                               <span className={`inline-flex items-center px-2 py-1 text-[9px] font-mono uppercase tracking-widest rounded border ${
                                 m.status === 'ACTIVE' 
                                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.15)]' 
