@@ -36,7 +36,9 @@ import {
   Server,
   Lock,
   Globe,
-  EyeOff
+  EyeOff,
+  X,
+  Maximize2
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
@@ -2036,7 +2038,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                         </thead>
                         <tbody className="text-xs divide-y divide-slate-800/40 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
                           {parsedLogs.slice(0, 5).map((log, index) => (
-                            <tr key={index} className="hover:bg-slate-900/20 transition-colors block md:table-row bg-slate-900/60 border border-slate-800 md:border-none rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none">
+                            <tr key={index} className="hover:bg-slate-900/20 active:scale-[0.98] transition-all duration-75 block md:table-row bg-slate-900/60 border border-slate-800 md:border-none rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none">
                               <td className="px-4 py-2 font-mono text-slate-400 text-[10px] truncate max-w-[150px] md:max-w-none flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0" title={log.timestamp}>
                                 <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Timestamp:</span>
                                 <span className="text-right md:text-left truncate">{log.timestamp}</span>
@@ -2337,7 +2339,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                     <React.Fragment key={log.timestamp}>
                       <tr 
                         onClick={() => setExpandedRow(isExpanded ? null : log.timestamp)}
-                        className={`cursor-pointer transition-all duration-300 ease-in-out select-none border-l-2 md:border-l-2 ${
+                        className={`cursor-pointer transition-all active:scale-[0.98] duration-75 ease-in-out select-none border-l-2 md:border-l-2 ${
                           isExpanded 
                             ? 'bg-gradient-to-r from-emerald-500/10 via-slate-800/30 to-transparent text-slate-100 border-emerald-500 shadow-[inset_1px_0_12px_rgba(52,211,153,0.1)]' 
                             : belongsToActiveSession
@@ -2602,21 +2604,36 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                           </button>
                                         </div>
 
-                                        <motion.button
-                                          whileHover={{ scale: 1.05 }}
-                                          whileTap={{ scale: 0.95 }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const jsonStr = JSON.stringify(getRawJson(log), null, 2);
-                                            navigator.clipboard.writeText(jsonStr);
-                                            setCopiedTraceId(traceId);
-                                            setTimeout(() => setCopiedTraceId(null), 1500);
-                                          }}
-                                          className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5 animate-none"
-                                        >
-                                          <Copy className="w-3.5 h-3.5" />
-                                          <span>{copiedTraceId === traceId ? 'COPIED!' : 'COPY JSON'}</span>
-                                        </motion.button>
+                                        <div className="flex items-center gap-2">
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const jsonStr = JSON.stringify(getRawJson(log), null, 2);
+                                              navigator.clipboard.writeText(jsonStr);
+                                              setCopiedTraceId(traceId);
+                                              setTimeout(() => setCopiedTraceId(null), 1500);
+                                            }}
+                                            className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5 animate-none"
+                                          >
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>{copiedTraceId === traceId ? 'COPIED!' : 'COPY JSON'}</span>
+                                          </motion.button>
+
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedTraceForDrawer(log);
+                                            }}
+                                            className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-1 rounded border border-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5 animate-none"
+                                          >
+                                            <Maximize2 className="w-3.5 h-3.5" />
+                                            <span>DEEP DIVE</span>
+                                          </motion.button>
+                                        </div>
                                       </div>
 
                                       <AnimatePresence mode="wait">
@@ -3993,6 +4010,8 @@ export default function App() {
   }, []);
 
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<any | null>(null);
+  const [consoleExpanded, setConsoleExpanded] = useState(false);
   
   const [eventLogs, setEventLogs] = useState<any[]>([]);
 
@@ -4310,7 +4329,7 @@ export default function App() {
               <TerminalSquare className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <span className="font-display font-bold text-lg tracking-tight text-slate-100 block leading-none">KUDBEE</span>
+              <span className="font-display font-bold text-lg tracking-tight text-slate-100 block leading-none">KUDBEE<span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">|</span></span>
               <span className="font-mono text-[9px] text-emerald-500 uppercase tracking-widest block mt-1">Fuel Gauge v1.0</span>
             </div>
           </div>
@@ -4339,7 +4358,7 @@ export default function App() {
                     setActiveTab(item.label);
                   }
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95 duration-75 ${
                   isActive 
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer' 
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent cursor-pointer'
@@ -4347,7 +4366,7 @@ export default function App() {
               >
                 <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
                 {item.label}
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>}
+                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] relative after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></div>}
               </button>
             );
           })}
@@ -4381,7 +4400,7 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <TerminalSquare className="w-6 h-6 text-emerald-400" />
-                  <span className="font-display font-bold text-lg text-slate-100">KUDBEE Fuel Gauge</span>
+                  <span className="font-display font-bold text-lg text-slate-100">KUDBEE Fuel Gauge<span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">|</span></span>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-2 w-2">
@@ -4418,7 +4437,7 @@ export default function App() {
                       <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`min-h-[44px] px-2 py-1.5 rounded text-[10px] font-mono border transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-1.5 ${
+                        className={`min-h-[44px] px-2 py-1.5 rounded text-[10px] font-mono border cursor-pointer flex items-center justify-center gap-1.5 transition-all active:scale-95 duration-75 ${
                           isActive
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                             : 'border-slate-800 bg-slate-950/20 text-slate-500 hover:text-slate-300 hover:border-slate-700'
@@ -4427,7 +4446,7 @@ export default function App() {
                         {isActive && (
                           <span className="relative flex h-1.5 w-1.5 shrink-0">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></span>
                           </span>
                         )}
                         <span>{tab.label}</span>
@@ -4535,8 +4554,31 @@ export default function App() {
                 {/* SUBSCRIPTION BUDGET LEDGER & HEALTH QUOTAS */}
                 <div className="xl:col-span-4 space-y-6 flex flex-col justify-between">
                   
+                  {/* SYSTEM INCIDENT & EVENT NOTIFICATION HUB LINK STATUS */}
+                  <div 
+                    onClick={() => setConsoleExpanded(true)}
+                    className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex items-center justify-between text-xs font-mono relative overflow-hidden cursor-pointer hover:border-emerald-500/40 transition-all duration-200 active:scale-95 shadow-[0_0_12px_rgba(52,211,153,0.02)] animate-none" 
+                    id="event-notification-hub-link"
+                  >
+                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+                     <div className="flex items-center gap-3">
+                        <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        <div>
+                          <div className="font-display font-semibold text-slate-200 text-sm">Console Dock Ingestion</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-mono">Live trace pipeline actively synchronized below</div>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded text-[9px] font-mono font-bold tracking-wider uppercase shrink-0">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                        </span>
+                        <span>DOCK_LINK</span>
+                     </div>
+                  </div>
+
                   {/* SYSTEM INCIDENT & EVENT NOTIFICATION HUB */}
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col relative" id="event-notification-hub">
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col relative hidden" id="event-notification-hub">
                      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
                      <div className="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
                        <div className="flex items-center gap-2">
@@ -4944,6 +4986,164 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 1. THE GLASSMORPHIC TRACE DRAWER (Slide-Up Sheet) */}
+      <div 
+        className={`fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-300 ease-out h-[75vh] flex flex-col bg-slate-950/95 backdrop-blur-md border-t border-slate-800 rounded-t-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] ${
+          selectedTraceForDrawer ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        {/* Grab-handle / Drag bar */}
+        <div className="flex justify-center py-3 border-b border-slate-900 bg-slate-950/40 relative cursor-pointer" onClick={() => setSelectedTraceForDrawer(null)}>
+          <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
+          <button 
+            onClick={() => setSelectedTraceForDrawer(null)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content body */}
+        {selectedTraceForDrawer && (
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 select-text pb-12">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-xs font-mono text-emerald-500 uppercase tracking-widest">OTel Ingestion Context Deep-Dive</h3>
+                <h2 className="text-xl font-bold font-display text-slate-100 mt-1">Trace Payload Explorer</h2>
+              </div>
+              <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase border ${
+                selectedTraceForDrawer.status === 'OK' 
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]' 
+                  : selectedTraceForDrawer.status === 'INTERCEPTED'
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+              }`}>
+                {selectedTraceForDrawer.status}
+              </span>
+            </div>
+
+            {/* Trace Meta Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Trace ID</div>
+                <div className="text-xs font-mono font-bold text-emerald-400 mt-1 truncate select-all">{`tr-${selectedTraceForDrawer.timestamp ? selectedTraceForDrawer.timestamp.replace(/[^0-9]/g, '').slice(-10) : '3928173928'}`}</div>
+              </div>
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Model ID</div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{selectedTraceForDrawer.modelId || selectedTraceForDrawer.model}</div>
+              </div>
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Provider</div>
+                <div className="text-xs font-mono font-bold text-slate-300 mt-1 uppercase">{selectedTraceForDrawer.provider}</div>
+              </div>
+              <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Input | Output Tokens</div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{(selectedTraceForDrawer.tokens_in || selectedTraceForDrawer.inTokens || 0).toLocaleString()} | {(selectedTraceForDrawer.tokens_out || selectedTraceForDrawer.outTokens || 0).toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* In-depth JSON Payload */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Syntax-Highlighted Trace JSON Payload</span>
+                <button
+                  onClick={() => {
+                    const jsonStr = JSON.stringify(selectedTraceForDrawer, null, 2);
+                    navigator.clipboard.writeText(jsonStr);
+                    setToast({ message: "✓ Copied full trace JSON to clipboard" });
+                    setTimeout(() => setToast(null), 2500);
+                  }}
+                  className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Payload</span>
+                </button>
+              </div>
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto max-h-[40vh] overflow-y-auto font-mono text-[11px] text-slate-300 leading-relaxed shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
+                <pre>{JSON.stringify({
+                  trace_id: `tr-${selectedTraceForDrawer.timestamp ? selectedTraceForDrawer.timestamp.replace(/[^0-9]/g, '').slice(-10) : '3928173928'}`,
+                  timestamp: selectedTraceForDrawer.timestamp,
+                  resource: {
+                    "service.name": "kudbee-otel-collector-service",
+                    "service.version": "1.0.0",
+                    "telemetry.sdk.language": "typescript",
+                    "telemetry.sdk.name": "opentelemetry",
+                    "telemetry.sdk.version": "1.24.0"
+                  },
+                  attributes: {
+                    "ai.model": selectedTraceForDrawer.modelId || selectedTraceForDrawer.model,
+                    "ai.provider": selectedTraceForDrawer.provider,
+                    "ai.tokens.input": selectedTraceForDrawer.tokens_in || selectedTraceForDrawer.inTokens || 0,
+                    "ai.tokens.output": selectedTraceForDrawer.tokens_out || selectedTraceForDrawer.outTokens || 0,
+                    "ai.cost": selectedTraceForDrawer.cost || 0,
+                    "ai.status": selectedTraceForDrawer.status || "OK",
+                    "ai.project": selectedTraceForDrawer.project || "KUDBEE-LIVE"
+                  }
+                }, null, 2)}</pre>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
+      <div 
+        className={`fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 flex flex-col transition-all duration-300 ease-in-out ${
+          consoleExpanded ? 'h-64' : 'h-12'
+        } pb-safe`}
+      >
+        {/* Toggle handle header */}
+        <div 
+          onClick={() => setConsoleExpanded(!consoleExpanded)}
+          className="h-12 flex items-center justify-between px-6 border-b border-slate-900 bg-slate-950/40 cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-mono text-xs font-bold tracking-wider text-slate-200">LIVE_CONSOLE_INGESTION_STREAM</span>
+            <span className="hidden sm:inline font-mono text-[9px] text-slate-500 uppercase tracking-widest">[pipeline online]</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[9px] text-slate-500 uppercase tracking-widest">
+              {consoleExpanded ? 'CLICK TO COLLAPSE' : 'CLICK TO EXPAND'}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${consoleExpanded ? 'rotate-0' : 'rotate-180'}`} />
+          </div>
+        </div>
+
+        {/* Event Logs List (Visible only when expanded) */}
+        <div className={`flex-1 overflow-y-auto p-4 space-y-2 select-text ${consoleExpanded ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
+          <div className="max-h-full pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-850 scrollbar-track-transparent">
+            {eventLogs.map((event) => (
+              <div 
+                key={event.id} 
+                className="flex items-start gap-3 p-2 bg-slate-900/40 border border-slate-850/50 hover:bg-slate-900/60 hover:border-slate-800 rounded transition-all group font-mono text-xs"
+              >
+                <div className="mt-0.5 shrink-0">
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${
+                    event.type === 'info' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                    event.type === 'warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 
+                    'bg-slate-800/50 text-slate-400 border-slate-700'
+                  }`}>
+                    {event.label}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] leading-relaxed text-slate-300 group-hover:text-slate-100 transition-colors">
+                    {event.message}
+                  </p>
+                </div>
+                <div className="shrink-0 text-[9px] text-slate-500 group-hover:text-slate-400 mt-0.5">
+                  {event.time}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
