@@ -31,7 +31,9 @@ import {
   ChevronRight,
   Key,
   Trash2,
-  Shield
+  Shield,
+  Network,
+  Server
 } from 'lucide-react';
 import {
   AreaChart,
@@ -114,6 +116,58 @@ export function useAgentInterceptor() {
   }, []);
 
   return { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval };
+}
+
+export interface GatewayLog {
+  id: string;
+  timestamp: Date;
+  level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS';
+  message: string;
+}
+
+export function useGatewayRouter() {
+  const [gatewayLogs, setGatewayLogs] = useState<GatewayLog[]>([]);
+  const [activeRoute, setActiveRoute] = useState<'IDLE' | 'PRIMARY' | 'FAILOVER'>('IDLE');
+  
+  const addLog = React.useCallback((level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS', message: string) => {
+    setGatewayLogs(prev => [{ id: Math.random().toString(), timestamp: new Date(), level, message }, ...prev].slice(0, 50));
+  }, []);
+
+  const executeGatewayRequest = React.useCallback(async (payload: any) => {
+    setActiveRoute('PRIMARY');
+    addLog('INFO', `Routing request to Primary Region (us-east-1) for model: ${payload.model || 'claude-3-5-sonnet'}`);
+    
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // 30% chance to fail
+        const isRateLimited = Math.random() < 0.3;
+        
+        if (isRateLimited) {
+          addLog('WARN', `Rate limit 429 hit on Primary Region (us-east-1).`);
+          addLog('INFO', `CRIS router engaging Circuit Breaker. Rewriting payload for failover...`);
+          
+          setTimeout(() => {
+            setActiveRoute('FAILOVER');
+            addLog('INFO', `Rerouting request to Failover Region (eu-central-1) for fallback model (deepseek-r1)...`);
+            
+            setTimeout(() => {
+              addLog('SUCCESS', `Failover request completed successfully via eu-central-1.`);
+              setTimeout(() => setActiveRoute('IDLE'), 2000);
+              resolve({ success: true, region: 'eu-central-1', model: 'deepseek-r1' });
+            }, 1000);
+            
+          }, 500);
+          
+        } else {
+          addLog('SUCCESS', `Request completed successfully via Primary Region (us-east-1).`);
+          setTimeout(() => setActiveRoute('IDLE'), 2000);
+          resolve({ success: true, region: 'us-east-1', model: payload.model || 'claude-3-5-sonnet' });
+        }
+      }, 1000);
+    });
+  }, [addLog]);
+
+  return { gatewayLogs, activeRoute, executeGatewayRequest, addLog };
 }
 
 // --- SUB-COMPONENTS FOR DASHBOARD VIEW ---
@@ -2669,6 +2723,132 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
 
 // --- SUB-COMPONENT: SETTINGS VIEW ---
 
+function GatewayView({ activeRoute, gatewayLogs, executeGatewayRequest }: {
+  activeRoute: 'IDLE' | 'PRIMARY' | 'FAILOVER';
+  gatewayLogs: GatewayLog[];
+  executeGatewayRequest: (p: any) => Promise<any>;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-display font-semibold text-slate-100 flex items-center gap-2">
+            <Network className="w-5 h-5 text-blue-400" />
+            Routing Gateway (CRIS Engine)
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">Multi-Region Fallback Proxy & Circuit Breaker Visualizer</p>
+        </div>
+        <button
+          onClick={() => executeGatewayRequest({ model: 'claude-3-5-sonnet' })}
+          className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono text-xs font-bold tracking-wider rounded-lg hover:bg-blue-500/20 transition-colors"
+        >
+          TEST GATEWAY ROUTE
+        </button>
+      </div>
+
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+        
+        <div className="p-8">
+          <h3 className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider mb-6">Live Traffic Topology</h3>
+          
+          <div className="relative h-64 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-center p-8 overflow-hidden">
+            
+            {/* SVG Lines for animation */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+              <line 
+                x1="20%" y1="50%" 
+                x2="80%" y2="25%" 
+                stroke={activeRoute === 'PRIMARY' ? '#3b82f6' : activeRoute === 'FAILOVER' ? '#ef4444' : '#1e293b'} 
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                className={activeRoute === 'PRIMARY' ? 'animate-[dash_1s_linear_infinite]' : ''}
+              />
+              <line 
+                x1="20%" y1="50%" 
+                x2="80%" y2="75%" 
+                stroke={activeRoute === 'FAILOVER' ? '#10b981' : '#1e293b'} 
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                className={activeRoute === 'FAILOVER' ? 'animate-[dash_1s_linear_infinite]' : ''}
+              />
+            </svg>
+            
+            {/* Edge Gateway Node */}
+            <div className="absolute left-10 lg:left-24 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+              <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${activeRoute !== 'IDLE' ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-slate-700'}`}>
+                <Network className={`w-8 h-8 ${activeRoute !== 'IDLE' ? 'text-blue-400' : 'text-slate-500'}`} />
+              </div>
+              <span className="font-mono text-[10px] text-slate-400 mt-3 font-semibold text-center tracking-widest">CENTRAL<br/>GATEWAY EDGE</span>
+            </div>
+
+            {/* Primary Region Node */}
+            <div className="absolute right-10 lg:right-32 top-8 flex flex-col items-center z-10">
+              <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${
+                activeRoute === 'PRIMARY' ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 
+                activeRoute === 'FAILOVER' ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 
+                'border-slate-700'
+              }`}>
+                <Server className={`w-6 h-6 ${
+                  activeRoute === 'PRIMARY' ? 'text-blue-400' : 
+                  activeRoute === 'FAILOVER' ? 'text-red-500' : 
+                  'text-slate-500'
+                }`} />
+              </div>
+              <span className="font-mono text-[10px] text-slate-400 mt-2 font-semibold tracking-widest">us-east-1</span>
+              <span className="text-[9px] text-slate-500">Claude 3.5 Sonnet</span>
+            </div>
+
+            {/* Failover Region Node */}
+            <div className="absolute right-10 lg:right-32 bottom-8 flex flex-col items-center z-10">
+              <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${
+                activeRoute === 'FAILOVER' ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 
+                'border-slate-700'
+              }`}>
+                <Activity className={`w-6 h-6 ${
+                  activeRoute === 'FAILOVER' ? 'text-emerald-400' : 
+                  'text-slate-500'
+                }`} />
+              </div>
+              <span className="font-mono text-[10px] text-slate-400 mt-2 font-semibold tracking-widest">eu-central-1</span>
+              <span className="text-[9px] text-slate-500">DeepSeek-R1</span>
+            </div>
+
+          </div>
+
+          <div className="mt-6 bg-black rounded-lg border border-slate-800 p-4 h-48 overflow-y-auto">
+            <h4 className="font-mono text-[10px] text-slate-500 tracking-widest uppercase mb-3 border-b border-slate-800 pb-2">CRIS Edge Gateway Logs</h4>
+            <div className="space-y-1.5">
+              {gatewayLogs.map(log => (
+                <div key={log.id} className="font-mono text-xs flex items-start gap-3">
+                  <span className="text-slate-600 whitespace-nowrap">
+                    [{log.timestamp.toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 })}]
+                  </span>
+                  <span className={`font-semibold whitespace-nowrap ${
+                    log.level === 'INFO' ? 'text-blue-400' :
+                    log.level === 'WARN' ? 'text-amber-400' :
+                    log.level === 'ERROR' ? 'text-red-400' :
+                    'text-emerald-400'
+                  }`}>
+                    [{log.level}]
+                  </span>
+                  <span className="text-slate-300">
+                    {log.message}
+                  </span>
+                </div>
+              ))}
+              {gatewayLogs.length === 0 && (
+                <div className="text-slate-600 text-xs font-mono italic">Waiting for inbound API requests...</div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SettingsViewProps {
   currency: 'USD' | 'EUR' | 'GBP';
   setCurrency: (c: 'USD' | 'EUR' | 'GBP') => void;
@@ -3146,6 +3326,9 @@ function SettingsView({
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   
+  const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
+  const gatewayRouter = useGatewayRouter();
+
   // --- SUBSCRIPTION LEDGER BUDGET CAPS (GAP TRACKER) ---
   const [claudeProCap, setClaudeProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_claude') || '20.00'));
   const [cursorProCap, setCursorProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_cursor') || '20.00'));
@@ -3210,8 +3393,6 @@ export default function App() {
       console.error("Failed to fetch dashboard metrics:", err);
     }
   };
-
-  const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
 
   useEffect(() => {
     if (!simulateTelemetry) return;
@@ -3461,6 +3642,12 @@ export default function App() {
                   className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Firewall' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
                 >
                   FIREWALL
+                </button>
+                <button 
+                  onClick={() => setActiveTab('Gateway')}
+                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Gateway' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
+                >
+                  GATEWAY
                 </button>
                 <button 
                   onClick={() => setActiveTab('Alerts')}
@@ -3777,6 +3964,14 @@ export default function App() {
               resolveApproval={resolveApproval}
               rejectApproval={rejectApproval}
               executeAgentTool={executeAgentTool}
+            />
+          )}
+
+          {activeTab === 'Gateway' && (
+            <GatewayView
+              activeRoute={gatewayRouter.activeRoute}
+              gatewayLogs={gatewayRouter.gatewayLogs}
+              executeGatewayRequest={gatewayRouter.executeGatewayRequest}
             />
           )}
 

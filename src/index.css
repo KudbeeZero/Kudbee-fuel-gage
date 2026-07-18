@@ -7,6 +7,15 @@
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
 }
 
+@keyframes dash {
+  from {
+    stroke-dashoffset: 8;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 body {
   @apply bg-slate-950 text-slate-200 antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
