@@ -330,6 +330,61 @@ async function startServer() {
     }
   });
 
+  // API Route: Ingest a batch of logs parsed from CSV
+  app.post("/api/telemetry/inject-csv", async (req, res) => {
+    try {
+      const { logs } = req.body;
+      if (!logs || !Array.isArray(logs)) {
+        return res.status(400).json({ error: "Missing logs array" });
+      }
+
+      const db = await loadDb();
+      const inserted = [];
+
+      for (const item of logs) {
+        const provider = item.provider || "Anthropic";
+        const model_name = item.model_name || item.model || "claude-3-5-sonnet";
+        const input_tokens = Number(item.input_tokens) || Number(item.tokens_in) || 0;
+        const output_tokens = Number(item.output_tokens) || Number(item.tokens_out) || 0;
+        const project_name = item.project_name || item.project || "offline-csv-import";
+        const timestamp = item.timestamp || new Date().toISOString();
+
+        const cost = calculateCost(model_name, input_tokens, output_tokens);
+
+        const newLog: TokenLog = {
+          id: db.next_log_id++,
+          user_id: 1,
+          provider,
+          model_name,
+          input_tokens,
+          output_tokens,
+          calculated_cost: Number(cost.toFixed(6)),
+          project_name,
+          timestamp
+        };
+
+        db.token_logs.push(newLog);
+
+        // Update quota tracker
+        const quotaKey = `1-${provider}`;
+        if (db.quota_trackers[quotaKey]) {
+          const quota = db.quota_trackers[quotaKey];
+          if (quota.provider === "Cursor") {
+            quota.used_allowance += 1;
+          } else {
+            quota.used_allowance += (input_tokens + output_tokens);
+          }
+        }
+        inserted.push(newLog);
+      }
+
+      await saveDb(db);
+      return res.json({ success: true, count: inserted.length, logs: inserted });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // API Route: Reset / Purge DB caches (Danger Zone)
   app.post("/api/telemetry/purge", async (req, res) => {
     try {

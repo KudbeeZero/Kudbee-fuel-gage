@@ -9,6 +9,8 @@ import {
   Bell,
   Settings,
   TerminalSquare,
+  Terminal,
+  Clock,
   Star,
   Zap,
   DollarSign,
@@ -23,6 +25,8 @@ import {
   Sparkles,
   Search,
   Download,
+  Upload,
+  FileSpreadsheet,
   ChevronDown,
   ChevronRight,
   Key,
@@ -58,6 +62,58 @@ export function getFormattedCost(usdAmount: number, currency: 'USD' | 'EUR' | 'G
   const config = rates[currency];
   const converted = usdAmount * config.rate;
   return `${config.symbol}${converted.toFixed(decimals)}`;
+}
+
+export interface PendingApproval {
+  id: string;
+  agentId: string;
+  triggeredRule: string;
+  actionJson: any;
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+  timestamp: Date;
+}
+
+export function useAgentInterceptor() {
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+
+  const executeAgentTool = React.useCallback((agentId: string, triggeredRule: string, actionJson: any) => {
+    return new Promise((resolve, reject) => {
+      const id = "agent-tx-" + Math.floor(1000 + Math.random() * 9000);
+      const newApproval: PendingApproval = {
+        id,
+        agentId,
+        triggeredRule,
+        actionJson,
+        resolve,
+        reject,
+        timestamp: new Date()
+      };
+      setPendingApprovals(prev => [...prev, newApproval]);
+    });
+  }, []);
+
+  const resolveApproval = React.useCallback((id: string) => {
+    setPendingApprovals(prev => {
+      const approval = prev.find(p => p.id === id);
+      if (approval) {
+        approval.resolve(true);
+      }
+      return prev.filter(p => p.id !== id);
+    });
+  }, []);
+
+  const rejectApproval = React.useCallback((id: string) => {
+    setPendingApprovals(prev => {
+      const approval = prev.find(p => p.id === id);
+      if (approval) {
+        approval.reject(new Error("Execution Denied"));
+      }
+      return prev.filter(p => p.id !== id);
+    });
+  }, []);
+
+  return { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval };
 }
 
 // --- SUB-COMPONENTS FOR DASHBOARD VIEW ---
@@ -1046,45 +1102,256 @@ function getRawJson(log: any) {
   };
 }
 
-function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[] }) {
+function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[]; onNewLogTriggered?: () => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | 'all'>('all');
   const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
 
+  // CSV Drag-and-Drop / Log import state variables
+  const [isCsvExpanded, setIsCsvExpanded] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [parsedLogs, setParsedLogs] = useState<any[]>([]);
+  const [parsingError, setParsingError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const parseCsvText = (text: string) => {
+    try {
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        setParsingError("CSV file must contain at least a header row and one data row.");
+        return;
+      }
+
+      // Parse headers and normalize them
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+      
+      const timestampIdx = headers.findIndex(h => h.includes('time') || h.includes('date'));
+      const projectIdx = headers.findIndex(h => h.includes('project'));
+      const modelIdx = headers.findIndex(h => h.includes('model'));
+      const tokensInIdx = headers.findIndex(h => h.includes('in') || h.includes('input'));
+      const tokensOutIdx = headers.findIndex(h => h.includes('out') || h.includes('output'));
+      const providerIdx = headers.findIndex(h => h.includes('provider') || h.includes('vendor'));
+
+      if (modelIdx === -1 || tokensInIdx === -1 || tokensOutIdx === -1) {
+        setParsingError("Invalid CSV headers. Must contain 'model', 'input_tokens' (or 'tokens_in'), and 'output_tokens' (or 'tokens_out') columns.");
+        return;
+      }
+
+      const logs: any[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
+        if (cols.length < Math.max(modelIdx, tokensInIdx, tokensOutIdx) + 1) {
+          continue; // skip malformed line
+        }
+
+        const model = cols[modelIdx];
+        const tokens_in = parseInt(cols[tokensInIdx], 10) || 0;
+        const tokens_out = parseInt(cols[tokensOutIdx], 10) || 0;
+        const project = projectIdx !== -1 && cols[projectIdx] ? cols[projectIdx] : "offline-csv-import";
+        const timestamp = timestampIdx !== -1 && cols[timestampIdx] ? cols[timestampIdx] : new Date().toISOString();
+        
+        // Auto-infer provider if not explicitly given
+        let provider = providerIdx !== -1 && cols[providerIdx] ? cols[providerIdx] : "";
+        if (!provider) {
+          const mLower = model.toLowerCase();
+          if (mLower.includes('claude') || mLower.includes('anthropic')) provider = "Anthropic";
+          else if (mLower.includes('gpt') || mLower.includes('openai')) provider = "OpenAI";
+          else if (mLower.includes('gemini') || mLower.includes('google')) provider = "Google";
+          else if (mLower.includes('deepseek')) provider = "DeepSeek";
+          else provider = "Anthropic"; // default fallback
+        }
+
+        logs.push({
+          timestamp,
+          project,
+          model,
+          tokens_in,
+          tokens_out,
+          provider
+        });
+      }
+
+      if (logs.length === 0) {
+        setParsingError("No valid rows could be parsed from the CSV file.");
+      } else {
+        setParsedLogs(logs);
+        setParsingError(null);
+        setUploadStatus(null);
+      }
+    } catch (err: any) {
+      setParsingError(`Parsing error: ${err.message}`);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.endsWith('.csv') || file.type === "text/csv") {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            parseCsvText(event.target.result as string);
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        setParsingError("Please upload a valid .csv file.");
+      }
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          parseCsvText(event.target.result as string);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleUploadCSV = async () => {
+    if (parsedLogs.length === 0) return;
+    setIsUploading(true);
+    setUploadStatus(null);
+    try {
+      const response = await fetch('/api/telemetry/inject-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logs: parsedLogs })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setParsedLogs([]);
+        setUploadStatus({
+          success: true,
+          message: `Successfully synchronized ${data.count} offline billing traces directly with local SQLite database.`
+        });
+        if (onNewLogTriggered) {
+          onNewLogTriggered();
+        }
+      } else {
+        const errData = await response.json();
+        setUploadStatus({
+          success: false,
+          message: `Failed to inject traces: ${errData.error || 'Server error'}`
+        });
+      }
+    } catch (err: any) {
+      setUploadStatus({
+        success: false,
+        message: `API connection failure: ${err.message}`
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Define logical sessions for the Replay Inspector
+  const SESSIONS = React.useMemo(() => [
+    { 
+      id: 'sess-alpha', 
+      name: 'Alpha Loop - Pipeline Ingest Validation', 
+      project: 'frontier-core', 
+      desc: 'Validating primary OTel distributed telemetry streams & system latency spikes.', 
+      count: 5, 
+      time: '10:15 AM' 
+    },
+    { 
+      id: 'sess-beta', 
+      name: 'Beta Loop - Human-in-the-Loop Guardrail Check', 
+      project: 'kudbee-fuel-gauge', 
+      desc: 'Evaluating real-time firewall gate intercepts, SSN scrubbing, and budgetary limits.', 
+      count: 4, 
+      time: '09:42 AM' 
+    },
+    { 
+      id: 'sess-gamma', 
+      name: 'Gamma Loop - Production Canvas Canvas Refactor', 
+      project: 'mesh-globe-3d', 
+      desc: 'Tracing active multi-model token throughput speeds, generation speeds, and network lags.', 
+      count: 6, 
+      time: '08:05 AM' 
+    }
+  ], []);
+
+  const [activeSessionId, setActiveSessionId] = useState<string | 'all'>('all');
+  const [scrubberVal, setScrubberVal] = useState<number>(0); // Selected session index on scrubber (0, 1, 2)
+  const [drawerTabs, setDrawerTabs] = useState<Record<string, 'waterfall' | 'json'>>({});
+
+  const currentSession = SESSIONS[scrubberVal];
+
   // Merge real SQLite logs with baseline historical data
   const mergedLogs = React.useMemo(() => {
-    if (!dbLogs || dbLogs.length === 0) {
-      return HISTORICAL_TRACES_MOCK;
-    }
-    const mappedDb = dbLogs.map((l: any) => ({
-      timestamp: l.timestamp,
-      project: l.project_name || "kilo-fuel-gauge",
-      model: l.model_name,
-      tokens_in: l.input_tokens,
-      tokens_out: l.output_tokens,
-      cost: l.calculated_cost,
-      timeframe: "24h" as const
-    }));
-    return [...mappedDb, ...HISTORICAL_TRACES_MOCK];
+    const raw = (!dbLogs || dbLogs.length === 0)
+      ? HISTORICAL_TRACES_MOCK
+      : [
+          ...dbLogs.map((l: any) => ({
+            timestamp: l.timestamp,
+            project: l.project_name || "kilo-fuel-gauge",
+            model: l.model_name,
+            tokens_in: l.input_tokens,
+            tokens_out: l.output_tokens,
+            cost: l.calculated_cost,
+            timeframe: "24h" as const
+          })),
+          ...HISTORICAL_TRACES_MOCK
+        ];
+
+    // Distribute logs into sessions based on project name
+    return raw.map((log, index) => {
+      let sessionId = 'sess-alpha';
+      if (log.project.includes('fuel-gauge') || log.project.includes('kudbee')) {
+        sessionId = 'sess-beta';
+      } else if (log.project.includes('globe') || log.project.includes('mesh')) {
+        sessionId = 'sess-gamma';
+      } else {
+        const sIds = ['sess-alpha', 'sess-beta', 'sess-gamma'];
+        sessionId = sIds[index % sIds.length];
+      }
+      return { ...log, sessionId };
+    });
   }, [dbLogs]);
 
-  // Filter logic
+  // Filter logs based on search query, timeframe, and selected session id (if isolating)
   const filteredLogs = mergedLogs.filter(log => {
     const matchesSearch = 
       log.project.toLowerCase().includes(searchQuery.toLowerCase()) || 
       log.model.toLowerCase().includes(searchQuery.toLowerCase());
     
+    let matchesTimeframe = true;
     if (timeframe === '24h') {
-      return matchesSearch && log.timeframe === '24h';
+      matchesTimeframe = log.timeframe === '24h';
     } else if (timeframe === '7d') {
-      return matchesSearch && (log.timeframe === '24h' || log.timeframe === '7d');
+      matchesTimeframe = log.timeframe === '24h' || log.timeframe === '7d';
     }
-    return matchesSearch;
+
+    const matchesSession = activeSessionId === 'all' || log.sessionId === activeSessionId;
+
+    return matchesSearch && matchesTimeframe && matchesSession;
   });
 
-  // Rollup logic
+  // Rollup stats logic
   const projectStats = filteredLogs.reduce((acc, log) => {
     if (!acc[log.project]) {
       acc[log.project] = { cost: 0, requests: 0 };
@@ -1158,11 +1425,144 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
       initial="hidden"
       animate="visible"
       variants={staggerContainer}
-      className="space-y-6" 
+      className="space-y-6 min-h-dvh flex flex-col scroll-mt-28" 
       id="history-view-container"
     >
       
-      {/* 1. PROJECT METADATA ROLLUP */}
+      {/* 1. SESSION REPLAY INSPECTOR (Top of History View) */}
+      <motion.div 
+        variants={sectionVariants}
+        className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" 
+        id="session-replay-panel"
+      >
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-cyan-400" />
+            <div>
+              <h2 className="font-display font-semibold text-slate-200 text-sm">Session Replay Inspector</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Drag scrubber to step through chronological developer sessions and inspect downstream trace payload hierarchies.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold">Grid Filter Mode:</span>
+            <div className="flex bg-slate-950 p-1 border border-slate-850 rounded-lg shrink-0">
+              <button
+                onClick={() => setActiveSessionId('all')}
+                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                  activeSessionId === 'all'
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                SHOW ALL TRACES
+              </button>
+              <button
+                onClick={() => setActiveSessionId(currentSession.id)}
+                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                  activeSessionId !== 'all'
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                ISOLATE REPLAY ONLY
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive scrubber timeline slider */}
+        <div className="bg-slate-950/60 border border-slate-850 rounded-xl p-5 md:p-6 space-y-6">
+          <div className="flex flex-col space-y-2">
+            <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1">
+              <span>08:00 AM (SESSION START)</span>
+              <span className="text-cyan-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                <Clock className="w-3 h-3 animate-pulse" />
+                ACTIVE PLAYBACK RANGE: {currentSession.name.toUpperCase()}
+              </span>
+              <span>10:30 AM (NOMINAL RUNTIME)</span>
+            </div>
+
+            <div className="relative pt-4 pb-2">
+              {/* Timeline background track bar */}
+              <div className="absolute top-1/2 left-0 w-full h-[3px] bg-slate-900 border border-slate-850 rounded -translate-y-1/2 z-0"></div>
+
+              {/* Glowing active segment highlight */}
+              <div 
+                className="absolute top-1/2 h-[5px] bg-gradient-to-r from-cyan-500/40 via-emerald-500/40 to-cyan-500/40 rounded -translate-y-1/2 z-0 transition-all duration-300 shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+                style={{
+                  left: scrubberVal === 0 ? '0%' : scrubberVal === 1 ? '33.33%' : '66.66%',
+                  width: '33.34%'
+                }}
+              ></div>
+
+              {/* Clickable circular ticks */}
+              {SESSIONS.map((sess, idx) => (
+                <button
+                  key={sess.id}
+                  onClick={() => {
+                    setScrubberVal(idx);
+                    if (activeSessionId !== 'all') {
+                      setActiveSessionId(sess.id);
+                    }
+                  }}
+                  className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 transition-all cursor-pointer z-10 ${
+                    scrubberVal === idx
+                      ? 'bg-cyan-400 border-slate-950 scale-125 shadow-[0_0_12px_rgba(34,211,238,0.65)]'
+                      : 'bg-slate-950 border-slate-800 hover:border-cyan-500/60 hover:scale-110'
+                  }`}
+                  style={{ left: `${idx * 50}%` }}
+                  title={sess.name}
+                >
+                  <span className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-mono font-bold tracking-tight text-slate-500 hover:text-slate-300">
+                    {sess.time}
+                  </span>
+                </button>
+              ))}
+
+              {/* Actual invisible input range slider for fluid scrubbing gesture */}
+              <input 
+                type="range"
+                min="0"
+                max="2"
+                step="1"
+                value={scrubberVal}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setScrubberVal(val);
+                  if (activeSessionId !== 'all') {
+                    setActiveSessionId(SESSIONS[val].id);
+                  }
+                }}
+                className="relative w-full opacity-0 cursor-ew-resize h-8 z-20"
+              />
+            </div>
+          </div>
+
+          {/* Active stats panel */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-900/60">
+            <div className="md:col-span-2 space-y-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Live Scrape Scope Details</span>
+              <h3 className="text-sm font-semibold text-slate-200">{currentSession.name}</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">{currentSession.desc}</p>
+            </div>
+
+            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
+              <span className="text-[9px] font-mono uppercase text-slate-500">Trace Count</span>
+              <span className="text-sm font-mono text-cyan-400 font-bold">{currentSession.count} Ingestion Points</span>
+            </div>
+
+            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
+              <span className="text-[9px] font-mono uppercase text-slate-500">Assigned Ingress Repository</span>
+              <span className="text-sm font-mono text-emerald-400 font-bold truncate">{currentSession.project}</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      
+      {/* 2. PROJECT METADATA ROLLUP */}
       <motion.div 
         variants={sectionVariants}
         className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" 
@@ -1231,8 +1631,195 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
           </div>
         </div>
       </motion.div>
+      
+      {/* OFFLINE TELEMETRY CSV DROPZONE (ROADMAP PHASE 1) */}
+      <motion.div 
+        variants={sectionVariants}
+        className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden relative" 
+        id="offline-csv-dropzone"
+      >
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+        
+        <button
+          onClick={() => setIsCsvExpanded(!isCsvExpanded)}
+          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-900/20 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <FileSpreadsheet className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display font-semibold text-slate-200 text-sm">Offline Telemetry CSV Dropzone</h3>
+                <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  ROADMAP PHASE 1
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Upload or drag native CSV exports from OpenAI/Anthropic to compute localized cost calculations offline.</p>
+            </div>
+          </div>
+          <div className="p-1 border border-slate-800 bg-slate-950/60 rounded text-slate-400 hover:text-slate-200 transition-all">
+            {isCsvExpanded ? (
+              <ChevronDown className="w-4 h-4 transform rotate-180 transition-transform duration-200" />
+            ) : (
+              <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+            )}
+          </div>
+        </button>
 
-      {/* 2. INTERACTIVE FILTERING & EXPORT CONTROL BAR */}
+        <AnimatePresence>
+          {isCsvExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="border-t border-slate-800/60 bg-slate-950/40"
+            >
+              <div className="p-6 space-y-6">
+                
+                {/* Drag zone box */}
+                <div 
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={`relative p-8 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center transition-all ${
+                    dragActive 
+                      ? 'border-blue-500 bg-blue-500/5 shadow-[0_0_15px_rgba(59,130,246,0.1)]' 
+                      : parsedLogs.length > 0 
+                        ? 'border-emerald-500/50 bg-emerald-500/5' 
+                        : 'border-slate-800 hover:border-slate-700 bg-slate-950/60'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    id="csv-file-upload"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+
+                  {parsedLogs.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                        <Check className="w-6 h-6 stroke-[3]" />
+                      </div>
+                      <div>
+                        <h4 className="font-mono text-sm font-semibold text-slate-200">
+                          {parsedLogs.length} Telemetry Records Parsed
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">Ready to be injected into the local trace warehouse.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="mx-auto w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                        <Upload className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-mono text-sm font-semibold text-slate-300">
+                          Drag & drop billing export CSV here
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          or <label htmlFor="csv-file-upload" className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-semibold">browse local files</label>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {parsingError && (
+                  <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 font-mono text-xs rounded-lg flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    {parsingError}
+                  </div>
+                )}
+
+                {uploadStatus && (
+                  <div className={`p-3.5 border font-mono text-xs rounded-lg flex items-center gap-2 ${
+                    uploadStatus.success 
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                      : 'bg-red-500/10 border-red-500/20 text-red-400'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${uploadStatus.success ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`}></span>
+                    {uploadStatus.message}
+                  </div>
+                )}
+
+                {/* File preview if successfully parsed */}
+                {parsedLogs.length > 0 && (
+                  <div className="space-y-4 border border-slate-800 bg-slate-950 rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                      <span className="font-mono text-xs font-semibold text-slate-300">Traces Preview (First 5 Rows)</span>
+                      <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Calculated locally</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="text-slate-500 text-[10px] font-mono uppercase bg-slate-900/40">
+                            <th className="px-4 py-2 border-b border-slate-800">Timestamp</th>
+                            <th className="px-4 py-2 border-b border-slate-800">Project</th>
+                            <th className="px-4 py-2 border-b border-slate-800">Model ID</th>
+                            <th className="px-4 py-2 border-b border-slate-800">Tokens (In|Out)</th>
+                            <th className="px-4 py-2 border-b border-slate-800 text-right">Provider</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-xs divide-y divide-slate-800/40">
+                          {parsedLogs.slice(0, 5).map((log, index) => (
+                            <tr key={index} className="hover:bg-slate-900/20 transition-colors">
+                              <td className="px-4 py-2 font-mono text-slate-400 text-[10px] truncate max-w-[150px]" title={log.timestamp}>
+                                {log.timestamp}
+                              </td>
+                              <td className="px-4 py-2 text-slate-300">{log.project}</td>
+                              <td className="px-4 py-2 text-slate-200 font-mono text-[11px]">{log.model}</td>
+                              <td className="px-4 py-2 font-mono text-slate-400">
+                                {log.tokens_in} <span className="text-slate-700">|</span> {log.tokens_out}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono text-slate-400 text-[11px]">{log.provider}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-4 bg-slate-900/30 border-t border-slate-800 flex justify-between items-center">
+                      <button
+                        onClick={() => setParsedLogs([])}
+                        className="px-3 py-1.5 border border-slate-800 hover:bg-slate-900 text-slate-400 hover:text-slate-200 text-xs font-mono font-semibold uppercase rounded-lg transition-all cursor-pointer"
+                      >
+                        Reset File
+                      </button>
+                      <button
+                        onClick={handleUploadCSV}
+                        disabled={isUploading}
+                        className="px-4 py-1.5 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 text-xs font-mono font-bold uppercase rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isUploading ? "INJECTING..." : "COMMIT IMPORT TO SQLite"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Guide specifications section */}
+                <div className="p-4 bg-slate-900/30 border border-slate-850 rounded-xl space-y-3">
+                  <h4 className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">CSV Data Engine Specifications</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    The ingest processor supports standard columns mapped to the OTel tracing engine:
+                  </p>
+                  <div className="bg-slate-950 p-3 rounded border border-slate-800/80">
+                    <pre className="font-mono text-[10px] text-blue-400/90 whitespace-pre-wrap overflow-x-auto select-all">
+                      {"timestamp,project,model,input_tokens,output_tokens,provider\n2026-07-18T10:15:30Z,frontier-core,claude-3-5-sonnet,1200,4500,Anthropic\n2026-07-18T10:16:00Z,kudbee-fuel-gauge,gpt-4o,800,2400,OpenAI"}
+                    </pre>
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* 3. INTERACTIVE FILTERING & EXPORT CONTROL BAR */}
       <motion.div 
         variants={sectionVariants}
         className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4" 
@@ -1279,7 +1866,7 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
         </button>
       </motion.div>
 
-      {/* 3. HISTORICAL TRACES DATA GRID */}
+      {/* 4. HISTORICAL TRACES DATA GRID */}
       <motion.div 
         variants={sectionVariants}
         className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col" 
@@ -1294,6 +1881,11 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
               Historical Execution Traces ({filteredLogs.length} found)
             </h2>
           </div>
+          {activeSessionId !== 'all' && (
+            <span className="text-[10px] font-mono px-2 py-0.5 bg-cyan-950/40 border border-cyan-800/40 text-cyan-400 rounded-full font-bold">
+              FILTERED: {currentSession.name.toUpperCase()}
+            </span>
+          )}
         </div>
 
         {/* Data Table */}
@@ -1322,6 +1914,10 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                   const isHighCost = log.cost > 0.50;
                   const isExpanded = expandedRow === log.timestamp;
                   const traceId = `tr-${log.timestamp.replace(/[^0-9]/g, '').slice(-10)}`;
+                  
+                  // Check if this trace belongs to the selected scrubber session
+                  const belongsToActiveSession = log.sessionId === currentSession.id;
+                  const activeTab = drawerTabs[log.timestamp] || 'waterfall';
 
                   return (
                     <React.Fragment key={log.timestamp}>
@@ -1330,7 +1926,9 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                         className={`cursor-pointer transition-all duration-300 ease-in-out select-none border-l-2 ${
                           isExpanded 
                             ? 'bg-gradient-to-r from-emerald-500/10 via-slate-800/30 to-transparent text-slate-100 border-emerald-500 shadow-[inset_1px_0_12px_rgba(52,211,153,0.1)]' 
-                            : 'bg-transparent border-transparent hover:bg-slate-800/25 hover:border-emerald-500/40 hover:text-slate-200'
+                            : belongsToActiveSession
+                              ? 'bg-cyan-500/[0.04] border-cyan-500/40 text-slate-200 hover:bg-slate-800/25'
+                              : 'bg-transparent border-transparent hover:bg-slate-800/25 hover:border-emerald-500/40 hover:text-slate-200'
                         }`}
                       >
                         <td className="px-4 py-3 text-center">
@@ -1345,8 +1943,11 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                         <td className="px-6 py-3 font-mono text-slate-400">
                           {new Date(log.timestamp).toLocaleString()}
                         </td>
-                        <td className="px-6 py-3 font-mono text-slate-300 font-semibold">
+                        <td className="px-6 py-3 font-mono text-slate-300 font-semibold flex items-center gap-1.5">
                           {log.project}
+                          {belongsToActiveSession && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" title="Selected session telemetry matches" />
+                          )}
                         </td>
                         <td className="px-6 py-3 font-mono text-slate-400">
                           {log.model}
@@ -1398,7 +1999,7 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                                 >
                                   
                                   {/* 1. TIMING METADATA / PERFORMANCE BLOCK */}
-                                  <motion.div variants={itemVariants} className="lg:col-span-5 space-y-4">
+                                  <motion.div variants={itemVariants} className="lg:col-span-4 space-y-4">
                                     <div className="flex items-center gap-2 border-b border-slate-800/60 pb-2">
                                       <Activity className="w-4 h-4 text-emerald-400" />
                                       <h3 className="font-display font-semibold text-slate-200 text-sm">Expanded Trace Detail</h3>
@@ -1466,15 +2067,34 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                                     </div>
                                   </motion.div>
 
-                                  {/* 2. RAW JSON TRACE PAYLOAD BLOCK */}
-                                  <motion.div variants={itemVariants} className="lg:col-span-7 flex flex-col justify-between">
-                                    <div>
-                                      <div className="flex items-center justify-between border-b border-slate-800/60 pb-2 mb-3">
-                                        <div className="flex items-center gap-2">
-                                          <Database className="w-4 h-4 text-emerald-400" />
-                                          <h3 className="font-display font-semibold text-slate-200 text-sm">Semantic OTel Payload (Raw JSON)</h3>
+                                  {/* 2. TABBED DETAIL BLOCK (WATERFALL vs RAW JSON) */}
+                                  <motion.div variants={itemVariants} className="lg:col-span-8 flex flex-col justify-between">
+                                    <div className="flex flex-col h-full">
+                                      <div className="flex items-center justify-between border-b border-slate-800/60 pb-2 mb-4">
+                                        {/* Tabs selector */}
+                                        <div className="flex bg-slate-950 p-1 border border-slate-850 rounded-lg">
+                                          <button
+                                            onClick={() => setDrawerTabs(prev => ({ ...prev, [log.timestamp]: 'waterfall' }))}
+                                            className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                                              activeTab === 'waterfall'
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                : 'text-slate-500 hover:text-slate-300'
+                                            }`}
+                                          >
+                                            TRACE WATERFALL
+                                          </button>
+                                          <button
+                                            onClick={() => setDrawerTabs(prev => ({ ...prev, [log.timestamp]: 'json' }))}
+                                            className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
+                                              activeTab === 'json'
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                : 'text-slate-500 hover:text-slate-300'
+                                            }`}
+                                          >
+                                            RAW OTel PAYLOAD (JSON)
+                                          </button>
                                         </div>
-                                        
+
                                         <motion.button
                                           whileHover={{ scale: 1.05 }}
                                           whileTap={{ scale: 0.95 }}
@@ -1491,10 +2111,151 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
                                           <span>{copiedTraceId === traceId ? 'COPIED!' : 'COPY JSON'}</span>
                                         </motion.button>
                                       </div>
-                                      
-                                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-800/80 font-mono text-[11px] text-slate-300/90 leading-relaxed overflow-x-auto max-h-[190px] overflow-y-auto select-all scrollbar-thin scrollbar-thumb-slate-800">
-                                        <pre className="text-emerald-400/80">{JSON.stringify(getRawJson(log), null, 2)}</pre>
-                                      </div>
+
+                                      <AnimatePresence mode="wait">
+                                        {activeTab === 'waterfall' ? (
+                                          <motion.div
+                                            key="tab-waterfall"
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -5 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="space-y-4"
+                                          >
+                                            {/* Distributed trace waterfall timeline scales */}
+                                            <div className="bg-slate-950/60 border border-slate-850 rounded-xl p-4 md:p-5 space-y-4">
+                                              
+                                              {/* Timeline ticks display */}
+                                              <div className="flex justify-between text-[9px] font-mono text-slate-500 border-b border-slate-900 pb-1">
+                                                <span>0ms</span>
+                                                <span>{Math.round(getLatency(log.tokens_out, log.model) * 0.25)}ms</span>
+                                                <span>{Math.round(getLatency(log.tokens_out, log.model) * 0.5)}ms</span>
+                                                <span>{Math.round(getLatency(log.tokens_out, log.model) * 0.75)}ms</span>
+                                                <span>{getLatency(log.tokens_out, log.model)}ms (TOTAL)</span>
+                                              </div>
+
+                                              {/* Nested list of traces and flex latency bars */}
+                                              <div className="space-y-5">
+                                                
+                                                {/* Parent span: Agent Run */}
+                                                <div className="space-y-1.5">
+                                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-mono gap-1.5">
+                                                    <span className="text-slate-200 font-semibold flex items-center gap-1.5">
+                                                      <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                                                      Agent Run (Orchestrator)
+                                                    </span>
+                                                    <span className="text-emerald-400 font-bold">{getLatency(log.tokens_out, log.model)} ms</span>
+                                                  </div>
+                                                  <div className="w-full bg-slate-900/60 rounded-full h-3 border border-slate-850 relative overflow-hidden">
+                                                    <div 
+                                                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                                                      style={{ width: '100%' }}
+                                                    />
+                                                  </div>
+                                                </div>
+
+                                                {/* LLM Call Span (indented) */}
+                                                <div className="pl-4 border-l border-slate-850 space-y-1.5">
+                                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-mono gap-1.5">
+                                                    <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                                                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                                                      └─ LLM Call ({log.model})
+                                                    </span>
+                                                    <span className="text-purple-400 font-bold">{Math.round(getLatency(log.tokens_out, log.model) * 0.72)} ms</span>
+                                                  </div>
+                                                  <div className="w-full bg-slate-900/60 rounded-full h-3 border border-slate-850 relative overflow-hidden">
+                                                    <div 
+                                                      className="absolute h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all duration-300"
+                                                      style={{ 
+                                                        left: `${Math.round((getTtft(log.model) / getLatency(log.tokens_out, log.model)) * 100)}%`,
+                                                        width: `${Math.round((Math.round(getLatency(log.tokens_out, log.model) * 0.72) / getLatency(log.tokens_out, log.model)) * 100)}%` 
+                                                      }}
+                                                    />
+                                                  </div>
+
+                                                  {/* Standard Gen-AI Semantic conventions panel block */}
+                                                  <div className="p-3 bg-slate-950 border border-slate-850/80 rounded-lg font-mono text-[10px] grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-slate-400">
+                                                    <div>
+                                                      <span className="text-slate-500">gen_ai.provider.name:</span>{' '}
+                                                      <span className="text-purple-400 font-bold uppercase">
+                                                        {log.model.includes('sonnet') ? 'anthropic' : log.model.includes('deepseek') ? 'deepseek' : log.model.includes('gpt') ? 'openai' : 'google'}
+                                                      </span>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-slate-500">gen_ai.request.model:</span>{' '}
+                                                      <span className="text-slate-200">{log.model}</span>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-slate-500">gen_ai.usage.input_tokens:</span>{' '}
+                                                      <span className="text-emerald-400 font-semibold">{log.tokens_in.toLocaleString()}</span>
+                                                    </div>
+                                                    <div>
+                                                      <span className="text-slate-500">gen_ai.usage.output_tokens:</span>{' '}
+                                                      <span className="text-emerald-400 font-semibold">{log.tokens_out.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="sm:col-span-2 pt-2 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+                                                      <span className="text-slate-500 uppercase tracking-wider">LOCALIZED SPECIFIC SPAN COST:</span>
+                                                      <span className="text-emerald-400 font-bold text-xs bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(52,211,153,0.1)]">
+                                                        {getFormattedCost(log.cost, currency, 4)}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                {/* Tool Call Span (further indented subsequent execution) */}
+                                                <div className="pl-8 border-l border-slate-850/60 space-y-1.5">
+                                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-mono gap-1.5">
+                                                    <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                                                      <Terminal className="w-3.5 h-3.5 text-amber-400" />
+                                                      └─ Tool Execution ({log.project.includes('gauge') ? 'sql_write' : 'bash_execute'})
+                                                    </span>
+                                                    <span className="text-amber-400 font-bold">{Math.round(getLatency(log.tokens_out, log.model) * 0.20)} ms</span>
+                                                  </div>
+                                                  <div className="w-full bg-slate-900/60 rounded-full h-3 border border-slate-850 relative overflow-hidden">
+                                                    <div 
+                                                      className="absolute h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-300"
+                                                      style={{ 
+                                                        left: '78%',
+                                                        width: '20%' 
+                                                      }}
+                                                    />
+                                                  </div>
+
+                                                  {/* Tool attributes panel */}
+                                                  <div className="p-2.5 bg-slate-950 border border-slate-850/60 rounded-lg font-mono text-[10px] space-y-1 text-slate-400">
+                                                    <div>
+                                                      <span className="text-slate-500">mcp.tool.name:</span>{' '}
+                                                      <span className="text-amber-400 font-semibold">{log.project.includes('gauge') ? 'sql_write' : 'bash_execute'}</span>
+                                                    </div>
+                                                    <div className="truncate">
+                                                      <span className="text-slate-500">mcp.tool.input_payload:</span>{' '}
+                                                      <span className="text-slate-300 text-[9px]">
+                                                        {log.project.includes('gauge') 
+                                                          ? '{"query": "INSERT INTO metrics (timestamp, value) VALUES (NOW(), 84.2);", "db": "telemetry"}'
+                                                          : '{"command": "docker run -d -p 5432:5432 postgres:16"}'}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                              </div>
+                                            </div>
+                                          </motion.div>
+                                        ) : (
+                                          <motion.div
+                                            key="tab-json"
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -5 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="h-full"
+                                          >
+                                            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800/80 font-mono text-[11px] text-slate-300/90 leading-relaxed overflow-x-auto max-h-[290px] overflow-y-auto select-all scrollbar-thin scrollbar-thumb-slate-800">
+                                              <pre className="text-emerald-400/80">{JSON.stringify(getRawJson(log), null, 2)}</pre>
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
                                     </div>
                                   </motion.div>
 
@@ -1521,9 +2282,13 @@ function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; db
 
 interface FirewallViewProps {
   showToast: (msg: string, type?: 'warning' | 'info' | 'success') => void;
+  pendingApprovals: PendingApproval[];
+  resolveApproval: (id: string) => void;
+  rejectApproval: (id: string) => void;
+  executeAgentTool: (agentId: string, rule: string, json: any) => Promise<any>;
 }
 
-function FirewallView({ showToast }: FirewallViewProps) {
+function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectApproval, executeAgentTool }: FirewallViewProps) {
   // Global Middleware Toggles
   const [piiRedaction, setPiiRedaction] = useState(true);
   const [promptShield, setPromptShield] = useState(true);
@@ -1536,13 +2301,21 @@ function FirewallView({ showToast }: FirewallViewProps) {
   const [confidenceGateEnabled, setConfidenceGateEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(85);
 
-  // Interception Holding Pen
-  const [pendingQueue, setPendingQueue] = useState<any[]>([
-    {
-      id: "agent-tx-8819",
-      agentId: "claude-code-local",
-      triggeredRule: "Rule: bash_execute detected",
-      actionJson: {
+  const handleApprove = (id: string) => {
+    resolveApproval(id);
+    showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
+  };
+
+  const handleDeny = (id: string) => {
+    rejectApproval(id);
+    showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
+  };
+
+  const handleResetQueue = () => {
+    executeAgentTool(
+      "claude-code-local",
+      "Rule: bash_execute detected",
+      {
         action: "bash_execute",
         command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
         directory: "~/workspace/telemetry-db",
@@ -1551,36 +2324,12 @@ function FirewallView({ showToast }: FirewallViewProps) {
           POSTGRES_PASSWORD: "•••••••••••••"
         }
       }
-    }
-  ]);
-
-  const handleApprove = (id: string) => {
-    setPendingQueue(q => q.filter(item => item.id !== id));
-    showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
-  };
-
-  const handleDeny = (id: string) => {
-    setPendingQueue(q => q.filter(item => item.id !== id));
-    showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
-  };
-
-  const handleResetQueue = () => {
-    setPendingQueue([
-      {
-        id: "agent-tx-" + Math.floor(1000 + Math.random() * 9000),
-        agentId: "claude-code-local",
-        triggeredRule: "Rule: bash_execute detected",
-        actionJson: {
-          action: "bash_execute",
-          command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
-          directory: "~/workspace/telemetry-db",
-          environment: {
-            POSTGRES_DB: "telemetry",
-            POSTGRES_PASSWORD: "•••••••••••••"
-          }
-        }
-      }
-    ]);
+    ).then(() => {
+      showToast("Simulation Agent tool execution completed successfully.", "success");
+    }).catch(() => {
+      showToast("Simulation Agent tool execution blocked.", "warning");
+    });
+    
     showToast("Mock Agent execution paused by security policy. Ingestion intercepted.", "info");
   };
 
@@ -1835,7 +2584,7 @@ function FirewallView({ showToast }: FirewallViewProps) {
               <p className="text-xs text-slate-500 mt-0.5">Evaluate and triage real-time agent executions paused by active firewall rule overrides.</p>
             </div>
           </div>
-          {pendingQueue.length === 0 && (
+          {pendingApprovals.length === 0 && (
             <button
               onClick={handleResetQueue}
               className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] font-mono tracking-wider uppercase rounded transition-all cursor-pointer"
@@ -1846,9 +2595,9 @@ function FirewallView({ showToast }: FirewallViewProps) {
         </div>
 
         <AnimatePresence mode="wait">
-          {pendingQueue.length > 0 ? (
+          {pendingApprovals.length > 0 ? (
             <div className="space-y-4">
-              {pendingQueue.map((item) => (
+              {pendingApprovals.map((item) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, scale: 0.98, y: 10 }}
@@ -1902,12 +2651,12 @@ function FirewallView({ showToast }: FirewallViewProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="py-12 border border-dashed border-slate-850 rounded-xl bg-slate-950/30 flex flex-col items-center justify-center text-center px-4"
+              className="py-12 border border-dashed border-emerald-500/30 rounded-xl bg-emerald-500/5 flex flex-col items-center justify-center text-center px-4 shadow-[inset_0_0_20px_rgba(52,211,153,0.05)]"
             >
-              <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center mb-3">
-                <Check className="w-5 h-5 text-emerald-500" />
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-3">
+                <Shield className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               </div>
-              <p className="text-xs font-mono text-slate-400 font-semibold uppercase tracking-wider">No Pending Approvals</p>
+              <p className="text-sm font-mono text-emerald-400 font-bold uppercase tracking-wider">Shield Active: 0 Pending Threats</p>
               <p className="text-[10px] text-slate-500 max-w-sm mt-1">All real-time agent execution processes are flowing cleanly within nominal safety parameters.</p>
             </motion.div>
           )}
@@ -2396,6 +3145,16 @@ function SettingsView({
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
+  
+  // --- SUBSCRIPTION LEDGER BUDGET CAPS (GAP TRACKER) ---
+  const [claudeProCap, setClaudeProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_claude') || '20.00'));
+  const [cursorProCap, setCursorProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_cursor') || '20.00'));
+  const [chatGptCap, setChatGptCap] = useState(() => Number(localStorage.getItem('kudbee_cap_chatgpt') || '20.00'));
+  const [apiGatewayCap, setApiGatewayCap] = useState(() => Number(localStorage.getItem('kudbee_cap_api') || '50.00'));
+
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [tempCapVal, setTempCapVal] = useState('');
+
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP'>('USD');
   const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>('Standard');
   const [simulateTelemetry, setSimulateTelemetry] = useState(true);
@@ -2452,6 +3211,26 @@ export default function App() {
     }
   };
 
+  const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
+
+  useEffect(() => {
+    if (!simulateTelemetry) return;
+    const interval = setInterval(() => {
+      // Simulate an agent tool call that requires approval
+      executeAgentTool("claude-code-local", "Rule: bash_execute detected", {
+        action: "bash_execute",
+        command: "npm install -g malicious-package",
+        directory: "~/workspace/telemetry-db",
+        environment: { NODE_ENV: "production" }
+      }).then(() => {
+        showToast("Agent tool execution completed successfully.", "success");
+      }).catch((err) => {
+        console.warn("Agent tool execution blocked:", err);
+      });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [simulateTelemetry, executeAgentTool]);
+
   useEffect(() => {
     fetchTelemetryData();
     if (!simulateTelemetry) return;
@@ -2486,6 +3265,39 @@ export default function App() {
       activeModels: dbSummary.total_active_models || 4
     };
   }, [dbSummary, dbLogs]);
+
+  // Derive dynamic cumulative spending per subscription category
+  const ledgerSpend = React.useMemo(() => {
+    let claudeSpent = 0;
+    let cursorSpent = 0;
+    let chatGptSpent = 0;
+    let apiSpent = 0;
+
+    if (dbLogs && dbLogs.length > 0) {
+      dbLogs.forEach((log: any) => {
+        const prov = log.provider || '';
+        const model = (log.model_name || log.model || '').toLowerCase();
+        const cost = Number(log.calculated_cost) || Number(log.cost) || 0;
+
+        if (prov === 'Anthropic' || model.includes('claude')) {
+          claudeSpent += cost;
+        } else if (prov === 'Cursor') {
+          cursorSpent += cost;
+        } else if (prov === 'OpenAI' || model.includes('gpt')) {
+          chatGptSpent += cost;
+        } else {
+          apiSpent += cost;
+        }
+      });
+    }
+
+    return {
+      claude: Number(claudeSpent.toFixed(4)),
+      cursor: Number(cursorSpent.toFixed(4)),
+      chatGpt: Number(chatGptSpent.toFixed(4)),
+      api: Number(apiSpent.toFixed(4))
+    };
+  }, [dbLogs]);
 
   // Derive trajectory series for interactive charting
   const chartData = React.useMemo(() => {
@@ -2745,11 +3557,151 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* HEALTH MATRIX QUOTA RING BLOCKS */}
-                <div className="xl:col-span-4 grid grid-cols-2 gap-4">
-                  {quotas.map((q, i) => (
-                    <HealthRing key={i} provider={q.provider} percent={q.percent} offsetMins={q.offsetMins} />
-                  ))}
+                {/* SUBSCRIPTION BUDGET LEDGER & HEALTH QUOTAS */}
+                <div className="xl:col-span-4 space-y-6 flex flex-col justify-between">
+                  
+                  {/* SUBSCRIPTION BUDGET LEDGER CARD (ROADMAP PHASE 3 GAP FIX) */}
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden" id="subscription-budget-ledger">
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
+                    
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-orange-400" />
+                        <h3 className="font-display font-semibold text-slate-200 text-sm">Subscription Budget Ledger</h3>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase">
+                        Fixed Cap Ledger
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 mb-4 leading-normal">
+                      Establish monthly budget constraints. The ledger tracks cumulative costs and decrements caps in real-time.
+                    </p>
+
+                    <div className="space-y-4">
+                      {[
+                        {
+                          id: 'claude',
+                          name: 'Claude Pro Limit',
+                          cap: claudeProCap,
+                          setCap: (val: number) => {
+                            setClaudeProCap(val);
+                            localStorage.setItem('kudbee_cap_claude', val.toString());
+                          },
+                          spent: ledgerSpend.claude,
+                          color: 'from-orange-500 to-amber-500',
+                        },
+                        {
+                          id: 'cursor',
+                          name: 'Cursor Pro Limit',
+                          cap: cursorProCap,
+                          setCap: (val: number) => {
+                            setCursorProCap(val);
+                            localStorage.setItem('kudbee_cap_cursor', val.toString());
+                          },
+                          spent: ledgerSpend.cursor,
+                          color: 'from-blue-500 to-indigo-500',
+                        },
+                        {
+                          id: 'chatgpt',
+                          name: 'ChatGPT Plus Limit',
+                          cap: chatGptCap,
+                          setCap: (val: number) => {
+                            setChatGptCap(val);
+                            localStorage.setItem('kudbee_cap_chatgpt', val.toString());
+                          },
+                          spent: ledgerSpend.chatGpt,
+                          color: 'from-emerald-500 to-teal-500',
+                        },
+                        {
+                          id: 'api',
+                          name: 'API Gateway Limit',
+                          cap: apiGatewayCap,
+                          setCap: (val: number) => {
+                            setApiGatewayCap(val);
+                            localStorage.setItem('kudbee_cap_api', val.toString());
+                          },
+                          spent: ledgerSpend.api,
+                          color: 'from-purple-500 to-pink-500',
+                        }
+                      ].map((item) => {
+                        const pct = item.cap > 0 ? Math.min(100, (item.spent / item.cap) * 100) : 0;
+                        const remaining = Math.max(0, item.cap - item.spent);
+                        const isEditing = editingProvider === item.id;
+
+                        return (
+                          <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-850/70 rounded-lg space-y-2 group">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-mono font-bold text-slate-300">{item.name}</span>
+                              
+                              {isEditing ? (
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    value={tempCapVal}
+                                    onChange={(e) => setTempCapVal(e.target.value)}
+                                    className="w-16 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] font-mono text-right text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                    placeholder="Cap"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const numeric = parseFloat(tempCapVal);
+                                      if (!isNaN(numeric) && numeric >= 0) {
+                                        item.setCap(numeric);
+                                        showToast(`Monthly cap for ${item.name} set to ${getFormattedCost(numeric, currency, 2)}`, 'success');
+                                      }
+                                      setEditingProvider(null);
+                                    }}
+                                    className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono font-semibold rounded cursor-pointer"
+                                  >
+                                    SAVE
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingProvider(null)}
+                                    className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 text-[9px] font-mono font-semibold rounded cursor-pointer"
+                                  >
+                                    ESC
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setEditingProvider(item.id);
+                                    setTempCapVal(item.cap.toString());
+                                  }}
+                                  className="text-[10px] font-mono text-slate-500 hover:text-orange-400 transition-colors flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>CAP: {getFormattedCost(item.cap, currency, 2)}</span>
+                                  <Sliders className="w-3 h-3 text-slate-700 group-hover:text-orange-400 transition-colors" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80 relative">
+                              <div 
+                                className={`absolute top-0 left-0 h-full bg-gradient-to-r ${item.color} transition-all duration-500`} 
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+
+                            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                              <span>Spent: {getFormattedCost(item.spent, currency, 4)}</span>
+                              <span className="text-slate-400">Remaining: {getFormattedCost(remaining, currency, 4)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* HEALTH MATRIX QUOTA RING BLOCKS */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {quotas.map((q, i) => (
+                      <HealthRing key={i} provider={q.provider} percent={q.percent} offsetMins={q.offsetMins} />
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -2816,9 +3768,17 @@ export default function App() {
           
           {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
-          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} />}
+          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} onNewLogTriggered={fetchTelemetryData} />}
 
-          {activeTab === 'Firewall' && <FirewallView showToast={showToast} />}
+          {activeTab === 'Firewall' && (
+            <FirewallView
+              showToast={showToast}
+              pendingApprovals={pendingApprovals}
+              resolveApproval={resolveApproval}
+              rejectApproval={rejectApproval}
+              executeAgentTool={executeAgentTool}
+            />
+          )}
 
           {(activeTab === 'Settings' || activeTab === 'Alerts') && (
             <SettingsView 
