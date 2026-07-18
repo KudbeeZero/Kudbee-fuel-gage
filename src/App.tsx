@@ -34,8 +34,10 @@ import {
   Shield,
   Network,
   Server,
-  Lock
+  Lock,
+  Globe
 } from 'lucide-react';
+import { IntelligenceView } from './components/IntelligenceView';
 import {
   AreaChart,
   Area,
@@ -3672,6 +3674,7 @@ export default function App() {
     { icon: Activity, label: 'Interceptor' },
     { icon: Calculator, label: 'Playground' },
     { icon: History, label: 'History' },
+    { icon: Globe, label: 'Intelligence' },
     { icon: Shield, label: 'Firewall' },
     { icon: Bell, label: 'Alerts' },
     { icon: Settings, label: 'Settings' }
@@ -3814,6 +3817,12 @@ export default function App() {
                   className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'History' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
                 >
                   HISTORY
+                </button>
+                <button 
+                  onClick={() => setActiveTab('Intelligence')}
+                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Intelligence' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
+                >
+                  INTELLIGENCE
                 </button>
                 <button 
                   onClick={() => setActiveTab('Firewall')}
@@ -4134,6 +4143,8 @@ export default function App() {
           {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
           {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} onNewLogTriggered={fetchTelemetryData} />}
+
+          {activeTab === 'Intelligence' && <IntelligenceView />}
 
           {activeTab === 'Firewall' && (
             <FirewallView
