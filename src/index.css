@@ -9,4 +9,94 @@
 
 body {
   @apply bg-slate-950 text-slate-200 antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Midnight Theme High Contrast Overrides */
+body.theme-midnight {
+  background-color: #000000 !important;
+  color: #f4f4f5 !important;
+}
+
+.theme-midnight {
+  background-color: #000000 !important;
+}
+
+/* Override panels & outer layouts */
+.theme-midnight #main-sidebar {
+  background-color: #000000 !important;
+  border-right-color: #27272a !important;
+}
+
+.theme-midnight #main-content-panel {
+  background: #000000 !important;
+}
+
+.theme-midnight #applet-summary-footer {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+}
+
+/* Card overrides for high contrast black/zinc look */
+.theme-midnight .bg-slate-900\/60,
+.theme-midnight .bg-slate-900\/20,
+.theme-midnight .bg-slate-950\/50,
+.theme-midnight .bg-slate-950\/40 {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+}
+
+.theme-midnight .border-slate-800,
+.theme-midnight .border-slate-850,
+.theme-midnight .border-slate-800\/60,
+.theme-midnight .border-slate-800\/80,
+.theme-midnight .border-slate-900\/60 {
+  border-color: #27272a !important;
+}
+
+.theme-midnight .bg-slate-950,
+.theme-midnight .bg-slate-950\/80 {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+}
+
+/* Button & interactive states */
+.theme-midnight .hover\:bg-slate-900:hover {
+  background-color: #18181b !important;
+}
+
+.theme-midnight select,
+.theme-midnight textarea,
+.theme-midnight input {
+  background-color: #000000 !important;
+  border-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+/* Text color contrast adjustments */
+.theme-midnight .text-slate-300 {
+  color: #f4f4f5 !important; /* Zinc-100 */
+}
+
+.theme-midnight .text-slate-400 {
+  color: #e4e4e7 !important; /* Zinc-200 */
+}
+
+.theme-midnight .text-slate-500 {
+  color: #a1a1aa !important; /* Zinc-400 */
+}
+
+.theme-midnight .text-slate-200 {
+  color: #ffffff !important;
+}
+
+/* Line connectors and grids */
+.theme-midnight .divide-slate-800\/50 > * + * {
+  border-color: #27272a !important;
+}
+
+.theme-midnight th {
+  background-color: #09090b !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
 }

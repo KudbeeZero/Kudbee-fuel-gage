@@ -1930,6 +1930,8 @@ interface SettingsViewProps {
   setSimulateTelemetry: (s: boolean) => void;
   onPurgeCompleted: () => void;
   showToast: (msg: string) => void;
+  theme: 'Deep Space' | 'Midnight';
+  setTheme: (t: 'Deep Space' | 'Midnight') => void;
 }
 
 function SettingsView({
@@ -1941,7 +1943,9 @@ function SettingsView({
   simulateTelemetry,
   setSimulateTelemetry,
   onPurgeCompleted,
-  showToast
+  showToast,
+  theme,
+  setTheme
 }: SettingsViewProps) {
   const [subTab, setSubTab] = useState<'System Engine Settings' | 'Threshold Alert Rules'>(initialSubTab);
 
@@ -2132,6 +2136,38 @@ function SettingsView({
                     }`}
                   >
                     {mode.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Global Theme Controller */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="theme-settings-card">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">Global Legibility Theme</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Switch between Deep Space ambient dark and Midnight high-contrast black.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-1 bg-slate-950 border border-slate-800 rounded-lg max-w-md">
+                {(['Deep Space', 'Midnight'] as const).map((t) => (
+                  <button
+                    key={t}
+                    id={`theme-btn-${t.toLowerCase().replace(' ', '-')}`}
+                    onClick={() => {
+                      setTheme(t);
+                    }}
+                    className={`flex-1 py-1.5 rounded text-xs font-mono font-semibold transition-all cursor-pointer ${
+                      theme === t
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {t.toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -2364,6 +2400,21 @@ export default function App() {
   const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>('Standard');
   const [simulateTelemetry, setSimulateTelemetry] = useState(true);
   const [toast, setToast] = useState<{ id: number; message: string; type: string } | null>(null);
+  const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
+
+  const handleSetTheme = (newTheme: 'Deep Space' | 'Midnight') => {
+    setTheme(newTheme);
+    localStorage.setItem('kudbee_theme', newTheme);
+    showToast(`Global Theme set to ${newTheme} mode.`, 'success');
+  };
+
+  useEffect(() => {
+    if (theme === 'Midnight') {
+      document.body.classList.add('theme-midnight');
+    } else {
+      document.body.classList.remove('theme-midnight');
+    }
+  }, [theme]);
 
   const showToast = (message: string, type: 'warning' | 'info' | 'success' = 'warning') => {
     const id = Date.now();
@@ -2489,7 +2540,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-300 font-sans flex overflow-hidden selection:bg-emerald-500/30">
+    <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex overflow-hidden selection:bg-emerald-500/30`}>
       
       {/* LEFT SIDEBAR */}
       <aside className="w-64 border-r border-slate-800/60 bg-slate-950 flex flex-col shrink-0 hidden md:flex z-10" id="main-sidebar">
@@ -2780,6 +2831,8 @@ export default function App() {
               setSimulateTelemetry={setSimulateTelemetry}
               onPurgeCompleted={fetchTelemetryData}
               showToast={showToast}
+              theme={theme}
+              setTheme={handleSetTheme}
             />
           )}
 
