@@ -43,9 +43,8 @@ import {
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
 import { LatencyHistogram } from './components/LatencyHistogram';
+import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
-import { FirewallView } from './components/FirewallView';
-import { PlaygroundView } from './components/PlaygroundView';
 import { useUIStore } from './store/uiStore';
 import {
   AreaChart,
@@ -66,19 +65,7 @@ import {
 } from 'recharts';
 
 // --- CURRENCY UTILITY ENGINE ---
-
-export const CURRENCY_CONFIG = {
-  USD: { symbol: '$', rate: 1.0, label: 'US Dollar (USD)' },
-  EUR: { symbol: '€', rate: 0.92, label: 'Euro (EUR)' },
-  GBP: { symbol: '£', rate: 0.78, label: 'British Pound (GBP)' }
-};
-
-export function getFormattedCost(usdAmount: number, currency: 'USD' | 'EUR' | 'GBP', decimals = 4) {
-  const rates = CURRENCY_CONFIG;
-  const config = rates[currency];
-  const converted = usdAmount * config.rate;
-  return `${config.symbol}${converted.toFixed(decimals)}`;
-}
+import { getFormattedCost, CURRENCY_CONFIG } from './utils/currency';
 
 export interface PendingApproval {
   id: string;
@@ -642,6 +629,7 @@ function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'E
 }
 
 // --- SUB-COMPONENT: PLAYGROUND VIEW ---
+
 
 // --- SUB-COMPONENT: HISTORY VIEW ---
 
@@ -2261,6 +2249,434 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
       <LatencyHistogram logs={filteredLogs} />
 
     </motion.div>
+  );
+}
+
+// --- SUB-COMPONENT: GATEWAY FIREWALL & GUARDRAILS VIEW ---
+
+interface FirewallViewProps {
+  showToast: (msg: string, type?: 'warning' | 'info' | 'success') => void;
+  pendingApprovals: PendingApproval[];
+  resolveApproval: (id: string, actionJson?: any) => void;
+  rejectApproval: (id: string, rejectReason?: string) => void;
+  executeAgentTool: (agentId: string, rule: string, json: any) => Promise<any>;
+}
+
+function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectApproval, executeAgentTool }: FirewallViewProps) {
+  // Global Middleware Toggles
+  const [piiRedaction, setPiiRedaction] = useState(true);
+  const [promptShield, setPromptShield] = useState(true);
+  const [semanticRouting, setSemanticRouting] = useState(false);
+
+  // Runtime Approval Gates (HITL)
+  const [costGateEnabled, setCostGateEnabled] = useState(true);
+  const [costThreshold, setCostThreshold] = useState(0.50);
+  const [blockTools, setBlockTools] = useState(true);
+  const [confidenceGateEnabled, setConfidenceGateEnabled] = useState(true);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(85);
+
+  const handleApprove = (id: string, actionJson?: any) => {
+    resolveApproval(id, actionJson);
+    showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
+  };
+
+  const handleDeny = (id: string, reason?: string) => {
+    rejectApproval(id, reason);
+    showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
+  };
+
+  const handleResetQueue = () => {
+    executeAgentTool(
+      "claude-code-local",
+      "Rule: bash_execute detected",
+      {
+        action: "bash_execute",
+        command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
+        directory: "~/workspace/telemetry-db",
+        environment: {
+          POSTGRES_DB: "telemetry",
+          POSTGRES_PASSWORD: "•••••••••••••"
+        }
+      }
+    ).then(() => {
+      showToast("Simulation Agent tool execution completed successfully.", "success");
+    }).catch(() => {
+      showToast("Simulation Agent tool execution blocked.", "warning");
+    });
+    
+    showToast("Mock Agent execution paused by security policy. Ingestion intercepted.", "info");
+  };
+
+  return (
+    <div className="min-h-dvh flex flex-col space-y-6" id="firewall-view-container">
+      
+      {/* 1. GLOBAL MIDDLEWARE TOGGLES */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        
+        <div className="flex items-center gap-2 mb-6">
+          <Shield className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h2 className="font-display font-semibold text-slate-200 text-sm">Active Security Middleware</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Configure inline deep packet inspection and semantic firewalls for upstream LLM streams.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* PII Redaction */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">PII Redaction Engine</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Regex & Semantic Scrubbing intercepts and masks credentials, SSNs, credit cards, and proprietary source tokens.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${piiRedaction ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {piiRedaction ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setPiiRedaction(!piiRedaction);
+                  showToast(piiRedaction ? "PII Redaction Engine deactivated." : "PII Redaction Engine activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  piiRedaction ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${piiRedaction ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Prompt Injection Shield */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Prompt Injection Shield</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Llama Guard 3 simulation protects against jailbreaks, system instruction bypasses, and multi-turn prompt hijacking.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${promptShield ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {promptShield ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setPromptShield(!promptShield);
+                  showToast(promptShield ? "Prompt Injection Shield deactivated." : "Prompt Injection Shield activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  promptShield ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${promptShield ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Semantic Routing */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Semantic Routing</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Inlines classification router to auto-proxy low-complexity prompts to cheaper/free models without accuracy penalties.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${semanticRouting ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {semanticRouting ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setSemanticRouting(!semanticRouting);
+                  showToast(semanticRouting ? "Semantic Routing deactivated." : "Semantic Routing activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  semanticRouting ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${semanticRouting ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 2. RISK-BASED HUMAN-IN-THE-LOOP (HITL) GATES */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        
+        <div className="flex items-center gap-2 mb-6">
+          <Sliders className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h3 className="font-display font-semibold text-slate-200 text-sm">Runtime Approval Gates</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Determine when local AI Agent executions must pause and await human verification.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Cost Trigger Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Execution Cost Gate</span>
+              <button
+                onClick={() => setCostGateEnabled(!costGateEnabled)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  costGateEnabled ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${costGateEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Intercepts running loops if a single LLM pipeline sequence projects a cost exceeding the specified boundary.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${costGateEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-slate-400">Cost Upper Limit:</span>
+                <span className="text-emerald-400 font-bold">${costThreshold.toFixed(2)}</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.05" 
+                max="5.00" 
+                step="0.05"
+                value={costThreshold} 
+                onChange={(e) => setCostThreshold(parseFloat(e.target.value) || 0.05)}
+                className="w-full accent-emerald-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+              />
+              <input
+                type="number"
+                step="0.05"
+                value={costThreshold}
+                onChange={(e) => setCostThreshold(parseFloat(e.target.value) || 0.05)}
+                className="w-full scroll-mt-28 bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-right mt-1"
+                placeholder="0.50"
+              />
+            </div>
+          </div>
+
+          {/* Tool Call Blocking Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Tool Execution Gate</span>
+              <button
+                onClick={() => setBlockTools(!blockTools)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  blockTools ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${blockTools ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Always forces synchronous developer review when the agent tries to run tool calls matching blacklisted strings.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${blockTools ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1">Gate Blacklist Targets:</span>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] font-mono bg-red-950/20 border border-red-900/50 text-red-400 px-2 py-0.5 rounded">
+                  bash_execute
+                </span>
+                <span className="text-[10px] font-mono bg-red-950/20 border border-red-900/50 text-red-400 px-2 py-0.5 rounded">
+                  sql_write
+                </span>
+                <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-500 px-2 py-0.5 rounded">
+                  fs_delete
+                </span>
+              </div>
+              <p className="text-[9px] text-slate-500 leading-tight pt-1">
+                Triggered events are buffered cleanly inside the Interception Holding Pen below.
+              </p>
+            </div>
+          </div>
+
+          {/* Confidence Score Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Confidence Floor Gate</span>
+              <button
+                onClick={() => setConfidenceGateEnabled(!confidenceGateEnabled)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  confidenceGateEnabled ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${confidenceGateEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Halts execution chains immediately when an agent evaluates its own task completion confidence below this floor.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${confidenceGateEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-slate-400">Confidence Floor:</span>
+                <span className="text-emerald-400 font-bold">{confidenceThreshold}%</span>
+              </div>
+              <input 
+                type="range" 
+                min="50" 
+                max="100" 
+                step="1"
+                value={confidenceThreshold} 
+                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value, 10) || 50)}
+                className="w-full accent-emerald-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+              />
+              <input
+                type="number"
+                min="50"
+                max="100"
+                value={confidenceThreshold}
+                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value, 10) || 50)}
+                className="w-full scroll-mt-28 bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-right mt-1"
+                placeholder="85"
+              />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 3. THE INTERCEPTION HOLDING PEN */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500 animate-pulse" />
+            <div>
+              <h3 className="font-display font-semibold text-slate-200 text-sm">Interception Holding Pen</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Evaluate and triage real-time agent executions paused by active firewall rule overrides.</p>
+            </div>
+          </div>
+          {pendingApprovals.length === 0 && (
+            <button
+              onClick={handleResetQueue}
+              className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] font-mono tracking-wider uppercase rounded transition-all cursor-pointer"
+            >
+              Simulate Ingestion Intercept
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {pendingApprovals.length > 0 ? (
+            <div className="space-y-4">
+              {pendingApprovals.map((item) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="bg-slate-950/80 border border-amber-500/30 rounded-xl p-5 md:p-6 shadow-[0_0_15px_rgba(245,158,11,0.05)] overflow-hidden"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-900/60">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="text-xs font-mono bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded">
+                        AGENT ID: <span className="text-amber-400 font-bold">{item.agentId}</span>
+                      </span>
+                      <span className="text-[10px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold">
+                        {item.triggeredRule}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      PAUSED TELEMETRY BROADCAST
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-2">
+                    <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">Drafted Shell Execution Command Payload:</span>
+                    <div className="bg-slate-950/90 border border-slate-850 rounded-lg p-4 font-mono text-[11px] leading-relaxed overflow-x-auto relative group">
+                      <textarea 
+                        className="w-full min-h-[120px] bg-transparent text-emerald-400 font-mono resize-y outline-none border-none focus:ring-1 focus:ring-emerald-500/50 p-2 rounded"
+                        defaultValue={JSON.stringify(item.actionJson, null, 2)}
+                        id={`payload-editor-${item.id}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 flex flex-col gap-2">
+                      <button
+                        onClick={() => handleApprove(item.id)}
+                        className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById(`payload-editor-${item.id}`) as HTMLTextAreaElement;
+                          if (el) {
+                            let modifiedJson = item.actionJson;
+                            try {
+                              modifiedJson = JSON.parse(el.value);
+                            } catch (e) {
+                              modifiedJson = el.value;
+                            }
+                            handleApprove(item.id, modifiedJson);
+                          }
+                        }}
+                        className="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_8px_rgba(245,158,11,0.15)] hover:shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                      >
+                        <Activity className="w-4 h-4" />
+                        Modify &amp; Resume
+                      </button>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-900/60 pt-4 md:pt-0 md:pl-4">
+                      <input 
+                        type="text" 
+                        placeholder="Inject Agent Correction..." 
+                        id={`reject-msg-${item.id}`}
+                        className="w-full bg-slate-900 text-slate-300 font-mono text-[10px] px-3 py-2.5 rounded border border-slate-800 focus:border-rose-500/50 focus:outline-none mb-1"
+                      />
+                      <button
+                        onClick={() => {
+                           const el = document.getElementById(`reject-msg-${item.id}`) as HTMLInputElement;
+                           const reason = el && el.value ? el.value : undefined;
+                           handleDeny(item.id, reason);
+                           if (reason) {
+                             showToast(`Correction injected: "${reason}"`, 'warning');
+                           }
+                        }}
+                        className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <AlertTriangle className="w-4 h-4 animate-pulse" />
+                        Deny &amp; Terminate
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="py-12 border border-dashed border-emerald-500/30 rounded-xl bg-emerald-500/5 flex flex-col items-center justify-center text-center px-4 shadow-[inset_0_0_20px_rgba(52,211,153,0.05)]"
+            >
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-3">
+                <Shield className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              </div>
+              <p className="text-sm font-mono text-emerald-400 font-bold uppercase tracking-wider">Shield Active: 0 Pending Threats</p>
+              <p className="text-[10px] text-slate-500 max-w-sm mt-1">All real-time agent execution processes are flowing cleanly within nominal safety parameters.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+    </div>
   );
 }
 
