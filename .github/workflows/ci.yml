@@ -26,7 +26,7 @@ jobs:
           node-version: 24
 
       - name: Install Secure Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Execute TypeScript Validation
         run: npx tsc --noEmit
