@@ -24,8 +24,26 @@ import {
   Search,
   Download,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Key,
+  Trash2,
+  Shield
 } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  Legend
+} from 'recharts';
 
 // --- CURRENCY UTILITY ENGINE ---
 
@@ -127,35 +145,43 @@ function StarRating({ rating }: { rating: number }) {
 
 // --- SUB-COMPONENT: INTERCEPTOR VIEW ---
 
-function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
+function InterceptorView({ currency, onNewLogTriggered }: { currency: 'USD' | 'EUR' | 'GBP'; onNewLogTriggered?: () => void }) {
   const [copied, setCopied] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLiveIngest, setIsLiveIngest] = useState(true);
+  const [injectSuccess, setInjectSuccess] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   
   const configCode = `export CLAUDE_CODE_ENABLE_TELEMETRY=1\nexport OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:8000"`;
 
-  const initialLogs = [
-    {
-      timestamp: new Date(Date.now() - 15000).toISOString(),
-      trace_id: "tr-7f2a1b9c8e",
-      model: "claude-3-5-sonnet",
-      tokens_in: 840,
-      tokens_out: 320,
-      cost: 0.00732,
-      project: "kilo-fuel-gauge"
-    },
-    {
-      timestamp: new Date(Date.now() - 10000).toISOString(),
-      trace_id: "tr-2e4d5f6a7b",
-      model: "deepseek-r1",
-      tokens_in: 1250,
-      tokens_out: 680,
-      cost: 0.00218,
-      project: "kilo-fuel-gauge"
-    }
-  ];
+  const [logs, setLogs] = useState<any[]>([]);
 
-  const [logs, setLogs] = useState<any[]>(initialLogs);
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('/api/telemetry/logs?limit=30');
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const mapped = data.map((l: any) => ({
+            timestamp: l.timestamp,
+            trace_id: `tr-${l.id}-${l.timestamp.replace(/[^0-9]/g, '').slice(-6)}`,
+            model: l.model_name,
+            tokens_in: l.input_tokens,
+            tokens_out: l.output_tokens,
+            cost: l.calculated_cost,
+            project: l.project_name || "kilo-fuel-gauge"
+          }));
+          setLogs(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching logs in terminal view:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
   // Auto-scroll logic
   useEffect(() => {
@@ -169,38 +195,98 @@ function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
     if (isPaused) return;
 
     const modelsPool = [
-      { name: "claude-3-5-sonnet", inputRate: 0.003, outputRate: 0.015 },
-      { name: "deepseek-r1", inputRate: 0.00055, outputRate: 0.00219 },
-      { name: "gemini-1.5-pro", inputRate: 0.00125, outputRate: 0.005 },
-      { name: "gpt-4o", inputRate: 0.005, outputRate: 0.015 }
+      { name: "claude-3-5-sonnet", provider: "Anthropic", inputRate: 0.003, outputRate: 0.015 },
+      { name: "deepseek-r1", provider: "DeepSeek", inputRate: 0.00055, outputRate: 0.00219 },
+      { name: "gemini-1.5-pro", provider: "Google", inputRate: 0.00125, outputRate: 0.005 },
+      { name: "gpt-4o", provider: "Cursor", inputRate: 0.005, outputRate: 0.015 }
     ];
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const selectedModel = modelsPool[Math.floor(Math.random() * modelsPool.length)];
       const tokensIn = Math.floor(Math.random() * 900) + 100;
       const tokensOut = Math.floor(Math.random() * 400) + 50;
       const calculatedCost = ((tokensIn / 1000) * selectedModel.inputRate) + ((tokensOut / 1000) * selectedModel.outputRate);
       
-      const newLog = {
-        timestamp: new Date().toISOString(),
-        trace_id: "tr-" + Math.random().toString(36).substring(2, 12),
-        model: selectedModel.name,
-        tokens_in: tokensIn,
-        tokens_out: tokensOut,
-        cost: Number(calculatedCost.toFixed(6)),
-        project: "kilo-fuel-gauge"
+      const logPayload = {
+        user_id: 1,
+        provider: selectedModel.provider,
+        model_name: selectedModel.name,
+        input_tokens: tokensIn,
+        output_tokens: tokensOut,
+        project_name: "kilo-fuel-gauge"
       };
 
-      setLogs(prev => [...prev, newLog].slice(-30)); // Keep last 30 logs for performance
-    }, 2500);
+      if (isLiveIngest) {
+        try {
+          const res = await fetch('/api/telemetry/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logPayload)
+          });
+          if (res.ok) {
+            fetchLogs();
+            if (onNewLogTriggered) onNewLogTriggered();
+          }
+        } catch (e) {
+          console.error("Failed to post telemetry to DB:", e);
+        }
+      } else {
+        const newLog = {
+          timestamp: new Date().toISOString(),
+          trace_id: "tr-" + Math.random().toString(36).substring(2, 12),
+          model: selectedModel.name,
+          tokens_in: tokensIn,
+          tokens_out: tokensOut,
+          cost: Number(calculatedCost.toFixed(6)),
+          project: "kilo-fuel-gauge"
+        };
+        setLogs(prev => [newLog, ...prev].slice(0, 30));
+      }
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, isLiveIngest]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(configCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleManualInject = async () => {
+    setInjectSuccess(true);
+    setTimeout(() => setInjectSuccess(false), 1500);
+
+    const modelsPool = [
+      { name: "claude-3-5-sonnet", provider: "Anthropic" },
+      { name: "deepseek-r1", provider: "DeepSeek" },
+      { name: "gemini-1.5-pro", provider: "Google" },
+      { name: "gpt-4o", provider: "Cursor" }
+    ];
+    const selectedModel = modelsPool[Math.floor(Math.random() * modelsPool.length)];
+    const tokensIn = Math.floor(Math.random() * 1500) + 300;
+    const tokensOut = Math.floor(Math.random() * 800) + 150;
+
+    try {
+      const res = await fetch('/api/telemetry/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 1,
+          provider: selectedModel.provider,
+          model_name: selectedModel.name,
+          input_tokens: tokensIn,
+          output_tokens: tokensOut,
+          project_name: "kilo-fuel-gauge"
+        })
+      });
+      if (res.ok) {
+        fetchLogs();
+        if (onNewLogTriggered) onNewLogTriggered();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -210,33 +296,47 @@ function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="otel-config-box">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="font-display font-semibold text-slate-200 text-lg">Local OpenTelemetry Hook Configuration</h2>
             <p className="text-xs text-slate-500 mt-1">Run these commands in your CLI environment to route local AI executions to the telemetry pipeline.</p>
           </div>
           
-          <button 
-            id="copy-config-btn"
-            onClick={handleCopy}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border cursor-pointer ${
-              copied 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>COPIED</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>COPY TO CLIPBOARD</span>
-              </>
-            )}
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleManualInject}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border cursor-pointer transition-all ${
+                injectSuccess 
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+                  : 'bg-slate-950 text-emerald-400 border-emerald-900/40 hover:bg-emerald-950/50 hover:text-slate-200'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 animate-pulse" />
+              <span>{injectSuccess ? 'INJECTED!' : 'INJECT TRACE'}</span>
+            </button>
+
+            <button 
+              id="copy-config-btn"
+              onClick={handleCopy}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border cursor-pointer ${
+                copied 
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>COPIED</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>COPY CONFIG</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="relative bg-slate-950/80 rounded-lg p-4 border border-slate-800/80 font-mono text-sm text-emerald-400/90 leading-relaxed overflow-x-auto select-all">
@@ -249,7 +349,7 @@ function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
 
       {/* 2. LIVE TERMINAL INGESTION STREAM */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[400px]" id="live-stream-box">
-        <div className="px-6 py-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
+        <div className="px-6 py-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
           <div className="flex items-center gap-3">
             <span className="flex h-2.5 w-2.5 relative">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'} opacity-75`}></span>
@@ -259,26 +359,36 @@ function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
               OTel Ingestion Stream Terminal {isPaused && <span className="text-amber-500 text-xs ml-2">[PAUSED]</span>}
             </h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+              <span className="text-[10px] font-mono text-slate-500">DB INGESTION</span>
+              <button
+                onClick={() => setIsLiveIngest(!isLiveIngest)}
+                className={`w-8 h-4 rounded-full p-0.5 transition-colors relative cursor-pointer ${isLiveIngest ? 'bg-emerald-500' : 'bg-slate-700'}`}
+              >
+                <div className={`w-3 h-3 bg-slate-950 rounded-full transition-transform ${isLiveIngest ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
             <button
               id="pause-stream-btn"
               onClick={() => setIsPaused(!isPaused)}
               className={`px-3 py-1 rounded text-xs font-mono font-medium transition-all border cursor-pointer ${
                 isPaused 
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 animate-pulse' 
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20' 
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
               }`}
             >
               {isPaused ? 'RESUME STREAM' : 'PAUSE STREAM'}
             </button>
-            <span className="font-mono text-[10px] text-slate-500">LISTENING ON PORT :8000</span>
+            <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">PORT: 3000 {"\u2192"} :8000</span>
           </div>
         </div>
 
         {/* Mock Terminal Workspace */}
-        <div className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800">
+        <div className="flex-1 bg-black p-4 font-mono text-xs overflow-y-auto space-y-2 select-text scrollbar-thin scrollbar-thumb-slate-800 animate-none">
           <div className="text-emerald-500/50">{"[system] Initializing Kudbee Fuel Gauge telemetry daemon..."}</div>
-          <div className="text-emerald-500/50">{"[system] Pipeline collector online, routing stream logs..."}</div>
+          <div className="text-emerald-500/50">{"[system] Pipeline SQLite collector online, routing stream logs..."}</div>
           {isPaused && (
             <div className="text-amber-500/80 bg-amber-950/20 px-2 py-1 rounded border border-amber-900/30 inline-block">
               ⚠️ LOG COLLECTION PAUSED. Reviewing existing traces.
@@ -313,7 +423,7 @@ function InterceptorView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
 
 // --- SUB-COMPONENT: PLAYGROUND VIEW ---
 
-function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
+function PlaygroundView({ currency, onNewLogTriggered }: { currency: 'USD' | 'EUR' | 'GBP'; onNewLogTriggered?: () => void }) {
   const [payloadText, setPayloadText] = useState(
     `// Sample prompt / code block pipeline telemetry simulation\nconst aiResponse = await anthropic.messages.create({\n  model: "claude-3-5-sonnet",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
   );
@@ -322,6 +432,76 @@ function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
   const [hourlyCapEnabled, setHourlyCapEnabled] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const [lastCalculation, setLastCalculation] = useState<string | null>(null);
+  const [isLogged, setIsLogged] = useState(false);
+  const [isLogging, setIsLogging] = useState(false);
+
+  // Load balancing gateway state
+  const [weights, setWeights] = useState({
+    Anthropic: 40,
+    DeepSeek: 30,
+    Google: 20,
+    OpenAI: 10
+  });
+
+  const totalWeight = weights.Anthropic + weights.DeepSeek + weights.Google + weights.OpenAI;
+  const relWeights = {
+    Anthropic: totalWeight > 0 ? (weights.Anthropic / totalWeight) * 100 : 25,
+    DeepSeek: totalWeight > 0 ? (weights.DeepSeek / totalWeight) * 100 : 25,
+    Google: totalWeight > 0 ? (weights.Google / totalWeight) * 100 : 25,
+    OpenAI: totalWeight > 0 ? (weights.OpenAI / totalWeight) * 100 : 25
+  };
+
+  const modelSpecs = {
+    Anthropic: { costIn: 3.00, costOut: 15.00, speed: 75, quality: 9.8, color: '#f97316' },
+    DeepSeek: { costIn: 0.55, costOut: 2.19, speed: 120, quality: 9.5, color: '#3b82f6' },
+    Google: { costIn: 1.25, costOut: 5.00, speed: 100, quality: 8.8, color: '#a855f7' },
+    OpenAI: { costIn: 5.00, costOut: 15.00, speed: 80, quality: 9.2, color: '#ec4899' }
+  };
+
+  const compositeCostIn = (
+    (relWeights.Anthropic * modelSpecs.Anthropic.costIn) +
+    (relWeights.DeepSeek * modelSpecs.DeepSeek.costIn) +
+    (relWeights.Google * modelSpecs.Google.costIn) +
+    (relWeights.OpenAI * modelSpecs.OpenAI.costIn)
+  ) / 100;
+
+  const compositeCostOut = (
+    (relWeights.Anthropic * modelSpecs.Anthropic.costOut) +
+    (relWeights.DeepSeek * modelSpecs.DeepSeek.costOut) +
+    (relWeights.Google * modelSpecs.Google.costOut) +
+    (relWeights.OpenAI * modelSpecs.OpenAI.costOut)
+  ) / 100;
+
+  const compositeSpeed = (
+    (relWeights.Anthropic * modelSpecs.Anthropic.speed) +
+    (relWeights.DeepSeek * modelSpecs.DeepSeek.speed) +
+    (relWeights.Google * modelSpecs.Google.speed) +
+    (relWeights.OpenAI * modelSpecs.OpenAI.speed)
+  ) / 100;
+
+  const compositeQuality = (
+    (relWeights.Anthropic * modelSpecs.Anthropic.quality) +
+    (relWeights.DeepSeek * modelSpecs.DeepSeek.quality) +
+    (relWeights.Google * modelSpecs.Google.quality) +
+    (relWeights.OpenAI * modelSpecs.OpenAI.quality)
+  ) / 100;
+
+  const pieData = [
+    { name: 'Claude 3.5 Sonnet', value: Math.round(relWeights.Anthropic), color: '#f97316' },
+    { name: 'DeepSeek-R1', value: Math.round(relWeights.DeepSeek), color: '#3b82f6' },
+    { name: 'Gemini 1.5 Pro', value: Math.round(relWeights.Google), color: '#a855f7' },
+    { name: 'GPT-4o', value: Math.round(relWeights.OpenAI), color: '#ec4899' }
+  ].filter(d => d.value > 0);
+
+  const applyPreset = (preset: 'cost' | 'reasoning' | 'balanced') => {
+    if (preset === 'cost') {
+      setWeights({ Anthropic: 10, DeepSeek: 80, Google: 10, OpenAI: 0 });
+    } else if (preset === 'reasoning') {
+      setWeights({ Anthropic: 60, DeepSeek: 5, Google: 10, OpenAI: 25 });
+    } else {
+      setWeights({ Anthropic: 30, DeepSeek: 40, Google: 20, OpenAI: 10 });
+    }
+  };
 
   // Token arithmetic: baseline metric of roughly 1 token per 4 characters
   const charCount = payloadText.length;
@@ -377,6 +557,41 @@ function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
     }, 600);
   };
 
+  const handleInjectTrace = async () => {
+    setIsLogging(true);
+    const modelMap: Record<string, { provider: string; model_name: string }> = {
+      'Claude 3.5 Sonnet': { provider: 'Anthropic', model_name: 'claude-3-5-sonnet' },
+      'DeepSeek-R1': { provider: 'DeepSeek', model_name: 'deepseek-r1' },
+      'GPT-4o': { provider: 'Cursor', model_name: 'gpt-4o' },
+      'Gemini 1.5 Pro': { provider: 'Google', model_name: 'gemini-1.5-pro' }
+    };
+    const mapped = modelMap[selectedModel] || { provider: 'Anthropic', model_name: 'claude-3-5-sonnet' };
+
+    try {
+      const res = await fetch('/api/telemetry/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 1,
+          provider: mapped.provider,
+          model_name: mapped.model_name,
+          input_tokens: tokenCount,
+          output_tokens: predictedOutputTokens,
+          project_name: "kilo-fuel-gauge"
+        })
+      });
+      if (res.ok) {
+        setIsLogged(true);
+        setTimeout(() => setIsLogged(false), 2000);
+        if (onNewLogTriggered) onNewLogTriggered();
+      }
+    } catch (e) {
+      console.error("Failed to inject playground trace to SQLite:", e);
+    } finally {
+      setIsLogging(false);
+    }
+  };
+
   return (
     <div className="space-y-6" id="playground-view-container">
       
@@ -419,14 +634,14 @@ function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
               </div>
 
               {/* Model selection dropdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                 <div>
                   <label className="block text-xs font-mono uppercase tracking-wider text-slate-500 mb-2">Simulated Active Route</label>
                   <select
                     id="active-route-selector"
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500/40"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500/40 h-10"
                   >
                     <option>Claude 3.5 Sonnet</option>
                     <option>DeepSeek-R1</option>
@@ -438,10 +653,24 @@ function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
                   <button
                     id="calculate-projection-btn"
                     onClick={handleTriggerCalculation}
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer h-10 shadow-[0_0_12px_rgba(52,211,153,0.25)] hover:shadow-[0_0_16px_rgba(52,211,153,0.4)]"
+                    className="w-full bg-slate-950 hover:bg-slate-900 text-emerald-400 font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg border border-emerald-950 transition-colors flex items-center justify-center gap-2 cursor-pointer h-10"
                   >
                     <Activity className={`w-4 h-4 ${isCalculating ? 'animate-spin' : ''}`} />
                     {isCalculating ? 'PARSING...' : 'Calculate Projection'}
+                  </button>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleInjectTrace}
+                    disabled={isLogging}
+                    className={`w-full font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer h-10 shadow-[0_0_12px_rgba(52,211,153,0.15)] ${
+                      isLogged 
+                        ? 'bg-emerald-500 text-slate-950' 
+                        : 'bg-emerald-950/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 hover:border-emerald-400'
+                    }`}
+                  >
+                    <Zap className={`w-4 h-4 ${isLogging ? 'animate-bounce' : ''}`} />
+                    {isLogging ? 'LOGGING...' : isLogged ? '✓ LOGGED TO DB' : 'Direct-Inject to DB'}
                   </button>
                 </div>
               </div>
@@ -581,6 +810,158 @@ function PlaygroundView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
           )}
         </div>
 
+        {/* AI Gateway Load Balancing Simulator Section */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden mt-6" id="playground-gateway-balancer">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-purple-400" />
+              <div>
+                <h2 className="font-display font-semibold text-slate-200 text-md">AI Gateway Multi-Model Router</h2>
+                <p className="text-xs text-slate-500 mt-1">Configure weights to dynamically proxy requests between active providers.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button 
+                onClick={() => applyPreset('cost')}
+                className="px-2.5 py-1 rounded text-[10px] font-mono border border-emerald-900/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-900/30 transition-all cursor-pointer"
+              >
+                PRESET: COST OPTIMAL
+              </button>
+              <button 
+                onClick={() => applyPreset('reasoning')}
+                className="px-2.5 py-1 rounded text-[10px] font-mono border border-purple-900/40 bg-purple-950/20 text-purple-400 hover:bg-purple-900/30 transition-all cursor-pointer"
+              >
+                PRESET: MAX INTELLIGENCE
+              </button>
+              <button 
+                onClick={() => applyPreset('balanced')}
+                className="px-2.5 py-1 rounded text-[10px] font-mono border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-900 transition-all cursor-pointer"
+              >
+                PRESET: BALANCED
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Sliders Area */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-orange-400 font-semibold">Claude 3.5 Sonnet (Anthropic)</span>
+                  <span className="text-slate-300">{Math.round(relWeights.Anthropic)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={weights.Anthropic} 
+                  onChange={(e) => setWeights(w => ({ ...w, Anthropic: parseInt(e.target.value) || 0 }))}
+                  className="w-full accent-orange-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-blue-400 font-semibold">DeepSeek-R1 (DeepSeek)</span>
+                  <span className="text-slate-300">{Math.round(relWeights.DeepSeek)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={weights.DeepSeek} 
+                  onChange={(e) => setWeights(w => ({ ...w, DeepSeek: parseInt(e.target.value) || 0 }))}
+                  className="w-full accent-blue-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-purple-400 font-semibold">Gemini 1.5 Pro (Google)</span>
+                  <span className="text-slate-300">{Math.round(relWeights.Google)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={weights.Google} 
+                  onChange={(e) => setWeights(w => ({ ...w, Google: parseInt(e.target.value) || 0 }))}
+                  className="w-full accent-purple-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-pink-400 font-semibold">GPT-4o (OpenAI)</span>
+                  <span className="text-slate-300">{Math.round(relWeights.OpenAI)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={weights.OpenAI} 
+                  onChange={(e) => setWeights(w => ({ ...w, OpenAI: parseInt(e.target.value) || 0 }))}
+                  className="w-full accent-pink-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+                />
+              </div>
+            </div>
+
+            {/* Composite Metrics & Visual Chart */}
+            <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-950/40 p-4 rounded-xl border border-slate-800/80">
+              
+              {/* Pie Chart Representation */}
+              <div className="h-32 flex justify-center items-center relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={45}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">ROUTING</span>
+                  <span className="font-mono text-xs text-slate-300 font-semibold">HYBRID</span>
+                </div>
+              </div>
+
+              {/* Aggregated Scores */}
+              <div className="space-y-3 font-mono">
+                <div>
+                  <span className="block text-[9px] text-slate-500 uppercase">Weighted Cost / 1M</span>
+                  <span className="text-sm text-emerald-400 font-semibold">
+                    {getFormattedCost(compositeCostIn, currency, 2)} <span className="text-slate-600">|</span> {getFormattedCost(compositeCostOut, currency, 2)}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-[9px] text-slate-500 uppercase">Composite Velocity</span>
+                  <span className="text-sm text-slate-300 font-semibold">{Math.round(compositeSpeed)} t/s</span>
+                </div>
+
+                <div>
+                  <span className="block text-[9px] text-slate-500 uppercase">Composite Accuracy</span>
+                  <span className="text-sm text-purple-400 font-semibold">{(compositeQuality).toFixed(2)}/10.0</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -665,15 +1046,32 @@ function getRawJson(log: any) {
   };
 }
 
-function HistoryView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
+function HistoryView({ currency, dbLogs }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | 'all'>('all');
   const [exporting, setExporting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
 
+  // Merge real SQLite logs with baseline historical data
+  const mergedLogs = React.useMemo(() => {
+    if (!dbLogs || dbLogs.length === 0) {
+      return HISTORICAL_TRACES_MOCK;
+    }
+    const mappedDb = dbLogs.map((l: any) => ({
+      timestamp: l.timestamp,
+      project: l.project_name || "kilo-fuel-gauge",
+      model: l.model_name,
+      tokens_in: l.input_tokens,
+      tokens_out: l.output_tokens,
+      cost: l.calculated_cost,
+      timeframe: "24h" as const
+    }));
+    return [...mappedDb, ...HISTORICAL_TRACES_MOCK];
+  }, [dbLogs]);
+
   // Filter logic
-  const filteredLogs = HISTORICAL_TRACES_MOCK.filter(log => {
+  const filteredLogs = mergedLogs.filter(log => {
     const matchesSearch = 
       log.project.toLowerCase().includes(searchQuery.toLowerCase()) || 
       log.model.toLowerCase().includes(searchQuery.toLowerCase());
@@ -696,16 +1094,16 @@ function HistoryView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
     return acc;
   }, {} as Record<string, { cost: number; requests: number }>);
 
-  const totalFilteredCost = Object.values(projectStats).reduce((sum, p) => sum + p.cost, 0) || 1;
+  const totalFilteredCost: number = (Object.values(projectStats) as any[]).reduce((sum: number, p: any) => sum + p.cost, 0) || 1;
 
   const targetProjects = ['frontier-core', 'kudbee-fuel-gauge', 'mesh-globe-3d'];
   const projectRollup = targetProjects.map(projName => {
-    const stats = projectStats[projName] || { cost: 0, requests: 0 };
-    const pct = totalFilteredCost > 0 ? (stats.cost / totalFilteredCost) * 100 : 0;
+    const pStats = projectStats[projName] || { cost: 0, requests: 0 };
+    const pct = (pStats.cost / totalFilteredCost) * 100;
     return {
       name: projName,
-      cost: stats.cost,
-      requests: stats.requests,
+      cost: pStats.cost,
+      requests: pStats.requests,
       percent: pct
     };
   });
@@ -1119,9 +1517,484 @@ function HistoryView({ currency }: { currency: 'USD' | 'EUR' | 'GBP' }) {
   );
 }
 
+// --- SUB-COMPONENT: GATEWAY FIREWALL & GUARDRAILS VIEW ---
+
+interface FirewallViewProps {
+  showToast: (msg: string, type?: 'warning' | 'info' | 'success') => void;
+}
+
+function FirewallView({ showToast }: FirewallViewProps) {
+  // Global Middleware Toggles
+  const [piiRedaction, setPiiRedaction] = useState(true);
+  const [promptShield, setPromptShield] = useState(true);
+  const [semanticRouting, setSemanticRouting] = useState(false);
+
+  // Runtime Approval Gates (HITL)
+  const [costGateEnabled, setCostGateEnabled] = useState(true);
+  const [costThreshold, setCostThreshold] = useState(0.50);
+  const [blockTools, setBlockTools] = useState(true);
+  const [confidenceGateEnabled, setConfidenceGateEnabled] = useState(true);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(85);
+
+  // Interception Holding Pen
+  const [pendingQueue, setPendingQueue] = useState<any[]>([
+    {
+      id: "agent-tx-8819",
+      agentId: "claude-code-local",
+      triggeredRule: "Rule: bash_execute detected",
+      actionJson: {
+        action: "bash_execute",
+        command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
+        directory: "~/workspace/telemetry-db",
+        environment: {
+          POSTGRES_DB: "telemetry",
+          POSTGRES_PASSWORD: "•••••••••••••"
+        }
+      }
+    }
+  ]);
+
+  const handleApprove = (id: string) => {
+    setPendingQueue(q => q.filter(item => item.id !== id));
+    showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
+  };
+
+  const handleDeny = (id: string) => {
+    setPendingQueue(q => q.filter(item => item.id !== id));
+    showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
+  };
+
+  const handleResetQueue = () => {
+    setPendingQueue([
+      {
+        id: "agent-tx-" + Math.floor(1000 + Math.random() * 9000),
+        agentId: "claude-code-local",
+        triggeredRule: "Rule: bash_execute detected",
+        actionJson: {
+          action: "bash_execute",
+          command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
+          directory: "~/workspace/telemetry-db",
+          environment: {
+            POSTGRES_DB: "telemetry",
+            POSTGRES_PASSWORD: "•••••••••••••"
+          }
+        }
+      }
+    ]);
+    showToast("Mock Agent execution paused by security policy. Ingestion intercepted.", "info");
+  };
+
+  return (
+    <div className="min-h-dvh flex flex-col space-y-6" id="firewall-view-container">
+      
+      {/* 1. GLOBAL MIDDLEWARE TOGGLES */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        
+        <div className="flex items-center gap-2 mb-6">
+          <Shield className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h2 className="font-display font-semibold text-slate-200 text-sm">Active Security Middleware</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Configure inline deep packet inspection and semantic firewalls for upstream LLM streams.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* PII Redaction */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">PII Redaction Engine</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Regex & Semantic Scrubbing intercepts and masks credentials, SSNs, credit cards, and proprietary source tokens.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${piiRedaction ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {piiRedaction ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setPiiRedaction(!piiRedaction);
+                  showToast(piiRedaction ? "PII Redaction Engine deactivated." : "PII Redaction Engine activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  piiRedaction ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${piiRedaction ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Prompt Injection Shield */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Prompt Injection Shield</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Llama Guard 3 simulation protects against jailbreaks, system instruction bypasses, and multi-turn prompt hijacking.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${promptShield ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {promptShield ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setPromptShield(!promptShield);
+                  showToast(promptShield ? "Prompt Injection Shield deactivated." : "Prompt Injection Shield activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  promptShield ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${promptShield ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Semantic Routing */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36">
+            <div className="space-y-1">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Semantic Routing</span>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Inlines classification router to auto-proxy low-complexity prompts to cheaper/free models without accuracy penalties.
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <span className={`text-[9px] font-mono uppercase tracking-widest ${semanticRouting ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {semanticRouting ? '● Active' : '○ Standby'}
+              </span>
+              <button
+                onClick={() => {
+                  setSemanticRouting(!semanticRouting);
+                  showToast(semanticRouting ? "Semantic Routing deactivated." : "Semantic Routing activated.", "info");
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  semanticRouting ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${semanticRouting ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 2. RISK-BASED HUMAN-IN-THE-LOOP (HITL) GATES */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        
+        <div className="flex items-center gap-2 mb-6">
+          <Sliders className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h3 className="font-display font-semibold text-slate-200 text-sm">Runtime Approval Gates</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Determine when local AI Agent executions must pause and await human verification.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Cost Trigger Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Execution Cost Gate</span>
+              <button
+                onClick={() => setCostGateEnabled(!costGateEnabled)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  costGateEnabled ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${costGateEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Intercepts running loops if a single LLM pipeline sequence projects a cost exceeding the specified boundary.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${costGateEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-slate-400">Cost Upper Limit:</span>
+                <span className="text-emerald-400 font-bold">${costThreshold.toFixed(2)}</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.05" 
+                max="5.00" 
+                step="0.05"
+                value={costThreshold} 
+                onChange={(e) => setCostThreshold(parseFloat(e.target.value) || 0.05)}
+                className="w-full accent-emerald-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+              />
+              <input
+                type="number"
+                step="0.05"
+                value={costThreshold}
+                onChange={(e) => setCostThreshold(parseFloat(e.target.value) || 0.05)}
+                className="w-full scroll-mt-28 bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-right mt-1"
+                placeholder="0.50"
+              />
+            </div>
+          </div>
+
+          {/* Tool Call Blocking Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Tool Execution Gate</span>
+              <button
+                onClick={() => setBlockTools(!blockTools)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  blockTools ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${blockTools ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Always forces synchronous developer review when the agent tries to run tool calls matching blacklisted strings.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${blockTools ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest mb-1">Gate Blacklist Targets:</span>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] font-mono bg-red-950/20 border border-red-900/50 text-red-400 px-2 py-0.5 rounded">
+                  bash_execute
+                </span>
+                <span className="text-[10px] font-mono bg-red-950/20 border border-red-900/50 text-red-400 px-2 py-0.5 rounded">
+                  sql_write
+                </span>
+                <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-500 px-2 py-0.5 rounded">
+                  fs_delete
+                </span>
+              </div>
+              <p className="text-[9px] text-slate-500 leading-tight pt-1">
+                Triggered events are buffered cleanly inside the Interception Holding Pen below.
+              </p>
+            </div>
+          </div>
+
+          {/* Confidence Score Gate */}
+          <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">Confidence Floor Gate</span>
+              <button
+                onClick={() => setConfidenceGateEnabled(!confidenceGateEnabled)}
+                className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  confidenceGateEnabled ? 'bg-emerald-500' : 'bg-slate-800'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${confidenceGateEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Halts execution chains immediately when an agent evaluates its own task completion confidence below this floor.
+            </p>
+
+            <div className={`space-y-2 transition-all duration-200 ${confidenceGateEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-slate-400">Confidence Floor:</span>
+                <span className="text-emerald-400 font-bold">{confidenceThreshold}%</span>
+              </div>
+              <input 
+                type="range" 
+                min="50" 
+                max="100" 
+                step="1"
+                value={confidenceThreshold} 
+                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value, 10) || 50)}
+                className="w-full accent-emerald-500 cursor-pointer h-1 bg-slate-950 rounded-lg appearance-none"
+              />
+              <input
+                type="number"
+                min="50"
+                max="100"
+                value={confidenceThreshold}
+                onChange={(e) => setConfidenceThreshold(parseInt(e.target.value, 10) || 50)}
+                className="w-full scroll-mt-28 bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-right mt-1"
+                placeholder="85"
+              />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 3. THE INTERCEPTION HOLDING PEN */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500 animate-pulse" />
+            <div>
+              <h3 className="font-display font-semibold text-slate-200 text-sm">Interception Holding Pen</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Evaluate and triage real-time agent executions paused by active firewall rule overrides.</p>
+            </div>
+          </div>
+          {pendingQueue.length === 0 && (
+            <button
+              onClick={handleResetQueue}
+              className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] font-mono tracking-wider uppercase rounded transition-all cursor-pointer"
+            >
+              Simulate Ingestion Intercept
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {pendingQueue.length > 0 ? (
+            <div className="space-y-4">
+              {pendingQueue.map((item) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="bg-slate-950/80 border border-amber-500/30 rounded-xl p-5 md:p-6 shadow-[0_0_15px_rgba(245,158,11,0.05)] overflow-hidden"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-900/60">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="text-xs font-mono bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded">
+                        AGENT ID: <span className="text-amber-400 font-bold">{item.agentId}</span>
+                      </span>
+                      <span className="text-[10px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold">
+                        {item.triggeredRule}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      PAUSED TELEMETRY BROADCAST
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-2">
+                    <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">Drafted Shell Execution Command Payload:</span>
+                    <div className="bg-slate-950/90 border border-slate-850 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-emerald-400 overflow-x-auto">
+                      <pre>{JSON.stringify(item.actionJson, null, 2)}</pre>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => handleApprove(item.id)}
+                      className="w-full py-3 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Approve &amp; Resume Execution
+                    </button>
+                    <button
+                      onClick={() => handleDeny(item.id)}
+                      className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <AlertTriangle className="w-4 h-4 animate-pulse" />
+                      Deny &amp; Terminate
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="py-12 border border-dashed border-slate-850 rounded-xl bg-slate-950/30 flex flex-col items-center justify-center text-center px-4"
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center mb-3">
+                <Check className="w-5 h-5 text-emerald-500" />
+              </div>
+              <p className="text-xs font-mono text-slate-400 font-semibold uppercase tracking-wider">No Pending Approvals</p>
+              <p className="text-[10px] text-slate-500 max-w-sm mt-1">All real-time agent execution processes are flowing cleanly within nominal safety parameters.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+    </div>
+  );
+}
+
 // --- SUB-COMPONENT: SETTINGS VIEW ---
 
-function SettingsView({ currency, setCurrency }: { currency: 'USD' | 'EUR' | 'GBP'; setCurrency: (c: 'USD' | 'EUR' | 'GBP') => void }) {
+interface SettingsViewProps {
+  currency: 'USD' | 'EUR' | 'GBP';
+  setCurrency: (c: 'USD' | 'EUR' | 'GBP') => void;
+  initialSubTab: 'System Engine Settings' | 'Threshold Alert Rules';
+  displayDensity: 'Compact' | 'Standard' | 'Comfortable';
+  setDisplayDensity: (d: 'Compact' | 'Standard' | 'Comfortable') => void;
+  simulateTelemetry: boolean;
+  setSimulateTelemetry: (s: boolean) => void;
+  onPurgeCompleted: () => void;
+  showToast: (msg: string) => void;
+}
+
+function SettingsView({
+  currency,
+  setCurrency,
+  initialSubTab,
+  displayDensity,
+  setDisplayDensity,
+  simulateTelemetry,
+  setSimulateTelemetry,
+  onPurgeCompleted,
+  showToast
+}: SettingsViewProps) {
+  const [subTab, setSubTab] = useState<'System Engine Settings' | 'Threshold Alert Rules'>(initialSubTab);
+
+  // Synchronize subTab with selection changes in parent tab mapping
+  useEffect(() => {
+    setSubTab(initialSubTab);
+  }, [initialSubTab]);
+
+  // Persistent settings states initialized with masked presets
+  const [openaiKey, setOpenaiKey] = useState(() => localStorage.getItem('kudbee_openai_key') || 'sk-proj-LN92fDka74jGks92019kLsakd92kasdQ23');
+  const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('kudbee_anthropic_key') || 'sk-ant-sid01-Las9102Ksad92jKs8Aas0129kLasdK9');
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('kudbee_gemini_key') || 'AIzaSyAs8192Ksadl29Kasd891Aksj182Ksdka9');
+  const [otelPort, setOtelPort] = useState(() => parseInt(localStorage.getItem('kudbee_otel_port') || '8000', 10));
+
+  // Numeric alert parameter boundaries
+  const [dailySpendCap, setDailySpendCap] = useState(() => parseFloat(localStorage.getItem('kudbee_spend_cap') || '100.00'));
+  const [tokenWarningThreshold, setTokenWarningThreshold] = useState(() => parseInt(localStorage.getItem('kudbee_token_warn') || '50000', 10));
+  const [healthCeiling, setHealthCeiling] = useState(() => parseInt(localStorage.getItem('kudbee_health_ceil') || '20', 10));
+
+  const saveOtelPort = (val: number) => {
+    setOtelPort(val);
+    localStorage.setItem('kudbee_otel_port', val.toString());
+  };
+
+  const handleSaveKeys = () => {
+    localStorage.setItem('kudbee_openai_key', openaiKey);
+    localStorage.setItem('kudbee_anthropic_key', anthropicKey);
+    localStorage.setItem('kudbee_gemini_key', geminiKey);
+    showToast("API Route Provider configuration saved successfully!");
+  };
+
+  const handleSaveThresholds = () => {
+    localStorage.setItem('kudbee_spend_cap', dailySpendCap.toString());
+    localStorage.setItem('kudbee_token_warn', tokenWarningThreshold.toString());
+    localStorage.setItem('kudbee_health_ceil', healthCeiling.toString());
+    showToast("Threshold alert parameter bounds saved to SQLite cache.");
+  };
+
+  const handlePurgeCache = async () => {
+    try {
+      const res = await fetch('/api/telemetry/purge', { method: 'POST' });
+      if (res.ok) {
+        showToast("⚠️ Local SQLite Telemetry Database Cache Purged Successfully.");
+        onPurgeCompleted();
+      } else {
+        showToast("Error communicating with ingestion server.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Purge action failed. Check if local FastAPI backend is active.");
+    }
+  };
+
   const currencies: { id: 'USD' | 'EUR' | 'GBP'; label: string; symbol: string; desc: string }[] = [
     { id: 'USD', label: 'US Dollar', symbol: '$', desc: 'United States Dollar (Baseline baseline format)' },
     { id: 'EUR', label: 'Euro', symbol: '€', desc: 'European Union Euro (Exchange Rate: 1 USD = 0.92 EUR)' },
@@ -1129,80 +2002,356 @@ function SettingsView({ currency, setCurrency }: { currency: 'USD' | 'EUR' | 'GB
   ];
 
   return (
-    <div className="space-y-6" id="settings-view-container">
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
-        
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="w-5 h-5 text-emerald-400" />
-          <h2 className="font-display font-semibold text-slate-200 text-lg">Applet Configuration</h2>
-        </div>
+    <div className="min-h-dvh flex flex-col space-y-6" id="settings-view-container">
+      {/* Sub-tab segmented controller */}
+      <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 max-w-lg w-full self-center md:self-start">
+        <button
+          onClick={() => setSubTab('System Engine Settings')}
+          className={`flex-1 py-2 px-4 rounded-lg font-mono text-xs uppercase tracking-widest font-semibold transition-all duration-200 cursor-pointer ${
+            subTab === 'System Engine Settings'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          System Engine Settings
+        </button>
+        <button
+          onClick={() => setSubTab('Threshold Alert Rules')}
+          className={`flex-1 py-2 px-4 rounded-lg font-mono text-xs uppercase tracking-widest font-semibold transition-all duration-200 cursor-pointer ${
+            subTab === 'Threshold Alert Rules'
+              ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          Threshold Alert Rules
+        </button>
+      </div>
 
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-3">Global Currency Selector</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Select the preferred currency format for all displayed token, trace, and projection cost metrics across the entire application workspace.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {currencies.map((curr) => {
-                const isSelected = currency === curr.id;
-                return (
+      <AnimatePresence mode="wait">
+        {subTab === 'System Engine Settings' ? (
+          <motion.div
+            key="system-settings"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* API Keys Configuration Card */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-6">
+                <Key className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">API Route Provider Configuration</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Manage secure upstream gateway tokens and telemetry ingestion routing ports.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider">OpenAI API Gateway Key</label>
+                  <input
+                    type="password"
+                    value={openaiKey}
+                    onChange={(e) => setOpenaiKey(e.target.value)}
+                    placeholder="sk-proj-••••••••"
+                    className="w-full scroll-mt-28 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider">Anthropic API Key</label>
+                  <input
+                    type="password"
+                    value={anthropicKey}
+                    onChange={(e) => setAnthropicKey(e.target.value)}
+                    placeholder="sk-ant-••••••••"
+                    className="w-full scroll-mt-28 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider">Google Gemini API Key</label>
+                  <input
+                    type="password"
+                    value={geminiKey}
+                    onChange={(e) => setGeminiKey(e.target.value)}
+                    placeholder="AIzaSy••••••••"
+                    className="w-full scroll-mt-28 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider">Local OTel Ingestion Port</label>
+                  <input
+                    type="number"
+                    value={otelPort}
+                    onChange={(e) => saveOtelPort(parseInt(e.target.value, 10) || 8000)}
+                    placeholder="8000"
+                    className="w-full scroll-mt-28 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleSaveKeys}
+                  className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer"
+                >
+                  Save Secure Credentials
+                </button>
+              </div>
+            </div>
+
+            {/* Display Density Controller */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <Sliders className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">UI Display Density Engine</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Alters global component grid padding and typography scaling ratios dynamically.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-1 bg-slate-950 border border-slate-800 rounded-lg max-w-md">
+                {(['Compact', 'Standard', 'Comfortable'] as const).map((mode) => (
                   <button
-                    key={curr.id}
-                    id={`currency-selector-${curr.id.toLowerCase()}`}
-                    onClick={() => setCurrency(curr.id)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between h-32 relative ${
-                      isSelected
-                        ? 'bg-emerald-950/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.1)]'
-                        : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    key={mode}
+                    onClick={() => {
+                      setDisplayDensity(mode);
+                      showToast(`UI Layout set to ${mode} density mode.`);
+                    }}
+                    className={`flex-1 py-1.5 rounded text-xs font-mono font-semibold transition-all cursor-pointer ${
+                      displayDensity === mode
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
-                    <div className="flex justify-between items-center w-full">
-                      <span className="font-mono text-sm font-bold tracking-wide uppercase">{curr.label}</span>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                        {curr.id}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-mono text-3xl font-extrabold text-slate-100 block mb-1">
-                        {curr.symbol}
-                      </span>
-                      <span className="text-[10px] text-slate-500 block leading-tight">
-                        {curr.desc}
-                      </span>
-                    </div>
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-slate-950">
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </div>
-                    )}
+                    {mode.toUpperCase()}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="pt-6 border-t border-slate-800/60">
-            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Telemetry Pipeline Metrics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800/60">
-                <span className="block text-xs font-semibold text-slate-300">Real-time Conversion Engine</span>
-                <span className="block text-[11px] text-slate-500 mt-1">
-                  Exchange values are dynamically synchronized based on standardized regional API rates. Conversion is performed at the display layer to maintain pure USD baseline telemetry integrity.
-                </span>
+            {/* Currency selector component */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-6">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">Global Currency Format</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Select the workspace currency representation. Auto-converted based on standard regional rates.</p>
+                </div>
               </div>
-              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800/60">
-                <span className="block text-xs font-semibold text-slate-300">Workspace Locale Storage</span>
-                <span className="block text-[11px] text-slate-500 mt-1">
-                  Active format preferences are stored in the active React telemetry context, propagating immediately to any mounted monitors, calculators, and matrix layouts.
-                </span>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {currencies.map((curr) => {
+                  const isSelected = currency === curr.id;
+                  return (
+                    <button
+                      key={curr.id}
+                      onClick={() => setCurrency(curr.id)}
+                      className={`p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between h-32 relative ${
+                        isSelected
+                          ? 'bg-emerald-950/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.1)]'
+                          : 'bg-slate-950 hover:bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <span className="font-mono text-xs font-bold tracking-wide uppercase">{curr.label}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                          {curr.id}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-mono text-2xl font-extrabold text-slate-100 block">
+                          {curr.symbol}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block leading-tight mt-1">
+                          {curr.desc}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-slate-950">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+
+            {/* Infrastructure panel and Purge DB Danger Zone */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-6">
+                <Database className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">Infrastructure Control Panel</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Synchronize local cache systems and daemon telemetry ingestion parameters.</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-850 rounded-lg">
+                  <div className="space-y-1 pr-4">
+                    <span className="block text-xs font-semibold text-slate-300">Simulate Real-time Network Telemetry</span>
+                    <span className="block text-[10px] text-slate-500">
+                      Toggle active daemon polling fetching pipelines. Disabling this freezes the real-time ingest simulation.
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSimulateTelemetry(!simulateTelemetry);
+                      showToast(simulateTelemetry ? "Telemetry simulation paused." : "Telemetry simulation resumed.");
+                    }}
+                    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      simulateTelemetry ? 'bg-emerald-500' : 'bg-slate-800'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${
+                        simulateTelemetry ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="border border-amber-500/20 bg-amber-500/5 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="space-y-1">
+                    <span className="block text-xs font-bold text-amber-400 font-mono uppercase tracking-wider">Danger Zone: Purge Cache</span>
+                    <span className="block text-[10px] text-slate-400 max-w-xl">
+                      Irreversibly deletes all rows inside the SQLite local database trace logs and resets API route limit quotas.
+                    </span>
+                  </div>
+                  <button
+                    onClick={handlePurgeCache}
+                    className="shrink-0 flex items-center gap-2 px-3 py-2 border border-amber-500/40 hover:bg-amber-500/10 active:bg-amber-500/20 text-amber-400 text-xs font-mono font-semibold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Purge Local SQLite Cache
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="alerts-settings"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* Threshold Alert Rules Configuration */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+              
+              <div className="flex items-center gap-2 mb-6">
+                <Bell className="w-5 h-5 text-purple-400" />
+                <div>
+                  <h3 className="font-display font-semibold text-slate-200 text-sm">Threshold Alert Rules</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Establish billing, consumption, and subscription safety margins. Tests trigger dynamic layout notifications.</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Spend Cap rule input & test trigger */}
+                <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <span className="block text-xs font-bold font-mono uppercase tracking-wider text-purple-400">Daily Consumption Spend Cap ($)</span>
+                    <span className="block text-[11px] text-slate-500">
+                      Broadcasting triggers when overall pipeline costs exceed the designated USD value.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-between md:justify-end">
+                    <input
+                      type="number"
+                      value={dailySpendCap}
+                      onChange={(e) => setDailySpendCap(parseFloat(e.target.value) || 0)}
+                      className="w-32 scroll-mt-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500 transition-all text-right"
+                    />
+                    <button
+                      onClick={() => showToast("⚠️ Warning: Daily Gateway Budget Exceeded")}
+                      title="Test Trigger Rule"
+                      className="p-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-400 rounded-lg transition-all cursor-pointer shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Token Limit rule input & test trigger */}
+                <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <span className="block text-xs font-bold font-mono uppercase tracking-wider text-purple-400">Single Gateway Payload Token Warning</span>
+                    <span className="block text-[11px] text-slate-500">
+                      Alert triggers if any trace log logs a payload containing more than this raw token count.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-between md:justify-end">
+                    <input
+                      type="number"
+                      value={tokenWarningThreshold}
+                      onChange={(e) => setTokenWarningThreshold(parseInt(e.target.value, 10) || 0)}
+                      className="w-32 scroll-mt-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500 transition-all text-right"
+                    />
+                    <button
+                      onClick={() => showToast("⚠️ Warning: Single Gateway Payload Limit Violated")}
+                      title="Test Trigger Rule"
+                      className="p-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-400 rounded-lg transition-all cursor-pointer shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Subscription Quota Health rule input & test trigger */}
+                <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <span className="block text-xs font-bold font-mono uppercase tracking-wider text-purple-400">Minimum Subscription Health Ceiling (%)</span>
+                    <span className="block text-[11px] text-slate-500">
+                      Alert broadcasts warning logs immediately if any active quota tracker's remaining percentage drops below this health ceiling.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-between md:justify-end">
+                    <input
+                      type="number"
+                      value={healthCeiling}
+                      onChange={(e) => setHealthCeiling(parseInt(e.target.value, 10) || 0)}
+                      className="w-32 scroll-mt-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500 transition-all text-right"
+                    />
+                    <button
+                      onClick={() => showToast("⚠️ Warning: Subscription Health is below Minimum Ceiling!")}
+                      title="Test Trigger Rule"
+                      className="p-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-400 rounded-lg transition-all cursor-pointer shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleSaveThresholds}
+                  className="px-4 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 rounded-lg text-xs font-mono font-bold tracking-widest uppercase transition-all cursor-pointer"
+                >
+                  Save Alert Bounds
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1212,35 +2361,115 @@ function SettingsView({ currency, setCurrency }: { currency: 'USD' | 'EUR' | 'GB
 export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP'>('USD');
+  const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>('Standard');
+  const [simulateTelemetry, setSimulateTelemetry] = useState(true);
+  const [toast, setToast] = useState<{ id: number; message: string; type: string } | null>(null);
 
-  // Live Telemetry State for Header/Summary sync
-  const [stats, setStats] = useState({
-    inTokens: 1234567,
-    outTokens: 3456789,
-    cost: 45.2034
-  });
+  const showToast = (message: string, type: 'warning' | 'info' | 'success' = 'warning') => {
+    const id = Date.now();
+    setToast({ id, message, type });
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(s => {
-        const inBump = Math.floor(Math.random() * 45) + 5;
-        const outBump = Math.floor(Math.random() * 120) + 15;
-        const costBump = 0.0347 + (Math.random() * 0.01);
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Unified real-time SQLite backend telemetry synchronization
+  const [dbSummary, setDbSummary] = useState<any>(null);
+  const [dbLogs, setDbLogs] = useState<any[]>([]);
+
+  const fetchTelemetryData = async () => {
+    try {
+      const summaryRes = await fetch('/api/dashboard/summary');
+      if (summaryRes.ok) {
+        const sData = await summaryRes.json();
+        setDbSummary(sData);
+      }
+      
+      const logsRes = await fetch('/api/telemetry/logs?limit=50');
+      if (logsRes.ok) {
+        const lData = await logsRes.json();
+        setDbLogs(lData || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard metrics:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTelemetryData();
+    if (!simulateTelemetry) return;
+    const interval = setInterval(fetchTelemetryData, 3000);
+    return () => clearInterval(interval);
+  }, [simulateTelemetry]);
+
+  // Derive dynamic telemetry statistics
+  const liveStats = React.useMemo(() => {
+    const baseIn = 1234567;
+    const baseOut = 3456789;
+    const baseCost = 45.2034;
+    
+    if (!dbSummary) {
+      return {
+        inTokens: baseIn,
+        outTokens: baseOut,
+        cost: baseCost,
+        totalRequests: 1482,
+        activeModels: 4
+      };
+    }
+    
+    const dbTokens = dbSummary.total_historical_tokens || 0;
+    const dbCost = dbSummary.total_24h_cost || 0;
+    
+    return {
+      inTokens: baseIn + Math.floor(dbTokens * 0.4),
+      outTokens: baseOut + Math.floor(dbTokens * 0.6),
+      cost: baseCost + dbCost,
+      totalRequests: 1482 + dbLogs.length,
+      activeModels: dbSummary.total_active_models || 4
+    };
+  }, [dbSummary, dbLogs]);
+
+  // Derive trajectory series for interactive charting
+  const chartData = React.useMemo(() => {
+    const points = [
+      { name: "12h ago", tokens: 120000, cost: 0.25 },
+      { name: "10h ago", tokens: 180000, cost: 0.38 },
+      { name: "8h ago", tokens: 150000, cost: 0.31 },
+      { name: "6h ago", tokens: 280000, cost: 0.58 },
+      { name: "4h ago", tokens: 210000, cost: 0.44 },
+      { name: "2h ago", tokens: 340000, cost: 0.72 },
+    ];
+    
+    if (dbLogs && dbLogs.length > 0) {
+      const recentLogs = [...dbLogs].slice(0, 10).reverse();
+      const dbPoints = recentLogs.map((l: any) => {
+        const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         return {
-          inTokens: s.inTokens + inBump,
-          outTokens: s.outTokens + outBump,
-          cost: s.cost + costBump
+          name: timeStr,
+          tokens: l.input_tokens + l.output_tokens,
+          cost: l.calculated_cost
         };
       });
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
+      return [...points, ...dbPoints];
+    }
+    
+    return points;
+  }, [dbLogs]);
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard' },
     { icon: Activity, label: 'Interceptor' },
     { icon: Calculator, label: 'Playground' },
     { icon: History, label: 'History' },
+    { icon: Shield, label: 'Firewall' },
+    { icon: Bell, label: 'Alerts' },
     { icon: Settings, label: 'Settings' }
   ];
 
@@ -1319,7 +2548,13 @@ export default function App() {
       <main className="flex-1 h-screen overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
         
-        <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 relative z-0">
+        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 ${
+          displayDensity === 'Compact' 
+            ? 'p-4 space-y-4 text-xs' 
+            : displayDensity === 'Comfortable' 
+              ? 'p-8 md:p-10 space-y-8 text-base' 
+              : 'p-6 md:p-8 space-y-6 text-sm'
+        }`}>
           
           <header className="mb-8 md:hidden">
             <div className="flex flex-col gap-4">
@@ -1359,6 +2594,18 @@ export default function App() {
                   HISTORY
                 </button>
                 <button 
+                  onClick={() => setActiveTab('Firewall')}
+                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Firewall' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
+                >
+                  FIREWALL
+                </button>
+                <button 
+                  onClick={() => setActiveTab('Alerts')}
+                  className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Alerts' ? 'border-purple-500/30 bg-purple-500/10 text-purple-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
+                >
+                  ALERTS
+                </button>
+                <button 
                   onClick={() => setActiveTab('Settings')}
                   className={`flex-none py-2 px-3 rounded text-xs font-mono border transition-all cursor-pointer ${activeTab === 'Settings' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-850 bg-slate-900 text-slate-400'}`}
                 >
@@ -1375,17 +2622,17 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <TelemetryCard 
                   title="Input Tokens" 
-                  value={stats.inTokens.toLocaleString()} 
+                  value={liveStats.inTokens.toLocaleString()} 
                   icon={Cpu}
                 />
                 <TelemetryCard 
                   title="Output Tokens" 
-                  value={stats.outTokens.toLocaleString()} 
+                  value={liveStats.outTokens.toLocaleString()} 
                   icon={ArrowRightLeft}
                 />
                 <TelemetryCard 
                   title="Live Pipeline Cost" 
-                  value={getFormattedCost(stats.cost, currency, 4)} 
+                  value={getFormattedCost(liveStats.cost, currency, 4)} 
                   icon={DollarSign}
                 />
               </div>
@@ -1465,95 +2712,127 @@ export default function App() {
                 </div>
                 
                 <div className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mb-6 flex justify-between items-end">
-                  <span>24-Hour Ingestion Trajectory</span>
-                  <span className="text-emerald-500/70 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded">Live Sync</span>
+                  <span>24-Hour Telemetry & Ingestion Trajectory</span>
+                  <span className="text-emerald-500/70 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded">Live DB Sync</span>
                 </div>
                 
-                <div className="relative h-40 w-full mt-4">
-                  <svg viewBox="0 0 800 200" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    <line x1="0" y1="50" x2="800" y2="50" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                    <line x1="0" y1="100" x2="800" y2="100" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                    <line x1="0" y1="150" x2="800" y2="150" stroke="#1e293b" strokeWidth="1" strokeDasharray="4 4" />
-                    
-                    <path 
-                      d="M0,180 L80,160 L160,165 L240,110 L320,120 L400,60 L480,80 L560,95 L640,40 L720,45 L800,20" 
-                      fill="none" 
-                      stroke="#34d399" 
-                      strokeWidth="2" 
-                      className="drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" 
-                    />
-                    
-                    <path 
-                      d="M0,200 L0,180 L80,160 L160,165 L240,110 L320,120 L400,60 L480,80 L560,95 L640,40 L720,45 L800,20 L800,200 Z" 
-                      fill="url(#emerald-gradient)" 
-                      opacity="0.15" 
-                    />
-                    
-                    <defs>
-                      <linearGradient id="emerald-gradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#34d399" />
-                        <stop offset="100%" stopColor="transparent" />
-                      </linearGradient>
-                    </defs>
-                    
-                    <circle cx="800" cy="20" r="4" fill="#10b981" />
-                    <circle cx="800" cy="20" r="8" fill="#10b981" opacity="0.4" className="animate-ping" />
-                  </svg>
-                </div>
-                
-                <div className="flex justify-between text-[9px] font-mono text-slate-600 mt-2">
-                  <span>-24h</span>
-                  <span>-18h</span>
-                  <span>-12h</span>
-                  <span>-6h</span>
-                  <span className="text-emerald-500/70">Now</span>
+                <div className="h-44 w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#475569" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        dy={10}
+                      />
+                      <YAxis 
+                        stroke="#475569" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '8px' }}
+                        labelStyle={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}
+                        itemStyle={{ color: '#34d399', fontFamily: 'monospace', fontSize: '11px' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="tokens" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorTokens)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </>
           )}
 
-          {activeTab === 'Interceptor' && <InterceptorView currency={currency} />}
+          {activeTab === 'Interceptor' && <InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
           
-          {activeTab === 'Playground' && <PlaygroundView currency={currency} />}
+          {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
-          {activeTab === 'History' && <HistoryView currency={currency} />}
+          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} />}
 
-          {activeTab === 'Settings' && <SettingsView currency={currency} setCurrency={setCurrency} />}
+          {activeTab === 'Firewall' && <FirewallView showToast={showToast} />}
+
+          {(activeTab === 'Settings' || activeTab === 'Alerts') && (
+            <SettingsView 
+              currency={currency} 
+              setCurrency={setCurrency} 
+              initialSubTab={activeTab === 'Alerts' ? 'Threshold Alert Rules' : 'System Engine Settings'}
+              displayDensity={displayDensity}
+              setDisplayDensity={setDisplayDensity}
+              simulateTelemetry={simulateTelemetry}
+              setSimulateTelemetry={setSimulateTelemetry}
+              onPurgeCompleted={fetchTelemetryData}
+              showToast={showToast}
+            />
+          )}
 
           {/* AGGREGATE CORE SUMMARY FOOTER */}
           <div className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 md:p-6 flex flex-wrap md:flex-nowrap justify-between gap-4 md:gap-8 items-center shadow-lg" id="applet-summary-footer">
             <div className="w-full md:w-auto">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total 24h Cost</div>
-              <div className="font-mono text-2xl text-emerald-400">{getFormattedCost(stats.cost * 0.04, currency, 4)}</div>
+              <div className="font-mono text-2xl text-emerald-400">{getFormattedCost(liveStats.cost * 0.04, currency, 4)}</div>
             </div>
             <div className="hidden md:block w-px h-10 bg-slate-800"></div>
             
             <div className="w-1/2 md:w-auto">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total Tokens</div>
-              <div className="font-mono text-xl text-slate-200">{(stats.inTokens + stats.outTokens).toLocaleString()}</div>
+              <div className="font-mono text-xl text-slate-200">{(liveStats.inTokens + liveStats.outTokens).toLocaleString()}</div>
             </div>
             <div className="hidden md:block w-px h-10 bg-slate-800"></div>
             
             <div className="w-1/2 md:w-auto">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total Requests</div>
-              <div className="font-mono text-xl text-slate-200">1,482</div>
+              <div className="font-mono text-xl text-slate-200">{liveStats.totalRequests.toLocaleString()}</div>
             </div>
             <div className="hidden md:block w-px h-10 bg-slate-800"></div>
             
             <div className="w-1/2 md:w-auto">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Active Models</div>
-              <div className="font-mono text-xl text-slate-200">4</div>
+              <div className="font-mono text-xl text-slate-200">{liveStats.activeModels.toString()}</div>
             </div>
             <div className="hidden md:block w-px h-10 bg-slate-800"></div>
             
             <div className="w-1/2 md:w-auto text-right md:text-left">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Est Monthly Cost</div>
-              <div className="font-mono text-xl text-emerald-400/80">{getFormattedCost(stats.cost * 1.25, currency, 2)}</div>
+              <div className="font-mono text-xl text-emerald-400/80">{getFormattedCost(liveStats.cost * 1.15, currency, 2)}</div>
             </div>
           </div>
 
         </div>
       </main>
+
+      {/* GLOBAL TOAST NOTIFICATION OVERLAY */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border border-amber-500/50 bg-slate-950/95 text-slate-100 shadow-[0_0_24px_rgba(245,158,11,0.2)] max-w-md backdrop-blur-md animate-[pulse_2s_infinite]"
+          >
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></div>
+            <span className="font-mono text-xs font-semibold tracking-wide leading-relaxed">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -148,6 +148,11 @@ def ingest_token_log(log_in: TokenLogCreate, db: Session = Depends(get_db)):
     db.refresh(new_log)
     return new_log
 
+@app.get("/api/telemetry/logs", response_model=List[TokenLogResponse])
+def get_telemetry_logs(user_id: int = 1, db: Session = Depends(get_db), limit: int = 100):
+    logs = db.query(TokenLog).filter(TokenLog.user_id == user_id).order_by(TokenLog.timestamp.desc()).limit(limit).all()
+    return logs
+
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(user_id: int = 1, db: Session = Depends(get_db)):
     last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -188,6 +193,15 @@ def get_dashboard_summary(user_id: int = 1, db: Session = Depends(get_db)):
         "total_active_models": len(active_models),
         "health_matrix": health_matrix
     }
+
+@app.post("/api/telemetry/purge")
+def purge_telemetry_logs(user_id: int = 1, db: Session = Depends(get_db)):
+    db.query(TokenLog).filter(TokenLog.user_id == user_id).delete()
+    quotas = db.query(QuotaTracker).filter(QuotaTracker.user_id == user_id).all()
+    for q in quotas:
+        q.used_allowance = 0
+    db.commit()
+    return {"status": "success", "message": "Telemetry logs have been purged and database reset."}
 
 # =====================================================================
 # 5. LOCAL DAEMON TEST SCRIPT
