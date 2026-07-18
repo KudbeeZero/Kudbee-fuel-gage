@@ -47,6 +47,7 @@ import { LatencyHistogram } from './components/LatencyHistogram';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
 import { GatewayView } from './components/gateway/GatewayView';
+import { AlertsView } from './components/AlertsView';
 import { useUIStore } from './store/uiStore';
 import {
   AreaChart,
@@ -4104,11 +4105,13 @@ export default function App() {
             <GatewayView showToast={showToast} />
           )}
 
-          {(activeTab === 'Settings' || activeTab === 'Alerts') && (
+          {activeTab === 'Alerts' && <AlertsView />}
+
+          {activeTab === 'Settings' && (
             <SettingsView 
               currency={currency} 
               setCurrency={setCurrency} 
-              initialSubTab={activeTab === 'Alerts' ? 'Threshold Alert Rules' : 'System Engine Settings'}
+              initialSubTab={'System Engine Settings'}
               displayDensity={displayDensity}
               setDisplayDensity={setDisplayDensity}
               simulateTelemetry={simulateTelemetry}
