@@ -43,6 +43,8 @@ import {
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
 import { LatencyHistogram } from './components/LatencyHistogram';
+import { ConsoleDock } from './components/ConsoleDock';
+import { useUIStore } from './store/uiStore';
 import {
   AreaChart,
   Area,
@@ -4011,7 +4013,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<any | null>(null);
-  const [consoleExpanded, setConsoleExpanded] = useState(false);
+  const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
   
   const [eventLogs, setEventLogs] = useState<any[]>([]);
 
@@ -5087,83 +5089,7 @@ export default function App() {
       </div>
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
-      <div 
-        className="fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 flex flex-col transition-all duration-300 ease-in-out pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.5)]"
-        style={{ height: consoleExpanded ? '18rem' : 'calc(3rem + env(safe-area-inset-bottom))' }}
-      >
-        {/* Toggle handle header */}
-        <div 
-          onClick={() => setConsoleExpanded(!consoleExpanded)}
-          className="h-12 flex items-center justify-between px-6 border-b border-slate-900 bg-slate-950/40 cursor-pointer select-none shrink-0"
-        >
-          {consoleExpanded ? (
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-mono text-xs font-bold tracking-wider text-slate-200">LIVE_CONSOLE_INGESTION_STREAM</span>
-              <span className="hidden sm:inline font-mono text-[9px] text-slate-500 uppercase tracking-widest">[pipeline online]</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <div className="flex items-center gap-2 font-mono text-[11px] truncate text-slate-300 flex-1">
-                <span className="text-emerald-400 shrink-0 select-none font-bold animate-pulse">&gt;</span>
-                {eventLogs.length > 0 ? (
-                  <>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 select-none">{eventLogs[0].label}</span>
-                    <span className="truncate text-slate-200">{eventLogs[0].message}</span>
-                  </>
-                ) : (
-                  <span className="text-slate-500">Idle - awaiting pipeline synchronisation...</span>
-                )}
-                <span className="w-1.5 h-3.5 bg-emerald-400 inline-block animate-terminal-blink shrink-0 ml-1"></span>
-              </div>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-3 shrink-0 select-none">
-            <span className="font-mono text-[9px] text-slate-500 uppercase tracking-widest">
-              {consoleExpanded ? 'COLLAPSE' : 'EXPAND'}
-            </span>
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${consoleExpanded ? 'rotate-0' : 'rotate-180'}`} />
-          </div>
-        </div>
-
-        {/* Event Logs List (Visible only when expanded) */}
-        <div className={`flex-1 overflow-y-auto p-4 space-y-2 select-text ${consoleExpanded ? 'opacity-100 block' : 'opacity-0 hidden'}`}>
-          <div className="max-h-full pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-850 scrollbar-track-transparent">
-            {eventLogs.map((event) => (
-              <div 
-                key={event.id} 
-                className="flex items-start gap-3 p-2 bg-slate-900/40 border border-slate-850/50 hover:bg-slate-900/60 hover:border-slate-800 rounded transition-all group font-mono text-xs"
-              >
-                <div className="mt-0.5 shrink-0">
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${
-                    event.type === 'info' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                    event.type === 'warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 
-                    'bg-slate-800/50 text-slate-400 border-slate-700'
-                  }`}>
-                    {event.label}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] leading-relaxed text-slate-300 group-hover:text-slate-100 transition-colors">
-                    {event.message}
-                  </p>
-                </div>
-                <div className="shrink-0 text-[9px] text-slate-500 group-hover:text-slate-400 mt-0.5">
-                  {event.time}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ConsoleDock />
     </div>
   );
 }
