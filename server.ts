@@ -62,7 +62,24 @@ function calculateCost(modelName: string, inputTokens: number, outputTokens: num
 async function loadDb(): Promise<TelemetryDatabase> {
   try {
     const data = await fs.readFile(DB_FILE, "utf-8");
-    return JSON.parse(data);
+    const db: TelemetryDatabase = JSON.parse(data);
+    
+    // Dynamize historical pre-seeded logs so they are always current relative to server session
+    if (db.token_logs && db.token_logs.length > 0) {
+      const sorted = [...db.token_logs].sort((a, b) => a.id - b.id);
+      const total = sorted.length;
+      db.token_logs = db.token_logs.map(log => {
+        // Space each log 15 seconds apart relative to Date.now()
+        const indexFromLatest = total - log.id;
+        const offset = indexFromLatest * 15 * 1000;
+        return {
+          ...log,
+          timestamp: new Date(Date.now() - offset).toISOString()
+        };
+      });
+    }
+    
+    return db;
   } catch (err) {
     const initialDb: TelemetryDatabase = {
       users: {

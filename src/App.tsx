@@ -2498,24 +2498,28 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                       {/* Trace ID Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Trace ID:</span>
-                                        {(log as any).traceId || traceId ? (
+                                        {((log as any).traceId || traceId) ? (
                                           <span className="text-emerald-400 font-semibold selection:bg-emerald-500/30">
-                                            {(log as any).traceId || traceId}
+                                            {((log as any).traceId || traceId)}
                                           </span>
                                         ) : (
-                                          <span className="text-slate-600 italic uppercase">UNKNOWN_TRACE_ID</span>
+                                          <span className="bg-red-950/60 text-red-300 border border-red-500/40 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase">
+                                            UNKNOWN_TRACE_ID
+                                          </span>
                                         )}
                                       </div>
 
                                       {/* Service Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Service:</span>
-                                        {(log as any).service || log.project ? (
+                                        {((log as any).service || log.project) ? (
                                           <span className="text-slate-100 font-semibold">
-                                            {(log as any).service || `${log.project}-service`}
+                                            {((log as any).service || `${log.project}-service`)}
                                           </span>
                                         ) : (
-                                          <span className="text-slate-600 italic uppercase">UNKNOWN_SERVICE</span>
+                                          <span className="bg-slate-800/60 text-slate-300 border border-slate-600/40 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase">
+                                            UNKNOWN_SERVICE
+                                          </span>
                                         )}
                                       </div>
 
@@ -2527,7 +2531,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered }: { currency: 'USD' 
                                             {getRegion(log.project)}
                                           </span>
                                         ) : (
-                                          <span className="text-rose-400/50 italic uppercase font-semibold text-[10px] bg-rose-950/20 px-1.5 py-0.5 rounded border border-rose-900/30">UNKNOWN_REGION</span>
+                                          <span className="bg-purple-950/60 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase">
+                                            UNKNOWN_REGION
+                                          </span>
                                         )}
                                       </div>
 
@@ -3965,6 +3971,19 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   
+  const [eventLogs, setEventLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    setEventLogs([
+      { id: 1, type: 'info', label: 'INFO', message: 'Edge Gateway Gateway Sync: Active connection established with Heroku dyno runtime.', time: 'Just now' },
+      { id: 2, type: 'warning', label: 'WARN', message: 'Telemetry Cluster: Rolling 15-minute pipeline analysis initialized.', time: 'Just now' },
+      { id: 3, type: 'slate', label: 'SYSTEM', message: 'Toolchain Context: Running active execution checks via TypeScript 7.0 engine.', time: 'Just now' },
+      { id: 4, type: 'info', label: 'SYNC', message: 'API Gateway Context Synchronized', time: '2m ago' },
+      { id: 5, type: 'warning', label: 'WARN', message: 'Trace Diagnostic Log Committed', time: '5m ago' },
+      { id: 6, type: 'slate', label: 'SYS', message: 'Webhook Subscription Initialized', time: '12m ago' }
+    ]);
+  }, []);
+  
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
   const gatewayRouter = useGatewayRouter();
 
@@ -4498,14 +4517,7 @@ export default function App() {
                      </div>
                      <div className="p-3">
                         <div className="max-h-60 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                           {[
-                              { id: 1, type: 'info', label: 'SYNC', message: 'API Gateway Context Synchronized', time: 'Just now' },
-                              { id: 2, type: 'warning', label: 'WARN', message: 'Trace Diagnostic Log Committed', time: '2m ago' },
-                              { id: 3, type: 'slate', label: 'SYS', message: 'Webhook Subscription Initialized', time: '5m ago' },
-                              { id: 4, type: 'slate', label: 'SYS', message: 'Cache Eviction Cycle Complete', time: '12m ago' },
-                              { id: 5, type: 'info', label: 'SYNC', message: 'Vector Database Re-Indexed', time: '1h ago' },
-                              { id: 6, type: 'warning', label: 'WARN', message: 'High Payload Latency Detected', time: '2h ago' }
-                           ].map(event => (
+                           {eventLogs.map(event => (
                              <div key={event.id} className="flex items-start gap-3 p-2.5 bg-slate-950/40 border border-slate-850/50 hover:bg-slate-800/40 hover:border-slate-700/50 rounded-lg transition-all group">
                                 <div className="mt-0.5 flex-shrink-0">
                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-widest border ${
@@ -4517,7 +4529,7 @@ export default function App() {
                                    </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                   <p className="text-[11px] font-medium leading-relaxed text-slate-300 group-hover:text-slate-200 transition-colors">
+                                   <p className="text-[11px] font-medium leading-relaxed text-slate-100 group-hover:text-white transition-colors">
                                      {event.message}
                                    </p>
                                 </div>
