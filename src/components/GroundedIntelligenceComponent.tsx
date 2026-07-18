@@ -32,6 +32,7 @@ export function GroundedIntelligenceComponent() {
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const fetchIntel = async () => {
     setLoading(true);
@@ -52,6 +53,15 @@ export function GroundedIntelligenceComponent() {
   useEffect(() => {
     fetchIntel();
   }, []);
+
+  // Set up periodic auto-refresh interval when enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      fetchIntel();
+    }, 30000); // refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
 
   const categories = ['All', 'Research Breakthrough', 'Billing Regulation', 'API Law'];
 
@@ -124,14 +134,28 @@ export function GroundedIntelligenceComponent() {
           ))}
         </div>
 
-        <button 
-          onClick={fetchIntel}
-          disabled={loading}
-          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 text-slate-950 rounded-lg text-xs font-mono font-bold tracking-wider uppercase transition-all duration-200 active:scale-95 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-4 self-start sm:self-auto">
+          {/* Auto Refresh Toggle */}
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              checked={autoRefresh} 
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="relative w-8 h-4 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-500 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500/20 peer-checked:after:bg-emerald-400"></div>
+            <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 peer-checked:text-emerald-400">Auto (30s)</span>
+          </label>
+
+          <button 
+            onClick={fetchIntel}
+            disabled={loading}
+            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 text-slate-950 rounded-lg text-xs font-mono font-bold tracking-wider uppercase transition-all duration-200 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

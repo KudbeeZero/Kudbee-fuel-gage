@@ -427,9 +427,39 @@ async function startServer() {
     return aiClient;
   }
 
+  // Simple in-memory cache for news headlines to prevent rate-limiting (429)
+  let newsCache: {
+    headlines: any[];
+    sources: any[];
+    offline?: boolean;
+    error?: string;
+    timestamp: number;
+  } | null = null;
+
+  // Cache duration: 10 minutes for live grounded results, 2 minutes for fallback/errors
+  const CACHE_TTL_LIVE = 10 * 60 * 1000; 
+  const CACHE_TTL_FALLBACK = 2 * 60 * 1000;
+
   // API Route: Fetch current global AI research and billing regulation headlines with Google Search Grounding
   app.get("/api/news/headlines", async (req, res) => {
+    const now = Date.now();
+    
+    // Check if we have a valid cache
+    if (newsCache) {
+      const ttl = newsCache.offline ? CACHE_TTL_FALLBACK : CACHE_TTL_LIVE;
+      if (now - newsCache.timestamp < ttl) {
+        console.log(`[Server] Serving news headlines from memory cache (age: ${Math.round((now - newsCache.timestamp) / 1000)}s, offline: ${!!newsCache.offline})`);
+        return res.json({
+          headlines: newsCache.headlines,
+          sources: newsCache.sources,
+          offline: newsCache.offline,
+          error: newsCache.error
+        });
+      }
+    }
+
     try {
+      console.log("[Server] Fetching live news headlines using Google Search Grounding from Gemini API...");
       const ai = getGeminiClient();
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -482,39 +512,60 @@ async function startServer() {
         url: chunk.web?.uri || ""
       })).filter((s: any) => s.url);
 
+      // Save to cache as live data
+      newsCache = {
+        headlines,
+        sources,
+        offline: false,
+        timestamp: now
+      };
+
       return res.json({
         headlines,
         sources
       });
     } catch (err: any) {
-      console.error("[Server] Error in /api/news/headlines:", err);
-      // Fallback response with clean offline data to keep application resilient if key is missing or query fails
+      console.warn("[Server] Gemini search grounding news feed fell back due to API/quota limit:", err.message || err);
+      
+      const fallbackHeadlines = [
+        {
+          title: "Global AI Prompt Caching & Token Billing Standardization",
+          summary: "Major API developers implement automatic rolling prompt caching discounts to prevent unnecessary repetitive input charges during heavy usage pipelines.",
+          category: "Billing Regulation",
+          source: "Developer Ledger"
+        },
+        {
+          title: "OTel Tracing Standards and Compliance Auditing",
+          summary: "New system integrations push for standardized OpenTelemetry pipelines to audit model token expenditures and guarantee regulatory cost ceilings.",
+          category: "API Law",
+          source: "W3C Consortium Standards"
+        },
+        {
+          title: "Next-Gen Speculative Decoding for Latency Optimization",
+          summary: "Speculative decoding models achieve a 2.5x speed multiplier, reducing calculated energy use and resulting endpoint server processing costs.",
+          category: "Research Breakthrough",
+          source: "AI Architecture Weekly"
+        }
+      ];
+
+      const fallbackSources = [
+        { title: "Standard OpenTelemetry Guidelines", url: "https://opentelemetry.io" },
+        { title: "API Billing Policies Update", url: "https://ai.google.dev" }
+      ];
+
+      // Save fallback results into the cache so we don't try to query again immediately (prevents tight looping on failures)
+      newsCache = {
+        headlines: fallbackHeadlines,
+        sources: fallbackSources,
+        offline: true,
+        error: err.message || "API rate limit or connection issue.",
+        timestamp: now
+      };
+
       return res.json({
-        headlines: [
-          {
-            title: "Global AI Prompt Caching & Token Billing Standardization",
-            summary: "Major API developers implement automatic rolling prompt caching discounts to prevent unnecessary repetitive input charges during heavy usage pipelines.",
-            category: "Billing Regulation",
-            source: "Developer Ledger"
-          },
-          {
-            title: "OTel Tracing Standards and Compliance Auditing",
-            summary: "New system integrations push for standardized OpenTelemetry pipelines to audit model token expenditures and guarantee regulatory cost ceilings.",
-            category: "API Law",
-            source: "W3C Consortium Standards"
-          },
-          {
-            title: "Next-Gen Speculative Decoding for Latency Optimization",
-            summary: "Speculative decoding models achieve a 2.5x speed multiplier, reducing calculated energy use and resulting endpoint server processing costs.",
-            category: "Research Breakthrough",
-            source: "AI Architecture Weekly"
-          }
-        ],
-        sources: [
-          { title: "Standard OpenTelemetry Guidelines", url: "https://opentelemetry.io" },
-          { title: "API Billing Policies Update", url: "https://ai.google.dev" }
-        ],
-        offline: !process.env.GEMINI_API_KEY,
+        headlines: fallbackHeadlines,
+        sources: fallbackSources,
+        offline: true,
         error: err.message
       });
     }

@@ -38,6 +38,7 @@ import {
   Globe
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
+import { TerminalHUDTicker } from './components/TerminalHUDTicker';
 import {
   AreaChart,
   Area,
@@ -3478,16 +3479,6 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('Dashboard');
   
-  if (!isAuthenticated) {
-    return (
-      <>
-        <div className="crt-overlay" />
-        <div className="crt-scanline" />
-        <LoginView onAuthenticate={() => setIsAuthenticated(true)} />
-      </>
-    );
-  }
-
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
   const gatewayRouter = useGatewayRouter();
 
@@ -3539,6 +3530,7 @@ export default function App() {
   const [dbLogs, setDbLogs] = useState<any[]>([]);
 
   const fetchTelemetryData = async () => {
+    if (!isAuthenticated) return;
     try {
       const summaryRes = await fetch('/api/dashboard/summary');
       if (summaryRes.ok) {
@@ -3557,7 +3549,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!simulateTelemetry) return;
+    if (!isAuthenticated || !simulateTelemetry) return;
     const interval = setInterval(() => {
       // Simulate an agent tool call that requires approval
       executeAgentTool("claude-code-local", "Rule: bash_execute detected", {
@@ -3572,14 +3564,15 @@ export default function App() {
       });
     }, 15000);
     return () => clearInterval(interval);
-  }, [simulateTelemetry, executeAgentTool]);
+  }, [simulateTelemetry, executeAgentTool, isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchTelemetryData();
     if (!simulateTelemetry) return;
     const interval = setInterval(fetchTelemetryData, 3000);
     return () => clearInterval(interval);
-  }, [simulateTelemetry]);
+  }, [simulateTelemetry, isAuthenticated]);
 
   // Derive dynamic telemetry statistics
   const liveStats = React.useMemo(() => {
@@ -3694,6 +3687,16 @@ export default function App() {
     { provider: "Google", percent: 92, offsetMins: 45 },
     { provider: "Meta", percent: 61, offsetMins: 340 }
   ];
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <div className="crt-overlay" />
+        <div className="crt-scanline" />
+        <LoginView onAuthenticate={() => setIsAuthenticated(true)} />
+      </>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex overflow-hidden selection:bg-emerald-500/30`}>
@@ -3873,6 +3876,9 @@ export default function App() {
                   icon={DollarSign}
                 />
               </div>
+
+              {/* DYNAMIC GROUNDED INTEL HUD TICKER */}
+              <TerminalHUDTicker />
 
               {/* CENTER ROW: MATRIX + HEALTH */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
