@@ -12,7 +12,8 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
-import { listProposed, approveAction, rejectAction } from './governance/router.js';
+import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
