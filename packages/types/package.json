@@ -6,7 +6,8 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./plugin": "./plugin.ts"
   },
   "scripts": {
     "build": "echo \"@kudbee/types: source-only package, nothing to build\"",
