@@ -21,8 +21,12 @@ import {
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
-import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
+import { RackLayout } from '../components/RackLayout';
+import { ThinkStormPlugin } from '../components/plugins/ThinkStormPlugin';
+import { ThinkStreamPlugin } from '../components/plugins/ThinkStreamPlugin';
+import { ThinkStoragePlugin } from '../components/plugins/ThinkStoragePlugin';
+import { GovernanceGatePlugin } from '../components/plugins/GovernanceGatePlugin';
 import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 import type { ApprovalRequest, ApprovalDecision, ThinkThought } from '@kudbee/types';
@@ -498,95 +502,6 @@ function GovernanceFeed({ actions }: { actions: GovernanceAction[] }) {
   );
 }
 
-/**
- * High-priority HITL (Human-in-the-Loop) Governance Gate card. Rendered only
- * when the backend reports `PENDING_APPROVAL` actions via useGovernanceStream.
- * Surfaces the agent's proposed model, estimated cost, and reasoning tokens,
- * and lets the operator APPROVE (release) or REJECT (kill) the task.
- */
-function GovernanceInterventionCard({
-  pending,
-  onResolve
-}: {
-  pending: ApprovalRequest[];
-  onResolve: (id: string, decision: ApprovalDecision) => Promise<boolean>;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const handle = async (id: string, decision: ApprovalDecision) => {
-    setBusyId(id);
-    try {
-      await onResolve(id, decision);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  return (
-    <div
-      id="governance-intervention-card"
-      className="relative overflow-hidden rounded-2xl border border-rose-500/40 bg-rose-500/5 lg:col-span-3"
-    >
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-rose-500/60 to-transparent" />
-      <div className="flex items-center justify-between border-b border-rose-500/20 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 animate-pulse text-rose-400" />
-          <h3 className="font-display text-sm font-semibold text-rose-200">
-            Governance Intervention Required
-          </h3>
-        </div>
-        <span className="rounded bg-rose-500/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-rose-300">
-          {pending.length} pending
-        </span>
-      </div>
-
-      <div className="divide-y divide-rose-500/10">
-        {pending.map((req) => (
-          <div key={req.id} className="space-y-2 p-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
-              <span className="text-slate-400">
-                model <span className="text-rose-200">{req.proposed_model}</span>
-              </span>
-              <span className="text-slate-400">
-                est. cost <span className="text-amber-300">${Number(req.estimated_cost).toFixed(4)}</span>
-              </span>
-              <span className="text-slate-400">
-                reasoning <span className="text-emerald-300">{req.reasoning_tokens} tok</span>
-              </span>
-              {req.agent_id && (
-                <span className="text-slate-500">agent {req.agent_id}</span>
-              )}
-            </div>
-            <p className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/50 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
-              {req.reasoning || '(no reasoning provided)'}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={busyId === req.id}
-                onClick={() => void handle(req.id, 'APPROVE')}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <BadgeCheck className="h-3.5 w-3.5" />
-                Approve &amp; Release
-              </button>
-              <button
-                type="button"
-                disabled={busyId === req.id}
-                onClick={() => void handle(req.id, 'REJECT')}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-mono font-semibold text-rose-300 transition-all hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <ShieldX className="h-3.5 w-3.5" />
-                Reject &amp; Kill
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CommunityValueScore({ data }: { data: CommunityValue | null }) {
   const score = data ? Number(data.community_value_score) : 0;
   const ringPct = Math.min(100, Math.round(score));
@@ -995,8 +910,7 @@ export function DashboardPage() {
 
   const stream = useEventStream();
 
-  // HITL Governance Gate + Think: Stream bindings (Resilient-First hooks).
-  const { pending: pendingApprovals, submitApproval } = useGovernanceStream();
+  // Think: Stream binding for the Agent Terminal (Resilient-First hook).
   const { latest: latestThought } = useThinkStream();
 
   const probeHealth = useCallback(async () => {
@@ -1230,11 +1144,6 @@ export function DashboardPage() {
             Every top-level card sits in the same 3-col grid so heights align;
             the Live Agent Terminal spans the full width below. */}
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {/* HITL Governance Gate — high-priority, spans full width when pending. */}
-          {pendingApprovals.length > 0 && (
-            <GovernanceInterventionCard pending={pendingApprovals} onResolve={submitApproval} />
-          )}
-
           <div className="lg:col-span-2">
             <HealthPanel health={health} loading={healthLoading} error={healthError} />
           </div>
@@ -1249,6 +1158,20 @@ export function DashboardPage() {
             <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
           </div>
           <GovernanceFeed actions={governance} />
+        </div>
+
+        {/* Agentic Rack System — 12-column responsive motherboard hosting the
+            Think: Storm / Stream / Storage and Governance Gate DAW-style plugins.
+            On small viewports the grid collapses to one column (plugins stack). */}
+        <div className="mt-5">
+          <RackLayout
+            slots={[
+              { id: 'think-storm', colSpan: 4, node: <ThinkStormPlugin /> },
+              { id: 'think-stream', colSpan: 4, node: <ThinkStreamPlugin /> },
+              { id: 'think-storage', colSpan: 4, node: <ThinkStoragePlugin /> },
+              { id: 'governance-gate', colSpan: 8, node: <GovernanceGatePlugin /> }
+            ]}
+          />
         </div>
 
         {/* Live Agent Terminal — full-width interactive console */}

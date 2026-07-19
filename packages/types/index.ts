@@ -199,3 +199,7 @@ export const ThinkArchiveResponseSchema = z.object({
   thoughts: z.array(ThinkThoughtSchema)
 });
 export type ThinkArchiveResponse = z.infer<typeof ThinkArchiveResponseSchema>;
+
+// Re-export the plugin contract so `@kudbee/types/plugin` resolves against the
+// source-only package (no separate build output).
+export * from './plugin.js';
