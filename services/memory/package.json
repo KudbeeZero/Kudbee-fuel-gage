@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./vectorStore.ts"
+    ".": "./vectorStore.ts",
+    "./topology": "./topologyIngest.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

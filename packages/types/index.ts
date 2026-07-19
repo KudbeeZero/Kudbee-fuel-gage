@@ -202,3 +202,22 @@ export type ThinkArchiveResponse = z.infer<typeof ThinkArchiveResponseSchema>;
 
 // --- Plugin registry definitions (re-exported for root-level import) ----------
 export * from './plugin.ts';
+
+// --- Phase 5: Self-Aware Architecture / Vector Memory Chunk -------------------
+// Canonical contract for a single embedded unit of system topology (laws,
+// routing maps, schema definitions). Ingested by services/memory and stored in
+// the system_topology_embeddings pgvector table. Strictly typed — no any.
+
+export const VectorMemoryChunkSchema = z.object({
+  chunk_text: z.string().min(1),
+  metadata: z.object({
+    category: z.enum(['law', 'router', 'schema', 'layout', 'config', 'doc', 'prompt']),
+    file_path: z.string().min(1),
+    version: z.string().default('1.0.0'),
+    tags: z.array(z.string()).default([]),
+    chunk_index: z.string().optional(),
+    chunk_total: z.string().optional()
+  }),
+  embedding: z.array(z.number()).min(1)
+});
+export type VectorMemoryChunk = z.infer<typeof VectorMemoryChunkSchema>;
