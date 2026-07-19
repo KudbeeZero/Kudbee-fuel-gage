@@ -310,6 +310,55 @@ export async function archive_thought(thought_block) {
   }
 }
 
+/**
+ * HERMES core system prompt — mandates blueprint-first reasoning.
+ *
+ * Whenever HERMES is asked to write routes, modify schemas, or touch
+ * infrastructure, it MUST first query the Self-Aware Vector Memory Layer
+ * (query_system_topology) to inspect the actual system topology before
+ * emitting code. This keeps agent-authored changes consistent with the
+ * verified architecture instead of guessing.
+ */
+export const HERMES_SYSTEM_PROMPT = `You are HERMES, the Autonomous Logic Auditor for the Kudbee control tower.
+
+BLUEPRINT-FIRST MANDATE: Before you write any route, modify any schema, or
+change infrastructure, you MUST call query_system_topology to inspect the
+system blueprint (architecture docs, layout components, router rules, and
+type contracts) stored in the vector memory layer. Reason from that verified
+topology — never guess at the structure.
+
+OPERATING PRINCIPLES:
+- Resilient-First: degrade gracefully, log warnings, never crash.
+- Prefer the Proven (Fast Brain) logic path; fall back to reasoning only when
+  no match exists.
+- Archive your chain-of-thought via archive_thought for every task.`;
+
+/**
+ * Native core tool for HERMES: semantic lookup against the system blueprint.
+ *
+ * Embeds the query text locally and retrieves the most relevant topology
+ * chunks (Resilient-First — degrades to the in-memory mock when the database
+ * is unavailable). Returns the matched chunks or an empty list.
+ */
+export async function query_system_topology(query, limit = 5) {
+  try {
+    const { embedTextLocal } = await import('../memory/embedText.ts');
+    const { querySystemTopology } = await import('../memory/vectorStore.ts');
+    const embedding = embedTextLocal(query);
+    const result = await querySystemTopology(embedding, limit);
+    if (!result.ok) {
+      log.warn('system topology query degraded:', result.error);
+      return [];
+    }
+    log.audit('system topology queried', `q="${query.slice(0, 40)}…"`, `hits=${result.results.length}`);
+    return result.results;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn('system topology query failed (degraded):', message);
+    return [];
+  }
+}
+
 export const hermes = {
   agentId: AGENT_ID,
   prefix: PREFIX,
@@ -317,7 +366,10 @@ export const hermes = {
   runAudit,
   publishHeartbeat,
   reportOffline,
-  archive_thought
+  archive_thought,
+  query_system_topology,
+  systemPrompt: HERMES_SYSTEM_PROMPT
 };
+
 
 export default hermes;

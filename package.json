@@ -17,7 +17,8 @@
     "start:agent": "node services/monitor/agent.js",
     "sim:traffic": "node scripts/traffic-sim.mjs",
     "verify:flow": "node scripts/verify-flow.mjs",
-    "deploy-check": "tsx scripts/deploy-check.ts"
+    "deploy-check": "tsx scripts/deploy-check.ts",
+    "ingest:topology": "tsx scripts/ingest-topology.ts"
   },
   "devDependencies": {
     "tsx": "^4.21.0",
