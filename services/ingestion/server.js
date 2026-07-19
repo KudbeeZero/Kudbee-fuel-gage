@@ -1,9 +1,9 @@
 import express from 'express';
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
+import { Pool } from 'pg';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
   deserializePass,
@@ -19,7 +19,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DB_FILE = path.join(process.cwd(), 'telemetry_traces.db');
 const BOOT_TIME = Date.now();
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 
@@ -93,102 +92,95 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 
 app.use(express.json({ limit: '10mb' }));
 
-const db = new sqlite3.Database(DB_FILE, (err) => {
-  if (err) {
-    console.error('[DB] Failed to open SQLite database:', err.message);
-  } else {
-    console.log('[DB] Connected to SQLite database:', DB_FILE);
+const DATABASE_URL = process.env.DATABASE_URL;
+let pool = null;
+let dbHealthy = false;
+
+async function initDatabase() {
+  if (!DATABASE_URL) {
+    console.warn('[DB] DATABASE_URL not set — PostgreSQL disabled');
+    return;
   }
-});
 
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS telemetry_traces (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      model TEXT NOT NULL,
-      tokens_in INTEGER NOT NULL DEFAULT 0,
-      tokens_out INTEGER NOT NULL DEFAULT 0,
-      cost REAL NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'OK',
-      provider TEXT,
-      project_name TEXT,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create table:', err.message);
-    } else {
-      console.log('[DB] Table telemetry_traces ready');
+  try {
+    pool = new Pool({ connectionString: DATABASE_URL });
+
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS telemetry_traces (
+          id SERIAL PRIMARY KEY,
+          trace_id TEXT NOT NULL,
+          model TEXT NOT NULL,
+          tokens_in INTEGER NOT NULL DEFAULT 0,
+          tokens_out INTEGER NOT NULL DEFAULT 0,
+          cost REAL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'OK',
+          provider TEXT,
+          project_name TEXT,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)`);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS security_violations (
+          id SERIAL PRIMARY KEY,
+          payload TEXT NOT NULL,
+          violation_reason TEXT NOT NULL,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_violation_timestamp ON security_violations(timestamp)`);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS telemetry_vectors (
+          id SERIAL PRIMARY KEY,
+          trace_id TEXT NOT NULL,
+          thought_summary TEXT NOT NULL DEFAULT '',
+          reasoning TEXT NOT NULL DEFAULT '',
+          model TEXT NOT NULL DEFAULT 'unknown',
+          vector TEXT NOT NULL,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_vector_trace ON telemetry_vectors(trace_id)`);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS governance_actions (
+          id SERIAL PRIMARY KEY,
+          trace_id TEXT NOT NULL,
+          action TEXT NOT NULL DEFAULT 'VERIFY',
+          type TEXT NOT NULL DEFAULT 'GOVERNANCE_ACTION',
+          agent_id TEXT NOT NULL,
+          signature TEXT NOT NULL,
+          signed_payload TEXT NOT NULL,
+          value_score REAL DEFAULT 0,
+          note TEXT,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_governance_trace ON governance_actions(trace_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_governance_ts ON governance_actions(timestamp)`);
+
+      await client.query(`
+        ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS value_score REAL DEFAULT 0
+      `);
+
+      dbHealthy = true;
+      console.log('[DB] PostgreSQL connected and schema ready');
+    } finally {
+      client.release();
     }
-  });
+  } catch (err) {
+    console.error('[DB] Failed to initialize PostgreSQL:', err.message);
+    pool = null;
+    dbHealthy = false;
+  }
+}
 
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS security_violations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      payload TEXT NOT NULL,
-      violation_reason TEXT NOT NULL,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create security_violations table:', err.message);
-    } else {
-      console.log('[DB] Table security_violations ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_violation_timestamp ON security_violations(timestamp)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS telemetry_vectors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      thought_summary TEXT NOT NULL DEFAULT '',
-      reasoning TEXT NOT NULL DEFAULT '',
-      model TEXT NOT NULL DEFAULT 'unknown',
-      vector TEXT NOT NULL,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create telemetry_vectors table:', err.message);
-    } else {
-      console.log('[DB] Table telemetry_vectors ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_vector_trace ON telemetry_vectors(trace_id)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS governance_actions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      action TEXT NOT NULL DEFAULT 'VERIFY',
-      type TEXT NOT NULL DEFAULT 'GOVERNANCE_ACTION',
-      agent_id TEXT NOT NULL,
-      signature TEXT NOT NULL,
-      signed_payload TEXT NOT NULL,
-      value_score REAL NOT NULL DEFAULT 0,
-      note TEXT,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create governance_actions table:', err.message);
-    } else {
-      console.log('[DB] Table governance_actions ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_trace ON governance_actions(trace_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_ts ON governance_actions(timestamp)`);
-
-  db.run(`ALTER TABLE telemetry_traces ADD COLUMN value_score REAL NOT NULL DEFAULT 0`, () => {});
-});
+initDatabase();
 
 let redis;
 try {
@@ -214,7 +206,7 @@ function quarantineViolation(payload, violationReason) {
   publishEvent('triage', { payload, violation_reason: violationReason, timestamp: new Date().toISOString() });
   return runInsert(
     `INSERT INTO security_violations (payload, violation_reason, timestamp)
-     VALUES (?, ?, datetime('now'))`,
+     VALUES ($1, $2, CURRENT_TIMESTAMP)`,
     [JSON.stringify(payload ?? null), String(violationReason)]
   );
 }
@@ -231,14 +223,14 @@ function safeParseJson(value) {
 function storeVector({ traceId, thoughtSummary, reasoning, model, vector }) {
   return runInsert(
     `INSERT INTO telemetry_vectors (trace_id, thought_summary, reasoning, model, vector, timestamp)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+     VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
     [String(traceId), String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
   );
 }
 
 async function recallMemories(query, limit = 3) {
   const queryVec = embedTrace(query, query, 'query');
-  const rows = await runQuery(`SELECT * FROM telemetry_vectors ORDER BY timestamp DESC LIMIT 200`);
+  const rows = await runQuery(`SELECT * FROM telemetry_vectors ORDER BY timestamp DESC LIMIT $1`, [200]);
   const scored = rows
     .map((row) => {
       const vec = safeParseJson(row.vector);
@@ -258,20 +250,15 @@ async function recallMemories(query, limit = 3) {
 }
 
 function runQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+  if (!pool) return Promise.resolve([]);
+  return pool.query(sql, params).then((result) => result.rows);
 }
 
 function runInsert(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
-    });
+  if (!pool) return Promise.resolve({ id: null, changes: 0 });
+  return pool.query(sql, params).then((result) => {
+    const id = result.rows[0]?.id ?? null;
+    return { id, changes: result.rowCount };
   });
 }
 
@@ -301,7 +288,7 @@ app.post('/api/telemetry/ingest', async (req, res) => {
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
       [
         String(trace_id ?? (agentId ? `agent-${agentId}` : 'unknown')),
         String(model || 'unknown'),
@@ -381,7 +368,7 @@ app.get('/api/telemetry/logs', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
     const rows = await runQuery(
-      `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT ?`,
+      `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
       [limit]
     );
     return res.json(rows);
@@ -400,7 +387,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
     const now = Date.now();
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
     const cost24hRow = await runQuery(
-      `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= ?`,
+      `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
 
@@ -427,7 +414,7 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
     for (const item of logs) {
       const result = await runInsert(
         `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           String(item.trace_id || `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
           String(item.model || item.model_name || 'unknown'),
@@ -484,7 +471,7 @@ app.delete('/api/interceptor/triage/:id', async (req, res) => {
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: 'Invalid violation id' });
     }
-    const result = await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+    const result = await runQuery(`DELETE FROM security_violations WHERE id = $1`, [id]);
     return res.json({ success: true, changes: result.changes });
   } catch (err) {
     console.error('[Interceptor] Delete Error:', err.message);
@@ -498,7 +485,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: 'Invalid violation id' });
     }
-    const rows = await runQuery(`SELECT * FROM security_violations WHERE id = ?`, [id]);
+    const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Violation not found' });
     }
@@ -517,7 +504,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
       [
         String(trace_id),
         String(model),
@@ -529,7 +516,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
         String(project_name || 'kilo-fuel-gauge')
       ]
     );
-    await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+    await runQuery(`DELETE FROM security_violations WHERE id = $1`, [id]);
 
     return res.status(201).json({
       success: true,
@@ -611,13 +598,13 @@ app.post('/api/interceptor/verify', async (req, res) => {
     await runInsert(
       `INSERT INTO governance_actions
         (trace_id, action, type, agent_id, signature, signed_payload, value_score, note, timestamp)
-       VALUES (?, 'VERIFY', 'GOVERNANCE_ACTION', ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, 'VERIFY', 'GOVERNANCE_ACTION', $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
       [traceId, agentId, providedSignature, providedPayload, score, note ? String(note) : null]
     ).catch(() => {});
 
     if (score > 0) {
       await runQuery(
-        `UPDATE telemetry_traces SET value_score = ? WHERE trace_id = ?`,
+        `UPDATE telemetry_traces SET value_score = $1 WHERE trace_id = $2`,
         [score, traceId]
       ).catch(() => {});
     }
@@ -664,12 +651,12 @@ app.get('/api/governance/feed', async (req, res) => {
         });
         return res.json(feed);
       } catch (e) {
-        console.error('[Redis] Governance feed fallback to SQLite:', e.message);
+        console.error('[Redis] Governance feed fallback to PostgreSQL:', e.message);
       }
     }
 
     const rows = await runQuery(
-      `SELECT * FROM governance_actions ORDER BY timestamp DESC LIMIT ?`,
+      `SELECT * FROM governance_actions ORDER BY timestamp DESC LIMIT $1`,
       [limit]
     );
     const feed = rows.map((row) => ({
@@ -827,7 +814,7 @@ app.get('/api/metrics/community-value', async (req, res) => {
           verified_traces: Number(verified || 0)
         });
       } catch (e) {
-        console.error('[Redis] Community value fallback to SQLite:', e.message);
+        console.error('[Redis] Community value fallback to PostgreSQL:', e.message);
       }
     }
 
@@ -885,10 +872,15 @@ app.get('/api/news/headlines', (req, res) => {
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    const dbOk = await runQuery('SELECT 1 as ok').then(
-      (rows) => Array.isArray(rows) && rows[0]?.ok === 1,
-      () => false
-    );
+    let dbOk = false;
+    if (pool) {
+      try {
+        await pool.query('SELECT 1 as ok');
+        dbOk = true;
+      } catch {
+        dbOk = false;
+      }
+    }
     let redisOk = false;
     if (redis) {
       try {
@@ -907,7 +899,7 @@ app.get('/health', async (_req, res) => {
       timestamp: new Date().toISOString(),
       dependencies: {
         ingestion_db: dbOk ? 'healthy' : 'unhealthy',
-        vector_memory: 'healthy',
+        vector_memory: dbOk ? 'healthy' : 'unhealthy',
         redis: redisOk ? 'healthy' : 'unhealthy'
       }
     };
@@ -1101,7 +1093,7 @@ if (fs.existsSync(distPath)) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[Server] Database: ${DB_FILE}`);
+  console.log(`[Server] Database: ${DATABASE_URL ? 'PostgreSQL (Neon)' : 'disabled'}`);
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
 });
 
