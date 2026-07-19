@@ -9,6 +9,15 @@ export interface GovernanceHealth {
   timestamp: string;
 }
 
+// Wire shape returned by GET /api/governance/health (snake_case).
+interface RawGovernanceHealth {
+  governance_active: boolean;
+  router_healthy: boolean;
+  proposed_count: number;
+  hermes: { status: string; online: boolean };
+  timestamp: string;
+}
+
 const DEFAULT_HEALTH: GovernanceHealth = {
   governanceActive: false,
   routerHealthy: false,
@@ -29,7 +38,8 @@ export function useGovernanceHealth(pollMs = 5000) {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await apiGet<GovernanceHealth>('/api/governance/health');
+      // The API returns snake_case keys; map them onto the camelCase shape.
+      const data = await apiGet<RawGovernanceHealth>('/api/governance/health');
       setHealth({
         governanceActive: Boolean(data.governance_active),
         routerHealthy: Boolean(data.router_healthy),
