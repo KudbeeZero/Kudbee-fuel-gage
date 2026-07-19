@@ -3149,17 +3149,24 @@ export default function App() {
     return bins;
   }, [dbLogs]);
 
-  const navItems = [
+  const primaryNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard' },
-    { icon: Radio, label: 'Control Tower' },
-    { icon: Activity, label: 'Interceptor' },
     { icon: Calculator, label: 'Playground' },
     { icon: History, label: 'History' },
+    { icon: Globe, label: 'Gateway' }
+  ];
+
+  const secondaryNavItems = [
+    { icon: Radio, label: 'Control Tower' },
+    { icon: Activity, label: 'Interceptor' },
     { icon: Globe, label: 'Intelligence' },
     { icon: Shield, label: 'Firewall' },
     { icon: Bell, label: 'Alerts' },
     { icon: Settings, label: 'Settings' }
   ];
+
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   const models = [
     { name: "GPT-4o", org: "OpenAI", costIn: "5.00", costOut: "15.00", speed: 85, quality: 5, status: "ACTIVE" },
@@ -3217,21 +3224,16 @@ export default function App() {
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {navItems.map((item, idx) => {
+          {primaryNavItems.map((item) => {
             const isActive = activeTab === item.label;
-            const isClickable = true; // All mapped tabs are fully clickable now!
             return (
-              <button 
-                key={idx} 
+              <button
+                key={item.label}
                 id={`sidebar-nav-${item.label.toLowerCase()}`}
-                onClick={() => {
-                  if (isClickable) {
-                    setActiveTab(item.label);
-                  }
-                }}
+                onClick={() => setActiveTab(item.label)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95 duration-75 ${
-                  isActive 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer' 
+                  isActive
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer'
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent cursor-pointer'
                 }`}
               >
@@ -3241,6 +3243,59 @@ export default function App() {
               </button>
             );
           })}
+
+          {/* "More" dropdown for secondary navigation items */}
+          <div className="relative">
+            <button
+              id="sidebar-nav-more"
+              onClick={() => setMoreMenuOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95 duration-75 ${
+                secondaryNavItems.some((i) => i.label === activeTab)
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-pointer'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent cursor-pointer'
+              }`}
+            >
+              <ChevronDown className={`w-4 h-4 ${moreMenuOpen ? 'rotate-180' : ''} ${secondaryNavItems.some((i) => i.label === activeTab) ? 'text-emerald-400' : 'text-slate-500'}`} />
+              More
+              {secondaryNavItems.some((i) => i.label === activeTab) && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] relative after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></div>
+              )}
+            </button>
+
+            <AnimatePresence>
+              {moreMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -6, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="mt-1 ml-3 pl-3 border-l border-slate-800 space-y-0.5 overflow-hidden"
+                >
+                  {secondaryNavItems.map((item) => {
+                    const isActive = activeTab === item.label;
+                    return (
+                      <button
+                        key={item.label}
+                        id={`sidebar-nav-more-${item.label.toLowerCase()}`}
+                        onClick={() => {
+                          setActiveTab(item.label);
+                          setMoreMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-75 ${
+                          isActive
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'
+                        }`}
+                      >
+                        <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </nav>
         
         <div className="p-5 border-t border-slate-800/60 bg-slate-900/20">
@@ -3291,36 +3346,30 @@ export default function App() {
                 </div>
               </div>
               <div className="w-full">
-                <div className="grid grid-cols-3 w-full gap-2" id="tactical-navigation-grid">
-                  {[
-                    { key: 'Dashboard', label: 'DASHBOARD' },
-                    { key: 'Interceptor', label: 'INTERCEPTOR' },
-                    { key: 'Playground', label: 'PLAYGROUND' },
-                    { key: 'History', label: 'HISTORY' },
-                    { key: 'Intelligence', label: 'INTELLIGENCE' },
-                    { key: 'Firewall', label: 'FIREWALL' },
-                    { key: 'Gateway', label: 'GATEWAY' },
-                    { key: 'Alerts', label: 'ALERTS' },
-                    { key: 'Settings', label: 'SETTINGS' },
-                  ].map((tab) => {
-                    const isActive = activeTab === tab.key;
+                <div className="grid grid-cols-5 w-full gap-2" id="tactical-navigation-grid">
+                  {[...primaryNavItems, { icon: ChevronDown, label: 'More' }].map((tab) => {
+                    const isMore = tab.label === 'More';
+                    const isActive = isMore
+                      ? secondaryNavItems.some((i) => i.label === activeTab)
+                      : activeTab === tab.label;
                     return (
                       <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`min-h-[44px] px-2 py-1.5 rounded text-[10px] font-mono border cursor-pointer flex items-center justify-center gap-1.5 transition-all active:scale-95 duration-75 ${
+                        key={tab.label}
+                        onClick={() => {
+                          if (isMore) {
+                            setMobileMoreOpen(true);
+                          } else {
+                            setActiveTab(tab.label);
+                          }
+                        }}
+                        className={`min-h-[44px] px-2 py-1.5 rounded text-[10px] font-mono border cursor-pointer flex flex-col items-center justify-center gap-1 transition-all active:scale-95 duration-75 ${
                           isActive
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                             : 'border-slate-800 bg-slate-950/20 text-slate-500 hover:text-slate-300 hover:border-slate-700'
                         }`}
                       >
-                        {isActive && (
-                          <span className="relative flex h-1.5 w-1.5 shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></span>
-                          </span>
-                        )}
-                        <span>{tab.label}</span>
+                        <tab.icon className="w-4 h-4" />
+                        <span>{tab.label.toUpperCase()}</span>
                       </button>
                     );
                   })}
@@ -3966,6 +4015,64 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* MOBILE "MORE" BOTTOM SHEET for secondary navigation items */}
+      <AnimatePresence>
+        {mobileMoreOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+              onClick={() => setMobileMoreOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-slate-800 bg-slate-950/95 backdrop-blur-md p-5 pb-8 md:hidden"
+            >
+              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-700" />
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Secondary Navigation</span>
+                <button
+                  onClick={() => setMobileMoreOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-100 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {secondaryNavItems.map((item) => {
+                  const isActive = activeTab === item.label;
+                  return (
+                    <button
+                      key={item.label}
+                      id={`mobile-more-${item.label.toLowerCase()}`}
+                      onClick={() => {
+                        setActiveTab(item.label);
+                        setMobileMoreOpen(false);
+                      }}
+                      className={`flex items-center gap-2.5 px-3 py-3 rounded-lg text-sm font-medium transition-all active:scale-95 duration-75 ${
+                        isActive
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
       <ConsoleDock />
