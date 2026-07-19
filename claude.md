@@ -70,3 +70,12 @@ The Session Logger workflow (`.github/workflows/session-log.yml`) automatically 
   - `worker: node services/monitor/agent.js`
 - All environment variables must be injected via GitHub Actions secrets
 - Never commit secrets or API keys to the repository
+
+## 8. MCP-Native Integration Priority
+
+All future tool integrations must prioritize MCP-native connections over custom REST API builds to keep the codebase lean and costs at zero.
+
+- **MCP First:** Before building a custom REST endpoint for data retrieval, query, or reporting, evaluate if an MCP server can fulfill the requirement.
+- **Neon Postgres:** The Neon MCP server (`@neondatabase/mcp-server`) is configured in `.mcp.json` and provides natural-language database access. Use it for ad-hoc reporting, analytics, and data exploration instead of building custom GET endpoints.
+- **Deprecation Policy:** Custom REST endpoints built before this standard remain functional but should not be extended. New features must use MCP where possible.
+- **Cost Discipline:** MCP connections reuse existing infrastructure (Neon Postgres, Redis) and do not introduce new service costs. Avoid building standalone microservices for simple data access patterns.

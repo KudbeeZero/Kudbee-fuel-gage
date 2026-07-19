@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
+import { GoogleGenAI } from '@google/genai';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
   deserializePass,
@@ -210,6 +211,72 @@ try {
   console.error('[Redis] Failed to initialize client:', err.message);
 }
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+let aiClient = null;
+let cachedContent = null;
+
+function getGeminiClient() {
+  if (!aiClient) {
+    if (!GEMINI_API_KEY) {
+      console.warn('[Gemini] GEMINI_API_KEY not set — triage disabled');
+      return null;
+    }
+    aiClient = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  }
+  return aiClient;
+}
+
+const TRIAGE_SYSTEM_PROMPT = `You are a telemetry triage system. Respond with ONLY one word: "critical" or "ignore".
+
+Rules:
+- "critical" if: status is not 'OK', or cost > 0.05, or tokens_in > 1000
+- "ignore" if: status is 'OK', cost <= 0.05, tokens_in <= 1000
+- When in doubt, respond "ignore"`;
+
+async function getOrCreateCachedContent() {
+  if (cachedContent) return cachedContent;
+  const client = getGeminiClient();
+  if (!client) return null;
+  try {
+    cachedContent = await client.caches.create({
+      model: 'models/gemini-1.5-flash',
+      config: {
+        contents: [{ role: 'user', parts: [{ text: TRIAGE_SYSTEM_PROMPT }] }],
+        displayName: 'kudbee-telemetry-triage',
+        ttl: '86400s',
+      }
+    });
+    console.log('[Gemini] Context cache created:', cachedContent.name);
+    return cachedContent;
+  } catch (err) {
+    console.warn('[Gemini] Failed to create cached content:', err.message);
+    return null;
+  }
+}
+
+async function triageWithGemini(event) {
+  const client = getGeminiClient();
+  if (!client) return true;
+  const cached = await getOrCreateCachedContent();
+  try {
+    const prompt = `Classify this telemetry event:\n${JSON.stringify(event, null, 2)}`;
+    const response = await client.models.generateContent({
+      model: 'models/gemini-1.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        ...(cached ? { cachedContent: cached.name } : {}),
+        temperature: 0,
+        maxOutputTokens: 10,
+      }
+    });
+    const text = response.text || '';
+    return text.trim().toLowerCase().includes('critical');
+  } catch (err) {
+    console.warn('[Gemini] Triage failed, defaulting to persist:', err.message);
+    return true;
+  }
+}
+
 function quarantineViolation(payload, violationReason) {
   publishEvent('triage', { payload, violation_reason: violationReason, timestamp: new Date().toISOString() });
   return runInsert(
@@ -290,6 +357,21 @@ app.post('/api/telemetry/ingest', async (req, res) => {
         await quarantineViolation(req.body, reason);
         return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
       }
+    }
+
+    const shouldPersist = await triageWithGemini({
+      trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus, provider, project_name
+    });
+
+    if (!shouldPersist) {
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: agentId || undefined,
+        bypass: !!agentId,
+        recalled_context: [],
+        message: 'Event filtered by Gemini triage (low-value)'
+      });
     }
 
     const recall = await recallMemories(
