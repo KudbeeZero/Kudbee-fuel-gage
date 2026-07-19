@@ -790,6 +790,31 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.get('/api/health-check', async (_req, res) => {
+  try {
+    const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
+    const communityValueScore = redis ? await redis.get('kudbee:community_value_score') : '0';
+    const alerts = redis ? await redis.lrange('kudbee:alerts', 0, 4) : [];
+
+    const parsedAlerts = alerts.map((a) => {
+      try {
+        return JSON.parse(a);
+      } catch {
+        return { raw: a };
+      }
+    });
+
+    res.json({
+      uptime_sec: uptimeSec,
+      community_value_score: Number(communityValueScore || 0).toFixed(2),
+      alerts: parsedAlerts
+    });
+  } catch (err) {
+    console.error('[HealthCheck] Error:', err?.message);
+    res.status(500).json({ error: 'Failed to fetch health check' });
+  }
+});
+
 function resolveDistPath() {
   const candidates = [
     path.resolve(__dirname, '..', '..', 'apps', 'web', 'dist'),
