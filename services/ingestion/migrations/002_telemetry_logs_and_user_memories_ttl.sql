@@ -46,6 +46,23 @@ CREATE TABLE IF NOT EXISTS user_memories (
 CREATE INDEX IF NOT EXISTS idx_user_memories_created_at
   ON user_memories (created_at);
 
+-- "Think" layer: chain-of-thought archival (see services/agents/hermes.js
+-- archive_thought). Subject to the same 30-day TTL as the other memory tables.
+CREATE TABLE IF NOT EXISTS think (
+  id         BIGSERIAL PRIMARY KEY,
+  agent_id   TEXT NOT NULL,
+  task       TEXT,
+  phase      TEXT,
+  thought    TEXT NOT NULL,
+  tokens_in  INTEGER NOT NULL DEFAULT 0,
+  tokens_out INTEGER NOT NULL DEFAULT 0,
+  model      TEXT NOT NULL DEFAULT 'reasoning',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_think_created_at
+  ON think (created_at);
+
 -- TTL retention window: rows older than this are purged automatically.
 DO $$
 BEGIN
@@ -69,6 +86,9 @@ BEGIN
   WHERE created_at < (CURRENT_TIMESTAMP - retention);
 
   DELETE FROM user_memories
+  WHERE created_at < (CURRENT_TIMESTAMP - retention);
+
+  DELETE FROM think
   WHERE created_at < (CURRENT_TIMESTAMP - retention);
 END;
 $$;

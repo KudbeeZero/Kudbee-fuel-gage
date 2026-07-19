@@ -74,6 +74,28 @@ For every task/feature the Release Engineer MUST:
    branch (local + remote). If any check fails, attach the specific failing logs
    to the PR and STOP for human review — do NOT force-merge.
 
+### 0.5 Think / Thought-Stream Archival (The Full Loop)
+
+The agent must close the loop from **code → verification → archival**. Every
+task the Release Engineer performs MUST archive its chain-of-thought reasoning
+into the `think` database:
+
+- Use `hermes.archive_thought(thought_block)` (services/agents/hermes.js). The
+  block shape is `{ agent_id, task, phase, thought, tokens_in, tokens_out, model }`.
+- `archive_thought` is **Resilient-First**: a persistence failure is logged as a
+  warning and returns `{ ok: false }` — it NEVER crashes the process. A thought
+  is diagnostic metadata, not a hard invariant.
+- Storage: Neon `think` table (system of record) with in-memory fallback when
+  `DATABASE_URL` is unset/unreachable. Best-effort live mirror to the
+  `kudbee:think:stream` Redis key for the dashboard thought-stream.
+- The `think` table is covered by the 30-day TTL policy
+  (`purge_expired_rows()` in migration `002_…ttl.sql`) — reasoning older than
+  30 days is purged automatically.
+- HTTP surface: `POST /api/think/archive` (persist) and
+  `GET /api/think/archive` (list last N, or persist via query args).
+- Frontend: the `!recall` command in `AgentTerminal` reads semantic memory; the
+  Thought-Stream Interceptor surfaces `think` archival in real time.
+
 ## 1. PR Lifecycle Protocol
 
 Every task requires the complete PR lifecycle:
