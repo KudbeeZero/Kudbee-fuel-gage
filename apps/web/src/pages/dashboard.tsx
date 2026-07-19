@@ -609,8 +609,30 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
   );
 }
 
-function AgentTerminal({ data, loading, error, live, thinking }: { data: SessionHistoryItem[]; loading: boolean; error: string | null; live?: boolean; thinking?: boolean }) {
-  const [commands, setCommands] = useState<{ id: number; text: string }[]>([]);
+interface TerminalContext {
+  live: boolean;
+  health: string;
+  hermes: number;
+  governance: number;
+  communityValue: number;
+}
+
+function AgentTerminal({
+  data,
+  loading,
+  error,
+  live,
+  thinking,
+  context
+}: {
+  data: SessionHistoryItem[];
+  loading: boolean;
+  error: string | null;
+  live?: boolean;
+  thinking?: boolean;
+  context?: TerminalContext;
+}) {
+  const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -620,11 +642,45 @@ function AgentTerminal({ data, loading, error, live, thinking }: { data: Session
     if (el) el.scrollTop = el.scrollHeight;
   }, [data, commands, error]);
 
+  // Interactive command handling — queries live dashboard context and prints
+  // real values back into the terminal instead of a no-op echo.
+  const runCommand = (raw: string): string => {
+    const cmd = raw.trim();
+    const [name, ...rest] = cmd.toLowerCase().split(/\s+/);
+    const ctx = context;
+    switch (name) {
+      case 'help':
+        return [
+          'available commands:',
+          '  help            — show this help',
+          '  status          — system + HERMES health',
+          '  governance      — governance ledger summary',
+          '  hermes          — HERMES auditor status',
+          '  clear           — clear the terminal',
+          '  echo <text>     — print text'
+        ].join('\n');
+      case 'status':
+        return `system: ${ctx?.health ?? 'unknown'} · HERMES online: ${ctx?.live ? 'yes' : 'no'} · community value: ${ctx?.communityValue ?? 0} CV`;
+      case 'governance':
+        return `governance actions: ${ctx?.governance ?? 0} · pending HERMES suggestions: ${ctx?.hermes ?? 0}`;
+      case 'hermes':
+        return `HERMES auditor: ${ctx?.live ? 'ONLINE' : 'OFFLINE'} · active suggestions: ${ctx?.hermes ?? 0}`;
+      case 'clear':
+        setCommands([]);
+        return '';
+      case 'echo':
+        return rest.join(' ');
+      default:
+        return `command not found: ${cmd} (type "help")`;
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
-    setCommands((prev) => [...prev, { id: Date.now(), text }]);
+    const output = runCommand(text);
+    setCommands((prev) => [...prev, { id: Date.now(), text, output }]);
     setInput('');
   };
 
@@ -674,7 +730,10 @@ function AgentTerminal({ data, loading, error, live, thinking }: { data: Session
             {error}
           </div>
         )}
-        {!error && data.length === 0 && commands.length === 0 && (
+        {loading && !error && data.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">Loading session history…</div>
+        )}
+        {!loading && !error && data.length === 0 && commands.length === 0 && (
           <div className="text-slate-600">No session history available. Type a command below to interact.</div>
         )}
         {data.map((session) => (
@@ -712,8 +771,13 @@ function AgentTerminal({ data, loading, error, live, thinking }: { data: Session
         {commands.map((cmd) => (
           <div key={cmd.id} className="text-slate-400">
             <span className="text-emerald-400">kudbee@control-tower:~$ </span>
-            {cmd.text}
-            <div className="mt-0.5 pl-0 text-slate-600">echo: command acknowledged locally (no-op).</div>
+            <span className="text-slate-200">{cmd.text}</span>
+            {cmd.output !== undefined && cmd.output !== '' && (
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] leading-relaxed text-slate-500">{cmd.output}</pre>
+            )}
+            {cmd.output === '' && cmd.text.trim().toLowerCase() === 'clear' && (
+              <div className="mt-0.5 text-slate-600">terminal cleared.</div>
+            )}
           </div>
         ))}
       </div>
@@ -999,36 +1063,44 @@ export function DashboardPage() {
           </div>
         </header>
 
-        {/* Top row: System Health + summary metrics */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {/* Main control grid — consistent 3-column responsive layout.
+            Every top-level card sits in the same 3-col grid so heights align;
+            the Live Agent Terminal spans the full width below. */}
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <HealthPanel health={health} loading={healthLoading} error={healthError} />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <CommunityValueScore data={communityValue} />
-            <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
-          </div>
-        </div>
+          <CommunityValueScore data={communityValue} />
 
-        {/* Bottom row: Telemetry feed + Memory insights */}
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
           <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
           <MemoryInsights memories={memories} />
-        </div>
 
-        {/* Governance ledger */}
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <GovernanceFeed actions={governance} />
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-2">
             <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />
             <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
           </div>
+          <GovernanceFeed actions={governance} />
         </div>
 
-        {/* Live Agent Terminal */}
+        {/* Live Agent Terminal — full-width interactive console */}
         <div className="mt-5">
-          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} live={live} thinking={thinking} />
+          <AgentTerminal
+            data={sessionHistory}
+            loading={sessionHistoryLoading}
+            error={sessionHistoryError}
+            live={live}
+            thinking={thinking}
+            context={{
+              live,
+              health: health?.status ?? (healthError ? 'error' : 'unknown'),
+              hermes: suggestions.length,
+              governance: governance.length,
+              communityValue: communityValue ? Number(communityValue.community_value_score) : 0
+            }}
+          />
         </div>
+
 
         {/* HERMES live suggestion toasts (top-right) */}
         <GovernanceToastStack
