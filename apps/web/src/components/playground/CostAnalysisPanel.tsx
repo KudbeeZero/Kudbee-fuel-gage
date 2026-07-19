@@ -24,6 +24,7 @@ interface CostAnalysisPanelProps {
   compositeCostOut: number;
   compositeSpeed: number;
   compositeQuality: number;
+  className?: string;
 }
 
 export const CostAnalysisPanel = memo(function CostAnalysisPanel({
@@ -39,12 +40,13 @@ export const CostAnalysisPanel = memo(function CostAnalysisPanel({
   compositeCostIn,
   compositeCostOut,
   compositeSpeed,
-  compositeQuality
+  compositeQuality,
+  className = ''
 }: CostAnalysisPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="lg:col-span-5 flex flex-col gap-4">
+    <div className={`lg:col-span-5 flex flex-col gap-4 ${className}`}>
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-xl p-4 text-slate-200 hover:bg-slate-800 transition-colors"

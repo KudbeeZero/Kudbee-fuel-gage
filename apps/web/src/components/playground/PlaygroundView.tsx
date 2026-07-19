@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders } from 'lucide-react';
+import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight } from 'lucide-react';
 import { MultiModelSelector } from './MultiModelSelector';
 import { TokenEstimator } from './TokenEstimator';
 import { CostAnalysisPanel } from './CostAnalysisPanel';
@@ -152,7 +152,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   return (
     <div className="space-y-6" id="playground-view-container">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* LEFT COLUMN: INTERACTIVE CALCULATOR */}
         <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-xl p-6 flex flex-col justify-between relative overflow-hidden" id="playground-calculator">
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
@@ -228,15 +228,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
               </div>
             </div>
             
-            {streamOutput && (
-              <div className="mt-6 p-4 rounded-lg border border-blue-500/20 bg-blue-950/10 font-mono text-xs text-slate-300 whitespace-pre-wrap">
-                <span className="text-blue-400 font-bold mb-2 block">STREAMING OUTPUT ({selectedModel}):</span>
-                {streamOutput}
-                {isStreaming && <span className="inline-block w-1.5 h-3 bg-blue-400 animate-pulse ml-1 align-middle" />}
-              </div>
-            )}
-            
-          </div>
+            </div>
 
           {lastCalculation && (
             <div className="mt-4 pt-3 border-t border-slate-800/40 text-[10px] font-mono text-slate-500 text-right">
@@ -245,7 +237,54 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
           )}
         </div>
 
-        <CostAnalysisPanel 
+        {/* RIGHT COLUMN: RESPONSE TERMINAL */}
+        <div className="lg:col-span-5 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-col relative overflow-hidden" id="playground-response-terminal">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/60 bg-slate-900/40">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-emerald-400" />
+              <span className="font-display text-sm font-semibold text-slate-200">Response Terminal</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-amber-400 animate-pulse' : 'bg-slate-700'}`} />
+              <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
+                {isStreaming ? 'STREAMING' : 'IDLE'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-[280px] max-h-[420px] overflow-y-auto p-4 font-mono text-xs leading-relaxed">
+            {streamOutput ? (
+              <div className="text-slate-300 whitespace-pre-wrap">
+                <span className="text-emerald-400 font-bold block mb-2">$ kx run --model "{selectedModel}"</span>
+                <span className="text-blue-400 font-bold block mb-2">[{selectedModel}]</span>
+                {streamOutput}
+                {isStreaming && <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse ml-1 align-middle" />}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-600">
+                <Terminal className="w-10 h-10 opacity-30" />
+                <div className="text-center">
+                  <p className="text-slate-500 font-mono text-xs">Awaiting execution sequence...</p>
+                  <p className="text-slate-700 font-mono text-[10px] mt-1.5">
+                    Run <span className="text-emerald-500/70">SIMULATE STREAM</span> or <span className="text-emerald-500/70">DIRECT-INJECT</span> to populate the channel.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-700">
+                  <ChevronRight className="w-3 h-3" />
+                  kudbee://playground/standby
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-2 border-t border-slate-800/60 bg-slate-900/20 flex items-center justify-between text-[10px] font-mono text-slate-600">
+            <span>MODEL: <span className="text-slate-400">{selectedModel}</span></span>
+            <span>{streamOutput ? `${streamOutput.length} chars` : '0 chars'}</span>
+          </div>
+        </div>
+
+        <CostAnalysisPanel
           currency={currency}
           comparisons={comparisons}
           optimalProvider={optimalProvider}
@@ -259,6 +298,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
           compositeCostOut={compositeCostOut}
           compositeSpeed={compositeSpeed}
           compositeQuality={compositeQuality}
+          className="lg:col-span-12"
         />
 
       </div>
