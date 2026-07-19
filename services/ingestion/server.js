@@ -190,6 +190,9 @@ db.serialize(() => {
 
 let redis;
 try {
+  if (!process.env.REDIS_URL) {
+    console.warn('[Redis] REDIS_URL is not set. Session history and governance features will be disabled.');
+  }
   redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
     maxRetriesPerRequest: 3,
     enableReadyCheck: true,
