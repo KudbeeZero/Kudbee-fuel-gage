@@ -20,6 +20,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const BOOT_TIME = Date.now();
+const HIGH_VALUE_MODELS = new Set([
+  'gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro',
+  'deepseek-r1', 'deepseek-v3', 'o1-preview', 'o1-mini'
+]);
+const MAX_REASONING_LENGTH = 500;
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 
 function loadAgentRegistry() {
@@ -182,6 +187,33 @@ async function initDatabase() {
 
 initDatabase();
 
+async function runRetentionCleanup() {
+  if (!pool) return;
+  try {
+    const tracesResult = await pool.query(`
+      DELETE FROM telemetry_traces
+      WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '30 days'
+    `);
+    const violationsResult = await pool.query(`
+      DELETE FROM security_violations
+      WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '30 days'
+    `);
+    const vectorsResult = await pool.query(`
+      DELETE FROM telemetry_vectors
+      WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '30 days'
+    `);
+    const total = tracesResult.rowCount + violationsResult.rowCount + vectorsResult.rowCount;
+    if (total > 0) {
+      console.log(`[Retention] Cleaned up ${total} old records (traces: ${tracesResult.rowCount}, violations: ${violationsResult.rowCount}, vectors: ${vectorsResult.rowCount})`);
+    }
+  } catch (err) {
+    console.error('[Retention] Cleanup failed:', err.message);
+  }
+}
+
+initDatabase().then(runRetentionCleanup).catch(() => {});
+setInterval(runRetentionCleanup, 24 * 60 * 60 * 1000);
+
 let redis;
 try {
   redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
@@ -286,6 +318,26 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       return [];
     });
 
+    const isHeartbeatPing = Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
+    const isHighValueModel = HIGH_VALUE_MODELS.has(model);
+    const shouldSave = !isHeartbeatPing && (effectiveStatus !== 'OK' || isHighValueModel);
+
+    if (!shouldSave) {
+      console.log(`[Budget] Dropped low-value event: model=${model}, status=${effectiveStatus}, tokens_in=${tokens_in}, tokens_out=${tokens_out}`);
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: agentId || undefined,
+        bypass: !!agentId,
+        recalled_context: recall,
+        message: 'Event filtered by budget policy (low-value heartbeat)'
+      });
+    }
+
+    const isVerified = !!agentId;
+    const safeThoughtSummary = isVerified ? String(thought_summary || '') : String(thought_summary || '').slice(0, MAX_REASONING_LENGTH);
+    const safeReasoning = isVerified ? String(reasoning || '') : String(reasoning || '').slice(0, MAX_REASONING_LENGTH);
+
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)`,
@@ -301,11 +353,11 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       ]
     );
 
-    const vector = embedTrace(reasoning || '', thought_summary || '', model || 'unknown');
+    const vector = embedTrace(safeReasoning, safeThoughtSummary, model || 'unknown');
     await storeVector({
       traceId: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
-      thoughtSummary: thought_summary || '',
-      reasoning: reasoning || '',
+      thoughtSummary: safeThoughtSummary,
+      reasoning: safeReasoning,
       model: model || 'unknown',
       vector
     }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
