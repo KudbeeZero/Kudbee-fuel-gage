@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -235,7 +235,7 @@ function HealthPanel({
               ? `Control Tower online · ${health?.service ?? 'kudbee'}`
               : 'No heartbeat received from backend. Check CORS / REACT_APP_API_URL.'}
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <DependencyBadge
               label="Ingestion DB"
               state={health?.dependencies?.ingestion_db ?? (live ? 'healthy' : 'unknown')}
@@ -257,8 +257,8 @@ function HealthPanel({
       )}
 
       {error && (
-        <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] font-mono text-rose-300">
-          {error}
+        <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300">
+          <span className="line-clamp-2">{error}</span>
         </div>
       )}
     </div>
@@ -553,7 +553,7 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
         {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Uptime</div>
           <div className="mt-1 font-mono text-xl text-slate-100">
@@ -609,26 +609,51 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
   );
 }
 
-function AgentTerminal({ data, loading, error }: { data: SessionHistoryItem[]; loading: boolean; error: string | null }) {
+function AgentTerminal({ data, loading, error, live }: { data: SessionHistoryItem[]; loading: boolean; error: string | null; live?: boolean }) {
+  const [commands, setCommands] = useState<{ id: number; text: string }[]>([]);
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to the newest content whenever data or local commands change.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [data, commands, error]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text) return;
+    setCommands((prev) => [...prev, { id: Date.now(), text }]);
+    setInput('');
+  };
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-5">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-5 flex flex-col">
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-500">
           <Terminal className="h-4 w-4 text-emerald-400" />
           <span className="text-[10px] font-semibold uppercase tracking-widest">Live Agent Terminal</span>
         </div>
-        {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
+        <div className="flex items-center gap-1.5">
+          <span className={`relative flex h-2 w-2 ${live ? '' : 'opacity-60'}`}>
+            {live && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${live ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+          </span>
+          <span className="text-[10px] font-mono text-slate-500">{live ? 'ONLINE' : 'OFFLINE'}</span>
+          {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
+        </div>
       </div>
 
-      <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto font-mono text-[11px]">
+      <div ref={scrollRef} className="mt-4 max-h-[360px] space-y-3 overflow-y-auto font-mono text-[11px] pr-1">
         {error && (
           <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-rose-300">
             {error}
           </div>
         )}
-        {!error && data.length === 0 && (
-          <div className="text-slate-600">No session history available.</div>
+        {!error && data.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">No session history available. Type a command below to interact.</div>
         )}
         {data.map((session) => (
           <div key={session.pr_number} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
@@ -661,7 +686,26 @@ function AgentTerminal({ data, loading, error }: { data: SessionHistoryItem[]; l
             )}
           </div>
         ))}
+
+        {commands.map((cmd) => (
+          <div key={cmd.id} className="text-slate-400">
+            <span className="text-emerald-400">kudbee@control-tower:~$ </span>
+            {cmd.text}
+            <div className="mt-0.5 pl-0 text-slate-600">echo: command acknowledged locally (no-op).</div>
+          </div>
+        ))}
       </div>
+
+      <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
+        <span className="font-mono text-[11px] text-emerald-400 shrink-0">kudbee@control-tower:~$</span>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="type a command and press enter…"
+          className="flex-1 bg-transparent font-mono text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none"
+          aria-label="Agent terminal command input"
+        />
+      </form>
     </div>
   );
 }
@@ -877,7 +921,7 @@ export function DashboardPage() {
           <div className="lg:col-span-2">
             <HealthPanel health={health} loading={healthLoading} error={healthError} />
           </div>
-          <div className="grid grid-cols-2 gap-5 lg:grid-cols-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <CommunityValueScore data={communityValue} />
             <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
           </div>
@@ -900,7 +944,7 @@ export function DashboardPage() {
 
         {/* Live Agent Terminal */}
         <div className="mt-5">
-          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} />
+          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} live={live} />
         </div>
 
         {(triageError || memoryError || govError || verifyError || systemStatusError || sessionHistoryError) && (
@@ -930,15 +974,15 @@ export function DashboardPage() {
               </div>
             )}
             {systemStatusError && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
-                <Activity className="h-4 w-4" />
-                System Status: {systemStatusError}
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
+                <Activity className="h-4 w-4 shrink-0" />
+                <span className="truncate">System Status: {systemStatusError}</span>
               </div>
             )}
             {sessionHistoryError && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
-                <Terminal className="h-4 w-4" />
-                Session History: {sessionHistoryError}
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
+                <Terminal className="h-4 w-4 shrink-0" />
+                <span className="truncate">Session History: {sessionHistoryError}</span>
               </div>
             )}
           </div>

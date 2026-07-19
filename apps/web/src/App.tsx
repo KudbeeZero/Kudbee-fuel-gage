@@ -3403,6 +3403,35 @@ export default function App() {
             </div>
           </header>
 
+          {/* GLOBAL STATUS / ENVIRONMENT BAR */}
+          <div
+            id="global-status-bar"
+            className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+              </span>
+              <span className="font-mono text-xs text-slate-300">
+                Status: <span className="text-emerald-400 font-semibold">Online</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">|</span>
+              <span className="font-mono text-xs text-slate-400">
+                Stack: <span className="text-slate-200">Heroku-24</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">|</span>
+              <span className="font-mono text-xs text-slate-400 truncate">
+                View: <span className="text-emerald-400/80">{activeTab}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+              <a href="#" className="hover:text-emerald-400 transition-colors">Docs</a>
+              <a href="#" className="hover:text-emerald-400 transition-colors">Support</a>
+              <a href="#" className="hover:text-emerald-400 transition-colors">API</a>
+            </div>
+          </div>
+
           {/* ACTIVE VIEW ROUTER */}
           {activeTab === 'Control Tower' && (
             <DashboardPage />
