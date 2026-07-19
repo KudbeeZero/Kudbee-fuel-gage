@@ -96,6 +96,35 @@ into the `think` database:
 - Frontend: the `!recall` command in `AgentTerminal` reads semantic memory; the
   Thought-Stream Interceptor surfaces `think` archival in real time.
 
+### 0.6 HITL Governance Gate + Strict TypeScript (Frontend Binding)
+
+The backend intelligence is bridged to the React/Vite dashboard through a
+**Human-in-the-Loop (HITL)** gate. Standards:
+
+- **Strict Typings** — all shared contracts live in `packages/types` as Zod
+  schemas + inferred types. The `ApprovalRequest` type (`id, proposed_model,
+  estimated_cost, reasoning_tokens, status`) and `ThinkThought` type are the
+  canonical shapes. **Absolutely NO `any` is permitted** in this implementation;
+  prefer `unknown` + narrowing, and concrete unions (`ApprovalStatus`,
+  `ApprovalDecision`) over stringly-typed fields.
+- **Data Hooks** — `apps/web/src/hooks/useGovernanceStream.ts` polls
+  `GET /api/governance/pending` and exposes `submitApproval(id, 'APPROVE' |
+  'REJECT')`; `useThinkStream.ts` fetches `GET /api/think/archive` (Think:
+  Stream). Both hooks are Resilient-First (failures degrade to empty state,
+  never throw).
+- **UI Binding** — when a `PENDING_APPROVAL` exists, the dashboard surfaces a
+  high-priority **"Governance Intervention Required"** card showing the proposed
+  model, estimated cost, reasoning tokens, and the agent's reasoning, with
+  Approve/Reject controls. The live reasoning tokens stream into the
+  `AgentTerminal` ("Think: Stream" block) via `useThinkStream`.
+- **Backend HITL Interceptor** — `POST /api/governance/resolve`
+  (`{ id, decision }`) routes to approve/reject; `GET /api/governance/pending`
+  maps proposed actions to `ApprovalRequest`. Both degrade gracefully
+  (Resilient-First) if the router/DB is unreachable, logging warnings without
+  crashing.
+- **Verification gate** — every HITL change MUST pass `npm run lint`,
+  `npm run typecheck` (0 errors), and the 11/11 E2E suite before merge.
+
 ## 1. PR Lifecycle Protocol
 
 Every task requires the complete PR lifecycle:

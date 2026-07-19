@@ -903,6 +903,40 @@ app.get('/api/governance/proposed', async (_req, res) => {
   }
 });
 
+// --- HITL Governance Gate: pending approvals -------------------------------
+// Surfaces proposed agent actions as typed ApprovalRequest objects the
+// dashboard renders in the "Governance Intervention Required" card. Resilient-
+// First: a router/DB failure returns an empty list + a warning, never a crash.
+app.get('/api/governance/pending', async (_req, res) => {
+  try {
+    const proposed = await listProposed();
+    const pending = proposed
+      .filter((p) => !p || p.status === 'PROPOSED' || p.status === 'PENDING_APPROVAL')
+      .map((p) => {
+        const prompt = typeof p.prompt === 'string' ? p.prompt : '';
+        // Best-effort extraction of structured HITL metadata from the prompt.
+        const modelMatch = prompt.match(/model[:=]\s*([A-Za-z0-9.\-]+)/i);
+        const costMatch = prompt.match(/cost[:=]\s*\$?([0-9]*\.?[0-9]+)/i);
+        const tokMatch = prompt.match(/(?:reasoning[_ ]?tokens|tokens)[:=]\s*([0-9]+)/i);
+        return {
+          id: String(p.id),
+          proposed_model: modelMatch ? modelMatch[1] : 'unknown',
+          estimated_cost: costMatch ? Number(costMatch[1]) : 0,
+          reasoning_tokens: tokMatch ? Number(tokMatch[1]) : prompt.length,
+          status: 'PENDING_APPROVAL',
+          agent_id: p.agent_id ? String(p.agent_id) : undefined,
+          task: p.action ? String(p.action) : undefined,
+          reasoning: prompt || undefined,
+          created_at: p.created_at ? String(p.created_at) : undefined
+        };
+      });
+    return res.json(pending);
+  } catch (err) {
+    console.warn('[Governance] Pending list degraded (router unavailable):', err?.message);
+    return res.json([]);
+  }
+});
+
 app.post('/api/governance/approve', async (req, res) => {
   try {
     const { id } = req.body || {};
@@ -926,6 +960,31 @@ app.post('/api/governance/reject', async (req, res) => {
   } catch (err) {
     console.error('[Governance] Reject error:', err?.message);
     return res.status(500).json({ error: 'Failed to reject action' });
+  }
+});
+
+// --- HITL resolution: single entry point the dashboard calls ---------------
+// Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
+// governance action. Resilient-First: input validation failures return 400,
+// unknown ids 404, runtime errors 500 + a warning — never a process crash.
+app.post('/api/governance/resolve', async (req, res) => {
+  try {
+    const { id, decision } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing required field: id' });
+    if (decision !== 'APPROVE' && decision !== 'REJECT') {
+      return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
+    }
+    if (decision === 'APPROVE') {
+      const proven = await approveActionAndBroadcast(String(id));
+      if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
+      return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+    }
+    const rejected = await rejectActionAndBroadcast(String(id));
+    if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
+    return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
+  } catch (err) {
+    console.error('[Governance] Resolve error:', err?.message);
+    return res.status(500).json({ error: 'Failed to resolve governance action' });
   }
 });
 
