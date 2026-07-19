@@ -31,6 +31,22 @@ const POLL_BACKOFF_MS = 1000;
 
 const redis = getRedisClient({ label: 'worker' });
 
+// --- Event bus (Redis pub/sub) -------------------------------------------
+// Publishes real-time events that the web server fans out to dashboard SSE
+// clients: `slow_brain` (drives the AgentTerminal "Thinking Pulse") and
+// `hermes_suggestion` (drives the governance suggestion toast). Best-effort:
+// failures are logged but never block the task loop.
+const EVENTS_CHANNEL = 'kudbee:events';
+
+async function emitEvent(type, data) {
+  const event = { type, data, ts: new Date().toISOString() };
+  try {
+    await redis.publish(EVENTS_CHANNEL, JSON.stringify(event));
+  } catch (err) {
+    hermes.log.error('event publish failed:', err.message);
+  }
+}
+
 // --- Slow Brain (LLM) -----------------------------------------------------
 // Captures a reasoning trace from the configured LLM provider. Falls back to a
 // deterministic heuristic trace when no API key is configured (local/dev).
@@ -90,6 +106,7 @@ async function handleTask(task) {
 
   // SLOW_BRAIN: reason, capture trace, propose a new governance action.
   hermes.log.info('SLOW_BRAIN required — invoking LLM reasoning');
+  await emitEvent('slow_brain', { state: 'start', task_id: task.id || null, prompt });
   const { model, trace, provider } = await slowBrainReason(prompt);
 
   const proposed = await proposeAction({
@@ -103,6 +120,17 @@ async function handleTask(task) {
     `SLOW_BRAIN proposed id=${proposed.id} model=${model} provider=${provider} ` +
       `trace="${trace.slice(0, 120)}…"`
   );
+
+  // Real-time suggestion toast for the operator (Approve → /api/governance/approve).
+  await emitEvent('hermes_suggestion', {
+    id: proposed.id,
+    action: proposed.action,
+    tags: proposed.tags,
+    prompt: proposed.prompt,
+    detail: `Slow-Brain reasoning captured (${provider}). Promote to PROVEN index?`,
+    proposed_at: proposed.created_at
+  });
+  await emitEvent('slow_brain', { state: 'stop', task_id: task.id || null });
 
   // Persist the captured reasoning trace to session history for recall.
   try {
