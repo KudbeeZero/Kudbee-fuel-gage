@@ -12,6 +12,7 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
+import { listProposed, approveAction, rejectAction } from './governance/router.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -678,6 +679,129 @@ app.get('/api/governance/feed', async (req, res) => {
   } catch (err) {
     console.error('[Governance] Feed error:', err?.message);
     return res.status(500).json({ error: 'Failed to fetch governance feed' });
+  }
+});
+
+// --- Governance Router: Proposed / Approve / Reject -----------------------
+
+app.get('/api/governance/proposed', async (_req, res) => {
+  try {
+    const proposed = await listProposed();
+    return res.json(proposed);
+  } catch (err) {
+    console.error('[Governance] Proposed list error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch proposed actions' });
+  }
+});
+
+app.post('/api/governance/approve', async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing "id"' });
+    const proven = await approveAction(String(id));
+    if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
+    return res.status(200).json({ success: true, action: proven });
+  } catch (err) {
+    console.error('[Governance] Approve error:', err?.message);
+    return res.status(500).json({ error: 'Failed to approve action' });
+  }
+});
+
+app.post('/api/governance/reject', async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing "id"' });
+    const rejected = await rejectAction(String(id));
+    if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
+    return res.status(200).json({ success: true, action: rejected });
+  } catch (err) {
+    console.error('[Governance] Reject error:', err?.message);
+    return res.status(500).json({ error: 'Failed to reject action' });
+  }
+});
+
+// --- Governance health + HERMES auditor status ---------------------------
+
+const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
+const HERMES_HEARTBEAT_MAX_AGE_MS = 45_000; // treat stale heartbeats as Offline
+
+app.get('/api/governance/health', async (_req, res) => {
+  try {
+    let proposedCount = 0;
+    let hermesOnline = false;
+    let hermesStatus = 'Offline';
+
+    try {
+      const proposed = await listProposed();
+      proposedCount = proposed.length;
+    } catch {
+      /* ignore */
+    }
+
+    if (redis) {
+      try {
+        const raw = await redis.get(HERMES_HEARTBEAT_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const ts = parsed.timestamp ? Date.parse(parsed.timestamp) : 0;
+          hermesOnline = !Number.isNaN(ts) && Date.now() - ts < HERMES_HEARTBEAT_MAX_AGE_MS;
+          hermesStatus = hermesOnline ? 'Online' : 'Offline';
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return res.json({
+      governance_active: true,
+      router_healthy: true,
+      proposed_count: proposedCount,
+      hermes: { status: hermesStatus, online: hermesOnline },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[Governance] Health error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch governance health' });
+  }
+});
+
+// HERMES heartbeat sink (called by the worker via POST /api/health).
+app.post('/api/health', async (req, res) => {
+  try {
+    if (redis) {
+      await redis.set(
+        HERMES_HEARTBEAT_KEY,
+        JSON.stringify({
+          agent: 'HERMES',
+          status: 'Online',
+          ...(req.body || {}),
+          timestamp: new Date().toISOString()
+        }),
+        'EX',
+        30
+      );
+    }
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('[Health] Heartbeat sink error:', err?.message);
+    return res.status(500).json({ error: 'Failed to record heartbeat' });
+  }
+});
+
+// Stream of [HERMES:AUDITOR] log lines published by the worker process.
+app.get('/api/governance/hermes-logs', async (_req, res) => {
+  try {
+    if (!redis) return res.json([]);
+    const raw = await redis.lrange('kudbee:hermes:log', 0, 49);
+    const logs = raw
+      .map((r) => {
+        try { return JSON.parse(r); } catch { return null; }
+      })
+      .filter(Boolean);
+    return res.json(logs);
+  } catch (err) {
+    console.error('[Governance] HERMES logs error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch HERMES logs' });
   }
 });
 

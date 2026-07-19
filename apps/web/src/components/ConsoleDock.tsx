@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '../store/uiStore';
 import { ChevronDown, Trash2 } from 'lucide-react';
+import { apiGet } from '../lib/apiClient';
 
 interface ConsoleLog {
   id: string;
@@ -57,6 +58,41 @@ export function ConsoleDock() {
     }, 120); // High frequency log feed (approx. 8 logs/sec)
 
     return () => clearInterval(intervalId);
+  }, [isPaused]);
+
+  // Pull [HERMES:AUDITOR] log lines published by the background worker process
+  // and inject them into the live stream so operators can see auditor output
+  // in real time. Dedupe by the log's timestamp to avoid replaying history.
+  const lastHermesTsRef = useRef<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const pullHermes = async () => {
+      if (isPaused) return;
+      try {
+        const logs = await apiGet<Array<{ ts: string; line: string }>>('/api/governance/hermes-logs');
+        if (cancelled || !Array.isArray(logs)) return;
+        for (const entry of logs) {
+          if (!entry?.ts || entry.ts === lastHermesTsRef.current) continue;
+          lastHermesTsRef.current = entry.ts;
+          const newLog: ConsoleLog = {
+            id: `hermes-${entry.ts}`,
+            type: 'info',
+            label: 'HERMES',
+            message: entry.line,
+            time: new Date(entry.ts).toLocaleTimeString()
+          };
+          allLogsRef.current = [newLog, ...allLogsRef.current].slice(0, 100);
+        }
+      } catch {
+        /* backend offline / not deployed yet — skip silently */
+      }
+    };
+    void pullHermes();
+    const id = setInterval(() => void pullHermes(), 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [isPaused]);
 
   // Throttle updates to local state to 150ms to keep React components happy and performant

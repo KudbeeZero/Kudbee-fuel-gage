@@ -39,10 +39,14 @@ export function GovernanceView() {
 
   const handleApprove = async (id: string) => {
     setBusyId(id);
+    // Optimistic UI: drop the row immediately, reconcile with the server after.
+    const previous = actions;
+    setActions((prev) => prev.filter((a) => a.id !== id));
     try {
       await apiPost('/api/governance/approve', { id });
       await loadProposed();
     } catch (e) {
+      setActions(previous); // roll back on failure
       setError(e instanceof Error ? e.message : 'Approval failed');
     } finally {
       setBusyId(null);
@@ -51,10 +55,14 @@ export function GovernanceView() {
 
   const handleReject = async (id: string) => {
     setBusyId(id);
+    // Optimistic UI: drop the row immediately, reconcile with the server after.
+    const previous = actions;
+    setActions((prev) => prev.filter((a) => a.id !== id));
     try {
       await apiPost('/api/governance/reject', { id });
       await loadProposed();
     } catch (e) {
+      setActions(previous); // roll back on failure
       setError(e instanceof Error ? e.message : 'Rejection failed');
     } finally {
       setBusyId(null);
