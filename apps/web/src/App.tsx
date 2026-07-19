@@ -31,6 +31,7 @@ import {
   ChevronRight,
   ShieldAlert,
   XCircle,
+  Scale,
   Wifi,
   WifiOff,
   Ban,
@@ -56,6 +57,7 @@ import { ConsoleDock } from './components/ConsoleDock';
 import { GatewayView } from './components/gateway/GatewayView';
 import { AlertsView } from './components/AlertsView';
 import { InterceptorView } from './components/InterceptorView';
+import { GovernanceView } from './components/GovernanceView';
 import { TriageView } from './components/TriageView';
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
@@ -3264,6 +3266,7 @@ export default function App() {
     { icon: Activity, label: 'Interceptor' },
     { icon: Globe, label: 'Intelligence' },
     { icon: Shield, label: 'Firewall' },
+    { icon: Scale, label: 'Governance' },
     { icon: Bell, label: 'Alerts' },
     { icon: Settings, label: 'Settings' }
   ];
@@ -3979,6 +3982,8 @@ export default function App() {
           )}
 
           {activeTab === 'Alerts' && <AlertsView />}
+
+          {activeTab === 'Governance' && <GovernanceView />}
 
           {activeTab === 'Settings' && (
             <SettingsView 

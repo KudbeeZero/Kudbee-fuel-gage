@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { IngestRequestSchema } from "@kudbee/types";
+import { router as governanceRouter } from "../governance/router.js";
 
 // --- 1. LOCAL TELEMETRY ENGINE TYPE DEFINITIONS ---
 
@@ -439,6 +440,56 @@ async function startServer() {
     }
   });
 
+  // --- GOVERNANCE & INTELLIGENCE ROUTER ENDPOINTS ---
+
+  // List proposed logic actions awaiting human approval.
+  app.get("/api/governance/proposed", async (_req, res) => {
+    try {
+      const proposed = await governanceRouter.listProposed();
+      res.json(proposed);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Approve a proposed action -> moves it into the PROVEN index.
+  app.post("/api/governance/approve", async (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: "Missing action id" });
+      const proven = await governanceRouter.approveAction(id);
+      if (!proven) return res.status(404).json({ error: "Proposed action not found" });
+      res.json(proven);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Reject a proposed action -> drops it from the proposed queue.
+  app.post("/api/governance/reject", async (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: "Missing action id" });
+      const rejected = await governanceRouter.rejectAction(id);
+      if (!rejected) return res.status(404).json({ error: "Proposed action not found" });
+      res.json(rejected);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Probe the router for a prompt: Fast Brain (proven) or Slow Brain (LLM).
+  app.post("/api/governance/match", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+      const result = await governanceRouter.matchLogic(prompt);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Helper to lazily initialize the Google GenAI SDK Client securely
   let aiClient: GoogleGenAI | null = null;
   function getGeminiClient(): GoogleGenAI {
@@ -472,7 +523,23 @@ async function startServer() {
       }
       
       const payloadId = "proxy-tx-" + Math.floor(1000 + Math.random() * 9000);
-      
+
+      // --- GOVERNANCE & INTELLIGENCE ROUTER (Pipeline Integration) ---
+      // Before reaching the LLM, consult the Logic Tagging Service. A high
+      // confidence match in the PROVEN index short-circuits to the "Fast
+      // Brain" (proven logic path); otherwise we proceed to "Slow Brain"
+      // (LLM reasoning).
+      const incomingPrompt =
+        req.body?.messages?.map((m: any) => m.content).join(" ") ||
+        req.body?.prompt ||
+        "";
+      let routing = { route: "SLOW_BRAIN", matched: false };
+      try {
+        routing = await governanceRouter.matchLogic(incomingPrompt);
+      } catch (routerErr: any) {
+        console.warn("[Server] Governance router unavailable, defaulting to Slow Brain:", routerErr.message);
+      }
+
       // Wait for approval
       const approvedPayload = await new Promise((resolve, reject) => {
         proxyHoldMap.set(payloadId, { resolve, reject, reqBody: req.body });
@@ -487,11 +554,21 @@ async function startServer() {
         object: "chat.completion",
         created: Math.floor(Date.now() / 1000),
         model: req.body.model || "gpt-4",
+        // Governance metadata: which brain handled the request.
+        governance: {
+          route: routing.route,
+          matched: routing.matched,
+          confidence: (routing as any).confidence ?? 0,
+          proven_logic: (routing as any).logic?.action ?? null
+        },
         choices: [{
           index: 0,
           message: {
             role: "assistant",
-            content: "Simulated response based on approved payload."
+            content:
+              routing.route === "FAST_BRAIN"
+                ? `Fast Brain: applied proven logic path "${(routing as any).logic?.action}".`
+                : "Simulated response based on approved payload."
           },
           finish_reason: "stop"
         }]
