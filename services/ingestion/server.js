@@ -815,6 +815,23 @@ app.get('/api/health-check', async (_req, res) => {
   }
 });
 
+app.get('/api/session-history', async (_req, res) => {
+  try {
+    const raw = redis ? await redis.lrange('kudbee:session_history', 0, 9) : [];
+    const sessions = raw.map((item) => {
+      try {
+        return JSON.parse(item);
+      } catch {
+        return { raw: item };
+      }
+    });
+    res.json(sessions);
+  } catch (err) {
+    console.error('[SessionHistory] Error:', err?.message);
+    res.status(500).json({ error: 'Failed to fetch session history' });
+  }
+});
+
 function resolveDistPath() {
   const candidates = [
     path.resolve(__dirname, '..', '..', 'apps', 'web', 'dist'),
