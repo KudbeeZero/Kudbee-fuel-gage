@@ -23,6 +23,7 @@
 
 import { getRedisClient } from '../lib/redis.js';
 import { matchLogic, proposeAction, listProposed } from '../governance/router.js';
+import { runInsert } from '../lib/db.js';
 
 const AGENT_ID = `hermes-auditor-${process.pid}`;
 const PREFIX = '[HERMES:AUDITOR]';
@@ -30,6 +31,8 @@ const HEARTBEAT_KEY = 'kudbee:agents:hermes';
 const HEARTBEAT_TTL = 30; // seconds — window the Control Tower treats as "Online"
 const LOG_STREAM_KEY = 'kudbee:hermes:log'; // surfaced in the dashboard terminal
 const LOG_STREAM_MAX = 200;
+const THINK_STREAM_KEY = 'kudbee:think:stream'; // live thought-stream for the dashboard
+const THINK_STREAM_MAX = 200;
 
 // --- Custom log formatter -------------------------------------------------
 // Every HERMES background action is rendered with the [HERMES:AUDITOR] prefix
@@ -260,13 +263,61 @@ async function publishAuditEvent(type, data) {
   }
 }
 
+// --- Thought-Stream Interceptor --------------------------------------------
+// The "Think" layer: every task the Release Engineer performs archives its
+// chain-of-thought into the `think` database (Neon, with in-memory fallback).
+// This makes the agent's reasoning process observable, auditable, and
+// recallable — closing the full loop from code -> verification -> archival.
+//
+// Resilient-First: a failure to persist a thought is logged as a warning and
+// NEVER crashes the process. A thought is diagnostic metadata, not a hard
+// invariant, so it must degrade gracefully.
+export async function archive_thought(thought_block) {
+  const block = {
+    agent_id: thought_block?.agent_id ?? AGENT_ID,
+    task: thought_block?.task ?? null,
+    phase: thought_block?.phase ?? null,
+    thought: thought_block?.thought ?? '',
+    tokens_in: Number(thought_block?.tokens_in) || 0,
+    tokens_out: Number(thought_block?.tokens_out) || 0,
+    model: thought_block?.model ?? 'reasoning',
+    created_at: new Date().toISOString()
+  };
+
+  // Best-effort live mirror to the dashboard thought-stream (Resilient-First).
+  try {
+    const redis = getRedisClient({ label: 'hermes' });
+    await redis.lpush(
+      THINK_STREAM_KEY,
+      JSON.stringify({ ts: block.created_at, agent: block.agent_id, thought: block.thought, task: block.task })
+    );
+    await redis.ltrim(THINK_STREAM_KEY, 0, THINK_STREAM_MAX);
+  } catch {
+    /* never block on log mirroring */
+  }
+
+  try {
+    await runInsert(
+      `INSERT INTO think (agent_id, task, phase, thought, tokens_in, tokens_out, model, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [block.agent_id, block.task, block.phase, block.thought, block.tokens_in, block.tokens_out, block.model]
+    );
+    log.audit('think archived', block.task ? `task=${block.task}` : '', `len=${block.thought.length}`);
+    return { ok: true, task: block.task };
+  } catch (err) {
+    log.warn('think archive failed (degraded):', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
 export const hermes = {
   agentId: AGENT_ID,
   prefix: PREFIX,
   log,
   runAudit,
   publishHeartbeat,
-  reportOffline
+  reportOffline,
+  archive_thought
 };
 
 export default hermes;

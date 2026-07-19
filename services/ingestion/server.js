@@ -13,6 +13,7 @@ import {
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
 
@@ -184,6 +185,25 @@ async function ensureSchema() {
         timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // "Think" layer: chain-of-thought archival. Subject to the same 30-day TTL
+    // policy (see migrations/002_telemetry_logs_and_user_memories_ttl.sql, which
+    // is extended to purge the `think` table via purge_expired_rows()).
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS think (
+        id BIGSERIAL PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        task TEXT,
+        phase TEXT,
+        thought TEXT NOT NULL,
+        tokens_in INTEGER NOT NULL DEFAULT 0,
+        tokens_out INTEGER NOT NULL DEFAULT 0,
+        model TEXT NOT NULL DEFAULT 'reasoning',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_think_created_at ON think (created_at)'
+    );
     console.log('[DB] Neon schema ensured.');
   } catch (err) {
     console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
@@ -504,6 +524,56 @@ app.get('/api/memory/recall', async (req, res) => {
   } catch (err) {
     console.error('[Memory] Recall endpoint error:', err.message);
     return res.status(500).json({ error: 'Failed to recall memory' });
+  }
+});
+
+// --- Thought-Stream Interceptor: archive chain-of-thought into the `think`
+// database (Neon, with in-memory fallback). GET retrieves the most recent N
+// thought blocks; POST (or query args on GET) persists a new one via
+// hermes.archive_thought(). Resilient-First: failures degrade to a warning.
+app.post('/api/think/archive', async (req, res) => {
+  try {
+    const block = req.body || {};
+    if (!block.thought || typeof block.thought !== 'string' || block.thought.trim() === '') {
+      return res.status(400).json({ error: 'Missing required field: thought (non-empty string)' });
+    }
+    const result = await archive_thought(block);
+    if (!result.ok) {
+      return res.status(200).json({ ok: false, warning: result.error, archived: false });
+    }
+    return res.status(201).json({ ok: true, archived: true, task: result.task });
+  } catch (err) {
+    console.error('[Think] Archive error:', err.message);
+    return res.status(500).json({ error: 'Failed to archive thought' });
+  }
+});
+
+app.get('/api/think/archive', async (req, res) => {
+  try {
+    // POST-style persistence via query args (handy for curl/SSE triggers).
+    const thought = String(req.query.thought || '');
+    if (thought) {
+      const result = await archive_thought({
+        thought,
+        task: req.query.task ? String(req.query.task) : undefined,
+        phase: req.query.phase ? String(req.query.phase) : undefined,
+        tokens_in: Number(req.query.tokens_in) || 0,
+        tokens_out: Number(req.query.tokens_out) || 0,
+        model: req.query.model ? String(req.query.model) : 'reasoning'
+      });
+      return res.status(201).json({ ok: result.ok, archived: result.ok, task: result.task });
+    }
+
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    const rows = await runQuery(
+      `SELECT id, agent_id, task, phase, thought, tokens_in, tokens_out, model, created_at
+       FROM think ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    return res.json({ count: rows.length, thoughts: rows });
+  } catch (err) {
+    console.error('[Think] Read error:', err.message);
+    return res.status(500).json({ error: 'Failed to read thought archive' });
   }
 });
 
