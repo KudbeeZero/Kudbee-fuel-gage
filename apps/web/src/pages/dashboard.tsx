@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
+  AlertTriangle,
   BadgeCheck,
   Brain,
   CircleDot,
@@ -14,6 +15,7 @@ import {
   ScrollText,
   ShieldX,
   Signal,
+  Terminal,
   Wifi,
   WifiOff
 } from 'lucide-react';
@@ -73,6 +75,17 @@ interface HealthCheckResponse {
   uptime_sec: number;
   community_value_score: string;
   alerts: Array<{ timestamp?: number; severity?: string; message?: string }>;
+}
+
+interface SessionHistoryItem {
+  pr_number: number;
+  pr_title: string;
+  pr_body?: string;
+  github_sha: string;
+  merged_at: string;
+  struggles_encountered?: string[];
+  lesson_learned?: string;
+  diff_summary?: string;
 }
 
 const POLL_MS = 5000;
@@ -596,6 +609,63 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
   );
 }
 
+function AgentTerminal({ data, loading, error }: { data: SessionHistoryItem[]; loading: boolean; error: string | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-5">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Terminal className="h-4 w-4 text-emerald-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">Live Agent Terminal</span>
+        </div>
+        {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
+      </div>
+
+      <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto font-mono text-[11px]">
+        {error && (
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-rose-300">
+            {error}
+          </div>
+        )}
+        {!error && data.length === 0 && (
+          <div className="text-slate-600">No session history available.</div>
+        )}
+        {data.map((session) => (
+          <div key={session.pr_number} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-emerald-300">#{session.pr_number} {session.pr_title}</span>
+              <span className="shrink-0 text-[9px] text-slate-500">
+                {session.merged_at ? new Date(session.merged_at).toLocaleString() : ''}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-[10px] text-slate-500">SHA: {session.github_sha.slice(0, 12)}</p>
+
+            {session.struggles_encountered && session.struggles_encountered.length > 0 && (
+              <div className="mt-2">
+                <div className="flex items-center gap-1.5 text-amber-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Struggles Encountered</span>
+                </div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-amber-300/80">
+                  {session.struggles_encountered.map((struggle, idx) => (
+                    <li key={idx}>{struggle}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {session.lesson_learned && (
+              <div className="mt-2 border-t border-slate-800/60 pt-2 text-[10px] text-slate-400">
+                <span className="text-emerald-500/70">Lesson:</span> {session.lesson_learned}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -604,6 +674,10 @@ export function DashboardPage() {
   const [systemStatus, setSystemStatus] = useState<HealthCheckResponse | null>(null);
   const [systemStatusError, setSystemStatusError] = useState<string | null>(null);
   const [systemStatusLoading, setSystemStatusLoading] = useState(true);
+
+  const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
+  const [sessionHistoryError, setSessionHistoryError] = useState<string | null>(null);
+  const [sessionHistoryLoading, setSessionHistoryLoading] = useState(true);
 
   const [triage, setTriage] = useState<TriageItem[]>([]);
   const [triageError, setTriageError] = useState<string | null>(null);
@@ -683,6 +757,19 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadSessionHistory = useCallback(async () => {
+    try {
+      const data = await apiGet<SessionHistoryItem[]>('/api/session-history');
+      setSessionHistory(Array.isArray(data) ? data : []);
+      setSessionHistoryError(null);
+    } catch (e) {
+      setSessionHistory([]);
+      setSessionHistoryError(e instanceof Error ? e.message : 'Session history fetch failed');
+    } finally {
+      setSessionHistoryLoading(false);
+    }
+  }, []);
+
   const handleVerify = useCallback(
     async (item: TriageItem) => {
       const traceId = item.payload && typeof item.payload === 'object'
@@ -718,13 +805,14 @@ export function DashboardPage() {
     await Promise.allSettled([
       probeHealth(),
       loadSystemStatus(),
+      loadSessionHistory(),
       loadTriage(),
       loadMemory(),
       loadGovernance()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadTriage, loadMemory, loadGovernance]);
+  }, [probeHealth, loadSystemStatus, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
 
   // Initial load on mount.
   useEffect(() => {
@@ -810,7 +898,12 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {(triageError || memoryError || govError || verifyError || systemStatusError) && (
+        {/* Live Agent Terminal */}
+        <div className="mt-5">
+          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} />
+        </div>
+
+        {(triageError || memoryError || govError || verifyError || systemStatusError || sessionHistoryError) && (
           <div className="mt-5 space-y-2">
             {triageError && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
@@ -840,6 +933,12 @@ export function DashboardPage() {
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
                 <Activity className="h-4 w-4" />
                 System Status: {systemStatusError}
+              </div>
+            )}
+            {sessionHistoryError && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
+                <Terminal className="h-4 w-4" />
+                Session History: {sessionHistoryError}
               </div>
             )}
           </div>
