@@ -24,6 +24,7 @@ import { useEventStream } from '../hooks/useEventStream';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
+import { RackLayout } from '../components/RackLayout';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 import type { ApprovalRequest, ApprovalDecision, ThinkThought } from '@kudbee/types';
 
@@ -1249,6 +1250,11 @@ export function DashboardPage() {
             <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
           </div>
           <GovernanceFeed actions={governance} />
+        </div>
+
+        {/* Agentic Rack — DAW-style 12-column motherboard of core plugins */}
+        <div className="mt-5">
+          <RackLayout />
         </div>
 
         {/* Live Agent Terminal — full-width interactive console */}

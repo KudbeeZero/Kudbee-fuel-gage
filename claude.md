@@ -160,6 +160,33 @@ TypeScript + Zod schemas are mandatory. All telemetry events must be validated a
 - Use TypeScript strict mode across all workspaces
 - Never bypass type checking with `any` or `@ts-ignore`
 
+### 3.1 Monorepo Package Export Pattern (MANDATORY)
+
+Every internal `@kudbee/*` package MUST expose its public surface through an
+explicit `exports` map in `package.json`. This is a hard, non-negotiable
+standard for all future packages — do not rely on the bare `"main"`/`"types"`
+resolution for subpath imports.
+
+- **Always declare an explicit subpath export for every documented entrypoint.**
+  If a package exposes a module (e.g. `plugin.ts`), the map MUST include it:
+  ```json
+  "exports": {
+    ".": "./index.ts",
+    "./plugin": "./plugin.ts"
+  }
+  ```
+- **Every subpath module MUST be re-exported from the package root** (`index.ts`)
+  via `export * from './plugin.js';` so that `import { X } from '@kudbee/types'`
+  and `import { X } from '@kudbee/types/plugin'` BOTH resolve.
+- **Why this is mandatory:** when an interface like `IKudbeePlugin` is imported
+  from a subpath that is missing from the `exports` map, the compiler cannot
+  resolve the type and silently falls back to `unknown`. That fallback makes
+  every property in a downstream object literal throw a "known properties" error
+  under strict mode. Explicit subpath mapping + root re-export eliminates the
+  failure class entirely. (See archived thought `task=agentic-rack-assembly`.)
+- Prefer importing shared types from the **package root** in app code
+  (`@kudbee/types`) so the workspace symlink resolves the barrel file directly.
+
 ## 4. Memory Layer
 
 Every successful PR must include a `### Struggles & Friction` section in the PR body to be consumed by the Session Logger.
