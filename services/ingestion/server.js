@@ -193,12 +193,19 @@ db.serialize(() => {
 let redis;
 try {
   redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
     enableReadyCheck: true,
-    retryStrategy: (times) => Math.min(times * 200, 2000)
+    enableOfflineQueue: false,
+    retryStrategy: () => null
   });
   redis.on('connect', () => console.log('[Redis] Connected'));
-  redis.on('error', (err) => console.error('[Redis] Connection error:', err.message));
+  redis.on('ready', () => console.log('[Redis] Ready'));
+  redis.on('error', (err) => console.warn('[Redis] Error:', err.message));
+  redis.on('reconnecting', (delay) =>
+    console.warn(`[Redis] Reconnecting in ${delay ?? '?'}ms`)
+  );
+  redis.on('end', () => console.warn('[Redis] Connection closed'));
 } catch (err) {
   console.error('[Redis] Failed to initialize client:', err.message);
 }
@@ -985,7 +992,7 @@ function publishEvent(type, data) {
   // deliver server-originated events.)
   if (redis) {
     try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() }));
+      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch(() => {});
     } catch {
       /* ignore */
     }

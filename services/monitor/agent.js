@@ -1,14 +1,26 @@
 import Redis from 'ioredis';
 import crypto from 'node:crypto';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  retryStrategy: (times) => Math.min(times * 200, 2000)
-});
-
-redis.on('connect', () => console.log('[Agent] Redis connected'));
-redis.on('error', (err) => console.error('[Agent] Redis error:', err.message));
+let redis;
+try {
+  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: false,
+    retryStrategy: () => null
+  });
+  redis.on('connect', () => console.log('[Agent] Redis connected'));
+  redis.on('ready', () => console.log('[Agent] Redis ready'));
+  redis.on('error', (err) => console.warn('[Agent] Redis error:', err.message));
+  redis.on('reconnecting', (delay) =>
+    console.warn(`[Agent] Redis reconnecting in ${delay ?? '?'}ms`)
+  );
+  redis.on('end', () => console.warn('[Agent] Redis connection closed'));
+} catch (err) {
+  console.error('[Agent] Failed to initialize Redis client:', err.message);
+  redis = null;
+}
 
 const AGENT_ID = `monitor-agent-${process.pid}`;
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
