@@ -229,3 +229,29 @@ All future tool integrations must prioritize MCP-native connections over custom 
 - **Neon Postgres:** The Neon MCP server (`@neondatabase/mcp-server`) is configured in `.mcp.json` and provides natural-language database access. Use it for ad-hoc reporting, analytics, and data exploration instead of building custom GET endpoints.
 - **Deprecation Policy:** Custom REST endpoints built before this standard remain functional but should not be extended. New features must use MCP where possible.
 - **Cost Discipline:** MCP connections reuse existing infrastructure (Neon Postgres, Redis) and do not introduce new service costs. Avoid building standalone microservices for simple data access patterns.
+
+## 9. Self-Aware Vector Memory Layer (Think: Storage)
+
+The system maintains a structural "blueprint" memory so agents reason against
+the real architecture instead of guessing.
+
+- **Storage:** `@kudbee/memory` package — `services/memory/vectorStore.ts`.
+  Table `system_topology_embeddings` (id UUID, chunk_text TEXT, metadata JSONB,
+  embedding VECTOR(1536)) enabled via `services/ingestion/migrations/003_system_topology_embeddings.sql`.
+- **Semantic search:** `querySystemTopology(embedding, limit)` uses pgvector
+  cosine distance (`embedding <=> $1`). When Neon/pgvector is unavailable it
+  degrades to an in-memory mock with JS cosine similarity (Resilient-First).
+- **Embeddings:** `services/memory/embedText.ts` — real Gemini `text-embedding`
+  when `GEMINI_API_KEY` is set, deterministic local 1536-dim fallback otherwise.
+- **Self-ingestion:** `npm run ingest:topology` (`scripts/ingest-topology.ts`)
+  chunks `claude.md`, the Agentic Rack layout files, the governance router, and
+  type contracts, embeds them, and seeds the table. Prefers the PR #42 GitHub
+  Connector when `TOPOLOGY_REPO=owner/repo` + `GITHUB_PAT` are set; falls back
+  to local file reads.
+- **HERMES native tool:** `query_system_topology(query, limit)` is exported from
+  `services/agents/hermes.js` and mandated by `HERMES_SYSTEM_PROMPT`. **Blueprint-first
+  rule:** before writing routes, modifying schemas, or changing infrastructure,
+  HERMES MUST call `query_system_topology` to inspect the system blueprint first.
+- **Type safety:** all vector-layer payloads use strict interfaces (`TopologyMetadata`,
+  `SystemChunk`, `StoreChunkResult`, `QueryResult`). No `any`.
+

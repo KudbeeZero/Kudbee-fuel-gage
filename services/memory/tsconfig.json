@@ -4,5 +4,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["deploy-check.ts", "ingest-topology.ts"]
+  "include": ["vectorStore.ts", "embedText.ts", "../lib/db.d.ts"]
 }
