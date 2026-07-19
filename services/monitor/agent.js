@@ -21,6 +21,10 @@ console.log(`[Agent] Public key: ${publicKey.slice(0, 32)}...`);
 
 let systemContext = null;
 
+const ROLLING_WINDOW_MS = 60_000;
+const FAILURE_RATE_THRESHOLD = 0.5;
+const rollingWindow = [];
+
 async function loadSystemContext() {
   try {
     const raw = await redis.get('kudbee:system:context');
@@ -69,10 +73,49 @@ function signPayload(privateKey, payload) {
   return crypto.sign(null, Buffer.from(payload), privateKey).toString('base64');
 }
 
+function pruneWindow() {
+  const cutoff = Date.now() - ROLLING_WINDOW_MS;
+  while (rollingWindow.length > 0 && rollingWindow[0].timestamp < cutoff) {
+    rollingWindow.shift();
+  }
+}
+
+function checkFailureRate() {
+  pruneWindow();
+
+  const total = rollingWindow.length;
+  if (total === 0) return;
+
+  const failures = rollingWindow.filter((entry) => entry.isFailure).length;
+  const rate = failures / total;
+
+  if (rate > FAILURE_RATE_THRESHOLD) {
+    const alert = {
+      timestamp: Date.now(),
+      severity: 'CRITICAL',
+      message: 'Sustained Telemetry Failure Rate > 50%'
+    };
+
+    redis
+      .lpush('kudbee:alerts', JSON.stringify(alert))
+      .then(() => console.log(`[Alert] CRITICAL alert pushed: failure rate=${(rate * 100).toFixed(1)}%`))
+      .catch((err) => console.error('[Alert] Failed to push alert:', err.message));
+
+    selfHeal();
+  }
+}
+
+async function selfHeal() {
+  console.log('[Agent] Attempting self-healing...');
+}
+
 async function processTelemetry(telemetry) {
   try {
     const analysis = mockAnalyze(telemetry);
     const traceId = String(telemetry.trace_id || `unknown-${Date.now()}`);
+    const isFailure = String(telemetry.status || 'OK') !== 'OK';
+
+    rollingWindow.push({ timestamp: Date.now(), isFailure });
 
     const governanceAction = {
       trace_id: traceId,
@@ -104,6 +147,8 @@ async function processTelemetry(telemetry) {
     await redis.incr('kudbee:governance_count');
 
     console.log(`[Agent] Processed trace ${traceId} | score=${analysis.value_score} | severity=${analysis.severity}`);
+
+    checkFailureRate();
   } catch (err) {
     console.error('[Agent] Failed to process telemetry:', err.message);
   }
