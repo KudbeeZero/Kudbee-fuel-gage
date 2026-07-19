@@ -99,3 +99,46 @@ export const MemoryRecallQuerySchema = z.object({
   limit: z.number().int().positive().max(20).default(3)
 });
 export type MemoryRecallQuery = z.infer<typeof MemoryRecallQuerySchema>;
+
+// --- Phase 6: Partner Portal / Governance ---
+
+// Community value score attributed to a verified (signed-off) trace.
+export const ValueScoreSchema = z.object({
+  trace_id: z.string().min(1),
+  value_score: z.number().min(0).max(100)
+});
+export type ValueScore = z.infer<typeof ValueScoreSchema>;
+
+// A governance action is a cryptographically signed "verification" performed by a
+// partner/agent against a telemetry trace. Persisted as type: 'GOVERNANCE_ACTION'.
+export const GovernanceActionSchema = z.object({
+  id: z.number().int(),
+  trace_id: z.string().min(1),
+  action: z.string().default('VERIFY'),
+  type: z.string().default('GOVERNANCE_ACTION'),
+  agent_id: z.string(),
+  signature: z.string().min(1),
+  signed_payload: z.string(),
+  value_score: z.number().min(0).max(100).default(0),
+  timestamp: z.string()
+});
+export type GovernanceAction = z.infer<typeof GovernanceActionSchema>;
+
+export const GovernanceFeedSchema = z.array(GovernanceActionSchema);
+export type GovernanceFeed = z.infer<typeof GovernanceFeedSchema>;
+
+export const GovernanceVerifyRequestSchema = z.object({
+  trace_id: z.string().min(1),
+  agent_id: z.string().min(1),
+  agent_pass: z.string().min(1),
+  value_score: z.number().min(0).max(100).default(0),
+  note: z.string().optional()
+});
+export type GovernanceVerifyRequest = z.infer<typeof GovernanceVerifyRequestSchema>;
+
+export const CommunityValueResponseSchema = z.object({
+  community_value_score: z.number(),
+  verified_traces: z.number(),
+  governance_actions: z.number()
+});
+export type CommunityValueResponse = z.infer<typeof CommunityValueResponseSchema>;
