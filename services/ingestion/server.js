@@ -2,11 +2,46 @@ import express from 'express';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { IngestRequestSchema } from '@kudbee/types';
+import {
+  deserializePass,
+  verifyAgentPass,
+  AGENT_PASS_MAX_AGE_MS
+} from '@kudbee/utils';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(process.cwd(), 'telemetry_traces.db');
+const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
+
+function loadAgentRegistry() {
+  try {
+    const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    const map = new Map();
+    for (const agent of parsed.registry || []) {
+      if (agent.status === 'active') map.set(agent.agentId, agent.publicKey);
+    }
+    return map;
+  } catch (err) {
+    console.error('[Identity] Failed to load agent registry:', err.message);
+    return new Map();
+  }
+}
+
+const AGENT_REGISTRY = loadAgentRegistry();
+
+function authenticateAgentPass(headerValue) {
+  if (!headerValue) return null;
+  const pass = deserializePass(headerValue);
+  if (!pass) return null;
+  const publicKey = AGENT_REGISTRY.get(pass.agentId);
+  if (!publicKey) return null;
+  return verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS) ? pass.agentId : null;
+}
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -98,6 +133,33 @@ function runInsert(sql, params = []) {
 
 app.post('/api/telemetry/ingest', async (req, res) => {
   try {
+    const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+    if (agentId) {
+      const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = req.body || {};
+      const result = await runInsert(
+        `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          String(trace_id ?? `agent-${agentId}`),
+          String(model || 'unknown'),
+          Number(tokens_in) || 0,
+          Number(tokens_out) || 0,
+          Number(cost) || 0,
+          String(status || 'authenticated_bypass'),
+          String(provider || 'unknown'),
+          String(project_name || 'kilo-fuel-gauge')
+        ]
+      );
+      console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
+      return res.status(201).json({
+        success: true,
+        id: result.id,
+        agent: agentId,
+        bypass: true,
+        message: 'Telemetry trace ingested via authenticated agent fast-path'
+      });
+    }
+
     const parsed = IngestRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       const reason = parsed.error.issues

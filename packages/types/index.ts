@@ -61,3 +61,23 @@ export const ZodIssueSchema = z.object({
   message: z.string()
 });
 export type ZodIssue = z.infer<typeof ZodIssueSchema>;
+
+export const AgentPassSchema = z.object({
+  agentId: z.string().min(1),
+  issuedAt: z.number().int(),
+  signature: z.string().min(1)
+});
+export type AgentPass = z.infer<typeof AgentPassSchema>;
+
+export const RegisteredAgentSchema = z.object({
+  agentId: z.string().min(1),
+  publicKey: z.string().min(1),
+  status: z.string().default('active'),
+  createdAt: z.string().optional()
+});
+export type RegisteredAgent = z.infer<typeof RegisteredAgentSchema>;
+
+export const AgentRegistrySchema = z.object({
+  registry: z.array(RegisteredAgentSchema)
+});
+export type AgentRegistry = z.infer<typeof AgentRegistrySchema>;
