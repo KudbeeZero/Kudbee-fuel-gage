@@ -1,13 +1,25 @@
 import Redis from 'ioredis';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  retryStrategy: (times) => Math.min(times * 200, 2000)
-});
-
-redis.on('connect', () => console.log('[Sim] Redis connected'));
-redis.on('error', (err) => console.error('[Sim] Redis error:', err.message));
+let redis;
+try {
+  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: false,
+    retryStrategy: () => null
+  });
+  redis.on('connect', () => console.log('[Sim] Redis connected'));
+  redis.on('ready', () => console.log('[Sim] Redis ready'));
+  redis.on('error', (err) => console.warn('[Sim] Redis error:', err.message));
+  redis.on('reconnecting', (delay) =>
+    console.warn(`[Sim] Redis reconnecting in ${delay ?? '?'}ms`)
+  );
+  redis.on('end', () => console.warn('[Sim] Redis connection closed'));
+} catch (err) {
+  console.error('[Sim] Failed to initialize Redis client:', err.message);
+  redis = null;
+}
 
 const MODELS = ['gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro', 'deepseek-r1', 'deepseek-v3'];
 const PROVIDERS = ['Anthropic', 'OpenAI', 'Google', 'DeepSeek', 'Cursor'];

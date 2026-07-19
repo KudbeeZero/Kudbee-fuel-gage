@@ -1,13 +1,25 @@
 import Redis from 'ioredis';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  retryStrategy: (times) => Math.min(times * 200, 2000)
-});
-
-redis.on('connect', () => console.log('[Verify] Redis connected'));
-redis.on('error', (err) => console.error('[Verify] Redis error:', err.message));
+let redis;
+try {
+  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: false,
+    retryStrategy: () => null
+  });
+  redis.on('connect', () => console.log('[Verify] Redis connected'));
+  redis.on('ready', () => console.log('[Verify] Redis ready'));
+  redis.on('error', (err) => console.warn('[Verify] Redis error:', err.message));
+  redis.on('reconnecting', (delay) =>
+    console.warn(`[Verify] Redis reconnecting in ${delay ?? '?'}ms`)
+  );
+  redis.on('end', () => console.warn('[Verify] Redis connection closed'));
+} catch (err) {
+  console.error('[Verify] Failed to initialize Redis client:', err.message);
+  redis = null;
+}
 
 async function liveCheck() {
   try {
