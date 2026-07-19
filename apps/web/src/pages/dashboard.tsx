@@ -235,7 +235,7 @@ function HealthPanel({
               ? `Control Tower online · ${health?.service ?? 'kudbee'}`
               : 'No heartbeat received from backend. Check CORS / REACT_APP_API_URL.'}
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <DependencyBadge
               label="Ingestion DB"
               state={health?.dependencies?.ingestion_db ?? (live ? 'healthy' : 'unknown')}
@@ -553,7 +553,7 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
         {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Uptime</div>
           <div className="mt-1 font-mono text-xl text-slate-100">
@@ -877,7 +877,7 @@ export function DashboardPage() {
           <div className="lg:col-span-2">
             <HealthPanel health={health} loading={healthLoading} error={healthError} />
           </div>
-          <div className="grid grid-cols-2 gap-5 lg:grid-cols-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <CommunityValueScore data={communityValue} />
             <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
           </div>

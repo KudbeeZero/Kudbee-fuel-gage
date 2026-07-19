@@ -3338,7 +3338,7 @@ export default function App() {
       <main className="flex-1 h-screen overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
         
-        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-24 sm:pb-32 ${
+        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-28 sm:pb-40 ${
           displayDensity === 'Compact' 
             ? 'p-4 space-y-4 text-xs' 
             : displayDensity === 'Comfortable' 
