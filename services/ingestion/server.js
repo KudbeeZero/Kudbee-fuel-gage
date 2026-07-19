@@ -9,6 +9,7 @@ import {
   verifyAgentPass,
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
+import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +95,26 @@ db.serialize(() => {
   });
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_violation_timestamp ON security_violations(timestamp)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS telemetry_vectors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trace_id TEXT NOT NULL,
+      thought_summary TEXT NOT NULL DEFAULT '',
+      reasoning TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT 'unknown',
+      vector TEXT NOT NULL,
+      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `, (err) => {
+    if (err) {
+      console.error('[DB] Failed to create telemetry_vectors table:', err.message);
+    } else {
+      console.log('[DB] Table telemetry_vectors ready');
+    }
+  });
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_vector_trace ON telemetry_vectors(trace_id)`);
 });
 
 function quarantineViolation(payload, violationReason) {
@@ -111,6 +132,35 @@ function safeParseJson(value) {
   } catch {
     return value;
   }
+}
+
+function storeVector({ traceId, thoughtSummary, reasoning, model, vector }) {
+  return runInsert(
+    `INSERT INTO telemetry_vectors (trace_id, thought_summary, reasoning, model, vector, timestamp)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    [String(traceId), String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
+  );
+}
+
+async function recallMemories(query, limit = 3) {
+  const queryVec = embedTrace(query, query, 'query');
+  const rows = await runQuery(`SELECT * FROM telemetry_vectors ORDER BY timestamp DESC LIMIT 200`);
+  const scored = rows
+    .map((row) => {
+      const vec = safeParseJson(row.vector);
+      const similarity = Array.isArray(vec) ? cosineSimilarity(queryVec, vec) : 0;
+      return {
+        trace_id: row.trace_id,
+        thought_summary: row.thought_summary,
+        reasoning: row.reasoning,
+        model: row.model,
+        similarity
+      };
+    })
+    .filter((r) => r.similarity > 0)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+  return scored;
 }
 
 function runQuery(sql, params = []) {
@@ -134,65 +184,82 @@ function runInsert(sql, params = []) {
 app.post('/api/telemetry/ingest', async (req, res) => {
   try {
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
-    if (agentId) {
-      const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = req.body || {};
-      const result = await runInsert(
-        `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-        [
-          String(trace_id ?? `agent-${agentId}`),
-          String(model || 'unknown'),
-          Number(tokens_in) || 0,
-          Number(tokens_out) || 0,
-          Number(cost) || 0,
-          String(status || 'authenticated_bypass'),
-          String(provider || 'unknown'),
-          String(project_name || 'kilo-fuel-gauge')
-        ]
-      );
-      console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
-      return res.status(201).json({
-        success: true,
-        id: result.id,
-        agent: agentId,
-        bypass: true,
-        message: 'Telemetry trace ingested via authenticated agent fast-path'
-      });
+    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, thought_summary, reasoning } = req.body || {};
+    const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
+
+    if (!agentId) {
+      const parsed = IngestRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const reason = parsed.error.issues
+          .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+          .join('; ');
+        await quarantineViolation(req.body, reason);
+        return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
+      }
     }
 
-    const parsed = IngestRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      const reason = parsed.error.issues
-        .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
-        .join('; ');
-      await quarantineViolation(req.body, reason);
-      return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
-    }
-    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
+    const recall = await recallMemories(
+      [thought_summary, reasoning, model].filter(Boolean).join(' '), 3
+    ).catch((e) => {
+      console.error('[Memory] Recall failed, continuing without context:', e.message);
+      return [];
+    });
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [
-        String(trace_id),
-        String(model),
+        String(trace_id ?? (agentId ? `agent-${agentId}` : 'unknown')),
+        String(model || 'unknown'),
         Number(tokens_in) || 0,
         Number(tokens_out) || 0,
         Number(cost) || 0,
-        String(status || 'OK'),
+        String(effectiveStatus),
         String(provider || 'unknown'),
         String(project_name || 'kilo-fuel-gauge')
       ]
     );
 
+    const vector = embedTrace(reasoning || '', thought_summary || '', model || 'unknown');
+    await storeVector({
+      traceId: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
+      thoughtSummary: thought_summary || '',
+      reasoning: reasoning || '',
+      model: model || 'unknown',
+      vector
+    }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
+
+    if (agentId) {
+      console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
+    }
     return res.status(201).json({
       success: true,
       id: result.id,
-      message: 'Telemetry trace ingested successfully'
+      agent: agentId || undefined,
+      bypass: !!agentId,
+      recalled_context: recall,
+      message: agentId
+        ? 'Telemetry trace ingested via authenticated agent fast-path'
+        : 'Telemetry trace ingested successfully'
     });
   } catch (err) {
     console.error('[Ingest] Error:', err.message);
     return res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+
+app.get('/api/memory/recall', async (req, res) => {
+  try {
+    const query = String(req.query.query || '');
+    const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 20);
+    if (!query) {
+      return res.status(400).json({ error: 'Missing required query parameter: query' });
+    }
+    const memories = await recallMemories(query, limit);
+    return res.json({ query, count: memories.length, memories });
+  } catch (err) {
+    console.error('[Memory] Recall endpoint error:', err.message);
+    return res.status(500).json({ error: 'Failed to recall memory' });
   }
 });
 

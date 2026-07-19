@@ -81,3 +81,21 @@ export const AgentRegistrySchema = z.object({
   registry: z.array(RegisteredAgentSchema)
 });
 export type AgentRegistry = z.infer<typeof AgentRegistrySchema>;
+
+export const MemoryRecallSchema = z.object({
+  trace_id: z.string().min(1),
+  thought_summary: z.string().default(''),
+  reasoning: z.string().default(''),
+  model: z.string().default('unknown'),
+  similarity: z.number()
+});
+export type MemoryRecall = z.infer<typeof MemoryRecallSchema>;
+
+export const MemoryRecallListSchema = z.array(MemoryRecallSchema);
+export type MemoryRecallList = z.infer<typeof MemoryRecallListSchema>;
+
+export const MemoryRecallQuerySchema = z.object({
+  query: z.string().min(1),
+  limit: z.number().int().positive().max(20).default(3)
+});
+export type MemoryRecallQuery = z.infer<typeof MemoryRecallQuerySchema>;
