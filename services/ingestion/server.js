@@ -16,6 +16,7 @@ import { listProposed, approveAction, rejectAction } from '../governance/router.
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
+import { fetchFile } from '../github/connector.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1139,6 +1140,37 @@ app.get('/api/news/headlines', (req, res) => {
       { title: 'API Billing Policies Update', url: 'https://ai.google.dev' }
     ]
   });
+});
+
+// --- GitHub Repository Connector (agent dynamic file reads) -----------------
+// Resilient-First: a missing PAT, unreachable GitHub API, or missing file
+// degrades to a typed error response — this endpoint never crashes the server.
+app.get('/api/system/file', async (req, res) => {
+  const repoPath = typeof req.query.path === 'string' ? req.query.path : '';
+  if (!repoPath) {
+    return res.status(400).json({
+      error: 'Missing "path" query parameter. Expected "owner/repo/path/to/file".',
+      ok: false
+    });
+  }
+
+  try {
+    const result = await fetchFile(repoPath);
+    if (!result.ok) {
+      const status = result.code === 'INVALID_PATH' ? 400 : result.code === 'NOT_FOUND' ? 404 : 503;
+      return res.status(status).json({ error: result.error, code: result.code, ok: false });
+    }
+    return res.status(200).json({
+      ok: true,
+      path: repoPath,
+      cached: result.cached,
+      content: result.content
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[GitHub] /api/system/file degraded:', message);
+    return res.status(503).json({ error: `GitHub connector unavailable: ${message}`, ok: false });
+  }
 });
 
 app.get('/health', async (_req, res) => {
