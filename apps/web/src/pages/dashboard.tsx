@@ -644,7 +644,7 @@ function AgentTerminal({
 
   // Interactive command handling — queries live dashboard context and prints
   // real values back into the terminal instead of a no-op echo.
-  const runCommand = (raw: string): string => {
+  const runCommand = async (raw: string): Promise<string> => {
     const cmd = raw.trim();
     const [name, ...rest] = cmd.toLowerCase().split(/\s+/);
     const ctx = context;
@@ -656,6 +656,7 @@ function AgentTerminal({
           '  status          — system + HERMES health',
           '  governance      — governance ledger summary',
           '  hermes          — HERMES auditor status',
+          '  remember <data> — persist data to Postgres (TTL: forever)',
           '  clear           — clear the terminal',
           '  echo <text>     — print text'
         ].join('\n');
@@ -665,6 +666,16 @@ function AgentTerminal({
         return `governance actions: ${ctx?.governance ?? 0} · pending HERMES suggestions: ${ctx?.hermes ?? 0}`;
       case 'hermes':
         return `HERMES auditor: ${ctx?.live ? 'ONLINE' : 'OFFLINE'} · active suggestions: ${ctx?.hermes ?? 0}`;
+      case 'remember': {
+        const data = rest.join(' ');
+        if (!data) return 'usage: !remember <data>';
+        try {
+          await apiPost('/api/memory/remember', { data });
+          return `remembered: "${data}"`;
+        } catch (e) {
+          return `error: failed to persist memory (${e instanceof Error ? e.message : 'unknown'})`;
+        }
+      }
       case 'clear':
         setCommands([]);
         return '';
@@ -675,13 +686,17 @@ function AgentTerminal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
-    const output = runCommand(text);
-    setCommands((prev) => [...prev, { id: Date.now(), text, output }]);
+    const id = Date.now();
+    setCommands((prev) => [...prev, { id, text, output: '...' }]);
     setInput('');
+    const output = await runCommand(text);
+    setCommands((prev) =>
+      prev.map((cmd) => (cmd.id === id ? { ...cmd, output } : cmd))
+    );
   };
 
   return (

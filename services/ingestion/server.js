@@ -170,6 +170,14 @@ async function initDatabase() {
       await client.query(`CREATE INDEX IF NOT EXISTS idx_governance_ts ON governance_actions(timestamp)`);
 
       await client.query(`
+        CREATE TABLE IF NOT EXISTS user_memories (
+          id SERIAL PRIMARY KEY,
+          data TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await client.query(`
         ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS value_score REAL DEFAULT 0
       `);
 
@@ -413,6 +421,23 @@ app.get('/api/memory/recall', async (req, res) => {
   } catch (err) {
     console.error('[Memory] Recall endpoint error:', err.message);
     return res.status(500).json({ error: 'Failed to recall memory' });
+  }
+});
+
+app.post('/api/memory/remember', async (req, res) => {
+  try {
+    const { data } = req.body || {};
+    if (!data || typeof data !== 'string') {
+      return res.status(400).json({ error: 'Missing required field: data (string)' });
+    }
+    const result = await runInsert(
+      `INSERT INTO user_memories (data) VALUES ($1)`,
+      [String(data)]
+    );
+    return res.status(201).json({ success: true, id: result.id, message: 'Memory persisted' });
+  } catch (err) {
+    console.error('[Memory] Remember endpoint error:', err.message);
+    return res.status(500).json({ error: 'Failed to persist memory' });
   }
 });
 
