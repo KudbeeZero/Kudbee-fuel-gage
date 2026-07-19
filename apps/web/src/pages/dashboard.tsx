@@ -69,6 +69,12 @@ interface CommunityValue {
   governance_actions: number;
 }
 
+interface HealthCheckResponse {
+  uptime_sec: number;
+  community_value_score: string;
+  alerts: Array<{ timestamp?: number; severity?: string; message?: string }>;
+}
+
 const POLL_MS = 5000;
 
 // --- Phase 6: client-side cryptographic signing (Ed25519 via Web Crypto) ---
@@ -522,10 +528,82 @@ function CommunityValueScore({ data }: { data: CommunityValue | null }) {
   );
 }
 
+function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse | null; loading: boolean; error: string | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Activity className="h-4 w-4 text-amber-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">System Status</span>
+        </div>
+        {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Uptime</div>
+          <div className="mt-1 font-mono text-xl text-slate-100">
+            {data ? formatUptime(data.uptime_sec) : '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Community Value</div>
+          <div className="mt-1 font-mono text-xl text-slate-100">
+            {data ? Number(data.community_value_score).toFixed(2) : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center gap-2 text-slate-500">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-400/70" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">Recent Alerts</span>
+        </div>
+        <div className="mt-2 max-h-[140px] space-y-1.5 overflow-y-auto">
+          {error && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] font-mono text-rose-300">
+              {error}
+            </div>
+          )}
+          {!error && !data && (
+            <div className="text-[11px] font-mono text-slate-600">No alert data available.</div>
+          )}
+          {data && data.alerts.length === 0 && (
+            <div className="text-[11px] font-mono text-slate-600">No alerts in the last 5 entries.</div>
+          )}
+          {data && data.alerts.map((alert, idx) => (
+            <div
+              key={idx}
+              className={`rounded-lg border px-3 py-2 text-[11px] font-mono ${
+                alert.severity === 'CRITICAL'
+                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                  : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold uppercase">{alert.severity ?? 'INFO'}</span>
+                <span className="text-[9px] opacity-70">
+                  {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : ''}
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-2">{alert.message}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+
+  const [systemStatus, setSystemStatus] = useState<HealthCheckResponse | null>(null);
+  const [systemStatusError, setSystemStatusError] = useState<string | null>(null);
+  const [systemStatusLoading, setSystemStatusLoading] = useState(true);
 
   const [triage, setTriage] = useState<TriageItem[]>([]);
   const [triageError, setTriageError] = useState<string | null>(null);
@@ -592,6 +670,19 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadSystemStatus = useCallback(async () => {
+    try {
+      const data = await apiGet<HealthCheckResponse>('/api/health-check');
+      setSystemStatus(data);
+      setSystemStatusError(null);
+    } catch (e) {
+      setSystemStatus(null);
+      setSystemStatusError(e instanceof Error ? e.message : 'Health check failed');
+    } finally {
+      setSystemStatusLoading(false);
+    }
+  }, []);
+
   const handleVerify = useCallback(
     async (item: TriageItem) => {
       const traceId = item.payload && typeof item.payload === 'object'
@@ -626,13 +717,14 @@ export function DashboardPage() {
   const syncAll = useCallback(async () => {
     await Promise.allSettled([
       probeHealth(),
+      loadSystemStatus(),
       loadTriage(),
       loadMemory(),
       loadGovernance()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadTriage, loadMemory, loadGovernance]);
+  }, [probeHealth, loadSystemStatus, loadTriage, loadMemory, loadGovernance]);
 
   // Initial load on mount.
   useEffect(() => {
@@ -699,7 +791,7 @@ export function DashboardPage() {
           </div>
           <div className="grid grid-cols-2 gap-5 lg:grid-cols-1">
             <CommunityValueScore data={communityValue} />
-            <MetricCard icon={Database} label="Triage Queue" value={triage.length} suffix="pkt" />
+            <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
           </div>
         </div>
 
@@ -718,7 +810,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {(triageError || memoryError || govError || verifyError) && (
+        {(triageError || memoryError || govError || verifyError || systemStatusError) && (
           <div className="mt-5 space-y-2">
             {triageError && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
@@ -742,6 +834,12 @@ export function DashboardPage() {
               <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-mono text-rose-300">
                 <BadgeCheck className="h-4 w-4" />
                 Verify: {verifyError}
+              </div>
+            )}
+            {systemStatusError && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
+                <Activity className="h-4 w-4" />
+                System Status: {systemStatusError}
               </div>
             )}
           </div>
