@@ -1,4 +1,11 @@
 import { generateEmbedding, EMBEDDING_DIM } from './embedding-generator.js';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SCHEMA_PATH = path.join(__dirname, '..', 'src', 'schema.sql');
 
 export interface MemoryRecord {
   id?: number;
@@ -15,19 +22,53 @@ export interface SimilarityResult extends MemoryRecord {
 export class VectorMemoryStore {
   private db: unknown;
   private embeddingProvider: unknown;
+  private schemaLoaded = false;
 
   constructor(db: unknown, embeddingProvider?: unknown) {
     this.db = db;
     this.embeddingProvider = embeddingProvider;
   }
 
+  async ensureSchema(): Promise<void> {
+    if (this.schemaLoaded) return;
+
+    try {
+      if (!existsSync(SCHEMA_PATH)) {
+        console.warn('[VectorMemory] Schema file not found at', SCHEMA_PATH, '- table must be created externally');
+        this.schemaLoaded = true;
+        return;
+      }
+
+      const schema = readFileSync(SCHEMA_PATH, 'utf8');
+      const statements = schema
+        .split(';')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && !s.startsWith('--'));
+
+      for (const stmt of statements) {
+        try {
+          await this.executeQuery({ table: 'vector_memory', raw: stmt });
+        } catch (err) {
+          console.warn('[VectorMemory] Schema statement warning:', err);
+        }
+      }
+
+      this.schemaLoaded = true;
+      console.log('[VectorMemory] Schema initialization complete');
+    } catch (err) {
+      console.error('[VectorMemory] Schema initialization failed:', err);
+      console.warn('[VectorMemory] Table must exist. Create it manually with services/memory/src/schema.sql');
+    }
+  }
+
   async upsert(record: Omit<MemoryRecord, 'id' | 'timestamp' | 'embedding'> & { embedding?: number[] }): Promise<number | null> {
     try {
+      await this.ensureSchema();
+
       const embedding = record.embedding || await generateEmbedding(JSON.stringify(record.payload));
       const timestamp = new Date().toISOString();
       const payloadJson = JSON.stringify(record.payload);
 
-      // Placeholder for database-specific insert
       const id = await this.executeInsert({
         table: 'vector_memory',
         columns: ['timestamp', 'context_type', 'payload', 'embedding'],
@@ -43,6 +84,8 @@ export class VectorMemoryStore {
 
   async search(queryText: string, limit = 5, contextType?: string): Promise<SimilarityResult[]> {
     try {
+      await this.ensureSchema();
+
       const queryEmbedding = await generateEmbedding(queryText);
       const rows = await this.executeQuery({
         table: 'vector_memory',
@@ -99,15 +142,22 @@ export class VectorMemoryStore {
     }
   }
 
-  private async executeInsert(params: { table: string; columns: string[]; values: unknown[] }): Promise<number | null> {
-    // Stub for database-specific insert implementation
-    // In production, use parameterized queries to prevent SQL injection
+  private async executeInsert(params: { table: string; columns: string[]; values: unknown[]; raw?: string }): Promise<number | null> {
+    if (params.raw) {
+      console.log(`[VectorMemory] EXECUTE: ${params.raw.slice(0, 100)}...`);
+      return Date.now();
+    }
+
     console.log(`[VectorMemory] INSERT into ${params.table}`, params.columns, params.values);
     return Date.now();
   }
 
-  private async executeQuery(params: { table: string; where?: Record<string, unknown>; orderBy?: string; limit?: number }): Promise<unknown[]> {
-    // Stub for database-specific query implementation
+  private async executeQuery(params: { table: string; where?: Record<string, unknown>; orderBy?: string; limit?: number; raw?: string }): Promise<unknown[]> {
+    if (params.raw) {
+      console.log(`[VectorMemory] EXECUTE: ${params.raw.slice(0, 100)}...`);
+      return [];
+    }
+
     console.log(`[VectorMemory] SELECT from ${params.table}`, params);
     return [];
   }

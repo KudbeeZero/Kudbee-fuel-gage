@@ -35,3 +35,15 @@ jobs:
         run: npx turbo run build
         env:
           CI: true
+
+      - name: Redis Connectivity Diagnostic
+        if: always()
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_TOKEN: ${{ secrets.REDIS_TOKEN }}
+          REDIS_DB: ${{ secrets.REDIS_DB }}
+          REDIS_TLS: ${{ secrets.REDIS_TLS }}
+        run: node scripts/diagnose-redis.mjs
