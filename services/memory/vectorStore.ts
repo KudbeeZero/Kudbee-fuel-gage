@@ -17,9 +17,10 @@ import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 
 export interface TopologyMetadata {
   file_path: string;
-  category: 'layout' | 'router' | 'schema' | 'config' | 'doc';
+  category: 'layout' | 'router' | 'schema' | 'config' | 'doc' | 'law' | 'prompt';
   version: string;
-  [key: string]: string;
+  tags?: string[];
+  [key: string]: string | string[] | undefined;
 }
 
 export interface SystemChunk {
