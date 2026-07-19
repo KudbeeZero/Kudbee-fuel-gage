@@ -173,13 +173,32 @@ async function pollTasks() {
         hermes.log.error('task handling failed:', err.message)
       );
     } catch (err) {
-      hermes.log.error('polling loop error:', err.message);
-      await new Promise((r) => setTimeout(r, POLL_BACKOFF_MS));
+      // Connection failures are benign outages — warn once and back off
+      // instead of spinning the loop or crashing the process.
+      if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
+        noteRedisUnavailable();
+        await new Promise((r) => setTimeout(r, AUDIT_INTERVAL_MS));
+      } else {
+        hermes.log.error('polling loop error:', err.message);
+        await new Promise((r) => setTimeout(r, POLL_BACKOFF_MS));
+      }
     }
   }
 }
 
 // --- Background cadences --------------------------------------------------
+// Tracks whether we've already warned about Redis being down so the audit
+// loop prints the "unavailable" warning at most once per cooldown window
+// (instead of every 60s tick) and never crashes the worker.
+let redisWarnAt = 0;
+function noteRedisUnavailable() {
+  const now = Date.now();
+  if (now - redisWarnAt > 30_000) {
+    redisWarnAt = now;
+    console.warn('[HERMES:AUDITOR] Redis unavailable, skipping audit pass');
+  }
+}
+
 function startHeartbeat() {
   const tick = async () => {
     try {
@@ -198,7 +217,13 @@ function startAuditor() {
     try {
       await runAudit();
     } catch (err) {
-      hermes.log.error('auditor failed:', err.message);
+      // Connection errors are expected transient failures — warn once and
+      // keep the loop alive rather than throwing or crashing the process.
+      if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
+        noteRedisUnavailable();
+      } else {
+        hermes.log.error('auditor failed:', err.message);
+      }
     }
   };
   setInterval(tick, AUDIT_INTERVAL_MS);

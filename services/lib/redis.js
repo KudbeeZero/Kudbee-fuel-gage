@@ -32,16 +32,21 @@ export function getRedisClient(opts = {}) {
   if (_client) return _client;
 
   const client = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
+    // Resilient connection profile: do NOT infinitely retry or queue commands
+    // while offline. On a fatal/unreachable Redis, fail fast and let the
+    // caller's own try/catch log a warning and continue (self-healing).
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
     enableReadyCheck: true,
-    enableOfflineQueue: true,
-    retryStrategy: (times) => Math.min(times * 200, 2000),
-    lazyConnect: false
+    enableOfflineQueue: false,
+    // Return null to stop retrying after the first failure instead of
+    // hammering the server forever (ioredis treats null as "do not reconnect").
+    retryStrategy: () => null
   });
 
   client.on('connect', () => console.log(`[${label}] Redis connected`));
   client.on('ready', () => console.log(`[${label}] Redis ready`));
-  client.on('error', (err) => console.error(`[${label}] Redis error:`, err.message));
+  client.on('error', (err) => console.warn(`[${label}] Redis error:`, err.message));
   client.on('reconnecting', (delay) =>
     console.warn(`[${label}] Redis reconnecting in ${delay ?? '?'}ms`)
   );
