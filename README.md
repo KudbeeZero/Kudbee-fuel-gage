@@ -22,7 +22,7 @@ This project follows a 5-phase execution plan designed to move from basic teleme
 
 ### Phase 1 — The Foundation
 *   **Goal:** Harden ingestion and normalize the monorepo structure.
-*   **Stack:** Node.js, Express, SQLite, OTel SDK, Turborepo.
+*   **Stack:** Node.js, Express, Neon Postgres (resilient `pg.Pool`), Redis, OTel SDK, Turborepo.
 *   **Status:** [x] CI/CD pipeline active. [x] Telemetry ingestion live.
 
 ### Phase 2 — The Gate
@@ -49,6 +49,37 @@ This project follows a 5-phase execution plan designed to move from basic teleme
 *   **Contract First:** All inter-service communication follows strictly typed Zod/Pydantic schemas defined in `@platform/types`.
 *   **Observability:** Every phase ships OTel traces back to the ingestion endpoint.
 *   **Security:** The Proprietary Firewall is the system invariant. No service may accept unvalidated cross-boundary input.
+
+---
+
+## 🧰 Configuration & Verification
+
+### Environment configuration (`config/`)
+All environment-specific configuration lives in `config/`:
+
+*   **`config/template.env`** — canonical template listing **every** required
+    secret/var (`GEMINI_API_KEY`, `DATABASE_URL`, `REDIS_URL`, `GITHUB_TOKEN`,
+    `APP_URL`, `REACT_APP_API_URL`, `CORS_ALLOW_ORIGINS`, `PORT`, `NODE_ENV`).
+    Copy it to `.env` and fill in the placeholders, or inject the values via your
+    hosting provider's Secrets panel. **No real secrets are stored in the repo.**
+*   **`config/.env.example`** — legacy example (kept for compatibility).
+
+The ingestion server is **Resilient-First**: if `DATABASE_URL` or `REDIS_URL` are
+unset or unreachable, it logs a clear warning and degrades (in-memory store /
+no cache) instead of crashing.
+
+### Verification bundle (`scripts/`)
+Run these from the repo root to prove system integrity at any time:
+
+```bash
+node scripts/verify-e2e.mjs     # 11/11 end-to-end checks (spawns the server)
+node scripts/diagnose-redis.mjs # advisory: reports Redis reachability
+node scripts/auto-commit.mjs    # verify → auto-commit → open PR (needs GITHUB_TOKEN)
+```
+
+`auto-commit.mjs` runs the E2E suite first; if it passes and there are changes,
+it commits them on a feature branch and opens a PR against `main`. A failing E2E
+run aborts with no force-commit.
 
 ---
 

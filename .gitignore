@@ -8,5 +8,7 @@ coverage/
 *.db-journal
 .env*
 !.env.example
+!config/template.env
+!config/.env.example
 .turbo/
 .agent_private_key.pem
