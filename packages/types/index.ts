@@ -142,3 +142,60 @@ export const CommunityValueResponseSchema = z.object({
   governance_actions: z.number()
 });
 export type CommunityValueResponse = z.infer<typeof CommunityValueResponseSchema>;
+
+// --- HITL Governance Gate (Human-in-the-Loop) -------------------------------
+// A proposed agent action awaiting human approval before execution. Surfaced
+// in the dashboard as a high-priority "Governance Intervention Required" card.
+// Strictly typed: every field is concrete, NO `any`. Union status enforces the
+// only three legal lifecycle states at the type level.
+
+export const ApprovalStatusSchema = z.enum(['PENDING_APPROVAL', 'APPROVED', 'REJECTED']);
+export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;
+
+export const ApprovalRequestSchema = z.object({
+  id: z.string().min(1),
+  proposed_model: z.string().default('unknown'),
+  estimated_cost: z.number().nonnegative().default(0),
+  reasoning_tokens: z.number().int().nonnegative().default(0),
+  status: ApprovalStatusSchema.default('PENDING_APPROVAL'),
+  agent_id: z.string().optional(),
+  task: z.string().optional(),
+  reasoning: z.string().optional(),
+  created_at: z.string().optional()
+});
+export type ApprovalRequest = z.infer<typeof ApprovalRequestSchema>;
+
+// The only valid decisions a human can return to the HITL gate.
+export type ApprovalDecision = 'APPROVE' | 'REJECT';
+
+export const ApprovalDecisionSchema = z.enum(['APPROVE', 'REJECT']);
+export type ApprovalDecisionType = z.infer<typeof ApprovalDecisionSchema>;
+
+export const ApprovalResolutionSchema = z.object({
+  id: z.string().min(1),
+  decision: ApprovalDecisionSchema,
+  success: z.boolean(),
+  action: z.unknown().optional()
+});
+export type ApprovalResolution = z.infer<typeof ApprovalResolutionSchema>;
+
+// --- Think: Stream (chain-of-thought reasoning tokens) ---------------------
+// A single archived reasoning block returned by GET /api/think/archive.
+export const ThinkThoughtSchema = z.object({
+  id: z.number().int(),
+  agent_id: z.string(),
+  task: z.string().nullable().optional(),
+  phase: z.string().nullable().optional(),
+  thought: z.string(),
+  tokens_in: z.number().int().nonnegative().default(0),
+  tokens_out: z.number().int().nonnegative().default(0),
+  model: z.string().default('reasoning'),
+  created_at: z.string().optional()
+});
+export type ThinkThought = z.infer<typeof ThinkThoughtSchema>;
+
+export const ThinkArchiveResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+  thoughts: z.array(ThinkThoughtSchema)
+});
+export type ThinkArchiveResponse = z.infer<typeof ThinkArchiveResponseSchema>;
