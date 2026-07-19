@@ -28,10 +28,14 @@ const AGENT_ID = `hermes-auditor-${process.pid}`;
 const PREFIX = '[HERMES:AUDITOR]';
 const HEARTBEAT_KEY = 'kudbee:agents:hermes';
 const HEARTBEAT_TTL = 30; // seconds — window the Control Tower treats as "Online"
+const LOG_STREAM_KEY = 'kudbee:hermes:log'; // surfaced in the dashboard terminal
+const LOG_STREAM_MAX = 200;
 
 // --- Custom log formatter -------------------------------------------------
 // Every HERMES background action is rendered with the [HERMES:AUDITOR] prefix
 // (plus an optional sub-tag) so it is visually distinct in the dashboard dock.
+// Each formatted line is also mirrored to the Redis log stream so the
+// Control Tower terminal can display HERMES output in real time.
 function format(level, parts) {
   const ts = new Date().toISOString();
   const head = `${PREFIX} ${level}`;
@@ -41,11 +45,21 @@ function format(level, parts) {
   return `${ts} ${head} ${body}`;
 }
 
+async function mirrorToStream(line) {
+  try {
+    const redis = getRedisClient({ label: 'hermes' });
+    await redis.lpush(LOG_STREAM_KEY, JSON.stringify({ ts: new Date().toISOString(), line }));
+    await redis.ltrim(LOG_STREAM_KEY, 0, LOG_STREAM_MAX);
+  } catch {
+    /* best-effort; never block the audit loop on log mirroring */
+  }
+}
+
 export const log = Object.freeze({
-  info: (...parts) => console.log(format('INFO', parts)),
-  warn: (...parts) => console.warn(format('WARN', parts)),
-  audit: (...parts) => console.log(format('AUDIT', parts)),
-  error: (...parts) => console.error(format('ERROR', parts))
+  info: (...parts) => { const l = format('INFO', parts); console.log(l); void mirrorToStream(l); },
+  warn: (...parts) => { const l = format('WARN', parts); console.warn(l); void mirrorToStream(l); },
+  audit: (...parts) => { const l = format('AUDIT', parts); console.log(l); void mirrorToStream(l); },
+  error: (...parts) => { const l = format('ERROR', parts); console.error(l); void mirrorToStream(l); }
 });
 
 /**

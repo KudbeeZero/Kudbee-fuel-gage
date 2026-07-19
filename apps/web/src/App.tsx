@@ -61,6 +61,7 @@ import { GovernanceView } from './components/GovernanceView';
 import { TriageView } from './components/TriageView';
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
+import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import {
   AreaChart,
   Area,
@@ -2972,6 +2973,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<any | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
+
+  // Governance Router + HERMES auditor health (polled every 5s).
+  const { health: govHealth } = useGovernanceHealth(5000);
   
   const [eventLogs, setEventLogs] = useState<any[]>([]);
 
@@ -3489,7 +3493,7 @@ export default function App() {
             id="global-status-bar"
             className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
               <span className="relative flex h-2.5 w-2.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
@@ -3498,9 +3502,39 @@ export default function App() {
                 Status: <span className="text-emerald-400 font-semibold">Online</span>
               </span>
               <span className="hidden sm:inline text-slate-700">|</span>
-              <span className="font-mono text-xs text-slate-400">
-                Stack: <span className="text-slate-200">Heroku-24</span>
+
+              {/* Governance Status indicator */}
+              <span className="flex items-center gap-1.5 font-mono text-xs">
+                <Scale className={`h-3 w-3 ${govHealth.governanceActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                Governance:{' '}
+                <span className={govHealth.governanceActive ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>
+                  {govHealth.governanceActive ? 'Active' : 'Offline'}
+                </span>
+                {govHealth.proposedCount > 0 && (
+                  <span
+                    className="ml-0.5 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300"
+                    title={`${govHealth.proposedCount} proposed logic action(s) pending review`}
+                  >
+                    {govHealth.proposedCount} pending review
+                  </span>
+                )}
               </span>
+
+              <span className="hidden sm:inline text-slate-700">|</span>
+
+              {/* HERMES Auditor status indicator */}
+              <span className="flex items-center gap-1.5 font-mono text-xs">
+                {govHealth.hermes.online ? (
+                  <Wifi className="h-3 w-3 text-emerald-400" />
+                ) : (
+                  <WifiOff className="h-3 w-3 text-rose-400" />
+                )}
+                HERMES Auditor:{' '}
+                <span className={govHealth.hermes.online ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                  {govHealth.hermes.online ? 'Online' : 'Offline'}
+                </span>
+              </span>
+
               <span className="hidden sm:inline text-slate-700">|</span>
               <span className="font-mono text-xs text-slate-400 truncate">
                 View: <span className="text-emerald-400/80">{activeTab}</span>
