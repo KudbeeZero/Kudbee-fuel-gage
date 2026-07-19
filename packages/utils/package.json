@@ -6,7 +6,8 @@
   "main": "./crypto-identity.ts",
   "types": "./crypto-identity.ts",
   "exports": {
-    ".": "./crypto-identity.ts"
+    ".": "./crypto-identity.ts",
+    "./prompts/edge-sentinel": "./src/prompts/edge-sentinel.ts"
   },
   "scripts": {
     "build": "echo \"@kudbee/utils: source-only package, nothing to build\"",

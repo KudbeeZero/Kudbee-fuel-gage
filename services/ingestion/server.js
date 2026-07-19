@@ -16,6 +16,7 @@ import { listProposed, approveAction, rejectAction } from '../governance/router.
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
+import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
 
 
@@ -504,6 +505,11 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+
+// Edge Sentinel telemetry ingestion webhook (auth via X-Agent-Pass).
+// Mounted at a distinct path so it does not clobber the Zod-firewall
+// /api/telemetry/ingest route. Controller lives in controllers/telemetry.ts.
+app.post('/api/telemetry/edge-ingest', handleTelemetryIngest);
 
 app.get('/api/memory/recall', async (req, res) => {
   try {

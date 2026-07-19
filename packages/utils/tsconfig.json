@@ -5,5 +5,5 @@
     "types": ["node"],
     "lib": ["ES2022"]
   },
-  "include": ["crypto-identity.ts"]
+  "include": ["crypto-identity.ts", "src/prompts/edge-sentinel.ts"]
 }
