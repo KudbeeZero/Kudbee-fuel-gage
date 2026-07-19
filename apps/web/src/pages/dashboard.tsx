@@ -20,6 +20,8 @@ import {
   WifiOff
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
+import { useEventStream } from '../hooks/useEventStream';
+import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 
 interface HealthResponse {
@@ -87,8 +89,6 @@ interface SessionHistoryItem {
   lesson_learned?: string;
   diff_summary?: string;
 }
-
-const POLL_MS = 5000;
 
 // --- Phase 6: client-side cryptographic signing (Ed25519 via Web Crypto) ---
 // The Partner Portal signs the trace with the agent's key pair before submitting
@@ -609,7 +609,7 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
   );
 }
 
-function AgentTerminal({ data, loading, error, live }: { data: SessionHistoryItem[]; loading: boolean; error: string | null; live?: boolean }) {
+function AgentTerminal({ data, loading, error, live, thinking }: { data: SessionHistoryItem[]; loading: boolean; error: string | null; live?: boolean; thinking?: boolean }) {
   const [commands, setCommands] = useState<{ id: number; text: string }[]>([]);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -631,6 +631,28 @@ function AgentTerminal({ data, loading, error, live }: { data: SessionHistoryIte
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-5 flex flex-col">
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+
+      {/* Thinking Pulse overlay — activates when the system enters SLOW_BRAIN
+          (LLM reasoning). Pure CSS keyframe pulse simulates "AI processing". */}
+      {thinking && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
+          <div className="flex flex-col items-center gap-3">
+            <span className="relative flex h-16 w-16">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500/40" />
+              <span className="absolute inline-flex h-full w-full animate-pulse rounded-full bg-violet-500/30" style={{ animationDelay: '300ms' }} />
+              <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/40 bg-slate-900/80">
+                <Brain className="h-7 w-7 animate-pulse text-violet-300" />
+              </span>
+            </span>
+            <div className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1">
+              <Cpu className="h-3.5 w-3.5 text-violet-300" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-violet-200">
+                Slow Brain · Reasoning…
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-500">
           <Terminal className="h-4 w-4 text-emerald-400" />
@@ -641,7 +663,7 @@ function AgentTerminal({ data, loading, error, live }: { data: SessionHistoryIte
             {live && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
             <span className={`relative inline-flex rounded-full h-2 w-2 ${live ? 'bg-emerald-500' : 'bg-rose-500'}`} />
           </span>
-          <span className="text-[10px] font-mono text-slate-500">{live ? 'ONLINE' : 'OFFLINE'}</span>
+          <span className="text-[10px] font-mono text-slate-500">{thinking ? 'REASONING' : live ? 'ONLINE' : 'OFFLINE'}</span>
           {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
         </div>
       </div>
@@ -739,6 +761,17 @@ export function DashboardPage() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
 
+  // --- Real-time telemetry (SSE) ---
+  const [thinking, setThinking] = useState(false);
+  const [suggestions, setSuggestions] = useState<HermesSuggestion[]>([]);
+  const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismissSuggestion = useCallback((id: string) => {
+    setSuggestions((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const stream = useEventStream();
+
   const probeHealth = useCallback(async () => {
     try {
       const data = await apiGet<HealthResponse>('/health');
@@ -787,6 +820,55 @@ export function DashboardPage() {
       setGovError(e instanceof Error ? e.message : 'Governance fetch failed');
     }
   }, []);
+
+  // --- Real-time telemetry: subscribe to the SSE stream (declared after the
+  // loaders above so the handlers can call them directly). ---
+  useEffect(() => {
+    // SLOW_BRAIN enter/exit -> Thinking Pulse overlay.
+    const offSlow = stream.on('slow_brain', (data: any) => {
+      if (data?.state === 'start') {
+        setThinking(true);
+        if (thinkTimer.current) clearTimeout(thinkTimer.current);
+        // Safety auto-clear in case the stop event is missed.
+        thinkTimer.current = setTimeout(() => setThinking(false), 30000);
+      } else if (data?.state === 'stop') {
+        if (thinkTimer.current) clearTimeout(thinkTimer.current);
+        setThinking(false);
+      }
+    });
+
+    // HERMES audit/optimization suggestion -> top-right toast.
+    const offSuggest = stream.on('hermes_suggestion', (data: any) => {
+      if (!data?.id) return;
+      setSuggestions((prev) =>
+        prev.some((s) => s.id === data.id) ? prev : [...prev, data as HermesSuggestion]
+      );
+    });
+
+    // Governance change (approve/reject) or triage -> refresh the relevant feed.
+    const offGov = stream.on('governance', () => { void loadGovernance(); });
+    const offTriage = stream.on('triage', () => { void loadTriage(); });
+
+    // Initial snapshot of proposed actions from the SSE handshake.
+    const offSnapshot = stream.on('snapshot', (data: any) => {
+      if (Array.isArray(data?.proposed)) {
+        setSuggestions((prev) => {
+          const incoming = (data.proposed as HermesSuggestion[])
+            .filter((p) => !prev.some((s) => s.id === p.id))
+            .map((p) => ({ id: p.id, action: p.action, tags: p.tags, prompt: p.prompt, detail: 'Pending proposed action' }));
+          return [...prev, ...incoming];
+        });
+      }
+    });
+
+    return () => {
+      offSlow();
+      offSuggest();
+      offGov();
+      offTriage();
+      offSnapshot();
+    };
+  }, [stream.on, loadGovernance, loadTriage]);
 
   const loadSystemStatus = useCallback(async () => {
     try {
@@ -858,15 +940,16 @@ export function DashboardPage() {
     setPulse((p) => p + 1);
   }, [probeHealth, loadSystemStatus, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
 
-  // Initial load on mount.
+  // Initial load on mount. Subsequent updates arrive via the SSE stream, so
+  // the 5s poll is reduced to a slow safety net (every 30s) instead of the
+  // primary update path.
   useEffect(() => {
     void syncAll();
   }, [syncAll]);
 
-  // Interactive "Pulse": poll everything every 5 seconds without a page refresh.
   useInterval(() => {
     void syncAll();
-  }, POLL_MS);
+  }, 30_000);
 
   const live = health?.status === 'ok' || health?.status === 'degraded';
 
@@ -944,8 +1027,15 @@ export function DashboardPage() {
 
         {/* Live Agent Terminal */}
         <div className="mt-5">
-          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} live={live} />
+          <AgentTerminal data={sessionHistory} loading={sessionHistoryLoading} error={sessionHistoryError} live={live} thinking={thinking} />
         </div>
+
+        {/* HERMES live suggestion toasts (top-right) */}
+        <GovernanceToastStack
+          suggestions={suggestions}
+          onDismiss={dismissSuggestion}
+          onApproved={dismissSuggestion}
+        />
 
         {(triageError || memoryError || govError || verifyError || systemStatusError || sessionHistoryError) && (
           <div className="mt-5 space-y-2">
@@ -989,7 +1079,7 @@ export function DashboardPage() {
         )}
 
         <footer className="mt-8 flex items-center justify-between border-t border-slate-800/60 pt-5 text-[10px] font-mono text-slate-600">
-          <span>Kudbee Control Tower · auto-polling {POLL_MS / 1000}s</span>
+          <span>Kudbee Control Tower · live SSE {stream.connected ? 'connected' : 'connecting…'} · 30s safety poll</span>
           <span>{apiUrl('/health')}</span>
         </footer>
       </div>

@@ -206,6 +206,14 @@ export async function runAudit() {
 
   for (const f of memoryFindings) {
     log.warn(`memory:${f.type}`, `(${f.count})`, f.detail);
+    // Surface memory-inefficiency findings as live operator toasts.
+    await publishAuditEvent('hermes_suggestion', {
+      id: `mem-${f.type}-${Date.now()}`,
+      action: 'OPTIMIZE_MEMORY',
+      tags: ['hermes-auditor', 'memory'],
+      prompt: f.detail,
+      detail: f.detail
+    });
   }
 
   let promoted = 0;
@@ -213,13 +221,21 @@ export async function runAudit() {
     if (f.type === 'promotable_logic_pair') {
       log.audit('promotable', `id=${f.id}`, `tags=${JSON.stringify(f.tags)}`, f.detail);
       try {
-        await proposeAction({
+        const proposed = await proposeAction({
           action: `PROMOTE_LOGIC:${f.id}`,
           tags: Array.isArray(f.tags) ? f.tags.concat('hermes-audited') : ['hermes-audited'],
           prompt: `Audit promotion candidate ${f.id}`,
           id: `hermes-${f.id}`
         });
         promoted += 1;
+        // Live suggestion toast to promote the pair into the PROVEN index.
+        await publishAuditEvent('hermes_suggestion', {
+          id: proposed.id,
+          action: proposed.action,
+          tags: proposed.tags,
+          prompt: proposed.prompt,
+          detail: f.detail
+        });
       } catch (err) {
         log.error('failed to propose promotion:', err.message);
       }
@@ -232,6 +248,16 @@ export async function runAudit() {
   );
 
   return { memoryFindings, logicFindings, promoted };
+}
+
+// Publish an audit finding to the real-time event bus (best-effort).
+async function publishAuditEvent(type, data) {
+  try {
+    const redis = getRedisClient({ label: 'hermes' });
+    await redis.publish('kudbee:events', JSON.stringify({ type, data, ts: new Date().toISOString() }));
+  } catch {
+    /* ignore */
+  }
 }
 
 export const hermes = {

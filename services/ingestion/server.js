@@ -203,6 +203,7 @@ try {
 }
 
 function quarantineViolation(payload, violationReason) {
+  publishEvent('triage', { payload, violation_reason: violationReason, timestamp: new Date().toISOString() });
   return runInsert(
     `INSERT INTO security_violations (payload, violation_reason, timestamp)
      VALUES (?, ?, datetime('now'))`,
@@ -698,7 +699,7 @@ app.post('/api/governance/approve', async (req, res) => {
   try {
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
-    const proven = await approveAction(String(id));
+    const proven = await approveActionAndBroadcast(String(id));
     if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
     return res.status(200).json({ success: true, action: proven });
   } catch (err) {
@@ -711,7 +712,7 @@ app.post('/api/governance/reject', async (req, res) => {
   try {
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
-    const rejected = await rejectAction(String(id));
+    const rejected = await rejectActionAndBroadcast(String(id));
     if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
     return res.status(200).json({ success: true, action: rejected });
   } catch (err) {
@@ -955,6 +956,109 @@ app.get('/api/session-history', async (_req, res) => {
     res.status(500).json({ error: 'Failed to fetch session history' });
   }
 });
+
+// --- Real-time telemetry: Server-Sent Events (SSE) -----------------------
+// The web server and the HERMES worker are separate processes, so we use a
+// Redis pub/sub channel (`kudbee:events`) as the cross-process event bus.
+// The server subscribes once and fans every event out to all connected SSE
+// clients. `broadcast()` writes to local clients; `publishEvent()` also pushes
+// to Redis so the worker (and other server dynos) can emit events too.
+
+const EVENTS_CHANNEL = 'kudbee:events';
+const sseClients = new Set();
+
+function broadcast(event) {
+  const payload = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+  for (const res of sseClients) {
+    try {
+      res.write(payload);
+    } catch {
+      sseClients.delete(res);
+    }
+  }
+}
+
+function publishEvent(type, data) {
+  // Single delivery path: publish to Redis; the subscriber connection fans
+  // out to all local SSE clients. (Calling broadcast() here too would double
+  // deliver server-originated events.)
+  if (redis) {
+    try {
+      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() }));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+// Dedicated subscriber connection (ioredis requires subscriber mode).
+if (redis) {
+  try {
+    const subClient = redis.duplicate();
+    subClient.subscribe(EVENTS_CHANNEL, (err) => {
+      if (err) console.error('[SSE] Failed to subscribe to events channel:', err.message);
+      else console.log('[SSE] Subscribed to', EVENTS_CHANNEL);
+    });
+    subClient.on('message', (_channel, message) => {
+      try {
+        const event = JSON.parse(message);
+        broadcast(event);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+    subClient.on('error', (err) => console.error('[SSE] Subscriber error:', err.message));
+  } catch (err) {
+    console.error('[SSE] Subscriber init error:', err.message);
+  }
+}
+
+app.get('/api/events', async (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.write('retry: 3000\n\n');
+  sseClients.add(res);
+
+  // Snapshot of current governance state so a fresh client renders instantly.
+  try {
+    const proposed = redis ? await listProposed() : [];
+    res.write(`event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [] })}\n\n`);
+  } catch {
+    /* ignore */
+  }
+
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(`: ping\n\n`);
+    } catch {
+      /* ignore */
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  });
+});
+
+// Broadcast a live event when a governance action is approved/rejected so the
+// dashboard updates instantly instead of waiting for the next poll.
+const _origApprove = approveAction;
+async function approveActionAndBroadcast(id) {
+  const proven = await _origApprove(id);
+  if (proven) publishEvent('governance', { kind: 'approved', action: proven });
+  return proven;
+}
+const _origReject = rejectAction;
+async function rejectActionAndBroadcast(id) {
+  const rejected = await _origReject(id);
+  if (rejected) publishEvent('governance', { kind: 'rejected', action: rejected });
+  return rejected;
+}
 
 function resolveDistPath() {
   const candidates = [
