@@ -31,6 +31,11 @@ import {
   ChevronRight,
   ShieldAlert,
   XCircle,
+  Scale,
+  Wifi,
+  WifiOff,
+  Ban,
+  ArrowRight,
   Key,
   Trash2,
   Shield,
@@ -52,6 +57,7 @@ import { ConsoleDock } from './components/ConsoleDock';
 import { GatewayView } from './components/gateway/GatewayView';
 import { AlertsView } from './components/AlertsView';
 import { InterceptorView } from './components/InterceptorView';
+import { GovernanceView } from './components/GovernanceView';
 import { TriageView } from './components/TriageView';
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
@@ -1912,6 +1918,11 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
   const [promptShield, setPromptShield] = useState(true);
   const [semanticRouting, setSemanticRouting] = useState(false);
 
+  // Guardrail Policy Toggles
+  const [strictMode, setStrictMode] = useState(true);
+  const [allowTelemetry, setAllowTelemetry] = useState(true);
+  const [deepPacketInspection, setDeepPacketInspection] = useState(false);
+
   // Runtime Approval Gates (HITL)
   const [costGateEnabled, setCostGateEnabled] = useState(true);
   const [costThreshold, setCostThreshold] = useState(0.50);
@@ -2046,6 +2057,75 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* 1.5 GUARDRAIL POLICY + QUICK ACTIONS */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+
+        <div className="flex items-center gap-2 mb-6">
+          <ShieldAlert className="w-5 h-5 text-emerald-400" />
+          <div>
+            <h2 className="font-display font-semibold text-slate-200 text-sm">Guardrail Policy &amp; Quick Actions</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Global enforcement switches and immediate firewall operator controls.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {[
+            { label: 'Strict Mode', desc: 'Hard-deny any non-allowlisted provider, model, or tool invocation.', on: strictMode, set: setStrictMode, toast: 'Strict Mode' },
+            { label: 'Allow Telemetry', desc: 'Permit runtime traces, spans, and usage metrics to egress to the collector.', on: allowTelemetry, set: setAllowTelemetry, toast: 'Telemetry Egress' },
+            { label: 'Deep Packet Inspection', desc: 'Reassemble and scan full request/response payloads for exfil patterns.', on: deepPacketInspection, set: setDeepPacketInspection, toast: 'Deep Packet Inspection' }
+          ].map((t) => (
+            <div key={t.label} className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl flex flex-col justify-between h-36 hover:border-slate-700 transition-colors duration-200">
+              <div className="space-y-1">
+                <span className="block text-xs font-bold font-mono uppercase tracking-wider text-slate-300">{t.label}</span>
+                <p className="text-[10px] text-slate-500 leading-normal">{t.desc}</p>
+              </div>
+              <div className="flex justify-between items-center mt-4">
+                <span className={`text-[9px] font-mono uppercase tracking-widest transition-colors ${t.on ? 'text-emerald-400' : 'text-slate-600'}`}>
+                  {t.on ? '● Active' : '○ Standby'}
+                </span>
+                <button
+                  onClick={() => {
+                    t.set(!t.on);
+                    showToast(`${t.toast} ${!t.on ? 'activated.' : 'deactivated.'}`, 'info');
+                  }}
+                  aria-pressed={t.on}
+                  className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
+                    t.on ? 'bg-emerald-500' : 'bg-slate-800'
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${t.on ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => showToast('IP block rule dispatched to edge firewall.', 'success')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-widest border border-rose-500/30 bg-rose-500/10 text-rose-400 transition-all duration-150 hover:bg-rose-500/20 hover:shadow-[0_0_12px_rgba(244,63,94,0.25)] active:scale-95 cursor-pointer"
+          >
+            <Ban className="w-4 h-4" />
+            Block IP
+          </button>
+          <button
+            onClick={() => showToast('All routing rules cleared from policy store.', 'info')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-widest border border-slate-700 bg-slate-950 text-slate-300 transition-all duration-150 hover:bg-slate-900 hover:text-slate-100 hover:border-slate-600 active:scale-95 cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear Rules
+          </button>
+          <button
+            onClick={() => showToast('Edge cache flushed across all regions.', 'success')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-widest border border-amber-500/30 bg-amber-500/10 text-amber-400 transition-all duration-150 hover:bg-amber-500/20 hover:shadow-[0_0_12px_rgba(245,158,11,0.25)] active:scale-95 cursor-pointer"
+          >
+            <Radio className="w-4 h-4" />
+            Flush Cache
+          </button>
         </div>
       </div>
 
@@ -3186,6 +3266,7 @@ export default function App() {
     { icon: Activity, label: 'Interceptor' },
     { icon: Globe, label: 'Intelligence' },
     { icon: Shield, label: 'Firewall' },
+    { icon: Scale, label: 'Governance' },
     { icon: Bell, label: 'Alerts' },
     { icon: Settings, label: 'Settings' }
   ];
@@ -3402,6 +3483,35 @@ export default function App() {
               </div>
             </div>
           </header>
+
+          {/* GLOBAL STATUS / ENVIRONMENT BAR */}
+          <div
+            id="global-status-bar"
+            className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+              </span>
+              <span className="font-mono text-xs text-slate-300">
+                Status: <span className="text-emerald-400 font-semibold">Online</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">|</span>
+              <span className="font-mono text-xs text-slate-400">
+                Stack: <span className="text-slate-200">Heroku-24</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">|</span>
+              <span className="font-mono text-xs text-slate-400 truncate">
+                View: <span className="text-emerald-400/80">{activeTab}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+              <a href="#" className="hover:text-emerald-400 transition-colors">Docs</a>
+              <a href="#" className="hover:text-emerald-400 transition-colors">Support</a>
+              <a href="#" className="hover:text-emerald-400 transition-colors">API</a>
+            </div>
+          </div>
 
           {/* ACTIVE VIEW ROUTER */}
           {activeTab === 'Control Tower' && (
@@ -3872,6 +3982,8 @@ export default function App() {
           )}
 
           {activeTab === 'Alerts' && <AlertsView />}
+
+          {activeTab === 'Governance' && <GovernanceView />}
 
           {activeTab === 'Settings' && (
             <SettingsView 
