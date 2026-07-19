@@ -771,52 +771,6 @@ export function DashboardPage() {
   }, []);
 
   const stream = useEventStream();
-  useEffect(() => {
-    // SLOW_BRAIN enter/exit -> Thinking Pulse overlay.
-    const offSlow = stream.on('slow_brain', (data: any) => {
-      if (data?.state === 'start') {
-        setThinking(true);
-        if (thinkTimer.current) clearTimeout(thinkTimer.current);
-        // Safety auto-clear in case the stop event is missed.
-        thinkTimer.current = setTimeout(() => setThinking(false), 30000);
-      } else if (data?.state === 'stop') {
-        if (thinkTimer.current) clearTimeout(thinkTimer.current);
-        setThinking(false);
-      }
-    });
-
-    // HERMES audit/optimization suggestion -> top-right toast.
-    const offSuggest = stream.on('hermes_suggestion', (data: any) => {
-      if (!data?.id) return;
-      setSuggestions((prev) =>
-        prev.some((s) => s.id === data.id) ? prev : [...prev, data as HermesSuggestion]
-      );
-    });
-
-    // Governance change (approve/reject) or triage -> refresh the relevant feed.
-    const offGov = stream.on('governance', () => { void loadGovernance(); });
-    const offTriage = stream.on('triage', () => { void loadTriage(); });
-
-    // Initial snapshot of proposed actions from the SSE handshake.
-    const offSnapshot = stream.on('snapshot', (data: any) => {
-      if (Array.isArray(data?.proposed)) {
-        setSuggestions((prev) => {
-          const incoming = (data.proposed as HermesSuggestion[])
-            .filter((p) => !prev.some((s) => s.id === p.id))
-            .map((p) => ({ id: p.id, action: p.action, tags: p.tags, prompt: p.prompt, detail: 'Pending proposed action' }));
-          return [...prev, ...incoming];
-        });
-      }
-    });
-
-    return () => {
-      offSlow();
-      offSuggest();
-      offGov();
-      offTriage();
-      offSnapshot();
-    };
-  }, [stream.on, loadGovernance, loadTriage]);
 
   const probeHealth = useCallback(async () => {
     try {
@@ -866,6 +820,55 @@ export function DashboardPage() {
       setGovError(e instanceof Error ? e.message : 'Governance fetch failed');
     }
   }, []);
+
+  // --- Real-time telemetry: subscribe to the SSE stream (declared after the
+  // loaders above so the handlers can call them directly). ---
+  useEffect(() => {
+    // SLOW_BRAIN enter/exit -> Thinking Pulse overlay.
+    const offSlow = stream.on('slow_brain', (data: any) => {
+      if (data?.state === 'start') {
+        setThinking(true);
+        if (thinkTimer.current) clearTimeout(thinkTimer.current);
+        // Safety auto-clear in case the stop event is missed.
+        thinkTimer.current = setTimeout(() => setThinking(false), 30000);
+      } else if (data?.state === 'stop') {
+        if (thinkTimer.current) clearTimeout(thinkTimer.current);
+        setThinking(false);
+      }
+    });
+
+    // HERMES audit/optimization suggestion -> top-right toast.
+    const offSuggest = stream.on('hermes_suggestion', (data: any) => {
+      if (!data?.id) return;
+      setSuggestions((prev) =>
+        prev.some((s) => s.id === data.id) ? prev : [...prev, data as HermesSuggestion]
+      );
+    });
+
+    // Governance change (approve/reject) or triage -> refresh the relevant feed.
+    const offGov = stream.on('governance', () => { void loadGovernance(); });
+    const offTriage = stream.on('triage', () => { void loadTriage(); });
+
+    // Initial snapshot of proposed actions from the SSE handshake.
+    const offSnapshot = stream.on('snapshot', (data: any) => {
+      if (Array.isArray(data?.proposed)) {
+        setSuggestions((prev) => {
+          const incoming = (data.proposed as HermesSuggestion[])
+            .filter((p) => !prev.some((s) => s.id === p.id))
+            .map((p) => ({ id: p.id, action: p.action, tags: p.tags, prompt: p.prompt, detail: 'Pending proposed action' }));
+          return [...prev, ...incoming];
+        });
+      }
+    });
+
+    return () => {
+      offSlow();
+      offSuggest();
+      offGov();
+      offTriage();
+      offSnapshot();
+    };
+  }, [stream.on, loadGovernance, loadTriage]);
 
   const loadSystemStatus = useCallback(async () => {
     try {
