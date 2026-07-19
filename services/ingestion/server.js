@@ -201,6 +201,10 @@ try {
   console.error('[Redis] Failed to initialize client:', err.message);
 }
 
+function isRedisReady() {
+  return !!redis && redis.status === 'ready';
+}
+
 function quarantineViolation(payload, violationReason) {
   return runInsert(
     `INSERT INTO security_violations (payload, violation_reason, timestamp)
@@ -328,7 +332,7 @@ app.post('/api/telemetry/ingest', async (req, res) => {
         : 'Telemetry trace ingested successfully'
     };
 
-    if (redis) {
+    if (isRedisReady()) {
       const feedEntry = {
         trace_id: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
         model: model || 'unknown',
@@ -574,7 +578,7 @@ app.post('/api/interceptor/verify', async (req, res) => {
     const govTimestamp = Date.now();
     let govId = Date.now();
 
-    if (redis) {
+    if (isRedisReady()) {
       try {
         govId = await redis.incr('kudbee:governance_counter');
         const govRecord = {
@@ -634,7 +638,7 @@ app.post('/api/interceptor/verify', async (req, res) => {
 app.get('/api/governance/feed', async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
-    if (redis) {
+    if (isRedisReady()) {
       try {
         const rawRows = await redis.zrange('kudbee:governance_actions', 0, limit - 1, 'REV');
         const feed = rawRows.map((row) => {
@@ -683,7 +687,7 @@ app.get('/api/governance/feed', async (req, res) => {
 
 app.get('/api/metrics/community-value', async (req, res) => {
   try {
-    if (redis) {
+    if (isRedisReady()) {
       try {
         const score = await redis.get('kudbee:community_value_score');
         const actions = await redis.get('kudbee:governance_count');
@@ -757,7 +761,7 @@ app.get('/health', async (_req, res) => {
       () => false
     );
     let redisOk = false;
-    if (redis) {
+    if (isRedisReady()) {
       try {
         await redis.ping();
         redisOk = true;
@@ -793,8 +797,8 @@ app.get('/health', async (_req, res) => {
 app.get('/api/health-check', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    const communityValueScore = redis ? await redis.get('kudbee:community_value_score') : '0';
-    const alerts = redis ? await redis.lrange('kudbee:alerts', 0, 4) : [];
+    const communityValueScore = isRedisReady() ? await redis.get('kudbee:community_value_score') : '0';
+    const alerts = isRedisReady() ? await redis.lrange('kudbee:alerts', 0, 4) : [];
 
     const parsedAlerts = alerts.map((a) => {
       try {
@@ -817,7 +821,7 @@ app.get('/api/health-check', async (_req, res) => {
 
 app.get('/api/session-history', async (_req, res) => {
   try {
-    const raw = redis ? await redis.lrange('kudbee:session_history', 0, 9) : [];
+    const raw = isRedisReady() ? await redis.lrange('kudbee:session_history', 0, 9) : [];
     const sessions = raw.map((item) => {
       try {
         return JSON.parse(item);
@@ -853,7 +857,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[Server] Database: ${DB_FILE}`);
-  console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
+  console.log(`[Server] Redis: ${isRedisReady() ? 'enabled' : 'disabled'}`);
 });
 
 export default app;
