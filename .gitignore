@@ -9,3 +9,4 @@ coverage/
 .env*
 !.env.example
 .turbo/
+.agent_private_key.pem
