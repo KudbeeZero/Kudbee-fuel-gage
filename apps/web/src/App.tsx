@@ -38,7 +38,8 @@ import {
   Globe,
   EyeOff,
   X,
-  Maximize2
+  Maximize2,
+  Radio
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { TerminalHUDTicker } from './components/TerminalHUDTicker';
@@ -50,6 +51,7 @@ import { GatewayView } from './components/gateway/GatewayView';
 import { AlertsView } from './components/AlertsView';
 import { InterceptorView } from './components/InterceptorView';
 import { TriageView } from './components/TriageView';
+import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import {
   AreaChart,
@@ -3149,6 +3151,7 @@ export default function App() {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard' },
+    { icon: Radio, label: 'Control Tower' },
     { icon: Activity, label: 'Interceptor' },
     { icon: Calculator, label: 'Playground' },
     { icon: History, label: 'History' },
@@ -3327,6 +3330,10 @@ export default function App() {
           </header>
 
           {/* ACTIVE VIEW ROUTER */}
+          {activeTab === 'Control Tower' && (
+            <DashboardPage />
+          )}
+
           {activeTab === 'Dashboard' && (
             <>
               {/* TOP ROW: LIVE TELEMETRY CARDS */}

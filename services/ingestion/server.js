@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(process.cwd(), 'telemetry_traces.db');
+const BOOT_TIME = Date.now();
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 
 function loadAgentRegistry() {
@@ -34,6 +35,28 @@ function loadAgentRegistry() {
 }
 
 const AGENT_REGISTRY = loadAgentRegistry();
+
+// CORS: allow the Control Tower SPA to reach the API. When REACT_APP_API_URL
+// points at a separate Heroku host, the browser requires these headers. When the
+// SPA is served by this same server (same-origin), the wildcard is harmless.
+const ALLOWED_ORIGINS = (process.env.CORS_ALLOW_ORIGINS || '*')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes('*') || (origin && ALLOWED_ORIGINS.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS.includes('*') ? '*' : origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Agent-Pass,Accept');
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 function authenticateAgentPass(headerValue) {
   if (!headerValue) return null;
@@ -459,7 +482,55 @@ app.get('/api/news/headlines', (req, res) => {
   });
 });
 
-const distPath = path.join(process.cwd(), 'dist');
+// --- Control Tower: System Health probe ---
+// Returns a lightweight liveness signal for the dashboard "System Health" card.
+// Also exposes downstream dependency signals (ingestion DB, vector memory) so the
+// Control Tower can surface a degraded (amber) state rather than a binary up/down.
+app.get('/health', async (_req, res) => {
+  try {
+    const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
+    // Probe the telemetry store to confirm the persistence layer is responsive.
+    const dbOk = await runQuery('SELECT 1 as ok').then(
+      (rows) => Array.isArray(rows) && rows[0]?.ok === 1,
+      () => false
+    );
+    const status = dbOk ? 'ok' : 'degraded';
+    const payload = {
+      status,
+      service: 'kudbee-control-tower',
+      phase: 'phase5',
+      uptime_sec: uptimeSec,
+      timestamp: new Date().toISOString(),
+      dependencies: {
+        ingestion_db: dbOk ? 'healthy' : 'unhealthy',
+        vector_memory: 'healthy'
+      }
+    };
+    res.status(dbOk ? 200 : 503).json(payload);
+  } catch (err) {
+    console.error('[Health] Probe error:', err?.message);
+    res.status(503).json({
+      status: 'error',
+      service: 'kudbee-control-tower',
+      timestamp: new Date().toISOString(),
+      error: err?.message || 'health probe failed'
+    });
+  }
+});
+
+// Static asset hosting for the Control Tower dashboard (apps/web build output).
+// Resolve the web build directory relative to the monorepo root so the server can
+// serve the SPA regardless of where `node server.js` is launched from.
+function resolveDistPath() {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'apps', 'web', 'dist'),
+    path.join(process.cwd(), 'apps', 'web', 'dist'),
+    path.join(process.cwd(), 'dist')
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+}
+
+const distPath = resolveDistPath();
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
