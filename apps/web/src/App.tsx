@@ -29,6 +29,8 @@ import {
   FileSpreadsheet,
   ChevronDown,
   ChevronRight,
+  ShieldAlert,
+  XCircle,
   Key,
   Trash2,
   Shield,
@@ -1387,20 +1389,20 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
         <div className="overflow-x-auto max-h-80 overscroll-contain overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
           <table className="w-full text-left border-collapse md:min-w-[700px] block md:table">
             <thead className="hidden md:table-header-group">
-              <tr className="text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/50">
+              <tr className="font-mono text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/70 border-b border-slate-800">
                 <th className="px-4 py-4 w-10 border-b border-slate-800"></th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Timestamp</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Project Name</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Model</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Provider</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Status</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Execution Status</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Input Tokens</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800">Output Tokens</th>
-                <th className="px-6 py-4 font-medium border-b border-slate-800 text-right">Total Cost</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Timestamp</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Project Name</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Model</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Provider</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Status</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800">Execution Status</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">In Tokens</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Out Tokens</th>
+                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Total Cost</th>
               </tr>
             </thead>
-            <tbody className="text-xs divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
+            <tbody className="font-mono text-xs divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
               {filteredLogs.length === 0 ? (
                 <tr className="block md:table-row">
                   <td colSpan={10} className="px-6 py-12 text-center font-mono text-slate-500 block md:table-cell">
@@ -1472,7 +1474,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
                                   ? "Trace Intercepted by Guardrails"
                                   : "Trace Failed or Rate Limited"
                             }
-                            className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase border text-right md:text-left ${
+                            className={`px-2 py-1 text-[9px] rounded font-bold uppercase border inline-flex items-center gap-1.5 tracking-wider text-right md:text-left ${
                               log.status === 'OK' 
                                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]' 
                                 : log.status === 'INTERCEPTED'
@@ -1480,6 +1482,13 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
                                   : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
                             }`}
                           >
+                            {log.status === 'OK' ? (
+                              <CheckCircle2 className="w-3 h-3" />
+                            ) : log.status === 'INTERCEPTED' ? (
+                              <ShieldAlert className="w-3 h-3" />
+                            ) : (
+                              <XCircle className="w-3 h-3" />
+                            )}
                             {log.status}
                           </span>
                         </td>
@@ -2915,6 +2924,22 @@ export default function App() {
   const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => localStorage.getItem('kudbee_reduced_motion') === 'true');
 
+  // Simulated edge-gateway round-trip latency for the global footer indicator
+  const [footerPing, setFooterPing] = useState<number>(42);
+  const [footerPinging, setFooterPinging] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const pingTimer = setInterval(() => {
+      setFooterPinging(true);
+      setTimeout(() => {
+        setFooterPing(28 + Math.floor(Math.random() * 140));
+        setFooterPinging(false);
+      }, 350);
+    }, 4000);
+    return () => clearInterval(pingTimer);
+  }, [isAuthenticated]);
+
   const handleSetTheme = (newTheme: 'Deep Space' | 'Midnight') => {
     setTheme(newTheme);
     localStorage.setItem('kudbee_theme', newTheme);
@@ -3866,37 +3891,66 @@ export default function App() {
             />
           )}
 
-          {/* AGGREGATE CORE SUMMARY FOOTER */}
-          <div className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 md:p-6 flex flex-wrap md:flex-nowrap justify-between gap-4 md:gap-8 items-center shadow-lg" id="applet-summary-footer">
-            <div className="w-full md:w-auto">
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total 24h Cost</div>
-              <div className="font-mono text-2xl text-emerald-400">{getFormattedCost(liveStats.cost * 0.04, currency, 4)}</div>
+          {/* GLOBAL TERMINAL-STYLED FOOTER */}
+          <footer
+            id="applet-summary-footer"
+            className="mt-4 w-full bg-slate-950/90 border border-slate-800 rounded-xl px-4 py-3 md:px-6 md:py-3.5 flex flex-col md:flex-row md:flex-wrap md:items-center md:justify-between gap-3 md:gap-6 font-mono text-[11px] shadow-[0_0_24px_rgba(0,0,0,0.35)] relative overflow-hidden"
+          >
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+
+            {/* Left: brand + aggregate summary stats */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="flex items-center gap-2">
+                <TerminalSquare className="w-4 h-4 text-emerald-400" />
+                <span className="font-display font-bold tracking-tight text-slate-200">KUDBEE<span className="text-emerald-400">|</span><span className="text-slate-500 font-normal">Fuel Gauge</span></span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
+                <span className="uppercase tracking-widest">24h Cost</span>
+                <span className="text-emerald-400">{getFormattedCost(liveStats.cost * 0.04, currency, 4)}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
+                <span className="uppercase tracking-widest">Req</span>
+                <span className="text-slate-300">{liveStats.totalRequests.toLocaleString()}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
+                <span className="uppercase tracking-widest">Models</span>
+                <span className="text-slate-300">{liveStats.activeModels.toString()}</span>
+              </div>
             </div>
-            <div className="hidden md:block w-px h-10 bg-slate-800"></div>
-            
-            <div className="w-1/2 md:w-auto">
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total Tokens</div>
-              <div className="font-mono text-xl text-slate-200">{(liveStats.inTokens + liveStats.outTokens).toLocaleString()}</div>
+
+            {/* Center: environment + latency/ping indicator */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                <span className="uppercase tracking-widest text-emerald-400 font-semibold">ENV: PRODUCTION</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Simulated edge gateway round-trip latency">
+                <Radio className={`w-3.5 h-3.5 ${footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400'} ${footerPinging ? 'animate-pulse' : ''}`} />
+                <span className="uppercase tracking-widest text-slate-400">PING</span>
+                <span className={`${footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400'}`}>{footerPing}ms</span>
+              </div>
             </div>
-            <div className="hidden md:block w-px h-10 bg-slate-800"></div>
-            
-            <div className="w-1/2 md:w-auto">
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Total Requests</div>
-              <div className="font-mono text-xl text-slate-200">{liveStats.totalRequests.toLocaleString()}</div>
-            </div>
-            <div className="hidden md:block w-px h-10 bg-slate-800"></div>
-            
-            <div className="w-1/2 md:w-auto">
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Active Models</div>
-              <div className="font-mono text-xl text-slate-200">{liveStats.activeModels.toString()}</div>
-            </div>
-            <div className="hidden md:block w-px h-10 bg-slate-800"></div>
-            
-            <div className="w-1/2 md:w-auto text-right md:text-left">
-              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-1">Est Monthly Cost</div>
-              <div className="font-mono text-xl text-emerald-400/80">{getFormattedCost(liveStats.cost * 1.15, currency, 2)}</div>
-            </div>
-          </div>
+
+            {/* Right: quick-links */}
+            <nav className="flex items-center gap-1">
+              {[
+                { label: 'Docs', href: '#' },
+                { label: 'Support', href: '#' },
+                { label: 'API', href: '#' }
+              ].map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="px-2.5 py-1 rounded-md text-slate-500 uppercase tracking-widest hover:text-emerald-400 hover:bg-emerald-500/5 border border-transparent hover:border-emerald-500/20 transition-all cursor-pointer"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </footer>
 
         </div>
       </main>
