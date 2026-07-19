@@ -15,12 +15,22 @@ const prBody = process.env.PR_BODY || '';
 const githubSha = process.env.GITHUB_SHA || 'unknown';
 const mergedAt = new Date().toISOString();
 
+function extractStruggles(body) {
+  const match = body.match(/### Struggles & Friction([\s\S]*?)(?=\n### |\Z)/i);
+  if (!match) return [];
+  const lines = match[1].split('\n').map((l) => l.replace(/^[-*]\s*/, '').trim()).filter(Boolean);
+  return lines.length > 0 ? lines : [match[1].trim()];
+}
+
+const struggles = extractStruggles(prBody);
+
 const manifest = {
   pr_number: Number(prNumber),
   pr_title: prTitle,
   pr_body: prBody.slice(0, 500),
   github_sha: githubSha,
   merged_at: mergedAt,
+  struggles_encountered: struggles,
   lesson_learned: `Session ${prNumber}: ${prTitle}. Implementation completed and merged into main. Future agents should review the diff summary and deployment outcome to understand the architectural changes introduced in this session.`,
   diff_summary: 'Session manifest generated automatically by GitHub Actions on PR merge.'
 };
