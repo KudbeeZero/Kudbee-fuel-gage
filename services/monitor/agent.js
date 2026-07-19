@@ -23,6 +23,7 @@ let systemContext = null;
 
 const ROLLING_WINDOW_MS = 60_000;
 const FAILURE_RATE_THRESHOLD = 0.5;
+const RECOVERY_THRESHOLD = 0.2;
 const rollingWindow = [];
 
 async function loadSystemContext() {
@@ -101,7 +102,13 @@ function checkFailureRate() {
       .then(() => console.log(`[Alert] CRITICAL alert pushed: failure rate=${(rate * 100).toFixed(1)}%`))
       .catch((err) => console.error('[Alert] Failed to push alert:', err.message));
 
+    redis.set('kudbee:throttle_factor', '5').catch((err) => console.error('[Throttle] Failed to set throttle:', err.message));
+
     selfHeal();
+  } else if (rate < RECOVERY_THRESHOLD) {
+    redis.del('kudbee:throttle_factor').then(() => {
+      console.log(`[Throttle] Failure rate recovered to ${(rate * 100).toFixed(1)}% — throttle removed`);
+    }).catch((err) => console.error('[Throttle] Failed to remove throttle:', err.message));
   }
 }
 
