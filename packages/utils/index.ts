@@ -1,2 +1,2 @@
-export * from './crypto-identity.js';
-export * from './redis-uri.js';
+export * from './crypto-identity.ts';
+export * from './redis-uri.ts';
