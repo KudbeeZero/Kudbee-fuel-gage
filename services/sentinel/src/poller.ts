@@ -123,7 +123,7 @@ async function pollOnce(): Promise<void> {
   }
 }
 
-function start(): void {
+function startPoller(): void {
   console.log(`[Sentinel] heartbeat started — polling ${BACKEND_URL}${INGEST_PATH} every ${POLL_INTERVAL_MS}ms`);
   void pollOnce();
   setInterval(() => {
@@ -131,4 +131,4 @@ function start(): void {
   }, POLL_INTERVAL_MS);
 }
 
-start();
+export { startPoller };

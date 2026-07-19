@@ -3,6 +3,7 @@ import { ThinkStormPlugin } from './ThinkStormPlugin';
 import { ThinkStreamPlugin } from './ThinkStreamPlugin';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
 import { GovernanceGatePlugin } from './GovernanceGatePlugin';
+import { EdgeSentinelPlugin } from './EdgeSentinelPlugin';
 import type { IKudbeePlugin } from '@kudbee/types';
 
 const COL_SPAN_CLASS: Record<number, string> = {
@@ -73,6 +74,9 @@ export function RackLayout() {
       </header>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
         {plugins.map(renderPlugin)}
+        <div className="lg:col-span-12">
+          <EdgeSentinelPlugin />
+        </div>
       </div>
     </section>
   );

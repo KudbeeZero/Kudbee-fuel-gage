@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "src/poller.ts",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "node --watch src/poller.ts",
+    "start": "node --watch src/index.ts",
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },

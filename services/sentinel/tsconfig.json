@@ -4,5 +4,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/poller.ts", "src/governance.ts"]
+  "include": ["src/index.ts", "src/poller.ts", "src/governance.ts"]
 }
