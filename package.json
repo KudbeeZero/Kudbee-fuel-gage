@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "dev": "turbo run dev",
     "start": "turbo run start",
+    "start:agent": "node services/monitor/agent.js",
     "deploy-check": "tsx scripts/deploy-check.ts"
   },
   "devDependencies": {
@@ -21,5 +22,8 @@
     "typescript": "^7.0.0"
   },
   "license": "Proprietary",
-  "packageManager": "npm@10.9.8"
+  "packageManager": "npm@10.9.8",
+  "dependencies": {
+    "ioredis": "^5.11.1"
+  }
 }
