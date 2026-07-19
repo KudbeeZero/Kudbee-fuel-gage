@@ -1,20 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+<# Kudbee: AI Telemetry & Orchestration Engine 🚀
 
-# Run and deploy your AI Studio app
+Kudbee is a production-grade observability and agentic orchestration platform designed for high-concurrency LLM workflows.
 
-This contains everything you need to run your app locally.
+## 🏗️ Architecture Pillars
+- **Ingestion:** Node.js/Express microservice on Heroku with SQLite persistence.
+- **Gateway:** AI-native traffic controller with schema enforcement & firewall.
+- **Memory:** Vector-based semantic memory layer (Coming Soon).
+- **Orchestration:** LangGraph state machines + n8n automation (Coming Soon).
 
-View your app in AI Studio: https://ai.studio/apps/ae76c029-4b16-4840-b6fa-328fd5668045
+## 🛠️ Current Status
+- [x] **Phase 1: Foundation:** Heroku deployment, SQLite ingestion, OTel schema normalization.
+- [ ] **Phase 2: The Gate:** Middleware Firewall & Schema Validation.
+- [ ] **Phase 3: The Brain:** LangGraph stateful reasoning & n8n integration.
+- [ ] **Phase 4: The Tunnel:** Predictive pre-flight & vector memory.
+- [ ] **Phase 5: The Anchor:** PWA Offline-First resilience & cross-platform UI.
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🚀 Development Loop
+1. **Model:** [Gemini 3.1 Pro Preview](https://ai.google.dev/gemini-api/docs/gemini-3) (Reasoning) & [Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/changelog) (Agentic Tasks).
+2. **Standard:** All backend services must use strict TypeScript interfaces.
+3. **Safety:** All external handoffs (e.g., n8n) must pass the proprietary firewall schema validator.
