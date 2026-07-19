@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const TelemetryStatusSchema = z.enum(['OK', 'ERROR', 'BLOCKED', 'PENDING']);
+export const TelemetryStatusSchema = z.string().min(1).default('OK');
 export type TelemetryStatus = z.infer<typeof TelemetryStatusSchema>;
 
 export const TelemetryTraceSchema = z.object({

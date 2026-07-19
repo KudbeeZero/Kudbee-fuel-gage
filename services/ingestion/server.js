@@ -2,6 +2,7 @@ import express from 'express';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { IngestRequestSchema } from '@kudbee/types';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,11 +64,11 @@ function runInsert(sql, params = []) {
 
 app.post('/api/telemetry/ingest', async (req, res) => {
   try {
-    const { trace_id, model, tokens_in, tokens_out, cost, status } = req.body;
-
-    if (!trace_id || !model || tokens_in === undefined || tokens_out === undefined || cost === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: trace_id, model, tokens_in, tokens_out, cost' });
+    const parsed = IngestRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
     }
+    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
@@ -79,8 +80,8 @@ app.post('/api/telemetry/ingest', async (req, res) => {
         Number(tokens_out) || 0,
         Number(cost) || 0,
         String(status || 'OK'),
-        String(req.body.provider || 'unknown'),
-        String(req.body.project_name || 'kilo-fuel-gauge')
+        String(provider || 'unknown'),
+        String(project_name || 'kilo-fuel-gauge')
       ]
     );
 
