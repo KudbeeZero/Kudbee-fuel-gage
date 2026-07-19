@@ -26,6 +26,8 @@
   "license": "Proprietary",
   "packageManager": "npm@10.9.8",
   "dependencies": {
-    "ioredis": "^5.11.1"
+    "@types/pg": "^8.20.0",
+    "ioredis": "^5.11.1",
+    "pg": "^8.22.0"
   }
 }

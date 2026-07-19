@@ -48,8 +48,17 @@ interface MemoryRecall {
   similarity: number;
 }
 
+interface UserMemory {
+  id: number;
+  agent_id: string | null;
+  thought_summary: string;
+  reasoning: string;
+  model: string;
+  created_at: string | null;
+}
+
 interface MemoryResponse {
-  query: string;
+  query?: string;
   count: number;
   memories: MemoryRecall[];
 }
@@ -656,6 +665,7 @@ function AgentTerminal({
           '  status          — system + HERMES health',
           '  governance      — governance ledger summary',
           '  hermes          — HERMES auditor status',
+          '  !recall         — show last 10 stored user memories',
           '  clear           — clear the terminal',
           '  echo <text>     — print text'
         ].join('\n');
@@ -675,10 +685,52 @@ function AgentTerminal({
     }
   };
 
+  // `!recall` — query the backend for the last 10 persisted user memories and
+  // render them inline. Async: we push a placeholder, then replace with results.
+  const runRecall = async (): Promise<void> => {
+    const placeholderId = Date.now();
+    setCommands((prev) => [
+      ...prev,
+      { id: placeholderId, text: '!recall', output: 'recalling last 10 user memories…' }
+    ]);
+    try {
+      const data = await apiGet<{ count: number; memories: UserMemory[] }>(
+        '/api/memory/recall?last=10'
+      );
+      const memories = data?.memories ?? [];
+      const rendered =
+        memories.length === 0
+          ? 'no user memories stored yet.'
+          : memories
+              .map((m, i) => {
+                const when = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+                const body = m.thought_summary || m.reasoning || '(empty)';
+                return `#${i + 1} [${m.model}] ${when}\n    ${body}`;
+              })
+              .join('\n');
+      setCommands((prev) =>
+        prev.map((c) => (c.id === placeholderId ? { ...c, output: rendered } : c))
+      );
+    } catch (e) {
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.id === placeholderId
+            ? { ...c, output: `recall failed: ${e instanceof Error ? e.message : 'unknown error'}` }
+            : c
+        )
+      );
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
+    if (text.toLowerCase() === '!recall') {
+      void runRecall();
+      setInput('');
+      return;
+    }
     const output = runCommand(text);
     setCommands((prev) => [...prev, { id: Date.now(), text, output }]);
     setInput('');
