@@ -49,6 +49,7 @@ import { ConsoleDock } from './components/ConsoleDock';
 import { GatewayView } from './components/gateway/GatewayView';
 import { AlertsView } from './components/AlertsView';
 import { InterceptorView } from './components/InterceptorView';
+import { TriageView } from './components/TriageView';
 import { useUIStore } from './store/uiStore';
 import {
   AreaChart,
@@ -3771,13 +3772,18 @@ export default function App() {
           {activeTab === 'Intelligence' && <IntelligenceView />}
 
           {activeTab === 'Firewall' && (
-            <FirewallView
-              showToast={showToast}
-              pendingApprovals={pendingApprovals}
-              resolveApproval={resolveApproval}
-              rejectApproval={rejectApproval}
-              executeAgentTool={executeAgentTool}
-            />
+            <>
+              <FirewallView
+                showToast={showToast}
+                pendingApprovals={pendingApprovals}
+                resolveApproval={resolveApproval}
+                rejectApproval={rejectApproval}
+                executeAgentTool={executeAgentTool}
+              />
+              <div className="mt-6">
+                <TriageView />
+              </div>
+            </>
           )}
 
           {activeTab === 'Gateway' && (

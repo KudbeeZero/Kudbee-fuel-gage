@@ -2,6 +2,7 @@ import express from 'express';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { IngestRequestSchema } from '@kudbee/types';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,7 +42,41 @@ db.serialize(() => {
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS security_violations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payload TEXT NOT NULL,
+      violation_reason TEXT NOT NULL,
+      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `, (err) => {
+    if (err) {
+      console.error('[DB] Failed to create security_violations table:', err.message);
+    } else {
+      console.log('[DB] Table security_violations ready');
+    }
+  });
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_violation_timestamp ON security_violations(timestamp)`);
 });
+
+function quarantineViolation(payload, violationReason) {
+  return runInsert(
+    `INSERT INTO security_violations (payload, violation_reason, timestamp)
+     VALUES (?, ?, datetime('now'))`,
+    [JSON.stringify(payload ?? null), String(violationReason)]
+  );
+}
+
+function safeParseJson(value) {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
 
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -63,11 +98,15 @@ function runInsert(sql, params = []) {
 
 app.post('/api/telemetry/ingest', async (req, res) => {
   try {
-    const { trace_id, model, tokens_in, tokens_out, cost, status } = req.body;
-
-    if (!trace_id || !model || tokens_in === undefined || tokens_out === undefined || cost === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: trace_id, model, tokens_in, tokens_out, cost' });
+    const parsed = IngestRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const reason = parsed.error.issues
+        .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+        .join('; ');
+      await quarantineViolation(req.body, reason);
+      return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
     }
+    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
@@ -79,8 +118,8 @@ app.post('/api/telemetry/ingest', async (req, res) => {
         Number(tokens_out) || 0,
         Number(cost) || 0,
         String(status || 'OK'),
-        String(req.body.provider || 'unknown'),
-        String(req.body.project_name || 'kilo-fuel-gauge')
+        String(provider || 'unknown'),
+        String(project_name || 'kilo-fuel-gauge')
       ]
     );
 
@@ -175,6 +214,88 @@ app.post('/api/telemetry/purge', async (req, res) => {
   } catch (err) {
     console.error('[Purge] Error:', err.message);
     return res.status(500).json({ error: 'Failed to purge database' });
+  }
+});
+
+app.get('/api/interceptor/triage', async (req, res) => {
+  try {
+    const rows = await runQuery(
+      `SELECT * FROM security_violations ORDER BY timestamp DESC`
+    );
+    const violations = rows.map((row) => ({
+      id: row.id,
+      payload: safeParseJson(row.payload),
+      violation_reason: row.violation_reason,
+      timestamp: row.timestamp
+    }));
+    return res.json(violations);
+  } catch (err) {
+    console.error('[Interceptor] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch triage queue' });
+  }
+});
+
+app.delete('/api/interceptor/triage/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid violation id' });
+    }
+    const result = await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+    return res.json({ success: true, changes: result.changes });
+  } catch (err) {
+    console.error('[Interceptor] Delete Error:', err.message);
+    return res.status(500).json({ error: 'Failed to delete violation' });
+  }
+});
+
+app.post('/api/interceptor/revalidate/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid violation id' });
+    }
+    const rows = await runQuery(`SELECT * FROM security_violations WHERE id = ?`, [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Violation not found' });
+    }
+    const violation = rows[0];
+    const payload = safeParseJson(violation.payload);
+
+    const parsed = IngestRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      const reason = parsed.error.issues
+        .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+        .join('; ');
+      await quarantineViolation(payload, reason);
+      return res.status(422).json({ error: 'Firewall: re-validation failed', issues: parsed.error.issues });
+    }
+
+    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
+    const result = await runInsert(
+      `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [
+        String(trace_id),
+        String(model),
+        Number(tokens_in) || 0,
+        Number(tokens_out) || 0,
+        Number(cost) || 0,
+        String(status || 'OK'),
+        String(provider || 'unknown'),
+        String(project_name || 'kilo-fuel-gauge')
+      ]
+    );
+    await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+
+    return res.status(201).json({
+      success: true,
+      id: result.id,
+      message: 'Re-validation passed; telemetry trace ingested and violation cleared'
+    });
+  } catch (err) {
+    console.error('[Interceptor] Revalidate Error:', err.message);
+    return res.status(500).json({ error: 'Failed to re-validate violation' });
   }
 });
 
