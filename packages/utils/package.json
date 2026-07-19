@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "./crypto-identity.ts",
-  "types": "./crypto-identity.ts",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "exports": {
-    ".": "./crypto-identity.ts"
+    ".": "./index.ts",
+    "./redis-uri": "./redis-uri.ts"
   },
   "scripts": {
     "build": "echo \"@kudbee/utils: source-only package, nothing to build\"",

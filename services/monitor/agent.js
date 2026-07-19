@@ -1,7 +1,12 @@
 import Redis from 'ioredis';
 import crypto from 'node:crypto';
+import { buildRedisUri, getRedisConfigFromEnv } from '@kudbee/utils';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+const redisConfig = getRedisConfigFromEnv();
+const redisUri = buildRedisUri(redisConfig);
+console.log(`[Agent] Constructed Redis URI: ${redisUri.replace(/\/\/:.*@/, '//:****@')}`);
+
+const redis = new Redis(redisUri, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   retryStrategy: (times) => Math.min(times * 200, 2000)

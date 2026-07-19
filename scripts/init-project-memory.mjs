@@ -1,6 +1,11 @@
 import Redis from 'ioredis';
+import { buildRedisUri, getRedisConfigFromEnv } from './lib/redis-uri.mjs';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+const redisConfig = getRedisConfigFromEnv();
+const redisUri = buildRedisUri(redisConfig);
+console.log(`[Init] Constructed Redis URI: ${redisUri.replace(/\/\/:.*@/, '//:****@')}`);
+
+const redis = new Redis(redisUri, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   retryStrategy: (times) => Math.min(times * 200, 2000)

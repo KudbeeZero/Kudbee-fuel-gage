@@ -11,6 +11,7 @@ import {
   verifySignature,
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
+import { buildRedisUri, getRedisConfigFromEnv } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -190,7 +191,10 @@ db.serialize(() => {
 
 let redis;
 try {
-  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+  const redisConfig = getRedisConfigFromEnv();
+  const redisUri = buildRedisUri(redisConfig);
+  console.log(`[Redis] Constructed URI: ${redisUri.replace(/\/\/:.*@/, '//:****@')}`);
+  redis = new Redis(redisUri, {
     maxRetriesPerRequest: 3,
     enableReadyCheck: true,
     retryStrategy: (times) => Math.min(times * 200, 2000)
