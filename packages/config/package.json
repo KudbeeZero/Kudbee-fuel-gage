@@ -1,0 +1,10 @@
+{
+  "name": "@kudbee/config",
+  "version": "1.0.0",
+  "private": true,
+  "license": "Proprietary",
+  "files": [
+    "tsconfig.base.json",
+    "eslint.config.js"
+  ]
+}

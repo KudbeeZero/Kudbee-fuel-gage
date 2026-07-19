@@ -5,5 +5,8 @@ coverage/
 .DS_Store
 *.log
 *.db
+*.db-journal
 .env*
 !.env.example
+.turbo/
+.agent_private_key.pem

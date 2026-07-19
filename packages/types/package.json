@@ -1,0 +1,22 @@
+{
+  "name": "@kudbee/types",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "build": "echo \"@kudbee/types: source-only package, nothing to build\"",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0"
+  },
+  "license": "Proprietary"
+}

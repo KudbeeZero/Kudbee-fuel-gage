@@ -1,0 +1,23 @@
+{
+  "name": "@kudbee/utils",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./crypto-identity.ts",
+  "types": "./crypto-identity.ts",
+  "exports": {
+    ".": "./crypto-identity.ts"
+  },
+  "scripts": {
+    "build": "echo \"@kudbee/utils: source-only package, nothing to build\"",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kudbee/types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^7.0.0"
+  },
+  "license": "Proprietary"
+}
