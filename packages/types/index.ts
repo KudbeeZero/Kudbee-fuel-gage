@@ -201,4 +201,4 @@ export const ThinkArchiveResponseSchema = z.object({
 export type ThinkArchiveResponse = z.infer<typeof ThinkArchiveResponseSchema>;
 
 // --- Plugin registry definitions (re-exported for root-level import) ----------
-export * from './plugin.js';
+export * from './plugin.ts';
