@@ -809,8 +809,8 @@ app.get('/api/governance/hermes-logs', async (_req, res) => {
       .filter(Boolean);
     return res.json(logs);
   } catch (err) {
-    console.error('[Governance] HERMES logs error:', err?.message);
-    return res.status(500).json({ error: 'Failed to fetch HERMES logs' });
+    console.warn('[Governance] HERMES logs unavailable (Redis offline):', err?.message);
+    return res.status(200).json([]);
   }
 });
 
@@ -926,8 +926,17 @@ app.get('/health', async (_req, res) => {
 app.get('/api/health-check', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    const communityValueScore = redis ? await redis.get('kudbee:community_value_score') : '0';
-    const alerts = redis ? await redis.lrange('kudbee:alerts', 0, 4) : [];
+    let communityValueScore = '0';
+    let alerts = [];
+    let redisOk = false;
+    try {
+      communityValueScore = redis ? await redis.get('kudbee:community_value_score') : '0';
+      alerts = redis ? await redis.lrange('kudbee:alerts', 0, 4) : [];
+      redisOk = true;
+    } catch (err) {
+      console.warn('[HealthCheck] Redis unavailable, marking degraded:', err?.message);
+      redisOk = false;
+    }
 
     const parsedAlerts = alerts.map((a) => {
       try {
@@ -940,7 +949,11 @@ app.get('/api/health-check', async (_req, res) => {
     res.json({
       uptime_sec: uptimeSec,
       community_value_score: Number(communityValueScore || 0).toFixed(2),
-      alerts: parsedAlerts
+      alerts: parsedAlerts,
+      dependencies: {
+        redis: redisOk ? 'healthy' : 'offline',
+        vector_memory: redisOk ? 'healthy' : 'offline'
+      }
     });
   } catch (err) {
     console.error('[HealthCheck] Error:', err?.message);
@@ -960,8 +973,8 @@ app.get('/api/session-history', async (_req, res) => {
     });
     res.json(sessions);
   } catch (err) {
-    console.error('[SessionHistory] Error:', err?.message);
-    res.status(500).json({ error: 'Failed to fetch session history' });
+    console.warn('[SessionHistory] Redis unavailable, returning empty array:', err?.message);
+    return res.status(200).json([]);
   }
 });
 
