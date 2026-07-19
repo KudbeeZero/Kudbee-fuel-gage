@@ -1,5 +1,4 @@
 import express from 'express';
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -14,13 +13,14 @@ import {
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
+import { getRedisClient } from '../lib/redis.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DB_FILE = path.join(process.cwd(), 'telemetry_traces.db');
 const BOOT_TIME = Date.now();
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 
@@ -94,121 +94,109 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 
 app.use(express.json({ limit: '10mb' }));
 
-const db = new sqlite3.Database(DB_FILE, (err) => {
-  if (err) {
-    console.error('[DB] Failed to open SQLite database:', err.message);
-  } else {
-    console.log('[DB] Connected to SQLite database:', DB_FILE);
+// --- Resilient Neon Postgres connection (system of record) -----------------
+// getDbPool() is lazy + tolerant: missing DATABASE_URL or pool errors degrade
+// to an in-memory store instead of crashing (Resilient-First). SQLite removed.
+const pool = getDbPool();
+
+async function ensureSchema() {
+  if (!pool || !isDbHealthy()) {
+    console.warn('[DB] No healthy Neon connection — using in-memory fallback store.');
+    return;
   }
-});
-
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS telemetry_traces (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      model TEXT NOT NULL,
-      tokens_in INTEGER NOT NULL DEFAULT 0,
-      tokens_out INTEGER NOT NULL DEFAULT 0,
-      cost REAL NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'OK',
-      provider TEXT,
-      project_name TEXT,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create table:', err.message);
-    } else {
-      console.log('[DB] Table telemetry_traces ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS security_violations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      payload TEXT NOT NULL,
-      violation_reason TEXT NOT NULL,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create security_violations table:', err.message);
-    } else {
-      console.log('[DB] Table security_violations ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_violation_timestamp ON security_violations(timestamp)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS telemetry_vectors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      thought_summary TEXT NOT NULL DEFAULT '',
-      reasoning TEXT NOT NULL DEFAULT '',
-      model TEXT NOT NULL DEFAULT 'unknown',
-      vector TEXT NOT NULL,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create telemetry_vectors table:', err.message);
-    } else {
-      console.log('[DB] Table telemetry_vectors ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_vector_trace ON telemetry_vectors(trace_id)`);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS governance_actions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      trace_id TEXT NOT NULL,
-      action TEXT NOT NULL DEFAULT 'VERIFY',
-      type TEXT NOT NULL DEFAULT 'GOVERNANCE_ACTION',
-      agent_id TEXT NOT NULL,
-      signature TEXT NOT NULL,
-      signed_payload TEXT NOT NULL,
-      value_score REAL NOT NULL DEFAULT 0,
-      note TEXT,
-      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[DB] Failed to create governance_actions table:', err.message);
-    } else {
-      console.log('[DB] Table governance_actions ready');
-    }
-  });
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_trace ON governance_actions(trace_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_ts ON governance_actions(timestamp)`);
-
-  db.run(`ALTER TABLE telemetry_traces ADD COLUMN value_score REAL NOT NULL DEFAULT 0`, () => {});
-});
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS telemetry_traces (
+        id BIGSERIAL PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        model TEXT NOT NULL DEFAULT 'unknown',
+        tokens_in INTEGER NOT NULL DEFAULT 0,
+        tokens_out INTEGER NOT NULL DEFAULT 0,
+        cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'OK',
+        provider TEXT,
+        project_name TEXT,
+        value_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)'
+    );
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)'
+    );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS telemetry_logs (
+        id BIGSERIAL PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        model TEXT NOT NULL DEFAULT 'unknown',
+        tokens_in INTEGER NOT NULL DEFAULT 0,
+        tokens_out INTEGER NOT NULL DEFAULT 0,
+        cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'OK',
+        provider TEXT,
+        project_name TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS security_violations (
+        id BIGSERIAL PRIMARY KEY,
+        payload TEXT NOT NULL,
+        violation_reason TEXT NOT NULL,
+        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS telemetry_vectors (
+        id BIGSERIAL PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        thought_summary TEXT NOT NULL DEFAULT '',
+        reasoning TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT 'unknown',
+        vector JSONB NOT NULL,
+        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_memories (
+        id BIGSERIAL PRIMARY KEY,
+        agent_id TEXT,
+        thought_summary TEXT NOT NULL DEFAULT '',
+        reasoning TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT 'unknown',
+        embedding JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS governance_actions (
+        id BIGSERIAL PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        action TEXT NOT NULL DEFAULT 'VERIFY',
+        type TEXT NOT NULL DEFAULT 'GOVERNANCE_ACTION',
+        agent_id TEXT NOT NULL,
+        signature TEXT NOT NULL,
+        signed_payload TEXT NOT NULL,
+        value_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        note TEXT,
+        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    console.log('[DB] Neon schema ensured.');
+  } catch (err) {
+    console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
+  }
+}
+await ensureSchema();
 
 let redis;
 try {
-  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-    lazyConnect: true,
-    maxRetriesPerRequest: 0,
-    enableReadyCheck: true,
-    enableOfflineQueue: false,
-    retryStrategy: () => null
-  });
-  redis.on('connect', () => console.log('[Redis] Connected'));
-  redis.on('ready', () => console.log('[Redis] Ready'));
-  redis.on('error', (err) => console.warn('[Redis] Error:', err.message));
-  redis.on('reconnecting', (delay) =>
-    console.warn(`[Redis] Reconnecting in ${delay ?? '?'}ms`)
-  );
-  redis.on('end', () => console.warn('[Redis] Connection closed'));
+  redis = getRedisClient({ label: 'ingestion' });
 } catch (err) {
-  console.error('[Redis] Failed to initialize client:', err.message);
+  console.warn('[Redis] Failed to initialize client (degrading):', err.message);
+  redis = null;
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -281,7 +269,7 @@ function quarantineViolation(payload, violationReason) {
   publishEvent('triage', { payload, violation_reason: violationReason, timestamp: new Date().toISOString() });
   return runInsert(
     `INSERT INTO security_violations (payload, violation_reason, timestamp)
-     VALUES (?, ?, datetime('now'))`,
+     VALUES ($1, $2, NOW())`,
     [JSON.stringify(payload ?? null), String(violationReason)]
   );
 }
@@ -295,12 +283,19 @@ function safeParseJson(value) {
   }
 }
 
-function storeVector({ traceId, thoughtSummary, reasoning, model, vector }) {
+function storeVector({ traceId, thoughtSummary, reasoning, model, vector, agentId = null }) {
   return runInsert(
     `INSERT INTO telemetry_vectors (trace_id, thought_summary, reasoning, model, vector, timestamp)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
     [String(traceId), String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
-  );
+  ).then((res) => {
+    // Mirror into user_memories (the semantic long-term store, subject to TTL).
+    return runInsert(
+      `INSERT INTO user_memories (agent_id, thought_summary, reasoning, model, embedding, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [agentId ? String(agentId) : null, String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
+    ).catch(() => res);
+  });
 }
 
 async function recallMemories(query, limit = 3) {
@@ -324,22 +319,54 @@ async function recallMemories(query, limit = 3) {
   return scored;
 }
 
-function runQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+/**
+ * Recall the last N persisted user memories (semantic long-term store).
+ * Distinct from `recallMemories` (vector search): this returns raw stored
+ * memories in reverse-chronological order, capped at `limit`.
+ */
+async function recallUserMemories(limit = 10) {
+  const rows = await runQuery(
+    `SELECT id, agent_id, thought_summary, reasoning, model, created_at
+     FROM user_memories
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [Number(limit) || 10]
+  );
+  return rows
+    .map((row) => ({
+      id: row.id,
+      agent_id: row.agent_id ?? null,
+      thought_summary: row.thought_summary || '',
+      reasoning: row.reasoning || '',
+      model: row.model || 'unknown',
+      created_at: row.created_at ?? null
+    }))
+    .slice(0, limit);
 }
 
-function runInsert(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
-    });
-  });
+// --- Telemetry ingest firewall: drop low-value / heartbeat events -----------
+// Heartbeat and no-op pings must never be persisted; only critical traces land
+// in the system of record. This is the deterministic layer that complements the
+// Gemini triage model.
+const HEARTBEAT_PATTERNS = [
+  /^heartbeat$/i,
+  /^ping$/i,
+  /^health$/i,
+  /^keep[-_]?alive$/i,
+  /^\/api\/health/i,
+  /_ping$/i
+];
+
+function isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status }) {
+  const tid = String(trace_id || '').toLowerCase();
+  if (HEARTBEAT_PATTERNS.some((re) => re.test(tid))) return true;
+  // No meaningful token/cost footprint and OK status == noise.
+  const tokens = (Number(tokens_in) || 0) + (Number(tokens_out) || 0);
+  const price = Number(cost) || 0;
+  if (tokens === 0 && price === 0 && (status || 'OK') === 'OK' && model === 'heartbeat') {
+    return true;
+  }
+  return false;
 }
 
 app.post('/api/telemetry/ingest', async (req, res) => {
@@ -347,6 +374,18 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, thought_summary, reasoning } = req.body || {};
     const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
+
+    // Firewall: drop low-value / heartbeat events before any persistence.
+    if (isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus })) {
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: agentId || undefined,
+        bypass: !!agentId,
+        recalled_context: [],
+        message: 'Event filtered at ingest firewall (low-value/heartbeat) — not persisted'
+      });
+    }
 
     if (!agentId) {
       const parsed = IngestRequestSchema.safeParse(req.body);
@@ -383,7 +422,7 @@ app.post('/api/telemetry/ingest', async (req, res) => {
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
       [
         String(trace_id ?? (agentId ? `agent-${agentId}` : 'unknown')),
         String(model || 'unknown'),
@@ -402,7 +441,8 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       thoughtSummary: thought_summary || '',
       reasoning: reasoning || '',
       model: model || 'unknown',
-      vector
+      vector,
+      agentId
     }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
 
     if (agentId) {
@@ -448,6 +488,14 @@ app.get('/api/memory/recall', async (req, res) => {
   try {
     const query = String(req.query.query || '');
     const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 20);
+    const last = Math.min(Math.max(Number(req.query.last) || 0, 0), 50);
+
+    // `?last=N` → return the last N persisted user memories (semantic store).
+    if (last > 0 && !query) {
+      const memories = await recallUserMemories(last);
+      return res.json({ count: memories.length, memories });
+    }
+
     if (!query) {
       return res.status(400).json({ error: 'Missing required query parameter: query' });
     }
@@ -463,7 +511,7 @@ app.get('/api/telemetry/logs', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
     const rows = await runQuery(
-      `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT ?`,
+      `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
       [limit]
     );
     return res.json(rows);
@@ -482,7 +530,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
     const now = Date.now();
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
     const cost24hRow = await runQuery(
-      `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= ?`,
+      `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
 
@@ -509,7 +557,7 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
     for (const item of logs) {
       const result = await runInsert(
         `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           String(item.trace_id || `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
           String(item.model || item.model_name || 'unknown'),
@@ -566,7 +614,7 @@ app.delete('/api/interceptor/triage/:id', async (req, res) => {
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: 'Invalid violation id' });
     }
-    const result = await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+    const result = await runQuery(`DELETE FROM security_violations WHERE id = $1`, [id]);
     return res.json({ success: true, changes: result.changes });
   } catch (err) {
     console.error('[Interceptor] Delete Error:', err.message);
@@ -580,7 +628,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
     if (!Number.isInteger(id)) {
       return res.status(400).json({ error: 'Invalid violation id' });
     }
-    const rows = await runQuery(`SELECT * FROM security_violations WHERE id = ?`, [id]);
+    const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Violation not found' });
     }
@@ -599,7 +647,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
       [
         String(trace_id),
         String(model),
@@ -611,7 +659,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
         String(project_name || 'kilo-fuel-gauge')
       ]
     );
-    await runQuery(`DELETE FROM security_violations WHERE id = ?`, [id]);
+    await runQuery(`DELETE FROM security_violations WHERE id = $1`, [id]);
 
     return res.status(201).json({
       success: true,
@@ -693,13 +741,13 @@ app.post('/api/interceptor/verify', async (req, res) => {
     await runInsert(
       `INSERT INTO governance_actions
         (trace_id, action, type, agent_id, signature, signed_payload, value_score, note, timestamp)
-       VALUES (?, 'VERIFY', 'GOVERNANCE_ACTION', ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES ($1, 'VERIFY', 'GOVERNANCE_ACTION', $2, $3, $4, $5, $6, NOW())`,
       [traceId, agentId, providedSignature, providedPayload, score, note ? String(note) : null]
     ).catch(() => {});
 
     if (score > 0) {
       await runQuery(
-        `UPDATE telemetry_traces SET value_score = ? WHERE trace_id = ?`,
+        `UPDATE telemetry_traces SET value_score = $1 WHERE trace_id = $2`,
         [score, traceId]
       ).catch(() => {});
     }
@@ -751,7 +799,7 @@ app.get('/api/governance/feed', async (req, res) => {
     }
 
     const rows = await runQuery(
-      `SELECT * FROM governance_actions ORDER BY timestamp DESC LIMIT ?`,
+      `SELECT * FROM governance_actions ORDER BY timestamp DESC LIMIT $1`,
       [limit]
     );
     const feed = rows.map((row) => ({
@@ -967,10 +1015,23 @@ app.get('/api/news/headlines', (req, res) => {
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    const dbOk = await runQuery('SELECT 1 as ok').then(
-      (rows) => Array.isArray(rows) && rows[0]?.ok === 1,
-      () => false
-    );
+
+    // Resilient dependency probes — failures are reported, never fatal.
+    let dbOk = false;
+    try {
+      const rows = await runQuery('SELECT 1 as ok');
+      dbOk = Array.isArray(rows) && rows[0]?.ok === 1;
+    } catch {
+      dbOk = false;
+    }
+    if (!dbOk) {
+      // Health-check logging: clear warning instead of crashing.
+      console.warn(
+        '[Health] ingestion_db UNREACHABLE — Neon Postgres not configured or ' +
+          'unavailable. Serving in degraded mode (in-memory fallback active).'
+      );
+    }
+
     let redisOk = false;
     if (redis) {
       try {
@@ -980,7 +1041,14 @@ app.get('/health', async (_req, res) => {
         redisOk = false;
       }
     }
-    const status = dbOk ? 'ok' : 'degraded';
+    if (!redisOk) {
+      console.warn(
+        '[Health] REDIS_URL UNREACHABLE — Redis not configured or unavailable. ' +
+          'Continuing without cache/event-bus (Resilient-First degrade).'
+      );
+    }
+
+    const status = dbOk && redisOk ? 'ok' : 'degraded';
     const payload = {
       status,
       service: 'kudbee-control-tower',
@@ -993,7 +1061,10 @@ app.get('/health', async (_req, res) => {
         redis: redisOk ? 'healthy' : 'unhealthy'
       }
     };
-    res.status(status === 'ok' ? 200 : 503).json(payload);
+    // Resilient-First: the server is serving, so report 200 even when degraded
+    // (a missing/unreachable dependency is not a fatal outage). 503 is reserved
+    // for hard probe failures caught below.
+    res.status(status === 'error' ? 503 : 200).json(payload);
   } catch (err) {
     console.error('[Health] Probe error:', err?.message);
     res.status(503).json({
@@ -1170,8 +1241,18 @@ if (fs.existsSync(distPath)) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[Server] Database: ${DB_FILE}`);
+  console.log(`[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`);
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
 });
+
+// Graceful shutdown: drain the Neon pool and Redis without crashing.
+async function shutdown(signal) {
+  console.log(`[Server] ${signal} received — shutting down gracefully`);
+  try { if (redis) await redis.quit(); } catch { /* ignore */ }
+  try { await closeDbPool(); } catch { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
 
 export default app;

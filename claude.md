@@ -2,6 +2,78 @@
 
 This document codifies the engineering standards for all future development on the Kudbee-fuel-gage repository. Every agent instance—whether Flash or Pro—must adhere to these principles.
 
+## 0. Resilient-First Architecture (Canonical Standard)
+
+All services MUST be built **Resilient-First**: a missing or unreachable external
+dependency (Neon Postgres, Redis, Gemini) must never crash the process. The system
+degrades to a safe degraded state, logs a clear warning, and continues serving.
+
+> **Graceful exit vs. crash — the line:**
+> - **Crash (process.exit / throw at boot) ONLY** when the failure is
+>   unrecoverable and violates a hard invariant required for ANY request to be
+>   served (e.g. a fatal syntax error in the server itself).
+> - **Graceful degrade** for ALL I/O dependency failures: DB unreachable,
+>   Redis unreachable, LLM key missing/unresponsive. Log a `[WARN]`/warning and
+>   return a degraded-but-valid response (`503`/`degraded` health, empty
+>   results, or in-memory fallback state).
+
+### 0.1 Error Handling Policy
+
+- Wrap every external I/O call (DB, Redis, LLM) in `try/catch` and log a clear,
+  actionable warning: identify the dependency, the operation, and the error.
+- Health endpoints (`/health`, `/api/health-check`) MUST NOT crash on dependency
+  failure — they report `degraded`/`unhealthy` and return `200` or `503`, never `500`.
+- Never let an unhandled promise rejection from a fire-and-forget Redis write take
+  down the event loop. Use `.catch()` on queued writes.
+- Connection init failures are logged as warnings, NOT thrown. The process boots
+  and serves; it self-heals when the dependency returns.
+
+### 0.2 Database Connection Factory Pattern
+
+- **Neon Postgres is the system of record.** Use a single shared `pg.Pool`
+  (`services/lib/db.js` → `getDbPool()`), not per-request clients.
+- The factory is **lazy and tolerant**: it reads `DATABASE_URL`, and if the
+  variable is missing or the pool emits `error`, it logs a warning and marks the
+  pool unhealthy. Queries then fall back to an in-memory store so the server still
+  runs locally and in CI (no SQLite — SQLite is fully removed).
+- Never `require('sqlite3')`. If you need a local dev fallback, use the
+  in-process memory store exported by the factory, not a file-backed DB.
+- All SQL identifiers live in `services/ingestion/migrations/*.sql` and are
+  applied via the Neon MCP server or `pg_cron`, never executed at runtime boot.
+
+### 0.3 Telemetry Schema Compliance
+
+Every inbound telemetry event MUST:
+
+- Pass `IngestRequestSchema` (Zod) validation in `packages/types` before any
+  persistence.
+- Be filtered by the ingest firewall: low-value / heartbeat events are dropped;
+  only **critical traces** (see `triageWithGemini` / the deterministic cost-token
+  rule) are persisted.
+- Land in `telemetry_traces` (Neon) or the in-memory fallback with the canonical
+  columns: `trace_id, model, tokens_in, tokens_out, cost, status, provider,
+  project_name, timestamp`.
+- Respect the 30-day TTL policy (see migration `002_telemetry_logs_and_user_memories_ttl.sql`):
+  `telemetry_logs` and `user_memories` are purged after 30 days via `pg_cron`.
+
+### 0.4 PR Workflow (Release Engineering Standard)
+
+For every task/feature the Release Engineer MUST:
+
+1. **Branch** — `git checkout -b feature/<task-name>` off `main`. NO direct
+   pushes to `main`.
+2. **Implement** — code + tests, adhering to §0.1–§0.3.
+3. **Commit** — descriptive, conventional-ish message.
+4. **Push** — `git push -u origin feature/<task-name>`.
+5. **PR** — open a pull request against `main` with a structured body that
+   includes the mandatory `### Struggles & Friction` section (§4).
+6. **Verify** — run `node scripts/verify-e2e.mjs` and
+   `node scripts/diagnose-redis.mjs`. The E2E suite is 11 checks; ALL 11 must
+   pass (`11/11`).
+7. **Merge or Report** — if `11/11` pass, merge the PR and delete the feature
+   branch (local + remote). If any check fails, attach the specific failing logs
+   to the PR and STOP for human review — do NOT force-merge.
+
 ## 1. PR Lifecycle Protocol
 
 Every task requires the complete PR lifecycle:
