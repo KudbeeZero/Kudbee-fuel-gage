@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs/promises";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import { IngestRequestSchema } from "@kudbee/types";
 
 // --- 1. LOCAL TELEMETRY ENGINE TYPE DEFINITIONS ---
 
@@ -54,7 +55,7 @@ const MODEL_COSTS: Record<string, { input: number; output: number }> = {
 };
 
 function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
-  const rates = MODEL_COSTS[modelName.toLowerCase()] || MODEL_COSTS["claude-3-5-sonnet"];
+  const rates = MODEL_COSTS[modelName.toLowerCase()] ?? MODEL_COSTS["claude-3-5-sonnet"]!;
   return (inputTokens / 1000.0) * rates.input + (outputTokens / 1000.0) * rates.output;
 }
 
@@ -197,7 +198,7 @@ function startDaemon() {
   
   setInterval(async () => {
     try {
-      const selectedModel = models[Math.floor(Math.random() * models.length)];
+      const selectedModel = models[Math.floor(Math.random() * models.length)]!;
       const selectedProject = projects[Math.floor(Math.random() * projects.length)];
       
       const logged = await dbAddLog({
@@ -235,7 +236,20 @@ async function startServer() {
   app.post("/api/telemetry/log", async (req, res) => {
     try {
       const { user_id, provider, model_name, input_tokens, output_tokens, project_name } = req.body;
-      
+
+      const parsed = IngestRequestSchema.partial({ trace_id: true, provider: true, project_name: true }).safeParse({
+        trace_id: req.body.trace_id ?? `tr-${Date.now()}`,
+        model: model_name,
+        tokens_in: input_tokens,
+        tokens_out: output_tokens,
+        cost: 0,
+        provider,
+        project_name
+      });
+      if (!parsed.success) {
+        return res.status(422).json({ error: "Firewall: invalid telemetry contract", issues: parsed.error.issues });
+      }
+
       if (!user_id || !provider || !model_name || input_tokens === undefined || output_tokens === undefined) {
         return res.status(400).json({ error: "Missing required telemetry fields" });
       }
@@ -412,8 +426,9 @@ async function startServer() {
       // Clear logs and reset allowances
       db.token_logs = db.token_logs.filter(l => l.user_id !== userId);
       for (const key in db.quota_trackers) {
-        if (db.quota_trackers[key].user_id === userId) {
-          db.quota_trackers[key].used_allowance = 0;
+        const tracker = db.quota_trackers[key];
+        if (tracker && tracker.user_id === userId) {
+          tracker.used_allowance = 0;
         }
       }
       

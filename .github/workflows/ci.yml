@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   validate-and-build:
-    name: Type Check, Lint, and Compile
+    name: Type Check, Lint, and Build (Monorepo)
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -25,16 +25,13 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install Secure Dependencies
+      - name: Install Workspace Dependencies
         run: npm ci
 
       - name: Execute TypeScript Validation
-        run: npx tsc --noEmit
-
-      - name: Run Code Linter
-        run: npm run lint
+        run: npx turbo run lint
 
       - name: Compile Production Bundle
-        run: npm run build
+        run: npx turbo run build
         env:
           CI: true

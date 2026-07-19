@@ -1,1 +1,1 @@
-web: node server.js
+web: node services/ingestion/server.js
