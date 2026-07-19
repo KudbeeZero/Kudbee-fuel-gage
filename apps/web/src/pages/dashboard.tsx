@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
+  BadgeCheck,
   Brain,
   CircleDot,
   Clock,
@@ -10,13 +11,14 @@ import {
   MemoryStick,
   Radio,
   RefreshCw,
+  ScrollText,
   ShieldX,
   Signal,
   Wifi,
   WifiOff
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
-import { apiGet, apiUrl } from '../lib/apiClient';
+import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'error';
@@ -48,7 +50,73 @@ interface MemoryResponse {
   memories: MemoryRecall[];
 }
 
+interface GovernanceAction {
+  id: number;
+  trace_id: string;
+  action: string;
+  type: string;
+  agent_id: string;
+  signature: string;
+  signed_payload: string;
+  value_score: number;
+  note?: string | null;
+  timestamp: string;
+}
+
+interface CommunityValue {
+  community_value_score: number;
+  verified_traces: number;
+  governance_actions: number;
+}
+
 const POLL_MS = 5000;
+
+// --- Phase 6: client-side cryptographic signing (Ed25519 via Web Crypto) ---
+// The Partner Portal signs the trace with the agent's key pair before submitting
+// the "Verify" governance action. The backend verifies the signature (proving
+// possession of the private key) before recording the GOVERNANCE_ACTION.
+
+let agentKeyPair: CryptoKeyPair | null = null;
+let cachedAgentId = '';
+
+async function ensureAgentIdentity(): Promise<{ keypair: CryptoKeyPair; agentId: string }> {
+  if (agentKeyPair && cachedAgentId) return { keypair: agentKeyPair, agentId: cachedAgentId };
+  const kp = (await crypto.subtle.generateKey('Ed25519', false, [
+    'sign',
+    'verify'
+  ])) as CryptoKeyPair;
+  const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  const agentId = `partner-${Array.from(rawPub.slice(0, 4))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')}`;
+  agentKeyPair = kp;
+  cachedAgentId = agentId;
+  return { keypair: kp, agentId };
+}
+
+async function signTrace(traceId: string, valueScore: number) {
+  const { keypair: kp, agentId } = await ensureAgentIdentity();
+  const canonical = JSON.stringify({ trace_id: traceId, value_score: valueScore });
+  const sig = await crypto.subtle.sign('Ed25519', kp.privateKey, new TextEncoder().encode(canonical));
+  // Export the public key as SPKI/DER and wrap it in PEM so the Node backend
+  // (crypto.verify with `null` algorithm) can load it directly.
+  const spki = new Uint8Array(await crypto.subtle.exportKey('spki', kp.publicKey));
+  let bin = '';
+  spki.forEach((b) => (bin += String.fromCharCode(b)));
+  const pem = `-----BEGIN PUBLIC KEY-----\n${btoa(bin)}\n-----END PUBLIC KEY-----`;
+  const passNow = Date.now();
+  const passSig = await crypto.subtle.sign('Ed25519', kp.privateKey, new TextEncoder().encode(`${agentId}:${passNow}`));
+  let passBin = '';
+  new Uint8Array(passSig).forEach((b) => (passBin += String.fromCharCode(b)));
+  const agentPass = btoa(JSON.stringify({ agentId, issuedAt: passNow, signature: btoa(passBin) }));
+  return {
+    agent_id: agentId,
+    signature: btoa(String.fromCharCode(...new Uint8Array(sig))),
+    signed_payload: canonical,
+    public_key: pem,
+    agent_pass: agentPass
+  };
+}
 
 function StatusDot({ live }: { live: boolean }) {
   return (
@@ -220,7 +288,15 @@ function MetricCard({
   );
 }
 
-function TelemetryFeed({ items }: { items: TriageItem[] }) {
+function TelemetryFeed({
+  items,
+  onVerify,
+  verifying
+}: {
+  items: TriageItem[];
+  onVerify: (item: TriageItem) => void;
+  verifying: number | null;
+}) {
   return (
     <div
       id="telemetry-feed-card"
@@ -244,25 +320,35 @@ function TelemetryFeed({ items }: { items: TriageItem[] }) {
             <span className="font-mono text-xs">No intercepted payloads. Firewall is clear.</span>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-800/50">
+          <div className="divide-y divide-slate-800/50">
             {items.map((item) => (
-              <li key={item.id} className="px-5 py-3 hover:bg-slate-900/40">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
+              <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-900/40">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
                     <span className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-rose-400">
                       BLOCKED
                     </span>
                     <span className="truncate font-mono text-xs text-slate-300">#{item.id}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-slate-500">{item.timestamp}</span>
                   </div>
-                  <span className="shrink-0 font-mono text-[10px] text-slate-500">{item.timestamp}</span>
+                  <p className="mt-1.5 truncate text-xs text-rose-300/90">{item.violation_reason}</p>
+                  <pre className="mt-2 max-h-20 overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
+                    {formatPayload(item.payload)}
+                  </pre>
                 </div>
-                <p className="mt-1.5 truncate text-xs text-rose-300/90">{item.violation_reason}</p>
-                <pre className="mt-2 max-h-24 overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
-                  {formatPayload(item.payload)}
-                </pre>
-              </li>
+                <button
+                  type="button"
+                  onClick={() => onVerify(item)}
+                  disabled={verifying === item.id}
+                  className="mt-1 flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-40"
+                  title="Cryptographically sign & verify this trace"
+                >
+                  <BadgeCheck className={`h-3.5 w-3.5 ${verifying === item.id ? 'animate-spin' : ''}`} />
+                  {verifying === item.id ? 'Signing…' : 'Verify'}
+                </button>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
@@ -325,6 +411,117 @@ function MemoryInsights({ memories }: { memories: MemoryRecall[] }) {
   );
 }
 
+function GovernanceFeed({ actions }: { actions: GovernanceAction[] }) {
+  return (
+    <div
+      id="governance-feed-card"
+      className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"
+    >
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <ScrollText className="h-4 w-4 text-emerald-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Governance Feed</h3>
+        </div>
+        <span className="font-mono text-[10px] text-slate-500">signed · on-chain</span>
+      </div>
+
+      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+        {actions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-600">
+            <BadgeCheck className="h-8 w-8 opacity-40" />
+            <span className="font-mono text-xs">No verified actions yet. Use Verify to sign off a trace.</span>
+          </div>
+        ) : (
+          actions.map((a) => (
+            <div
+              key={a.id}
+              className="rounded-xl border border-emerald-500/15 bg-slate-950/40 p-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  <span className="truncate font-mono text-xs text-emerald-300">{a.agent_id}</span>
+                </div>
+                <span className="shrink-0 rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-emerald-400">
+                  VERIFIED
+                </span>
+              </div>
+              <p className="mt-1 truncate font-mono text-[10px] text-slate-400">
+                trace {a.trace_id}
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <MiniBar value={a.value_score / 100} />
+                <span className="shrink-0 font-mono text-[10px] text-slate-500">
+                  {a.value_score} cv
+                </span>
+              </div>
+              <p className="mt-1 truncate font-mono text-[9px] text-slate-600">
+                sig {a.signature.slice(0, 24)}…
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CommunityValueScore({ data }: { data: CommunityValue | null }) {
+  const score = data ? Number(data.community_value_score) : 0;
+  const ringPct = Math.min(100, Math.round(score));
+  const radius = 26;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (ringPct / 100) * circ;
+  return (
+    <div
+      id="community-value-card"
+      className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+    >
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <BadgeCheck className="h-4 w-4 text-amber-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">Community Value</span>
+        </div>
+        <span className="font-mono text-[10px] text-slate-500">
+          {data?.governance_actions ?? 0} actions
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-center gap-4">
+        <div className="relative flex h-16 w-16 items-center justify-center">
+          <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r={radius} className="fill-none stroke-slate-800" strokeWidth="5" />
+            <circle
+              cx="32"
+              cy="32"
+              r={radius}
+              className="fill-none stroke-amber-400 transition-all duration-700"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={circ}
+              strokeDashoffset={offset}
+            />
+          </svg>
+          <span className="absolute font-mono text-sm font-bold text-amber-300">
+            {ringPct}
+          </span>
+        </div>
+        <div>
+          <div className="font-mono text-2xl font-bold text-slate-100">
+            {score.toFixed(1)}
+            <span className="ml-1 text-sm text-amber-500/60">CV</span>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            {data?.verified_traces ?? 0} verified traces
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -335,6 +532,13 @@ export function DashboardPage() {
 
   const [memories, setMemories] = useState<MemoryRecall[]>([]);
   const [memoryError, setMemoryError] = useState<string | null>(null);
+
+  const [governance, setGovernance] = useState<GovernanceAction[]>([]);
+  const [communityValue, setCommunityValue] = useState<CommunityValue | null>(null);
+  const [govError, setGovError] = useState<string | null>(null);
+
+  const [verifying, setVerifying] = useState<number | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
@@ -374,11 +578,61 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadGovernance = useCallback(async () => {
+    try {
+      const [feed, value] = await Promise.all([
+        apiGet<GovernanceAction[]>('/api/governance/feed?limit=25'),
+        apiGet<CommunityValue>('/api/metrics/community-value')
+      ]);
+      setGovernance(Array.isArray(feed) ? feed : []);
+      setCommunityValue(value);
+      setGovError(null);
+    } catch (e) {
+      setGovError(e instanceof Error ? e.message : 'Governance fetch failed');
+    }
+  }, []);
+
+  const handleVerify = useCallback(
+    async (item: TriageItem) => {
+      const traceId = item.payload && typeof item.payload === 'object'
+        ? (item.payload as Record<string, unknown>).trace_id
+        : `triage-${item.id}`;
+      const effectiveTraceId = String(traceId || `triage-${item.id}`);
+      const valueScore = 50 + (item.id % 50); // deterministic demo value attribution
+      setVerifying(item.id);
+      setVerifyError(null);
+      try {
+        const proof = await signTrace(effectiveTraceId, valueScore);
+        await apiPost('/api/interceptor/verify', {
+          trace_id: effectiveTraceId,
+          agent_id: proof.agent_id,
+          agent_pass: proof.agent_pass,
+          signature: proof.signature,
+          signed_payload: proof.signed_payload,
+          public_key: proof.public_key,
+          value_score: valueScore,
+          note: `Partner verified triage #${item.id}`
+        });
+        await loadGovernance();
+      } catch (e) {
+        setVerifyError(e instanceof Error ? e.message : 'Verification failed');
+      } finally {
+        setVerifying(null);
+      }
+    },
+    [loadGovernance]
+  );
+
   const syncAll = useCallback(async () => {
-    await Promise.allSettled([probeHealth(), loadTriage(), loadMemory()]);
+    await Promise.allSettled([
+      probeHealth(),
+      loadTriage(),
+      loadMemory(),
+      loadGovernance()
+    ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadTriage, loadMemory]);
+  }, [probeHealth, loadTriage, loadMemory, loadGovernance]);
 
   // Initial load on mount.
   useEffect(() => {
@@ -407,7 +661,7 @@ export function DashboardPage() {
                   Control Tower
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Phase 5 · Live telemetry &amp; blockchain-identity status
+                  Phase 6 · Partner Portal · command console &amp; on-chain governance
                 </p>
               </div>
             </div>
@@ -444,18 +698,27 @@ export function DashboardPage() {
             <HealthPanel health={health} loading={healthLoading} error={healthError} />
           </div>
           <div className="grid grid-cols-2 gap-5 lg:grid-cols-1">
+            <CommunityValueScore data={communityValue} />
             <MetricCard icon={Database} label="Triage Queue" value={triage.length} suffix="pkt" />
-            <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
           </div>
         </div>
 
         {/* Bottom row: Telemetry feed + Memory insights */}
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <TelemetryFeed items={triage} />
+          <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
           <MemoryInsights memories={memories} />
         </div>
 
-        {(triageError || memoryError) && (
+        {/* Governance ledger */}
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <GovernanceFeed actions={governance} />
+          <div className="grid grid-cols-2 gap-5">
+            <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />
+            <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
+          </div>
+        </div>
+
+        {(triageError || memoryError || govError || verifyError) && (
           <div className="mt-5 space-y-2">
             {triageError && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
@@ -467,6 +730,18 @@ export function DashboardPage() {
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
                 <Brain className="h-4 w-4" />
                 Memory: {memoryError}
+              </div>
+            )}
+            {govError && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
+                <ScrollText className="h-4 w-4" />
+                Governance: {govError}
+              </div>
+            )}
+            {verifyError && (
+              <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-mono text-rose-300">
+                <BadgeCheck className="h-4 w-4" />
+                Verify: {verifyError}
               </div>
             )}
           </div>

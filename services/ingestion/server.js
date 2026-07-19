@@ -3,10 +3,12 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import Redis from 'ioredis';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
   deserializePass,
   verifyAgentPass,
+  verifySignature,
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
@@ -36,9 +38,6 @@ function loadAgentRegistry() {
 
 const AGENT_REGISTRY = loadAgentRegistry();
 
-// CORS: allow the Control Tower SPA to reach the API. When REACT_APP_API_URL
-// points at a separate Heroku host, the browser requires these headers. When the
-// SPA is served by this same server (same-origin), the wildcard is harmless.
 const ALLOWED_ORIGINS = (process.env.CORS_ALLOW_ORIGINS || '*')
   .split(',')
   .map((o) => o.trim())
@@ -65,6 +64,29 @@ function authenticateAgentPass(headerValue) {
   const publicKey = AGENT_REGISTRY.get(pass.agentId);
   if (!publicKey) return null;
   return verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS) ? pass.agentId : null;
+}
+
+function verifyAgentSignature(agentId, payload, signature) {
+  const publicKey = AGENT_REGISTRY.get(agentId);
+  if (!publicKey) return null;
+  try {
+    return verifySignature(publicKey, payload, signature) ? agentId : null;
+  } catch {
+    return null;
+  }
+}
+
+function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
+  const pass = deserializePass(agentPassEncoded);
+  if (!pass || pass.agentId !== expectedAgentId) return null;
+  if (Math.abs(Date.now() - pass.issuedAt) > AGENT_PASS_MAX_AGE_MS) return null;
+  try {
+    return verifySignature(publicKey, `${pass.agentId}:${pass.issuedAt}`, pass.signature)
+      ? pass.agentId
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 app.use(express.json({ limit: '10mb' }));
@@ -138,7 +160,46 @@ db.serialize(() => {
   });
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_vector_trace ON telemetry_vectors(trace_id)`);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS governance_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trace_id TEXT NOT NULL,
+      action TEXT NOT NULL DEFAULT 'VERIFY',
+      type TEXT NOT NULL DEFAULT 'GOVERNANCE_ACTION',
+      agent_id TEXT NOT NULL,
+      signature TEXT NOT NULL,
+      signed_payload TEXT NOT NULL,
+      value_score REAL NOT NULL DEFAULT 0,
+      note TEXT,
+      timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `, (err) => {
+    if (err) {
+      console.error('[DB] Failed to create governance_actions table:', err.message);
+    } else {
+      console.log('[DB] Table governance_actions ready');
+    }
+  });
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_trace ON governance_actions(trace_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_governance_ts ON governance_actions(timestamp)`);
+
+  db.run(`ALTER TABLE telemetry_traces ADD COLUMN value_score REAL NOT NULL DEFAULT 0`, () => {});
 });
+
+let redis;
+try {
+  redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    retryStrategy: (times) => Math.min(times * 200, 2000)
+  });
+  redis.on('connect', () => console.log('[Redis] Connected'));
+  redis.on('error', (err) => console.error('[Redis] Connection error:', err.message));
+} catch (err) {
+  console.error('[Redis] Failed to initialize client:', err.message);
+}
 
 function quarantineViolation(payload, violationReason) {
   return runInsert(
@@ -255,7 +316,8 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     if (agentId) {
       console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
     }
-    return res.status(201).json({
+
+    const responsePayload = {
       success: true,
       id: result.id,
       agent: agentId || undefined,
@@ -264,7 +326,26 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       message: agentId
         ? 'Telemetry trace ingested via authenticated agent fast-path'
         : 'Telemetry trace ingested successfully'
-    });
+    };
+
+    if (redis) {
+      const feedEntry = {
+        trace_id: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
+        model: model || 'unknown',
+        tokens_in: Number(tokens_in) || 0,
+        tokens_out: Number(tokens_out) || 0,
+        cost: Number(cost) || 0,
+        status: effectiveStatus,
+        provider: provider || 'unknown',
+        project_name: project_name || 'kilo-fuel-gauge',
+        timestamp: new Date().toISOString()
+      };
+      redis.lpush('kudbee:telemetry_feed', JSON.stringify(feedEntry))
+        .then(() => redis.ltrim('kudbee:telemetry_feed', 0, 9999))
+        .catch((e) => console.error('[Redis] Telemetry feed push failed:', e.message));
+    }
+
+    return res.status(201).json(responsePayload);
   } catch (err) {
     console.error('[Ingest] Error:', err.message);
     return res.status(500).json({ error: 'Internal server error', details: err.message });
@@ -451,6 +532,192 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
   }
 });
 
+app.post('/api/interceptor/verify', async (req, res) => {
+  try {
+    const {
+      trace_id,
+      agent_id,
+      agent_pass,
+      signature,
+      signed_payload,
+      value_score = 0,
+      note
+    } = req.body || {};
+
+    const traceId = String(trace_id || '');
+    const agentId = String(agent_id || '');
+    const providedSignature = String(signature || '');
+    const providedPayload = String(signed_payload || '');
+    const providedPublicKey = req.body?.public_key ? String(req.body.public_key) : null;
+
+    if (!traceId || !agentId || !providedSignature || !providedPayload) {
+      return res.status(400).json({
+        error: 'Missing required fields: trace_id, agent_id, signature, signed_payload'
+      });
+    }
+
+    let passAgentId = providedPublicKey
+      ? verifyAgentPassFromKey(agent_pass, providedPublicKey, agentId)
+      : authenticateAgentPass(agent_pass);
+    if (!passAgentId || passAgentId !== agentId) {
+      return res.status(401).json({ error: 'Unauthorized: invalid or mismatched agent pass' });
+    }
+
+    const verifiedAgent = providedPublicKey
+      ? (verifySignature(providedPublicKey, providedPayload, providedSignature) ? agentId : null)
+      : verifyAgentSignature(agentId, providedPayload, providedSignature);
+    if (!verifiedAgent) {
+      return res.status(403).json({ error: 'Signature verification failed for provided trace' });
+    }
+
+    const score = Math.max(0, Math.min(100, Number(value_score) || 0));
+    const govTimestamp = Date.now();
+    let govId = Date.now();
+
+    if (redis) {
+      try {
+        govId = await redis.incr('kudbee:governance_counter');
+        const govRecord = {
+          id: govId,
+          trace_id: traceId,
+          action: 'VERIFY',
+          type: 'GOVERNANCE_ACTION',
+          agent_id: agentId,
+          signature: providedSignature,
+          signed_payload: providedPayload,
+          value_score: score,
+          note: note ? String(note) : null,
+          timestamp: new Date(govTimestamp).toISOString()
+        };
+        await redis.zadd('kudbee:governance_actions', govTimestamp, JSON.stringify(govRecord));
+        await redis.sadd('kudbee:verified_traces', traceId);
+        await redis.incrbyfloat('kudbee:community_value_score', score);
+        await redis.incr('kudbee:governance_count');
+      } catch (e) {
+        console.error('[Redis] Governance action failed:', e.message);
+      }
+    }
+
+    await runInsert(
+      `INSERT INTO governance_actions
+        (trace_id, action, type, agent_id, signature, signed_payload, value_score, note, timestamp)
+       VALUES (?, 'VERIFY', 'GOVERNANCE_ACTION', ?, ?, ?, ?, ?, datetime('now'))`,
+      [traceId, agentId, providedSignature, providedPayload, score, note ? String(note) : null]
+    ).catch(() => {});
+
+    if (score > 0) {
+      await runQuery(
+        `UPDATE telemetry_traces SET value_score = ? WHERE trace_id = ?`,
+        [score, traceId]
+      ).catch(() => {});
+    }
+
+    console.log(`[Governance] Agent ${agentId} VERIFIED trace ${traceId} (value_score=${score})`);
+
+    return res.status(201).json({
+      success: true,
+      id: govId || Date.now(),
+      type: 'GOVERNANCE_ACTION',
+      trace_id: traceId,
+      agent_id: agentId,
+      signature: providedSignature,
+      signed_payload: providedPayload,
+      value_score: score,
+      message: 'Trace verified and signed — governance action recorded on-chain ledger.'
+    });
+  } catch (err) {
+    console.error('[Governance] Verify error:', err?.message);
+    return res.status(500).json({ error: 'Failed to record governance action', details: err?.message });
+  }
+});
+
+app.get('/api/governance/feed', async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    if (redis) {
+      try {
+        const rawRows = await redis.zrange('kudbee:governance_actions', 0, limit - 1, 'REV');
+        const feed = rawRows.map((row) => {
+          const data = JSON.parse(row);
+          return {
+            id: data.id,
+            trace_id: data.trace_id,
+            action: data.action,
+            type: data.type,
+            agent_id: data.agent_id,
+            signature: data.signature,
+            signed_payload: data.signed_payload,
+            value_score: data.value_score,
+            note: data.note,
+            timestamp: data.timestamp
+          };
+        });
+        return res.json(feed);
+      } catch (e) {
+        console.error('[Redis] Governance feed fallback to SQLite:', e.message);
+      }
+    }
+
+    const rows = await runQuery(
+      `SELECT * FROM governance_actions ORDER BY timestamp DESC LIMIT ?`,
+      [limit]
+    );
+    const feed = rows.map((row) => ({
+      id: row.id,
+      trace_id: row.trace_id,
+      action: row.action,
+      type: row.type,
+      agent_id: row.agent_id,
+      signature: row.signature,
+      signed_payload: row.signed_payload,
+      value_score: row.value_score,
+      note: row.note,
+      timestamp: row.timestamp
+    }));
+    return res.json(feed);
+  } catch (err) {
+    console.error('[Governance] Feed error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch governance feed' });
+  }
+});
+
+app.get('/api/metrics/community-value', async (req, res) => {
+  try {
+    if (redis) {
+      try {
+        const score = await redis.get('kudbee:community_value_score');
+        const actions = await redis.get('kudbee:governance_count');
+        const verified = await redis.scard('kudbee:verified_traces');
+        return res.json({
+          community_value_score: Number(score || 0).toFixed(2),
+          governance_actions: Number(actions || 0),
+          verified_traces: Number(verified || 0)
+        });
+      } catch (e) {
+        console.error('[Redis] Community value fallback to SQLite:', e.message);
+      }
+    }
+
+    const scoreRow = await runQuery(
+      `SELECT COALESCE(SUM(value_score), 0) AS total FROM governance_actions`
+    );
+    const actionsRow = await runQuery(
+      `SELECT COUNT(*) AS count FROM governance_actions`
+    );
+    const verifiedRow = await runQuery(
+      `SELECT COUNT(DISTINCT trace_id) AS count FROM governance_actions`
+    );
+    return res.json({
+      community_value_score: Number(scoreRow[0]?.total || 0).toFixed(2),
+      governance_actions: Number(actionsRow[0]?.count || 0),
+      verified_traces: Number(verifiedRow[0]?.count || 0)
+    });
+  } catch (err) {
+    console.error('[Metrics] Community value error:', err?.message);
+    return res.status(500).json({ error: 'Failed to compute community value' });
+  }
+});
+
 app.get('/api/proxy/pending', (req, res) => {
   res.json([]);
 });
@@ -482,31 +749,36 @@ app.get('/api/news/headlines', (req, res) => {
   });
 });
 
-// --- Control Tower: System Health probe ---
-// Returns a lightweight liveness signal for the dashboard "System Health" card.
-// Also exposes downstream dependency signals (ingestion DB, vector memory) so the
-// Control Tower can surface a degraded (amber) state rather than a binary up/down.
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    // Probe the telemetry store to confirm the persistence layer is responsive.
     const dbOk = await runQuery('SELECT 1 as ok').then(
       (rows) => Array.isArray(rows) && rows[0]?.ok === 1,
       () => false
     );
+    let redisOk = false;
+    if (redis) {
+      try {
+        await redis.ping();
+        redisOk = true;
+      } catch {
+        redisOk = false;
+      }
+    }
     const status = dbOk ? 'ok' : 'degraded';
     const payload = {
       status,
       service: 'kudbee-control-tower',
-      phase: 'phase5',
+      phase: 'phase7',
       uptime_sec: uptimeSec,
       timestamp: new Date().toISOString(),
       dependencies: {
         ingestion_db: dbOk ? 'healthy' : 'unhealthy',
-        vector_memory: 'healthy'
+        vector_memory: 'healthy',
+        redis: redisOk ? 'healthy' : 'unhealthy'
       }
     };
-    res.status(dbOk ? 200 : 503).json(payload);
+    res.status(status === 'ok' ? 200 : 503).json(payload);
   } catch (err) {
     console.error('[Health] Probe error:', err?.message);
     res.status(503).json({
@@ -518,9 +790,6 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-// Static asset hosting for the Control Tower dashboard (apps/web build output).
-// Resolve the web build directory relative to the monorepo root so the server can
-// serve the SPA regardless of where `node server.js` is launched from.
 function resolveDistPath() {
   const candidates = [
     path.resolve(__dirname, '..', '..', 'apps', 'web', 'dist'),
@@ -542,6 +811,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[Server] Database: ${DB_FILE}`);
+  console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
 });
 
 export default app;

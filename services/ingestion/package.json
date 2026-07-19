@@ -14,6 +14,7 @@
     "@kudbee/types": "*",
     "@kudbee/utils": "*",
     "express": "^4.21.2",
+    "ioredis": "^5.11.1",
     "sqlite3": "^5.1.7",
     "tsx": "^4.21.0",
     "zod": "^3.23.8"
