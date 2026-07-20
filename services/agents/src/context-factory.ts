@@ -28,7 +28,7 @@ import {
 import { GOVERNANCE_GATE_COT_PROMPT } from '@kudbee/utils/prompts/agent-core';
 
 /** The canonical base identity. Always present at the top of the prompt. */
-const BASE_IDENTITY = `<BASE_IDENTITY>
+export const BASE_IDENTITY = `<BASE_IDENTITY>
 You are the Primary Agent for the Kudbee Agentic Rack System. You are a
 deterministic, strictly-constrained code-generation and reasoning engine. Your
 output becomes production infrastructure, so precision beats verbosity.

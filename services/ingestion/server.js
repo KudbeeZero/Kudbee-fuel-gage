@@ -18,6 +18,11 @@ import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib
 import { getRedisClient } from '../lib/redis.js';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
+import {
+  buildAgentContext,
+  evaluateRequiredSkills,
+  BASE_IDENTITY
+} from '../agents/src/context-factory.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -96,6 +101,41 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 }
 
 app.use(express.json({ limit: '10mb' }));
+
+// --- Agent Context Factory middleware ----------------------------------------
+// NO ORPHANED LOGIC: every request to the /api/agents router passes through
+// the Phase 6 context factory. We extract the raw intent from the body, tag it
+// with evaluateRequiredSkills(), then assemble the hierarchical system prompt via
+// buildAgentContext(). Both are attached to the request for downstream handlers.
+//
+// RESILIENT-FIRST: if either factory call throws (e.g. skill-lookup failure or
+// malformed tags), we console.warn and fall back to the canonical BASE_IDENTITY
+// instead of crashing the request.
+function agentContextMiddleware(req, res, next) {
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const requestText =
+      typeof body.prompt === 'string'
+        ? body.prompt
+        : typeof body.intent === 'string'
+          ? body.intent
+          : typeof body.message === 'string'
+            ? body.message
+            : JSON.stringify(body || '');
+
+    const agentSkills = evaluateRequiredSkills(requestText);
+    const agentContext = buildAgentContext(requestText, agentSkills);
+
+    req.agentSkills = agentSkills;
+    req.agentContext = agentContext;
+  } catch (err) {
+    console.warn('[AgentContext] Factory degraded — falling back to BASE_IDENTITY:', err?.message);
+    req.agentSkills = [];
+    req.agentContext = BASE_IDENTITY;
+  }
+  next();
+}
+
 
 // --- Resilient Neon Postgres connection (system of record) -----------------
 // getDbPool() is lazy + tolerant: missing DATABASE_URL or pool errors degrade
@@ -505,6 +545,40 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+
+// --- Agent Context Factory router --------------------------------------------
+// Every /api/agents request is routed through agentContextMiddleware (NO
+// ORPHANED LOGIC), so req.agentContext / req.agentSkills are always populated
+// (or safely degraded to BASE_IDENTITY). The factory output is surfaced back to
+// the caller so the assembled hierarchical prompt is observable end-to-end.
+const agentsRouter = express.Router();
+agentsRouter.use(agentContextMiddleware);
+agentsRouter.post('/context', (req, res) => {
+  res.json({
+    success: true,
+    skills: Array.isArray(req.agentSkills) ? req.agentSkills.map((s) => s.id) : [],
+    skill_count: Array.isArray(req.agentSkills) ? req.agentSkills.length : 0,
+    system_prompt: req.agentContext || ''
+  });
+});
+agentsRouter.get('/context', (req, res) => {
+  // GET support: intent supplied via ?prompt= or ?intent= query string.
+  const requestText =
+    typeof req.query.prompt === 'string'
+      ? req.query.prompt
+      : typeof req.query.intent === 'string'
+        ? req.query.intent
+        : '';
+  try {
+    const skills = evaluateRequiredSkills(requestText);
+    const ctx = buildAgentContext(requestText, skills);
+    res.json({ success: true, skills: skills.map((s) => s.id), skill_count: skills.length, system_prompt: ctx });
+  } catch (err) {
+    console.warn('[AgentContext] GET factory degraded:', err?.message);
+    res.json({ success: true, skills: [], skill_count: 0, system_prompt: BASE_IDENTITY, degraded: true });
+  }
+});
+app.use('/api/agents', agentsRouter);
 
 // Edge Sentinel telemetry ingestion webhook (auth via X-Agent-Pass).
 // Mounted at a distinct path so it does not clobber the Zod-firewall
