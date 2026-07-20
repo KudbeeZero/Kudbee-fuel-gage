@@ -13,7 +13,7 @@ import {
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 import { listProposed, approveAction, rejectAction } from '../governance/router.js';
-import { recordReasoning } from '../governance/ledger.js';
+import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
@@ -254,6 +254,7 @@ async function ensureSchema() {
   }
 }
 await ensureSchema();
+await ensureLedgerSchema();
 
 let redis;
 try {
@@ -261,6 +262,33 @@ try {
 } catch (err) {
   console.warn('[Redis] Failed to initialize client (degrading):', err.message);
   redis = null;
+}
+
+if (redis) {
+  const redisEventLabels = {
+    connect: 'Periodic connection refresh',
+    reconnect: 'Upstash inactivity timeout reconnect',
+    ready: 'Environment re-sync ready',
+    end: 'Connection closed (will auto-reconnect)'
+  };
+
+  const logRedisEvent = async (event) => {
+    const reason = redisEventLabels[event] || `Redis ${event}`;
+    try {
+      await logSystemReset(reason, 'redis');
+    } catch {
+      /* never throw from lifecycle logging */
+    }
+  };
+
+  redis.on('connect', () => { void logRedisEvent('connect'); });
+  redis.on('reconnect', () => { void logRedisEvent('reconnect'); });
+  redis.on('ready', () => { void logRedisEvent('ready'); });
+  redis.on('end', () => { void logRedisEvent('end'); });
+  redis.on('error', (err) => {
+    console.warn(`[Redis] Error (logging SYSTEM_RESET):`, err.message);
+    void logRedisEvent('error');
+  });
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -1553,6 +1581,37 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
   } catch (err) {
     console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: 'Comparator failed', detail: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/system/last-event', async (_req, res) => {
+  try {
+    const rows = await runQuery(
+      `SELECT context, input, output, result_status, provider, event_type, reason, created_at
+       FROM reasoning_ledger
+       WHERE event_type = 'system_reset'
+       ORDER BY created_at DESC
+       LIMIT 1`
+    );
+    if (!rows.length) {
+      return res.json({ event: null });
+    }
+    const row = rows[0];
+    let input = {};
+    let output = {};
+    try { input = JSON.parse(row.input || '{}'); } catch { /* ignore */ }
+    try { output = JSON.parse(row.output || '{}'); } catch { /* ignore */ }
+    return res.json({
+      event: {
+        time: row.created_at,
+        reason: row.reason || output?.details || row.result_status,
+        service: input?.service || 'system',
+        status: row.result_status
+      }
+    });
+  } catch (err) {
+    console.error('[LastEvent] Error:', err instanceof Error ? err.message : String(err));
+    res.json({ event: null });
   }
 });
 

@@ -9,7 +9,7 @@
  *   (b) input        — the telemetry input that triggered the turn.
  *   (c) thoughtStream — the AI's chain-of-thought (thought stream).
  *   (d) output       — the final outcome produced by the agent.
- *   (e) resultStatus — SUCCESS | FAILURE | PARTIAL (+ optional code/reason).
+ *   (e) resultStatus — SUCCESS | FAILURE | PARTIAL | SYSTEM_RESET (+ optional code/reason).
  *
  * Persistence is Resilient-First, mirroring the rest of the system:
  *   - PRIMARY:  Neon Postgres via the shared `pg` pool (getDbPool/runInsert).
@@ -64,6 +64,8 @@ export async function ensureLedgerSchema() {
         output JSONB NOT NULL,
         result_status TEXT NOT NULL DEFAULT 'SUCCESS',
         provider TEXT DEFAULT 'unknown',
+        event_type TEXT DEFAULT 'reasoning',
+        reason TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
@@ -72,6 +74,12 @@ export async function ensureLedgerSchema() {
     );
     await pool.query(
       `ALTER TABLE ${LEDGER_TABLE} ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT 'unknown'`
+    );
+    await pool.query(
+      `ALTER TABLE ${LEDGER_TABLE} ADD COLUMN IF NOT EXISTS event_type TEXT DEFAULT 'reasoning'`
+    );
+    await pool.query(
+      `ALTER TABLE ${LEDGER_TABLE} ADD COLUMN IF NOT EXISTS reason TEXT`
     );
   } catch (err) {
     console.warn('[Ledger] Schema ensure failed:', err.message);
@@ -145,18 +153,20 @@ export async function drainQueue() {
  * @param {object} entry
  */
 async function persistToNeon(entry) {
-  const { context, input, thoughtStream, output, resultStatus, provider } = entry;
+  const { context, input, thoughtStream, output, resultStatus, provider, event_type, reason } = entry;
   try {
     await runInsert(
-      `INSERT INTO ${LEDGER_TABLE} (context, input, thought_stream, output, result_status, provider)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO ${LEDGER_TABLE} (context, input, thought_stream, output, result_status, provider, event_type, reason)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         context,
         JSON.stringify(input ?? {}),
         JSON.stringify(thoughtStream ?? []),
         JSON.stringify(output ?? {}),
         resultStatus || 'SUCCESS',
-        provider || 'unknown'
+        provider || 'unknown',
+        event_type || 'reasoning',
+        reason || null
       ]
     );
     return { ok: true };
@@ -167,7 +177,7 @@ async function persistToNeon(entry) {
 }
 
 /**
- * recordReasoning(input, output, resultStatus, provider?)
+ * recordReasoning(input, output, resultStatus, provider?, event_type?, reason?)
  * ---------------------------------------------------------------------------
  * Captures a Problem-Result pair for future agent self-improvement.
  *
@@ -177,12 +187,14 @@ async function persistToNeon(entry) {
  *                        telemetry payload.
  * @param {object} output The final outcome produced by the agent.
  * @param {object} resultStatus Result descriptor: { status, code?, reason? }
- *                        or a plain string ('SUCCESS' | 'FAILURE' | 'PARTIAL').
+ *                        or a plain string ('SUCCESS' | 'FAILURE' | 'PARTIAL' | 'SYSTEM_RESET').
  * @param {string} [provider='unknown'] The LLM provider that generated this
  *                        reasoning chain (e.g. 'gemini', 'vllm', 'openai').
+ * @param {string} [event_type='reasoning'] Event classification: 'reasoning' | 'system_reset'.
+ * @param {string} [reason] Human-readable reason for the event.
  * @returns {Promise<{ stored: 'neon' | 'redis' | 'local', id?: number, queued?: string }>}
  */
-export async function recordReasoning(input, output, resultStatus, provider = 'unknown') {
+export async function recordReasoning(input, output, resultStatus, provider = 'unknown', event_type = 'reasoning', reason = null) {
   const now = new Date().toISOString();
   const context = (input && input.context) || '';
   const thoughtStream = (input && input.thoughtStream) || [];
@@ -203,6 +215,8 @@ export async function recordReasoning(input, output, resultStatus, provider = 'u
     output,
     resultStatus: result,
     provider,
+    event_type,
+    reason: reason || result.reason,
     created_at: now
   };
 
@@ -223,8 +237,30 @@ export async function recordReasoning(input, output, resultStatus, provider = 'u
   return { stored: queued.queued === 'local' ? 'local' : 'redis', queued: queued.queued };
 }
 
+/**
+ * logSystemReset(reason, service?)
+ * ---------------------------------------------------------------------------
+ * Record a SYSTEM_RESET event in the Reasoning Ledger. Used when the system
+ * detects a service cycle (Redis reconnect, port reset, environment re-sync).
+ *
+ * @param {string} reason Human-readable reason for the reset.
+ * @param {string} [service='system'] The service that reset.
+ * @returns {Promise<{ stored: 'neon' | 'redis' | 'local', id?: number, queued?: string }>}
+ */
+export async function logSystemReset(reason, service = 'system') {
+  return recordReasoning(
+    { context: 'System lifecycle', thoughtStream: [], input: { service } },
+    { details: reason },
+    { status: 'SYSTEM_RESET' },
+    'system',
+    'system_reset',
+    reason
+  );
+}
+
 export const ledger = {
   recordReasoning,
+  logSystemReset,
   ensureLedgerSchema,
   drainQueue
 };

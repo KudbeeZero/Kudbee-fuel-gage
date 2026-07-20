@@ -5,7 +5,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { IngestRequestSchema } from "@kudbee/types";
 import { router as governanceRouter } from "../governance/router.js";
-import { recordReasoning } from "../governance/ledger.js";
+import { recordReasoning, logSystemReset, ensureLedgerSchema } from "../governance/ledger.js";
 import { createProvider, wrapPromptForOpenWeights, type ProviderKind } from "@kudbee/utils/llm/providers";
 
 // --- 1. LOCAL TELEMETRY ENGINE TYPE DEFINITIONS ---

@@ -215,14 +215,17 @@ function formatPayload(payload: unknown): string {
 function HealthPanel({
   health,
   loading,
-  error
+  error,
+  lastEvent
 }: {
   health: HealthResponse | null;
   loading: boolean;
   error: string | null;
+  lastEvent?: { time: string; reason: string; service: string } | null;
 }) {
   const live = health?.status === 'ok' || health?.status === 'degraded';
   const degraded = health?.status === 'degraded';
+  const wasOffline = !live && lastEvent;
 
   return (
     <div
@@ -276,6 +279,11 @@ function HealthPanel({
               ? `Control Tower online · ${health?.service ?? 'kudbee'}`
               : 'No heartbeat received from backend. Check CORS / REACT_APP_API_URL.'}
           </p>
+          {wasOffline && lastEvent && (
+            <p className="mt-1 truncate text-[10px] font-mono text-amber-400">
+              Status: ONLINE (Last event: {new Date(lastEvent.time).toLocaleTimeString()} - {lastEvent.reason})
+            </p>
+          )}
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <DependencyBadge
               label="Ingestion DB"
@@ -1084,11 +1092,46 @@ function DeepHealthPanel({ data, loading, error }: { data: DeepHealthResponse | 
   );
 }
 
-function ReasoningLedgerTriage({ proposed, onSubmit }: {
+function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
   proposed: ApprovalRequest[];
   onSubmit: (id: string, decision: ApprovalDecision) => Promise<boolean>;
+  deepHealth: DeepHealthResponse | null;
 }) {
   const [localBusy, setLocalBusy] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<{ service: string; status: string; latencyMs: number | null; timestamp: string } | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+
+  const runDiagnostic = useCallback(async () => {
+    setDiagnosticLoading(true);
+    setDiagnostic(null);
+    try {
+      const data = await apiGet<DeepHealthResponse>('/api/system/health-deep');
+      const offlineServices = [];
+      if (data.services.postgres.status === 'OFFLINE') offlineServices.push({ name: 'Neon Postgres', ...data.services.postgres });
+      if (data.services.redis.status === 'OFFLINE') offlineServices.push({ name: 'Upstash Redis', ...data.services.redis });
+
+      if (offlineServices.length > 0) {
+        const svc = offlineServices[0];
+        setDiagnostic({
+          service: svc.name,
+          status: svc.status,
+          latencyMs: svc.latencyMs,
+          timestamp: data.timestamp
+        });
+      }
+    } catch {
+      setDiagnostic({ service: 'System', status: 'UNKNOWN', latencyMs: null, timestamp: new Date().toISOString() });
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const hasOffline = deepHealth && (deepHealth.services.postgres.status === 'OFFLINE' || deepHealth.services.redis.status === 'OFFLINE');
+    if (hasOffline && !diagnostic && !diagnosticLoading) {
+      void runDiagnostic();
+    }
+  }, [deepHealth, diagnostic, diagnosticLoading, runDiagnostic]);
 
   const handleResolve = async (id: string, decision: ApprovalDecision) => {
     setLocalBusy(id);
@@ -1107,13 +1150,62 @@ function ReasoningLedgerTriage({ proposed, onSubmit }: {
           <Brain className="h-4 w-4 text-violet-400" />
           <h3 className="font-display text-sm font-semibold text-slate-200">Reasoning Ledger Triage</h3>
         </div>
-        <span className="rounded-full border border-slate-800 bg-slate-950 px-2.5 py-1 font-mono text-[10px] text-slate-400">
-          {proposed.length} pending
-        </span>
+        <div className="flex items-center gap-2">
+          {diagnostic && (
+            <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+              diagnostic.status === 'OK'
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+            }`}>
+              Probe: {diagnostic.service} {diagnostic.status}
+            </span>
+          )}
+          <span className="rounded-full border border-slate-800 bg-slate-950 px-2.5 py-1 font-mono text-[10px] text-slate-400">
+            {proposed.length} pending
+          </span>
+        </div>
       </div>
 
       <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
-        {proposed.length === 0 && (
+        {diagnostic && (
+          <div className={`rounded-xl border p-3 ${
+            diagnostic.status === 'OK'
+              ? 'border-emerald-500/15 bg-emerald-500/5'
+              : 'border-rose-500/15 bg-rose-500/5'
+          }`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Activity className={`h-3.5 w-3.5 ${diagnostic.status === 'OK' ? 'text-emerald-400' : 'text-rose-400'}`} />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-300">
+                  Auto-Diagnostic: {diagnostic.service}
+                </span>
+              </div>
+              <span className={`font-mono text-[9px] uppercase ${
+                diagnostic.status === 'OK' ? 'text-emerald-400' : 'text-rose-400'
+              }`}>
+                {diagnostic.status}
+              </span>
+            </div>
+            <p className="mt-1 font-mono text-[10px] text-slate-400">
+              Probe completed at {new Date(diagnostic.timestamp).toLocaleTimeString()}
+              {diagnostic.latencyMs !== null && ` · ${diagnostic.latencyMs}ms`}
+            </p>
+            {diagnostic.status === 'OFFLINE' && (
+              <p className="mt-1 font-mono text-[9px] text-rose-300">
+                Service is currently unreachable. Check network/auth configuration.
+              </p>
+            )}
+          </div>
+        )}
+
+        {diagnosticLoading && (
+          <div className="flex items-center justify-center gap-2 py-3 text-slate-500">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <span className="font-mono text-[10px]">Running auto-diagnostic probe…</span>
+          </div>
+        )}
+
+        {proposed.length === 0 && !diagnostic && !diagnosticLoading && (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
             <CheckCircle2 className="h-8 w-8 opacity-40" />
             <span className="font-mono text-xs">No pending reasoning issues.</span>
@@ -1288,6 +1380,9 @@ export function DashboardPage() {
   const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
   const [deepHealthLoading, setDeepHealthLoading] = useState(true);
 
+  const [lastEvent, setLastEvent] = useState<{ time: string; reason: string; service: string } | null>(null);
+  const [lastEventLoading, setLastEventLoading] = useState(true);
+
   const [comparisonResult, setComparisonResult] = useState<{
     status: string;
     provider: string;
@@ -1461,6 +1556,17 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadLastEvent = useCallback(async () => {
+    try {
+      const data = await apiGet<{ event: { time: string; reason: string; service: string } | null }>('/api/system/last-event');
+      setLastEvent(data.event);
+    } catch {
+      setLastEvent(null);
+    } finally {
+      setLastEventLoading(false);
+    }
+  }, []);
+
   const runComparison = useCallback(async () => {
     setComparisonLoading(true);
     setComparisonError(null);
@@ -1533,6 +1639,7 @@ export function DashboardPage() {
       probeHealth(),
       loadSystemStatus(),
       loadDeepHealth(),
+      loadLastEvent(),
       loadSessionHistory(),
       loadTriage(),
       loadMemory(),
@@ -1540,7 +1647,7 @@ export function DashboardPage() {
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
   // the 5s poll is reduced to a slow safety net (every 30s) instead of the
@@ -1611,7 +1718,7 @@ export function DashboardPage() {
           )}
 
           <div className="lg:col-span-2">
-            <HealthPanel health={health} loading={healthLoading} error={healthError} />
+            <HealthPanel health={health} loading={healthLoading} error={healthError} lastEvent={lastEvent} />
           </div>
           <CommunityValueScore data={communityValue} />
 
@@ -1620,7 +1727,7 @@ export function DashboardPage() {
           <MemoryInsights memories={memories} />
 
           <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
-          <ReasoningLedgerTriage proposed={pendingApprovals} onSubmit={submitApproval} />
+          <ReasoningLedgerTriage proposed={pendingApprovals} onSubmit={submitApproval} deepHealth={deepHealth} />
           <ModelComparator
             result={comparisonResult}
             loading={comparisonLoading}
