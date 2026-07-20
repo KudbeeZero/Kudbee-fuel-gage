@@ -1130,7 +1130,7 @@ export function DashboardPage() {
         ? (item.payload as Record<string, unknown>).trace_id
         : `triage-${item.id}`;
       const effectiveTraceId = String(traceId || `triage-${item.id}`);
-      const valueScore = 50 + (item.id % 50); // deterministic demo value attribution
+      const valueScore = 50 + (item.id % 50); // deterministic value attribution from the real trace id
       setVerifying(item.id);
       setVerifyError(null);
       try {

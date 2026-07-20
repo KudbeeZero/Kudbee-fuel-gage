@@ -522,22 +522,40 @@ app.post('/api/telemetry/ingest', async (req, res) => {
         : 'Telemetry trace ingested successfully'
     };
 
+    // Real egressed signal — built unconditionally so the SSE broadcast
+    // below always has valid data, then mirrored to the Redis feed (best-effort
+    // when a cache is configured).
+    const feedEntry = {
+      trace_id: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
+      model: model || 'unknown',
+      tokens_in: Number(tokens_in) || 0,
+      tokens_out: Number(tokens_out) || 0,
+      cost: Number(cost) || 0,
+      status: effectiveStatus,
+      provider: provider || 'unknown',
+      project_name: project_name || 'kilo-fuel-gauge',
+      timestamp: new Date().toISOString()
+    };
+
     if (redis) {
-      const feedEntry = {
-        trace_id: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
-        model: model || 'unknown',
-        tokens_in: Number(tokens_in) || 0,
-        tokens_out: Number(tokens_out) || 0,
-        cost: Number(cost) || 0,
-        status: effectiveStatus,
-        provider: provider || 'unknown',
-        project_name: project_name || 'kilo-fuel-gauge',
-        timestamp: new Date().toISOString()
-      };
       redis.lpush('kudbee:telemetry_feed', JSON.stringify(feedEntry))
         .then(() => redis.ltrim('kudbee:telemetry_feed', 0, 9999))
         .catch((e) => console.error('[Redis] Telemetry feed push failed:', e.message));
     }
+
+    // Native SSE broadcast of the real egressed signal so the Edge Sentinel
+    // plugin can pulse/shift on live ingress events (replaces polling).
+    publishEvent('telemetry', {
+      trace_id: feedEntry.trace_id,
+      model: feedEntry.model,
+      tokens_in: feedEntry.tokens_in,
+      tokens_out: feedEntry.tokens_out,
+      cost: feedEntry.cost,
+      status: feedEntry.status,
+      latency_ms: 0,
+      agent: agentId || null,
+      ts: feedEntry.timestamp
+    });
 
     return res.status(201).json(responsePayload);
   } catch (err) {

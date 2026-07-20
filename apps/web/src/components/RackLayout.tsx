@@ -3,11 +3,12 @@ import { ThinkStormPlugin } from './ThinkStormPlugin';
 import { ThinkStreamPlugin } from './ThinkStreamPlugin';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
 import { GovernanceGatePlugin } from './GovernanceGatePlugin';
-import { EdgeSentinelPlugin } from './EdgeSentinelPlugin';
+import { EdgeSentinelPlugin, parseRawSignal, type EdgeSignal } from './EdgeSentinelPlugin';
 import { HermesAuditorPlugin } from './HermesAuditorPlugin';
 import { HermesAuditLogSchema, type HermesAuditLog } from './HermesAuditorPlugin';
 import { useEffect, useState } from 'react';
 import { apiGet } from '../lib/apiClient';
+import { useEventStream } from '../hooks/useEventStream';
 import type { IKudbeePlugin } from '@kudbee/types';
 
 const COL_SPAN_CLASS: Record<number, string> = {
@@ -25,40 +26,87 @@ const COL_SPAN_CLASS: Record<number, string> = {
   12: 'lg:col-span-12'
 };
 
-// Real-data hook: poll the worker's HERMES audit log stream. Resilient-First —
-// a fetch failure degrades to an empty list (clean state), never throws.
+// Real-data hook: subscribe to the native [HERMES:AUDITOR] SSE event stream
+// (type `hermes`) instead of the legacy 5s polling loop. Resilient-First —
+// a malformed payload is dropped and a dropped connection flips `connected`
+// so the plugin renders its clean "awaiting" state.
 function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
+  const stream = useEventStream();
   const [logs, setLogs] = useState<HermesAuditLog[]>([]);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const raw = await apiGet<unknown>('/api/governance/hermes-logs');
-        if (cancelled || !Array.isArray(raw)) return;
-        const parsed = raw
-          .map((r) => HermesAuditLogSchema.safeParse(r))
-          .filter((r) => r.success)
-          .map((r) => r.data);
-        setLogs(parsed);
-        setConnected(parsed.length > 0);
-      } catch {
-        setConnected(false);
-      }
-    };
-    void load();
-    const id = setInterval(() => void load(), 5000);
+    const off = stream.on('hermes', (data: unknown) => {
+      const parsed = HermesAuditLogSchema.safeParse(data);
+      if (!parsed.success) return;
+      setLogs((prev) => [parsed.data, ...prev].slice(0, 40));
+    });
+    const watch = setInterval(() => setConnected(stream.connected), 1000);
+    setConnected(stream.connected);
     return () => {
-      cancelled = true;
-      clearInterval(id);
+      off();
+      clearInterval(watch);
     };
-  }, []);
+  }, [stream]);
 
   return { logs, connected };
 }
 
-function renderPlugin(plugin: IKudbeePlugin, hermes: { logs: HermesAuditLog[]; connected: boolean }) {
+// Real-data hook: drive the Edge Sentinel from live egress telemetry. We seed
+// the signal buffer with the most recent persisted traces (real data, never
+// mocked) and append each live `telemetry` SSE event as it ingresses, so the
+// Status LED and Signal/Noise visualizer pulse on real traffic. Resilient-First:
+// a fetch/parse failure degrades to an empty signal set, never a crash.
+function useEdgeSignals(): {
+  signals: EdgeSignal[];
+  connected: boolean;
+  lastIngressAt: number | null;
+} {
+  const stream = useEventStream();
+  const [signals, setSignals] = useState<EdgeSignal[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [lastIngressAt, setLastIngressAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRecent = async () => {
+      try {
+        const rows = await apiGet<unknown>('/api/telemetry/logs?limit=12');
+        if (cancelled || !Array.isArray(rows)) return;
+        const parsed = rows
+          .map((r) => parseRawSignal(r))
+          .filter((s): s is EdgeSignal => s !== null)
+          .slice(0, 12);
+        setSignals(parsed);
+      } catch {
+        /* degraded: keep existing/empty signals */
+      }
+    };
+    void loadRecent();
+
+    const off = stream.on('telemetry', (data: unknown) => {
+      const parsed = parseRawSignal(data);
+      if (!parsed) return;
+      setSignals((prev) => [parsed, ...prev].slice(0, 12));
+      setLastIngressAt(Date.now());
+    });
+    const watch = setInterval(() => setConnected(stream.connected), 1000);
+    setConnected(stream.connected);
+
+    return () => {
+      cancelled = true;
+      off();
+      clearInterval(watch);
+    };
+  }, [stream]);
+
+  return { signals, connected, lastIngressAt };
+}
+
+function renderPlugin(
+  plugin: IKudbeePlugin,
+  hermes: { logs: HermesAuditLog[]; connected: boolean }
+) {
   const span = COL_SPAN_CLASS[plugin.gridSpan.colSpan] ?? 'lg:col-span-4';
   switch (plugin.id) {
     case 'plugin-storm':
@@ -99,6 +147,7 @@ function renderPlugin(plugin: IKudbeePlugin, hermes: { logs: HermesAuditLog[]; c
 export function RackLayout() {
   const plugins = Object.values(CORE_RACK_PLUGINS);
   const hermes = useHermesAuditLogs();
+  const edge = useEdgeSignals();
 
   return (
     <section
@@ -119,7 +168,11 @@ export function RackLayout() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
         {plugins.map((plugin) => renderPlugin(plugin, hermes))}
         <div className="lg:col-span-12">
-          <EdgeSentinelPlugin />
+          <EdgeSentinelPlugin
+            signals={edge.signals}
+            connected={edge.connected}
+            lastIngressAt={edge.lastIngressAt}
+          />
         </div>
       </div>
     </section>

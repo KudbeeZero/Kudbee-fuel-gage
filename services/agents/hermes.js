@@ -51,8 +51,22 @@ function format(level, parts) {
 async function mirrorToStream(line) {
   try {
     const redis = getRedisClient({ label: 'hermes' });
-    await redis.lpush(LOG_STREAM_KEY, JSON.stringify({ ts: new Date().toISOString(), line }));
+    const ts = new Date().toISOString();
+    await redis.lpush(LOG_STREAM_KEY, JSON.stringify({ ts, line }));
     await redis.ltrim(LOG_STREAM_KEY, 0, LOG_STREAM_MAX);
+    // Native SSE broadcast: re-publish each [HERMES:AUDITOR] line onto the
+    // cross-process event bus so the ingestion server's SSE subscriber fans it
+    // out to dashboard clients in real time (drives the HERMES Auditor plugin
+    // via EventSource instead of a 5s polling loop). Best-effort: a publish
+    // failure must never block the audit loop.
+    await redis.publish(
+      'kudbee:events',
+      JSON.stringify({
+        type: 'hermes',
+        data: { ts, line, agent: 'HERMES' },
+        ts
+      })
+    );
   } catch {
     /* best-effort; never block the audit loop on log mirroring */
   }

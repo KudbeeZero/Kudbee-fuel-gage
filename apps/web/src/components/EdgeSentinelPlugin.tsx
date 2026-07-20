@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { TelemetryTraceSchema, ApprovalStatusSchema } from '@kudbee/types';
 
@@ -31,16 +32,19 @@ export interface EdgeSignal {
 export interface EdgeSentinelPluginProps {
   /** Parsed, egressed signals (already validated upstream). */
   signals?: readonly EdgeSignal[];
-  /** Latest blast-radius risk score (0–6). */
-  riskScore?: number;
-  /** Whether the edge dyno heartbeat is connected. */
+  /** Whether the edge dyno / SSE link is connected. */
   connected?: boolean;
+  /** Epoch ms of the last real ingress event (null until first signal). */
+  lastIngressAt?: number | null;
   /** Latest HITL hand-off payload, if any. */
   pendingGovernance?: EdgeGovernance | null;
 }
 
 const MAX_BARS = 12;
 const RISK_MAX = 6;
+// Ingress events older than this are treated as "stale" — the LED stops
+// pulsing and the visualizer relaxes to its resting state.
+const INGRESS_PULSE_MS = 4000;
 
 // Discrete Tailwind width steps — avoids inline styles / dynamic arbitrary
 // values so the JIT scanner can statically resolve every class.
@@ -93,23 +97,39 @@ function riskLabel(score: number): string {
 
 export function EdgeSentinelPlugin({
   signals = [],
-  riskScore = 0,
   connected = true,
+  lastIngressAt = null,
   pendingGovernance = null
 }: EdgeSentinelPluginProps) {
+  // Live pulse: the LED + visualizer shift whenever a real ingress event
+  // arrives, then relax over INGRESS_PULSE_MS (pure CSS, no inline styles).
+  const [pulse, setPulse] = useState(false);
+  const [liveRisk, setLiveRisk] = useState(0);
+  useEffect(() => {
+    if (lastIngressAt == null) return;
+    setPulse(true);
+    // Derive a transient blast-radius risk from the freshest signal's token
+    // footprint — a heavy trace briefly raises the gauge, then decays.
+    const last = signals[0];
+    const tokens = last ? last.tokensIn + last.tokensOut : 0;
+    setLiveRisk(Math.min(RISK_MAX, Math.round(tokens / 1000)));
+    const t = setTimeout(() => setPulse(false), INGRESS_PULSE_MS);
+    return () => clearTimeout(t);
+  }, [lastIngressAt, signals]);
+
   const ingested = signals.length;
-  // Signal-to-Noise: assume a steady 4:1 noise ratio for the dropped baseline.
-  const dropped = ingested * 4;
-  const total = ingested + dropped;
-  const noisePct = total === 0 ? 0 : Math.round((dropped / total) * 100);
-  const signalPct = total === 0 ? 0 : 100 - noisePct;
+  // Signal-to-Noise: computed from the real egress buffer only. With no
+  // captured signals there is no fabricated baseline — we show 100% signal
+  // (the real stored set) and surface "Awaiting Telemetry" when empty.
+  const signalPct = ingested === 0 ? 0 : 100;
+  const noisePct = 0;
 
   const bars = Array.from({ length: MAX_BARS }, (_, i) => {
-    const on = i < Math.round((ingested / Math.max(ingested, MAX_BARS)) * MAX_BARS);
+    const on = i < ingested;
     return on;
   });
 
-  const clampedRisk = Math.max(0, Math.min(RISK_MAX, riskScore));
+  const clampedRisk = Math.max(0, Math.min(RISK_MAX, liveRisk));
   const gaugePct = Math.round((clampedRisk / RISK_MAX) * 100);
 
   return (
@@ -122,16 +142,18 @@ export function EdgeSentinelPlugin({
 
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${pulse ? 'animate-ping bg-emerald-300' : 'bg-emerald-400'}`}
+          />
           <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-slate-200">
             EDGE: SENTINEL
           </h3>
         </div>
         <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide text-slate-400">
           <span
-            className={`h-1.5 w-1.5 rounded-full ${connected ? 'animate-pulse bg-emerald-400' : 'bg-rose-500'}`}
+            className={`h-1.5 w-1.5 rounded-full ${pulse ? 'animate-pulse bg-emerald-300' : connected ? 'bg-emerald-400' : 'bg-rose-500'}`}
           />
-          {connected ? 'HEARTBEAT OK' : 'OFFLINE'}
+          {pulse ? 'INGRESS' : connected ? 'HEARTBEAT OK' : 'OFFLINE'}
         </span>
       </header>
 
@@ -144,17 +166,22 @@ export function EdgeSentinelPlugin({
           </span>
         </div>
         <div className="mt-2 flex h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-950">
-          <div className={`h-full bg-emerald-500/70 ${widthClass(signalPct)}`} />
-          <div className={`h-full bg-slate-700/60 ${widthClass(noisePct)}`} />
+          <div className={`h-full bg-emerald-500/70 transition-all duration-500 ${widthClass(signalPct)}`} />
+          <div className={`h-full bg-slate-700/60 transition-all duration-500 ${widthClass(noisePct)}`} />
         </div>
         <div className="mt-2 flex items-end gap-[3px]">
           {bars.map((on, i) => (
             <span
               key={i}
-              className={`h-5 flex-1 rounded-sm ${on ? 'bg-emerald-400/80' : 'bg-slate-800'}`}
+              className={`h-5 flex-1 rounded-sm transition-all duration-300 ${on ? (pulse ? 'bg-emerald-300/90' : 'bg-emerald-400/80') : 'bg-slate-800'}`}
             />
           ))}
         </div>
+        {ingested === 0 && (
+          <p className="mt-2 font-mono text-[10px] text-slate-600">
+            Awaiting Telemetry · no egressed signals captured yet.
+          </p>
+        )}
       </div>
 
       {/* Blast Radius Gauge */}
@@ -166,7 +193,7 @@ export function EdgeSentinelPlugin({
           </span>
         </div>
         <div className="mt-2 h-2 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-950">
-          <div className={`h-full ${riskTone(clampedRisk)} transition-all ${widthClass(gaugePct)}`} />
+          <div className={`h-full ${riskTone(clampedRisk)} transition-all duration-500 ${widthClass(gaugePct)}`} />
         </div>
         {pendingGovernance ? (
           <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono text-amber-300">

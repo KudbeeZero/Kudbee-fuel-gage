@@ -66,7 +66,7 @@ export function useEventStream(): UseEventStreamResult {
     };
 
     // Named event types (event: <type>).
-    const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes'];
+    const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes', 'ask'];
     const listeners: Array<{ type: string; fn: (ev: MessageEvent) => void }> = [];
     for (const type of namedTypes) {
       const fn = (ev: MessageEvent) => {

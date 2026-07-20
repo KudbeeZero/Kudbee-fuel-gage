@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity, X } from 'lucide-react';
+import { apiGet } from '../../lib/apiClient';
 
 interface TraceRecord {
   trace_id: string;
@@ -10,16 +11,51 @@ interface TraceRecord {
   status: string;
 }
 
-const MOCK_TRACE_SCHEMA: TraceRecord = {
-  trace_id: '0af7651916cd43dd8e7f8',
-  model: 'claude-3-5-sonnet',
-  tokens_in: 1240,
-  tokens_out: 890,
-  cost: 0.0234,
-  status: 'OK'
-};
+// Real-data hook: surface the most recent ingested telemetry trace as the live
+// OTel ref payload. Resilient-First — a fetch failure (or an empty store)
+// degrades to the clean "Awaiting Telemetry" state, never a fabricated record.
+function useLatestTrace(): { trace: TraceRecord | null; loading: boolean } {
+  const [trace, setTrace] = useState<TraceRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const rows = await apiGet<unknown>('/api/telemetry/logs?limit=1');
+        if (cancelled || !Array.isArray(rows) || rows.length === 0) {
+          setTrace(null);
+          return;
+        }
+        const r = rows[0] as Record<string, unknown>;
+        setTrace({
+          trace_id: String(r.trace_id ?? 'unknown'),
+          model: String(r.model ?? 'unknown'),
+          tokens_in: Number(r.tokens_in) || 0,
+          tokens_out: Number(r.tokens_out) || 0,
+          cost: Number(r.cost) || 0,
+          status: String(r.status ?? 'OK')
+        });
+      } catch {
+        setTrace(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { trace, loading };
+}
 
 export function DiagnosticTicker() {
+  const { trace, loading } = useLatestTrace();
+
   return (
     <div
       className="bg-slate-900/40 border border-slate-800 p-3 font-mono text-xs relative overflow-hidden"
@@ -47,9 +83,19 @@ export function DiagnosticTicker() {
       </div>
 
       <div className="mt-2 text-[10px] text-slate-500 leading-relaxed">
-        <span className="text-slate-400">Ref Payload:</span>{' '}
-        {JSON.stringify(MOCK_TRACE_SCHEMA)}
+        {loading ? (
+          <span className="text-slate-600">Probing telemetry store…</span>
+        ) : trace ? (
+          <>
+            <span className="text-slate-400">Ref Payload:</span>{' '}
+            {JSON.stringify(trace)}
+          </>
+        ) : (
+          <span className="text-slate-600">Awaiting Telemetry · no captured traces yet.</span>
+        )}
       </div>
     </div>
   );
 }
+
+export default DiagnosticTicker;

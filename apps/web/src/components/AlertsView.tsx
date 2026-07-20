@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Sliders, Mail, MessageSquare, Webhook, Hash, Save, Activity, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Bell, Sliders, Mail, MessageSquare, Webhook, Hash, Save, Activity, AlertTriangle, CheckCircle2, Info, Radio } from 'lucide-react';
+import { apiGet } from '../lib/apiClient';
 
 interface AlertRule {
   id: string;
@@ -26,6 +27,10 @@ interface AlertLog {
   timestamp: string;
   level: 'CRITICAL' | 'WARNING' | 'INFO';
   message: string;
+}
+
+interface HealthCheckResponse {
+  alerts: Array<{ timestamp?: number; severity?: string; message?: string }>;
 }
 
 const INITIAL_RULES: AlertRule[] = [
@@ -68,17 +73,55 @@ const INITIAL_CHANNELS: NotificationChannel[] = [
   { id: 'slack', label: 'Slack', icon: Hash, enabled: false, color: 'purple' }
 ];
 
-const MOCK_ALERT_LOGS: AlertLog[] = [
-  { id: 1, timestamp: '2026-07-18T23:45:12Z', level: 'CRITICAL', message: 'Budget Threshold Exceeded: $52.00' },
-  { id: 2, timestamp: '2026-07-18T22:30:45Z', level: 'WARNING', message: 'Token Anomaly Detected: +47% above baseline' },
-  { id: 3, timestamp: '2026-07-18T21:15:33Z', level: 'CRITICAL', message: 'Latency Tripwire Tripped: 3,240ms' },
-  { id: 4, timestamp: '2026-07-18T20:00:00Z', level: 'INFO', message: 'Webhook Delivery Failed: endpoint timeout' }
-];
+// Real-data hook: surface the backend's genuine alert buffer (kudbee:alerts,
+// populated by the resilient Redis layer). Resilient-First — a fetch failure
+// degrades to an empty list and the clean "Awaiting Telemetry" state.
+function useAlertLogs(): { logs: AlertLog[]; loading: boolean; error: string | null } {
+  const [logs, setLogs] = useState<AlertLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<HealthCheckResponse>('/api/health-check');
+        if (cancelled) return;
+        const mapped: AlertLog[] = (data?.alerts ?? [])
+          .map((a, i) => ({
+            id: i + 1,
+            timestamp: a.timestamp ? new Date(a.timestamp).toISOString() : new Date().toISOString(),
+            level: (a.severity?.toUpperCase() === 'CRITICAL'
+              ? 'CRITICAL'
+              : a.severity?.toUpperCase() === 'WARNING'
+                ? 'WARNING'
+                : 'INFO') as AlertLog['level'],
+            message: a.message ?? '(no detail)'
+          }));
+        setLogs(mapped);
+        setError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : 'Alert feed unavailable');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { logs, loading, error };
+}
 
 export function AlertsView() {
   const [rules, setRules] = useState<AlertRule[]>(INITIAL_RULES);
   const [channels, setChannels] = useState<NotificationChannel[]>(INITIAL_CHANNELS);
-  const [logs] = useState<AlertLog[]>(MOCK_ALERT_LOGS);
+  const { logs, loading, error } = useAlertLogs();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -311,29 +354,43 @@ export function AlertsView() {
         </div>
 
         <div className="bg-slate-950/50 rounded-lg border border-slate-800 p-4 font-mono overflow-y-auto max-h-80">
-          <div className="space-y-2">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border ${getLevelStyles(log.level)}`}
-              >
-                <div className="mt-0.5 flex-shrink-0">
-                  {getLevelIcon(log.level)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">
-                      [{log.level}]
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </span>
+          {error ? (
+            <div className="flex items-center gap-2 text-[11px] text-amber-300">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Alert feed unavailable: {error}</span>
+            </div>
+          ) : loading ? (
+            <div className="text-[11px] text-slate-600">Loading alert buffer…</div>
+          ) : logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-slate-600">
+              <Radio className="w-7 h-7 opacity-40" />
+              <span className="font-mono text-xs">Awaiting Telemetry · no triggered alerts.</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${getLevelStyles(log.level)}`}
+                >
+                  <div className="mt-0.5 flex-shrink-0">
+                    {getLevelIcon(log.level)}
                   </div>
-                  <p className="text-xs text-slate-300 mt-1 break-all">{log.message}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        [{log.level}]
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1 break-all">{log.message}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
