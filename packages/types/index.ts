@@ -221,3 +221,69 @@ export const VectorMemoryChunkSchema = z.object({
   embedding: z.array(z.number()).min(1)
 });
 export type VectorMemoryChunk = z.infer<typeof VectorMemoryChunkSchema>;
+
+// --- Phase 6: Agent Context Factory & Dynamic Skills Tagging -----------------
+// Dynamic prompt assembly: instead of one static system prompt, the agent
+// context is assembled per-task from a BASE_IDENTITY, the IMMUTABLE_LAWS (NEVER
+// omitted), the DYNAMIC_SKILLS injected by the active SkillTags, and an
+// automatic GOVERNANCE_GATE when any active skill mutates/destroys state.
+
+// The canonical identifiers of our Immutable Laws, exactly as codified in
+// packages/utils/src/prompts/agent-core.ts (PRIMARY_AGENT_SYSTEM_PROMPT).
+export const ImmutableLawIdSchema = z.enum([
+  'NODE22_ESM_EXT',
+  'ZERO_ANY',
+  'EXPLICIT_ESM_EXTENSION',
+  'STRICT_TYPECHECK',
+  'BLUEPRINT_FIRST'
+]);
+export type ImmutableLawId = z.infer<typeof ImmutableLawIdSchema>;
+
+// The immutable law catalog: id -> human-readable summary. Used by the
+// context factory to render only the laws referenced by the active skills.
+export const IMMUTABLE_LAWS: ReadonlyArray<{
+  id: ImmutableLawId;
+  summary: string;
+}> = [
+  {
+    id: 'NODE22_ESM_EXT',
+    summary:
+      'NODE 22 ESM .ts vs .js LAW — type stripping only works in .ts files; .js files are 100% vanilla ES modules with no type annotations.'
+  },
+  {
+    id: 'ZERO_ANY',
+    summary:
+      'ZERO any LAW — the `any` type is strictly forbidden; prefer concrete interfaces, literal unions, and `unknown` + narrowing. No @ts-ignore/@ts-expect-error.'
+  },
+  {
+    id: 'EXPLICIT_ESM_EXTENSION',
+    summary:
+      'EXPLICIT ESM EXTENSION LAW — all cross-workspace relative imports MUST use explicit .ts extensions; workspace subpaths resolve via the package "exports" map.'
+  },
+  {
+    id: 'STRICT_TYPECHECK',
+    summary:
+      'STRICT TYPECHECK LAW — every change MUST pass `tsc --noEmit` with zero errors; narrow uncertain types instead of widening to any.'
+  },
+  {
+    id: 'BLUEPRINT_FIRST',
+    summary:
+      'BLUEPRINT-FIRST LAW — before writing routes, modifying schemas, or changing infrastructure, query the vector memory layer to inspect the verified architecture.'
+  }
+];
+
+// A single dynamic Skill Tag. Each tag injects only the context fragments and
+// schema definitions required for that capability, keeping the context window
+// lean. `destructive` flags skills whose activation must trigger the Governance
+// Gate with the Phase 5 GOVERNANCE_GATE_COT_PROMPT risk calculus.
+export const SkillTagSchema = z.object({
+  id: z.string().min(1).describe('Stable identifier, e.g. DATABASE_MUTATION, REACT_UI_COMPONENT, EDGE_TELEMETRY'),
+  description: z.string().min(1),
+  requiredLaws: z.array(ImmutableLawIdSchema).default([]),
+  injectedContext: z.string().min(1).describe('Prompt fragment or schema definition injected by this skill'),
+  destructive: z.boolean().default(false).describe('True when the skill mutates or destroys state')
+});
+export type SkillTag = z.infer<typeof SkillTagSchema>;
+
+export const SkillTagListSchema = z.array(SkillTagSchema);
+export type SkillTagList = z.infer<typeof SkillTagListSchema>;
