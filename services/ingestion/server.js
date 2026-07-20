@@ -1360,6 +1360,89 @@ app.get('/api/health-check', async (_req, res) => {
   }
 });
 
+// --- Deep Health & Vitals Endpoint ------------------------------------------
+// Provides structured database/Redis latency probes plus agent uptime and
+// triage queue depth for the Control Tower dashboard.
+//
+// RESILIENT-FIRST: individual probe failures are captured and reported in the
+// payload rather than crashing the endpoint. The HTTP status is always 200
+// unless every probe throws a hard error.
+app.get('/api/system/health-deep', async (_req, res) => {
+  try {
+    const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
+
+    const services = { postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null }, redis: { status: 'OFFLINE', latencyMs: null, lastPing: null } };
+
+    let dbOk = false;
+    try {
+      const t0 = Date.now();
+      const rows = await runQuery('SELECT 1 as ok');
+      const latencyMs = Date.now() - t0;
+      dbOk = Array.isArray(rows) && rows[0]?.ok === 1;
+      services.postgres = {
+        status: dbOk ? 'OK' : 'OFFLINE',
+        latencyMs: dbOk ? latencyMs : null,
+        lastPing: new Date().toISOString()
+      };
+    } catch {
+      services.postgres = { status: 'OFFLINE', latencyMs: null, lastPing: null };
+    }
+
+    if (redis) {
+      try {
+        const t0 = Date.now();
+        await redis.ping();
+        const latencyMs = Date.now() - t0;
+        services.redis = { status: 'OK', latencyMs, lastPing: new Date().toISOString() };
+      } catch {
+        services.redis = { status: 'OFFLINE', latencyMs: null, lastPing: null };
+      }
+    }
+
+    let pendingTriageCount = 0;
+    try {
+      const proposed = await listProposed();
+      pendingTriageCount = proposed.length;
+    } catch {
+      /* ignore */
+    }
+
+    const hermesOnline = !!(redis && (async () => {
+      try {
+        const raw = await redis.get(HERMES_HEARTBEAT_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        const ts = parsed.timestamp ? Date.parse(parsed.timestamp) : 0;
+        return !Number.isNaN(ts) && Date.now() - ts < HERMES_HEARTBEAT_MAX_AGE_MS;
+      } catch {
+        return false;
+      }
+    })());
+
+    const overallStatus = (services.postgres.status === 'OK' || services.redis.status === 'OK') ? 'HEALTHY' : 'DEGRADED';
+
+    res.json({
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      services,
+      agent: {
+        status: hermesOnline ? 'ACTIVE_RUNNING' : 'OFFLINE',
+        uptimeSeconds: uptimeSec,
+        pendingTriageCount
+      }
+    });
+  } catch (err) {
+    console.error('[HealthDeep] Probe error:', err?.message);
+    res.status(200).json({
+      status: 'DEGRADED',
+      timestamp: new Date().toISOString(),
+      services: { postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null }, redis: { status: 'OFFLINE', latencyMs: null, lastPing: null } },
+      agent: { status: 'OFFLINE', uptimeSeconds: Math.floor((Date.now() - BOOT_TIME) / 1000), pendingTriageCount: 0 },
+      error: err?.message || 'deep health probe failed'
+    });
+  }
+});
+
 app.get('/api/session-history', async (_req, res) => {
   try {
     const raw = redis ? await redis.lrange('kudbee:session_history', 0, 9) : [];

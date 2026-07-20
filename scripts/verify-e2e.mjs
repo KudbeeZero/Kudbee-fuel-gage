@@ -159,6 +159,12 @@ async function check11_DashboardAggregate() {
   return res.status === 200 && typeof data.total_historical_tokens === 'number';
 }
 
+async function check12_DeepHealthEndpoint() {
+  const res = await fetch(`${BASE}/api/system/health-deep`);
+  const data = await res.json();
+  return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && data.services && data.agent;
+}
+
 async function run() {
   try {
     await startServer();
@@ -173,6 +179,7 @@ async function run() {
     await runCheck('Check 9: Database dependency reporting', check9_DatabaseDependency);
     await runCheck('Check 10: Schema existence via interceptor', check10_SchemaExistence);
     await runCheck('Check 11: Dashboard aggregate query', check11_DashboardAggregate);
+    await runCheck('Check 12: Deep health endpoint', check12_DeepHealthEndpoint);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -181,7 +188,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 11`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 12`);
   console.log('========================================');
 
   if (failed > 0) {

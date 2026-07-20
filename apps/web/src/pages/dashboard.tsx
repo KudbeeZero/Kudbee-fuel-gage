@@ -4,20 +4,24 @@ import {
   AlertTriangle,
   BadgeCheck,
   Brain,
+  CheckCircle2,
   CircleDot,
   Clock,
   Cpu,
   Database,
   Gauge,
+  HeartPulse,
   MemoryStick,
   Radio,
   RefreshCw,
   ScrollText,
+  Server,
   ShieldX,
   Signal,
   Terminal,
   Wifi,
-  WifiOff
+  WifiOff,
+  XCircle
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
@@ -90,6 +94,29 @@ interface HealthCheckResponse {
   uptime_sec: number;
   community_value_score: string;
   alerts: Array<{ timestamp?: number; severity?: string; message?: string }>;
+}
+
+interface DeepServiceStatus {
+  status: 'OK' | 'OFFLINE';
+  latencyMs: number | null;
+  lastPing: string | null;
+}
+
+interface AgentVitals {
+  status: 'ACTIVE_RUNNING' | 'OFFLINE';
+  uptimeSeconds: number;
+  pendingTriageCount: number;
+}
+
+interface DeepHealthResponse {
+  status: 'HEALTHY' | 'DEGRADED';
+  timestamp: string;
+  services: {
+    postgres: DeepServiceStatus;
+    redis: DeepServiceStatus;
+  };
+  agent: AgentVitals;
+  error?: string;
 }
 
 interface SessionHistoryItem {
@@ -956,6 +983,179 @@ function AgentTerminal({
   );
 }
 
+function ServiceBadge({ label, status, latencyMs, lastPing }: { label: string; status: 'OK' | 'OFFLINE'; latencyMs: number | null; lastPing: string | null }) {
+  const ok = status === 'OK';
+  return (
+    <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
+      ok ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-rose-500/20 bg-rose-500/5'
+    }`}>
+      <div className="flex items-center gap-2">
+        <span className={`relative flex h-2.5 w-2.5`}>
+          {ok && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+        </span>
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400">{label}</span>
+      </div>
+      <div className="ml-auto flex items-center gap-3 text-[10px] font-mono text-slate-500">
+        <span className={ok ? 'text-emerald-400' : 'text-rose-400'}>{status}</span>
+        {ok && latencyMs !== null && <span className="text-slate-500">{latencyMs}ms</span>}
+        {lastPing && <span className="text-slate-600">{new Date(lastPing).toLocaleTimeString()}</span>}
+      </div>
+    </div>
+  );
+}
+
+function DeepHealthPanel({ data, loading, error }: { data: DeepHealthResponse | null; loading: boolean; error: string | null }) {
+  const overallOk = data?.status === 'HEALTHY';
+  const degraded = data?.status === 'DEGRADED';
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5" id="deep-health-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Server className="h-4 w-4 text-cyan-400" />
+          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-slate-300">
+            Database Vitals
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {loading && <span className="text-[10px] font-mono text-slate-500">Probing…</span>}
+          {!loading && data && (
+            <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${
+              overallOk ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {degraded ? 'Degraded' : overallOk ? 'Healthy' : 'Offline'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2.5">
+        <ServiceBadge
+          label="Neon Postgres"
+          status={data?.services.postgres.status ?? 'OFFLINE'}
+          latencyMs={data?.services.postgres.latencyMs ?? null}
+          lastPing={data?.services.postgres.lastPing ?? null}
+        />
+        <ServiceBadge
+          label="Upstash Redis"
+          status={data?.services.redis.status ?? 'OFFLINE'}
+          latencyMs={data?.services.redis.latencyMs ?? null}
+          lastPing={data?.services.redis.lastPing ?? null}
+        />
+      </div>
+
+      {data?.agent && (
+        <div className="mt-4 flex items-center gap-4 border-t border-slate-800/60 pt-3">
+          <div className="flex items-center gap-2">
+            <HeartPulse className={`h-4 w-4 ${data.agent.status === 'ACTIVE_RUNNING' ? 'text-emerald-400' : 'text-rose-400'}`} />
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400">
+              Agent Loop
+            </span>
+          </div>
+          <span className={`text-[10px] font-mono font-bold uppercase ${
+            data.agent.status === 'ACTIVE_RUNNING' ? 'text-emerald-400' : 'text-rose-400'
+          }`}>
+            {data.agent.status === 'ACTIVE_RUNNING' ? 'Online' : 'Offline'}
+          </span>
+          <span className="text-[10px] font-mono text-slate-500">
+            Uptime {formatUptime(data.agent.uptimeSeconds)}
+          </span>
+          <span className="ml-auto text-[10px] font-mono text-slate-500">
+            {data.agent.pendingTriageCount} pending
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300">
+          <span className="line-clamp-2">{error}</span>
+        </div>
+      )}
+
+      {data?.error && (
+        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono text-amber-300">
+          <span className="line-clamp-2">{data.error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReasoningLedgerTriage({ proposed, onSubmit }: {
+  proposed: ApprovalRequest[];
+  onSubmit: (id: string, decision: ApprovalDecision) => Promise<boolean>;
+}) {
+  const [localBusy, setLocalBusy] = useState<string | null>(null);
+
+  const handleResolve = async (id: string, decision: ApprovalDecision) => {
+    setLocalBusy(id);
+    try {
+      await onSubmit(id, decision);
+    } finally {
+      setLocalBusy(null);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="reasoning-ledger-triage">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-violet-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Reasoning Ledger Triage</h3>
+        </div>
+        <span className="rounded-full border border-slate-800 bg-slate-950 px-2.5 py-1 font-mono text-[10px] text-slate-400">
+          {proposed.length} pending
+        </span>
+      </div>
+
+      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+        {proposed.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
+            <CheckCircle2 className="h-8 w-8 opacity-40" />
+            <span className="font-mono text-xs">No pending reasoning issues.</span>
+          </div>
+        )}
+        {proposed.map((req) => (
+          <div key={req.id} className="space-y-2 rounded-xl border border-violet-500/15 bg-slate-950/40 p-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
+              <span className="text-slate-400">
+                model <span className="text-violet-200">{req.proposed_model}</span>
+              </span>
+              {req.agent_id && <span className="text-slate-500">agent {req.agent_id}</span>}
+            </div>
+            <p className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/50 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
+              {req.reasoning || '(no reasoning provided)'}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={localBusy === req.id}
+                onClick={() => void handleResolve(req.id, 'APPROVE')}
+                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Approve
+              </button>
+              <button
+                type="button"
+                disabled={localBusy === req.id}
+                onClick={() => void handleResolve(req.id, 'REJECT')}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-rose-300 transition-all hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -964,6 +1164,10 @@ export function DashboardPage() {
   const [systemStatus, setSystemStatus] = useState<HealthCheckResponse | null>(null);
   const [systemStatusError, setSystemStatusError] = useState<string | null>(null);
   const [systemStatusLoading, setSystemStatusLoading] = useState(true);
+
+  const [deepHealth, setDeepHealth] = useState<DeepHealthResponse | null>(null);
+  const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
+  const [deepHealthLoading, setDeepHealthLoading] = useState(true);
 
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
   const [sessionHistoryError, setSessionHistoryError] = useState<string | null>(null);
@@ -1111,6 +1315,19 @@ export function DashboardPage() {
     }
   }, []);
 
+  const loadDeepHealth = useCallback(async () => {
+    try {
+      const data = await apiGet<DeepHealthResponse>('/api/system/health-deep');
+      setDeepHealth(data);
+      setDeepHealthError(null);
+    } catch (e) {
+      setDeepHealth(null);
+      setDeepHealthError(e instanceof Error ? e.message : 'Deep health probe failed');
+    } finally {
+      setDeepHealthLoading(false);
+    }
+  }, []);
+
   const loadSessionHistory = useCallback(async () => {
     try {
       const data = await apiGet<SessionHistoryItem[]>('/api/session-history');
@@ -1159,6 +1376,7 @@ export function DashboardPage() {
     await Promise.allSettled([
       probeHealth(),
       loadSystemStatus(),
+      loadDeepHealth(),
       loadSessionHistory(),
       loadTriage(),
       loadMemory(),
@@ -1166,7 +1384,7 @@ export function DashboardPage() {
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
   // the 5s poll is reduced to a slow safety net (every 30s) instead of the
@@ -1241,9 +1459,12 @@ export function DashboardPage() {
           </div>
           <CommunityValueScore data={communityValue} />
 
+          <DeepHealthPanel data={deepHealth} loading={deepHealthLoading} error={deepHealthError} />
           <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
-          <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
           <MemoryInsights memories={memories} />
+
+          <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
+          <ReasoningLedgerTriage proposed={pendingApprovals} onSubmit={submitApproval} />
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-2">
             <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />
@@ -1284,7 +1505,7 @@ export function DashboardPage() {
           onApproved={dismissSuggestion}
         />
 
-        {(triageError || memoryError || govError || verifyError || systemStatusError || sessionHistoryError) && (
+        {(triageError || memoryError || govError || verifyError || systemStatusError || deepHealthError || sessionHistoryError) && (
           <div className="mt-5 space-y-2">
             {triageError && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
@@ -1314,6 +1535,12 @@ export function DashboardPage() {
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
                 <Activity className="h-4 w-4 shrink-0" />
                 <span className="truncate">System Status: {systemStatusError}</span>
+              </div>
+            )}
+            {deepHealthError && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
+                <Server className="h-4 w-4 shrink-0" />
+                <span className="truncate">Database Vitals: {deepHealthError}</span>
               </div>
             )}
             {sessionHistoryError && (
