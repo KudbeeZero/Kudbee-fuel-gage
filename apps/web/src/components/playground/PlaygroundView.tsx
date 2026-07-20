@@ -14,7 +14,7 @@ interface PlaygroundViewProps {
 
 export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewProps) {
   const [payloadText, setPayloadText] = useState(
-    `// Sample prompt / code block pipeline telemetry simulation\nconst aiResponse = await anthropic.messages.create({\n  model: "claude-3-5-sonnet",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
+    `// Sample prompt / code block pipeline payload\nconst aiResponse = await anthropic.messages.create({\n  model: "claude-3-5-sonnet",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
   );
   const [selectedModel, setSelectedModel] = useState('Claude 3.5 Sonnet');
   const [singleCap, setSingleCap] = useState(0.05); // Slider cap (ranges from $0.01 to $2.00 in USD baseline)
@@ -221,7 +221,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                       onClick={() => startStream(payloadText, selectedModel)}
                       className="w-full font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer h-10 bg-blue-950/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500 hover:text-slate-950 hover:border-blue-400"
                     >
-                      SIMULATE STREAM
+                      RUN STREAM
                     </button>
                   )}
                 </div>
@@ -267,7 +267,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                 <div className="text-center">
                   <p className="text-slate-500 font-mono text-xs">Awaiting execution sequence...</p>
                   <p className="text-slate-700 font-mono text-[10px] mt-1.5">
-                    Run <span className="text-emerald-500/70">SIMULATE STREAM</span> or <span className="text-emerald-500/70">DIRECT-INJECT</span> to populate the channel.
+                    Run <span className="text-emerald-500/70">RUN STREAM</span> or <span className="text-emerald-500/70">DIRECT-INJECT</span> to populate the channel.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-700">
@@ -376,7 +376,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
               <div>
                 <span className="font-semibold block text-sm">Budget Validation Passed</span>
                 <span className="text-[11px] text-emerald-400/80 block mt-0.5">
-                  All active telemetry parameters are within defined bounds. Simulated execution is secure.
+                  All active telemetry parameters are within defined bounds.
                 </span>
               </div>
             </>
