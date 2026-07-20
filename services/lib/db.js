@@ -21,7 +21,37 @@ import { Pool } from 'pg';
 const DATABASE_URL = process.env.DATABASE_URL || '';
 
 let _pool = null;
+// Optimistically assume healthy until proven otherwise: Neon's Pool lazily
+// defers the actual TCP/TLS handshake to the first `pool.query()`/`connect()`.
+// Defaulting to `false` would bypass `pool.query()` forever (the Catch-22 from
+// Phase 10), so we start `true` and let real connect/query failures flip it.
 let _healthy = false;
+// Tracks whether the pool was explicitly disabled (no DATABASE_URL).
+let _disabled = false;
+
+/**
+ * Proactively establish a Neon connection in the background. The Pool defers
+ * the handshake until first use, so we eagerly `connect()` once to (a) confirm
+ * reachability and (b) fire the `connect` event that marks the pool healthy.
+ * Any failure downgrades Resilient-First to the in-memory store.
+ * @param {import('pg').Pool} pool
+ */
+function primeConnection(pool) {
+  pool
+    .connect()
+    .then((client) => {
+      client.release();
+      _healthy = true;
+      console.log('[DB] Neon Postgres connection established (healthy).');
+    })
+    .catch((err) => {
+      _healthy = false;
+      console.warn(
+        '[DB] Neon connection failed — degrading to in-memory store (Resilient-First):',
+        err instanceof Error ? err.message : String(err)
+      );
+    });
+}
 
 /**
  * Returns the shared Neon Postgres Pool, or null when DATABASE_URL is unset.
@@ -30,12 +60,14 @@ let _healthy = false;
  * @returns {import('pg').Pool | null}
  */
 export function getDbPool() {
+  if (_disabled) return null; // already resolved to "disabled"
+
   if (!DATABASE_URL) {
-    if (_pool !== null) return _pool; // already resolved to "disabled"
     console.warn(
       '[DB] DATABASE_URL not set — Neon Postgres disabled. ' +
         'Falling back to in-memory store (Resilient-First degrade).'
     );
+    _disabled = true;
     _pool = null; // sentinel: explicitly disabled
     return _pool;
   }
@@ -51,6 +83,10 @@ export function getDbPool() {
     keepAlive: true
   });
 
+  // Optimistically mark healthy so the first queries actually reach Neon
+  // instead of being short-circuited to the in-memory fallback.
+  _healthy = true;
+
   pool.on('error', (err) => {
     _healthy = false;
     console.warn('[DB] Pool error (degrading to in-memory):', err.message);
@@ -62,6 +98,7 @@ export function getDbPool() {
 
   console.log('[DB] Neon Postgres Pool initialized from DATABASE_URL');
   _pool = pool;
+  primeConnection(pool);
   return _pool;
 }
 
@@ -80,6 +117,7 @@ export async function closeDbPool() {
     }
     _pool = null;
     _healthy = false;
+    _disabled = false;
   }
 }
 
@@ -109,12 +147,21 @@ function rowToObject(row) {
 /**
  * Run a SELECT against the healthy Neon pool, or the in-memory fallback.
  * Supports a minimal subset of the queries used by the ingestion server.
+ * On a Neon error, degrades Resilient-First to the in-memory store.
  */
 export async function runQuery(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
-    const res = await pool.query(sql, params);
-    return res.rows;
+    try {
+      const res = await pool.query(sql, params);
+      return res.rows;
+    } catch (err) {
+      _healthy = false;
+      console.warn(
+        '[DB] Neon query failed (degrading to in-memory):',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
   return runQueryMemory(sql, params);
 }
@@ -123,8 +170,16 @@ export async function runQuery(sql, params = []) {
 export async function runInsert(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
-    const res = await pool.query(sql, params);
-    return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
+    try {
+      const res = await pool.query(sql, params);
+      return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
+    } catch (err) {
+      _healthy = false;
+      console.warn(
+        '[DB] Neon insert failed (degrading to in-memory):',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
   return runInsertMemory(sql, params);
 }
