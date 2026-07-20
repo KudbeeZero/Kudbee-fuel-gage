@@ -1,0 +1,22 @@
+{
+  "name": "@kudbee/agents",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/context-factory.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kudbee/types": "*",
+    "@kudbee/utils": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^7.0.0"
+  },
+  "license": "Proprietary"
+}

@@ -29,5 +29,12 @@ export const CORE_RACK_PLUGINS: Record<string, IKudbeePlugin> = {
     category: 'governance',
     status: 'pending',
     gridSpan: { colSpan: 8 }
+  },
+  'plugin-hermes-auditor': {
+    id: 'plugin-hermes-auditor',
+    title: 'HERMES: AUDITOR',
+    category: 'auditor',
+    status: 'active',
+    gridSpan: { colSpan: 4 }
   }
 };
