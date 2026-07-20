@@ -4,5 +4,5 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["server.ts", "server.js", "embedder.js", "controllers/telemetry.ts", "../governance/router.d.ts"]
+  "include": ["server.ts", "server.js", "embedder.js", "controllers/telemetry.ts", "../governance/router.d.ts", "../governance/ledger.d.ts"]
 }

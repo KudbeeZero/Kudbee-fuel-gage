@@ -13,9 +13,11 @@ import {
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+import { recordReasoning } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
+import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
 import {
@@ -1440,6 +1442,117 @@ app.get('/api/system/health-deep', async (_req, res) => {
       agent: { status: 'OFFLINE', uptimeSeconds: Math.floor((Date.now() - BOOT_TIME) / 1000), pendingTriageCount: 0 },
       error: err?.message || 'deep health probe failed'
     });
+  }
+});
+
+// --- Model Comparator Endpoint ---
+// Allows real-time inference comparison between Gemini (cloud) and VLLM
+// (edge) providers through a lightweight agentic reasoning task.
+//
+// RESILIENT-FIRST: provider failures are captured and returned in the
+// payload rather than crashing the endpoint.
+app.post('/api/system/compare-providers', async (req, res) => {
+  try {
+    const { prompt, provider } = req.body || {};
+    const selectedProvider = provider === 'vllm' || provider === 'openai-compatible' ? provider : 'gemini';
+
+    const systemPrompt = `<ROLE>
+You are the Primary Agent for the Kudbee Agentic Rack System. You are a
+deterministic, strictly-constrained code-generation and reasoning engine.
+Your output becomes production infrastructure, so precision beats verbosity.
+</ROLE>
+
+<IMMUTABLE_LAWS>
+1. NODE 22 ESM .ts vs .js LAW
+2. ZERO any LAW
+3. EXPLICIT ESM EXTENSION LAW
+4. STRICT TYPECHECK LAW
+5. BLUEPRINT-FIRST LAW
+</IMMUTABLE_LAWS>
+
+<OUTPUT_DISCIPLINE>
+Emit only the minimal code/answer required. No apologies, no meta-commentary.
+</OUTPUT_DISCIPLINE>`;
+
+    const userPrompt = prompt || 'Analyze the following telemetry anomaly and propose a single low-risk remediation: latency spike detected on /api/health (p99 > 1200ms).';
+
+    const t0 = Date.now();
+    let output = '';
+    let model = 'unknown';
+    let usage = { promptTokens: 0, completionTokens: 0 };
+
+    try {
+      const providerConfig = selectedProvider === 'gemini'
+        ? {
+            kind: 'gemini',
+            model: 'gemini-2.0-flash',
+            temperature: 0.2,
+            maxTokens: 512,
+            apiKey: process.env.GEMINI_API_KEY
+          }
+        : {
+            kind: 'vllm',
+            model: 'openai/gpt-oss-20b',
+            temperature: 0.2,
+            maxTokens: 512,
+            baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
+            apiKey: process.env.VLLM_API_KEY || 'no-key',
+            xmlWrapper: true
+          };
+
+      const client = createProvider(providerConfig);
+      const request = {
+        systemPrompt,
+        userPrompt: selectedProvider === 'gemini' ? userPrompt : wrapPromptForOpenWeights(systemPrompt, userPrompt),
+        temperature: 0.2,
+        maxTokens: 512
+      };
+
+      const response = await client.complete(request);
+      output = response.text;
+      model = response.model;
+      usage = response.usage || { promptTokens: 0, completionTokens: 0 };
+    } catch (providerErr) {
+      console.warn(`[Comparator] Provider ${selectedProvider} failed:`, providerErr instanceof Error ? providerErr.message : String(providerErr));
+      await recordReasoning(
+        { context: systemPrompt, thoughtStream: [], trace_id: `cmp-${Date.now()}` },
+        { error: providerErr instanceof Error ? providerErr.message : 'Provider unreachable' },
+        { status: 'FAILURE', reason: 'provider_unreachable' },
+        selectedProvider
+      );
+      return res.status(200).json({
+        status: 'PROVIDER_UNREACHABLE',
+        provider: selectedProvider,
+        model,
+        output: null,
+        latencyMs: Date.now() - t0,
+        error: providerErr instanceof Error ? providerErr.message : 'Provider unreachable',
+        traceId: `cmp-${Date.now()}`
+      });
+    }
+
+    const latencyMs = Date.now() - t0;
+    const traceId = `cmp-${Date.now()}`;
+
+    await recordReasoning(
+      { context: systemPrompt, thoughtStream: [], trace_id: traceId },
+      { output, usage },
+      { status: 'SUCCESS' },
+      selectedProvider
+    );
+
+    res.json({
+      status: 'OK',
+      provider: selectedProvider,
+      model,
+      output,
+      latencyMs,
+      usage,
+      traceId
+    });
+  } catch (err) {
+    console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ error: 'Comparator failed', detail: err instanceof Error ? err.message : String(err) });
   }
 });
 

@@ -165,6 +165,16 @@ async function check12_DeepHealthEndpoint() {
   return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && data.services && data.agent;
 }
 
+async function check13_ModelComparator() {
+  const res = await fetch(`${BASE}/api/system/compare-providers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: 'gemini' })
+  });
+  const data = await res.json();
+  return res.status === 200 && (data.status === 'OK' || data.status === 'PROVIDER_UNREACHABLE') && typeof data.traceId === 'string';
+}
+
 async function run() {
   try {
     await startServer();
@@ -180,6 +190,7 @@ async function run() {
     await runCheck('Check 10: Schema existence via interceptor', check10_SchemaExistence);
     await runCheck('Check 11: Dashboard aggregate query', check11_DashboardAggregate);
     await runCheck('Check 12: Deep health endpoint', check12_DeepHealthEndpoint);
+    await runCheck('Check 13: Model comparator endpoint', check13_ModelComparator);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -188,7 +199,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 12`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 13`);
   console.log('========================================');
 
   if (failed > 0) {

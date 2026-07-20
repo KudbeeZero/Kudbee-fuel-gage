@@ -21,7 +21,8 @@ import {
   Terminal,
   Wifi,
   WifiOff,
-  XCircle
+  XCircle,
+  Zap
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
@@ -1156,6 +1157,124 @@ function ReasoningLedgerTriage({ proposed, onSubmit }: {
   );
 }
 
+interface ModelComparatorResult {
+  status: string;
+  provider: string;
+  model: string;
+  output: string;
+  latencyMs: number;
+  usage?: { promptTokens: number; completionTokens: number };
+  traceId: string;
+  error?: string;
+}
+
+interface ModelComparatorProps {
+  result: ModelComparatorResult | null;
+  loading: boolean;
+  error: string | null;
+  provider: 'gemini' | 'vllm';
+  onProviderChange: (provider: 'gemini' | 'vllm') => void;
+  onRun: () => void;
+}
+
+function ModelComparator({ result, loading, error, provider, onProviderChange, onRun }: ModelComparatorProps) {
+  const isUnreachable = result?.status === 'PROVIDER_UNREACHABLE';
+  const isOk = result?.status === 'OK';
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-5" id="model-comparator-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-amber-400" />
+          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-slate-300">
+            Live Reasoning Comparator
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={provider}
+            onChange={(e) => onProviderChange(e.target.value as 'gemini' | 'vllm')}
+            className="rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-[10px] font-mono text-slate-300 focus:outline-none focus:border-amber-500/50"
+          >
+            <option value="gemini">Gemini-1.5-Pro</option>
+            <option value="vllm">Local-VLLM</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => void onRun()}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-amber-300 transition-all hover:bg-amber-500/20 active:scale-95 disabled:opacity-50"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            {loading ? 'Running…' : 'Test Reasoning'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        {!result && !error && !loading && (
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-slate-600">
+            <Cpu className="h-8 w-8 opacity-40" />
+            <span className="font-mono text-xs">Select a provider and run a reasoning test.</span>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span className="font-mono text-xs">Running inference…</span>
+          </div>
+        )}
+
+        {error && !result && (
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                isUnreachable
+                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+              }`}>
+                {isUnreachable ? 'Provider Unreachable' : isOk ? 'Success' : result.status}
+              </span>
+              <span className="font-mono text-[10px] text-slate-500">
+                {result.provider} · {result.model}
+              </span>
+              <span className="ml-auto font-mono text-[10px] text-slate-500">
+                {result.latencyMs}ms
+              </span>
+            </div>
+
+            {result.error && (
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300">
+                {result.error}
+              </div>
+            )}
+
+            {result.output && (
+              <pre className="max-h-[200px] overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-3 font-mono text-[10px] leading-relaxed text-slate-400">
+                {result.output}
+              </pre>
+            )}
+
+            {result.traceId && (
+              <div className="font-mono text-[9px] text-slate-600">
+                trace {result.traceId}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -1168,6 +1287,20 @@ export function DashboardPage() {
   const [deepHealth, setDeepHealth] = useState<DeepHealthResponse | null>(null);
   const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
   const [deepHealthLoading, setDeepHealthLoading] = useState(true);
+
+  const [comparisonResult, setComparisonResult] = useState<{
+    status: string;
+    provider: string;
+    model: string;
+    output: string;
+    latencyMs: number;
+    usage?: { promptTokens: number; completionTokens: number };
+    traceId: string;
+    error?: string;
+  } | null>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'vllm'>('gemini');
 
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
   const [sessionHistoryError, setSessionHistoryError] = useState<string | null>(null);
@@ -1328,6 +1461,29 @@ export function DashboardPage() {
     }
   }, []);
 
+  const runComparison = useCallback(async () => {
+    setComparisonLoading(true);
+    setComparisonError(null);
+    setComparisonResult(null);
+    try {
+      const data = await apiPost<{
+        status: string;
+        provider: string;
+        model: string;
+        output: string;
+        latencyMs: number;
+        usage?: { promptTokens: number; completionTokens: number };
+        traceId: string;
+        error?: string;
+      }>('/api/system/compare-providers', { provider: selectedProvider });
+      setComparisonResult(data);
+    } catch (e) {
+      setComparisonError(e instanceof Error ? e.message : 'Model comparison failed');
+    } finally {
+      setComparisonLoading(false);
+    }
+  }, [selectedProvider]);
+
   const loadSessionHistory = useCallback(async () => {
     try {
       const data = await apiGet<SessionHistoryItem[]>('/api/session-history');
@@ -1465,6 +1621,14 @@ export function DashboardPage() {
 
           <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
           <ReasoningLedgerTriage proposed={pendingApprovals} onSubmit={submitApproval} />
+          <ModelComparator
+            result={comparisonResult}
+            loading={comparisonLoading}
+            error={comparisonError}
+            provider={selectedProvider}
+            onProviderChange={setSelectedProvider}
+            onRun={runComparison}
+          />
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-2">
             <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />

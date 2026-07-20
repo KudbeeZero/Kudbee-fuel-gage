@@ -63,11 +63,15 @@ export async function ensureLedgerSchema() {
         thought_stream JSONB NOT NULL,
         output JSONB NOT NULL,
         result_status TEXT NOT NULL DEFAULT 'SUCCESS',
+        provider TEXT DEFAULT 'unknown',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
     await pool.query(
       `CREATE INDEX IF NOT EXISTS idx_reasoning_ledger_created_at ON ${LEDGER_TABLE} (created_at)`
+    );
+    await pool.query(
+      `ALTER TABLE ${LEDGER_TABLE} ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT 'unknown'`
     );
   } catch (err) {
     console.warn('[Ledger] Schema ensure failed:', err.message);
@@ -141,17 +145,18 @@ export async function drainQueue() {
  * @param {object} entry
  */
 async function persistToNeon(entry) {
-  const { context, input, thoughtStream, output, resultStatus } = entry;
+  const { context, input, thoughtStream, output, resultStatus, provider } = entry;
   try {
     await runInsert(
-      `INSERT INTO ${LEDGER_TABLE} (context, input, thought_stream, output, result_status)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO ${LEDGER_TABLE} (context, input, thought_stream, output, result_status, provider)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         context,
         JSON.stringify(input ?? {}),
         JSON.stringify(thoughtStream ?? []),
         JSON.stringify(output ?? {}),
-        resultStatus || 'SUCCESS'
+        resultStatus || 'SUCCESS',
+        provider || 'unknown'
       ]
     );
     return { ok: true };
@@ -162,7 +167,7 @@ async function persistToNeon(entry) {
 }
 
 /**
- * recordReasoning(input, output, resultStatus)
+ * recordReasoning(input, output, resultStatus, provider?)
  * ---------------------------------------------------------------------------
  * Captures a Problem-Result pair for future agent self-improvement.
  *
@@ -173,9 +178,11 @@ async function persistToNeon(entry) {
  * @param {object} output The final outcome produced by the agent.
  * @param {object} resultStatus Result descriptor: { status, code?, reason? }
  *                        or a plain string ('SUCCESS' | 'FAILURE' | 'PARTIAL').
+ * @param {string} [provider='unknown'] The LLM provider that generated this
+ *                        reasoning chain (e.g. 'gemini', 'vllm', 'openai').
  * @returns {Promise<{ stored: 'neon' | 'redis' | 'local', id?: number, queued?: string }>}
  */
-export async function recordReasoning(input, output, resultStatus) {
+export async function recordReasoning(input, output, resultStatus, provider = 'unknown') {
   const now = new Date().toISOString();
   const context = (input && input.context) || '';
   const thoughtStream = (input && input.thoughtStream) || [];
@@ -195,6 +202,7 @@ export async function recordReasoning(input, output, resultStatus) {
     thoughtStream,
     output,
     resultStatus: result,
+    provider,
     created_at: now
   };
 

@@ -103,17 +103,15 @@ export class GeminiProvider implements ModelProvider {
     const { GoogleGenAI } = await import('@google/genai');
     const client = new GoogleGenAI({ apiKey: this.apiKey });
 
-    const response = await client.models.generateContent({
+    const combinedPrompt = `${request.systemPrompt}\n\n${request.userPrompt}`;
+    const response = (await client.models.generateContent({
       model: this.model,
-      contents: [
-        { role: 'user', parts: [{ text: request.userPrompt }] }
-      ],
-      systemInstruction: request.systemPrompt,
-      generationConfig: {
+      contents: combinedPrompt,
+      config: {
         temperature: request.temperature ?? this.temperature,
         maxOutputTokens: request.maxTokens ?? this.maxTokens
       }
-    });
+    })) as { text: string; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
 
     const text = response.text ?? '';
     return {
