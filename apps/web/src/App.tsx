@@ -83,13 +83,83 @@ import {
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost, CURRENCY_CONFIG } from './utils/currency';
 
+// --- STRICT TYPES (zero-any conformance, Phase 12) ---------------------------
+
+/** Arbitrary JSON payload for agent tool / interception actions. */
+export type ActionJson = Record<string, unknown> | unknown[] | string | number | boolean | null;
+
+/** A pending proxy intercept as returned by GET /api/proxy/pending. */
+interface ProxyPendingItem {
+  id: string;
+  payload?: ActionJson;
+}
+
+/** Normalized telemetry log row returned by GET /api/telemetry/logs. */
+export interface TelemetryLog {
+  id: number;
+  user_id: number;
+  provider: string;
+  model_name: string;
+  input_tokens: number;
+  output_tokens: number;
+  calculated_cost: number;
+  project_name?: string;
+  timestamp: string;
+  model?: string;
+  cost?: number;
+}
+
+/** Derived log shape used by the History / Dashboard views. */
+export interface MergedTelemetryLog {
+  timestamp: string;
+  project: string;
+  model: string;
+  tokens_in: number;
+  tokens_out: number;
+  cost: number;
+  timeframe: '24h' | '7d' | 'all';
+  sessionId: 'sess-alpha' | 'sess-beta' | 'sess-gamma';
+  provider: string;
+  status: string;
+  traceId?: string;
+  service?: string;
+  sdkVersion?: string;
+}
+
+/** Concise log row used by CSV-dropzone preview / parse. */
+export interface ParsedCsvLog {
+  timestamp: string;
+  project: string;
+  model: string;
+  tokens_in: number;
+  tokens_out: number;
+  provider: string;
+}
+
+/** Server-of-record dashboard aggregate from GET /api/dashboard/summary. */
+export interface DashboardSummary {
+  total_24h_cost: number;
+  total_historical_tokens: number;
+  total_active_models: number;
+  health_matrix: ReadonlyArray<Record<string, unknown>>;
+}
+
+/** A single event-log line in the Console Dock ticker. */
+export interface EventLogEntry {
+  id: number;
+  type: 'info' | 'warning' | 'slate';
+  label: string;
+  message: string;
+  time: string;
+}
+
 export interface PendingApproval {
   id: string;
   agentId: string;
   triggeredRule: string;
-  actionJson: any;
-  resolve: (value?: any) => void;
-  reject: (reason?: any) => void;
+  actionJson: ActionJson;
+  resolve: () => void;
+  reject: (reason?: unknown) => void;
   timestamp: Date;
 }
 
@@ -102,16 +172,16 @@ export function useAgentInterceptor() {
       try {
         const res = await fetch('/api/proxy/pending');
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as ProxyPendingItem[];
           setPendingApprovals(prev => {
             const merged = [...prev];
-            data.forEach((item: any) => {
+            data.forEach((item) => {
               if (!merged.find(p => p.id === item.id)) {
                 merged.push({
                   id: item.id,
                   agentId: 'HTTP_PROXY_CLIENT',
                   triggeredRule: 'API_INTERCEPT',
-                  actionJson: item.payload,
+                  actionJson: item.payload ?? null,
                   resolve: () => {},
                   reject: () => {},
                   timestamp: new Date()
@@ -129,8 +199,8 @@ export function useAgentInterceptor() {
     return () => clearInterval(interval);
   }, []);
 
-  const executeAgentTool = React.useCallback((agentId: string, triggeredRule: string, actionJson: any) => {
-    return new Promise((resolve, reject) => {
+  const executeAgentTool = React.useCallback((agentId: string, triggeredRule: string, actionJson: ActionJson) => {
+    return new Promise<void>((resolve, reject) => {
       const id = "agent-tx-" + Math.floor(1000 + Math.random() * 9000);
       const newApproval: PendingApproval = {
         id,
@@ -145,7 +215,7 @@ export function useAgentInterceptor() {
     });
   }, []);
 
-  const resolveApproval = React.useCallback(async (id: string, actionJson?: any) => {
+  const resolveApproval = React.useCallback(async (id: string, actionJson?: ActionJson) => {
     setPendingApprovals(prev => {
       const approval = prev.find(p => p.id === id);
       if (approval) {
@@ -157,7 +227,7 @@ export function useAgentInterceptor() {
              body: JSON.stringify({ id, action: 'approve', modifiedPayload: actionJson || approval.actionJson })
            }).catch(console.error);
         } else {
-           approval.resolve(actionJson || true);
+           approval.resolve();
         }
       }
       return prev.filter(p => p.id !== id);
@@ -189,7 +259,15 @@ export function useAgentInterceptor() {
 
 // --- SUB-COMPONENTS FOR DASHBOARD VIEW ---
 
-function TelemetryCard({ title, value, prefix = "", suffix = "", icon: Icon }: any) {
+interface TelemetryCardProps {
+  title: string;
+  value: React.ReactNode;
+  prefix?: string;
+  suffix?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
+function TelemetryCard({ title, value, prefix = "", suffix = "", icon: Icon }: TelemetryCardProps) {
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden group" id={`telemetry-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -206,7 +284,7 @@ function TelemetryCard({ title, value, prefix = "", suffix = "", icon: Icon }: a
   );
 }
 
-function HealthRing({ provider, percent, offsetMins }: { provider: string, percent: number, offsetMins: number, key?: any }) {
+function HealthRing({ provider, percent, offsetMins }: { provider: string; percent: number; offsetMins: number }) {
   const [timeLeft, setTimeLeft] = useState(offsetMins * 60 + Math.floor(Math.random() * 60));
   
   useEffect(() => {
@@ -307,7 +385,7 @@ function getRegion(project: string): string {
   return 'europe-west4 (Eemshaven)';
 }
 
-function getRawJson(log: any) {
+function getRawJson(log: MergedTelemetryLog) {
   const cleanTimestamp = log.timestamp.replace(/[^0-9]/g, '').slice(-10);
   return {
     trace_id: `0af7651916cd43dd${cleanTimestamp}e7f8`,
@@ -335,7 +413,12 @@ function getRawJson(log: any) {
   };
 }
 
-function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { currency: 'USD' | 'EUR' | 'GBP'; dbLogs?: any[]; onNewLogTriggered?: () => void; onTraceSelect?: (trace: any) => void }) {
+function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
+  currency: 'USD' | 'EUR' | 'GBP';
+  dbLogs?: TelemetryLog[];
+  onNewLogTriggered?: () => void;
+  onTraceSelect?: (trace: MergedTelemetryLog) => void;
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | 'all'>('all');
   const [exporting, setExporting] = useState(false);
@@ -347,7 +430,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
   // CSV Drag-and-Drop / Log import state variables
   const [isCsvExpanded, setIsCsvExpanded] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [parsedLogs, setParsedLogs] = useState<any[]>([]);
+  const [parsedLogs, setParsedLogs] = useState<ParsedCsvLog[]>([]);
   const [parsingError, setParsingError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ success: boolean; message: string } | null>(null);
@@ -385,7 +468,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
         return;
       }
 
-      const logs: any[] = [];
+      const logs: ParsedCsvLog[] = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
         if (cols.length < Math.max(modelIdx, tokensInIdx, tokensOutIdx) + 1) {
@@ -426,8 +509,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
         setParsingError(null);
         setUploadStatus(null);
       }
-    } catch (err: any) {
-      setParsingError(`Parsing error: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setParsingError(`Parsing error: ${message}`);
     }
   };
 
@@ -492,10 +576,11 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
           message: `Failed to inject traces: ${errData.error || 'Server error'}`
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       setUploadStatus({
         success: false,
-        message: `API connection failure: ${err.message}`
+        message: `API connection failure: ${message}`
       });
     } finally {
       setIsUploading(false);
@@ -539,9 +624,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
   // REAL DATA ONLY: render only organically ingested telemetry logs. When the
   // backend has not persisted anything, this is an empty array and the History
   // view renders its clean, empty architectural state (no fabricated traces).
-  const mergedLogs = React.useMemo(() => {
+  const mergedLogs = React.useMemo<MergedTelemetryLog[]>(() => {
     const raw = (dbLogs && dbLogs.length > 0)
-      ? dbLogs.map((l: any) => ({
+      ? dbLogs.map((l: TelemetryLog) => ({
           timestamp: l.timestamp,
           project: l.project_name || "kilo-fuel-gauge",
           model: l.model_name,
@@ -554,13 +639,13 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
 
     // Distribute logs into sessions based on project name
     return raw.map((log, index) => {
-      let sessionId = 'sess-alpha';
+      let sessionId: 'sess-alpha' | 'sess-beta' | 'sess-gamma' = 'sess-alpha';
       if (log.project.includes('fuel-gauge') || log.project.includes('kudbee')) {
         sessionId = 'sess-beta';
       } else if (log.project.includes('globe') || log.project.includes('mesh')) {
         sessionId = 'sess-gamma';
       } else {
-        const sIds = ['sess-alpha', 'sess-beta', 'sess-gamma'];
+        const sIds: Array<'sess-alpha' | 'sess-beta' | 'sess-gamma'> = ['sess-alpha', 'sess-beta', 'sess-gamma'];
         sessionId = sIds[index % sIds.length];
       }
 
@@ -600,7 +685,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
   });
 
   // helper to get the execution status details
-  const getExecutionStatusInfo = (log: any) => {
+  const getExecutionStatusInfo = (log: MergedTelemetryLog) => {
     const isHighCost = log.cost > 0.50 || log.tokens_in > 100000;
     const isFailed = log.status === 'RATE_LIMITED' || log.status === 'FAILED' || log.status === 'INTERCEPTED';
     
@@ -693,7 +778,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
     return acc;
   }, {} as Record<string, { cost: number; requests: number }>);
 
-  const totalFilteredCost: number = (Object.values(projectStats) as any[]).reduce((sum: number, p: any) => sum + p.cost, 0) || 1;
+  const totalFilteredCost: number = Object.values(projectStats).reduce((sum: number, p: { cost: number; requests: number }) => sum + p.cost, 0) || 1;
 
   const targetProjects = ['frontier-core', 'kudbee-fuel-gauge', 'mesh-globe-3d'];
   const projectRollup = targetProjects.map(projName => {
@@ -1194,7 +1279,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
             <select
               id="history-timeframe-dropdown"
               value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as any)}
+              onChange={(e) => setTimeframe(e.target.value as '24h' | '7d' | 'all')}
               className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500/40 font-mono"
             >
               <option value="all">Timeframe: All Time</option>
@@ -1596,9 +1681,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
                                       {/* Trace ID Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Trace ID:</span>
-                                        {((log as any).traceId || traceId) ? (
+                                        {(log.traceId || traceId) ? (
                                           <span className="text-emerald-400 font-semibold selection:bg-emerald-500/30">
-                                            {((log as any).traceId || traceId)}
+                                            {log.traceId || traceId}
                                           </span>
                                         ) : (
                                           <span className="bg-red-950/60 text-red-300 border border-red-500/40 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase">
@@ -1610,9 +1695,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
                                       {/* Service Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">Service:</span>
-                                        {((log as any).service || log.project) ? (
+                                        {(log.service || log.project) ? (
                                           <span className="text-slate-100 font-semibold">
-                                            {((log as any).service || `${log.project}-service`)}
+                                            {log.service || `${log.project}-service`}
                                           </span>
                                         ) : (
                                           <span className="bg-slate-800/60 text-slate-300 border border-slate-600/40 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase">
@@ -1638,9 +1723,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
                                       {/* SDK Version Field */}
                                       <div className="flex items-center justify-between py-0.5">
                                         <span className="text-slate-500">SDK Version:</span>
-                                        {(log as any).sdkVersion || (log as any).sdk_version ? (
+                                        {log.sdkVersion ? (
                                           <span className="text-indigo-400 font-semibold">
-                                            {(log as any).sdkVersion || (log as any).sdk_version}
+                                            {log.sdkVersion}
                                           </span>
                                         ) : (
                                           <span className="text-indigo-400/80 font-medium">@opentelemetry/sdk-node@1.24.0</span>
@@ -1883,9 +1968,9 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
 interface FirewallViewProps {
   showToast: (msg: string, type?: 'warning' | 'info' | 'success') => void;
   pendingApprovals: PendingApproval[];
-  resolveApproval: (id: string, actionJson?: any) => void;
+  resolveApproval: (id: string, actionJson?: ActionJson) => void;
   rejectApproval: (id: string, rejectReason?: string) => void;
-  executeAgentTool: (agentId: string, rule: string, json: any) => Promise<any>;
+  executeAgentTool: (agentId: string, rule: string, json: ActionJson) => Promise<void>;
 }
 
 function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectApproval, executeAgentTool }: FirewallViewProps) {
@@ -1906,7 +1991,7 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
   const [confidenceGateEnabled, setConfidenceGateEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(85);
 
-  const handleApprove = (id: string, actionJson?: any) => {
+  const handleApprove = (id: string, actionJson?: ActionJson) => {
     resolveApproval(id, actionJson);
     showToast("✓ Execution Approved. Resuming Agent pipeline context.", "success");
   };
@@ -2912,13 +2997,13 @@ export default function App() {
   }, []);
 
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<any | null>(null);
+  const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
   // Governance Router + HERMES auditor health (polled every 5s).
   const { health: govHealth } = useGovernanceHealth(5000);
   
-  const [eventLogs, setEventLogs] = useState<any[]>([]);
+  const [eventLogs, setEventLogs] = useState<EventLogEntry[]>([]);
 
   useEffect(() => {
     setEventLogs([
@@ -3019,25 +3104,26 @@ export default function App() {
   }, [toast]);
 
   // Unified real-time SQLite backend telemetry synchronization
-  const [dbSummary, setDbSummary] = useState<any>(null);
-  const [dbLogs, setDbLogs] = useState<any[]>([]);
+  const [dbSummary, setDbSummary] = useState<DashboardSummary | null>(null);
+  const [dbLogs, setDbLogs] = useState<TelemetryLog[]>([]);
 
   const fetchTelemetryData = async () => {
     if (!isAuthenticated) return;
     try {
       const summaryRes = await fetch('/api/dashboard/summary');
       if (summaryRes.ok) {
-        const sData = await summaryRes.json();
+        const sData = (await summaryRes.json()) as DashboardSummary;
         setDbSummary(sData);
       }
       
       const logsRes = await fetch('/api/telemetry/logs?limit=50');
       if (logsRes.ok) {
-        const lData = await logsRes.json();
+        const lData = (await logsRes.json()) as TelemetryLog[];
         setDbLogs(lData || []);
       }
     } catch (err) {
-      console.error("Failed to fetch dashboard metrics:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Failed to fetch dashboard metrics:", message);
     }
   };
 
@@ -3073,7 +3159,7 @@ export default function App() {
     let apiSpent = 0;
 
     if (dbLogs && dbLogs.length > 0) {
-      dbLogs.forEach((log: any) => {
+      dbLogs.forEach((log: TelemetryLog) => {
         const prov = log.provider || '';
         const model = (log.model_name || log.model || '').toLowerCase();
         const cost = Number(log.calculated_cost) || Number(log.cost) || 0;
@@ -3103,7 +3189,7 @@ export default function App() {
   // backend has not ingested anything yet. No fabricated historical points.
   const chartData = React.useMemo(() => {
     if (!dbLogs || dbLogs.length === 0) return [];
-    return [...dbLogs].slice(0, 10).reverse().map((l: any) => {
+    return [...dbLogs].slice(0, 10).reverse().map((l: TelemetryLog) => {
       const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       return {
         name: timeStr,
@@ -3130,7 +3216,7 @@ export default function App() {
 
     // Populate from dbLogs
     if (dbLogs && dbLogs.length > 0) {
-      dbLogs.forEach((log: any) => {
+      dbLogs.forEach((log: TelemetryLog) => {
         const logTime = new Date(log.timestamp).getTime();
         const oneHourAgo = now.getTime() - 60 * 60 * 1000;
         if (logTime >= oneHourAgo && logTime <= now.getTime()) {
@@ -4070,7 +4156,7 @@ export default function App() {
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
                 <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Model ID</div>
-                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{selectedTraceForDrawer.modelId || selectedTraceForDrawer.model}</div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{selectedTraceForDrawer.model}</div>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
                 <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Provider</div>
@@ -4078,7 +4164,7 @@ export default function App() {
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
                 <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Input | Output Tokens</div>
-                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{(selectedTraceForDrawer.tokens_in || selectedTraceForDrawer.inTokens || 0).toLocaleString()} | {(selectedTraceForDrawer.tokens_out || selectedTraceForDrawer.outTokens || 0).toLocaleString()}</div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{(selectedTraceForDrawer.tokens_in || 0).toLocaleString()} | {(selectedTraceForDrawer.tokens_out || 0).toLocaleString()}</div>
               </div>
             </div>
 
@@ -4110,10 +4196,10 @@ export default function App() {
                     "telemetry.sdk.version": "1.24.0"
                   },
                   attributes: {
-                    "ai.model": selectedTraceForDrawer.modelId || selectedTraceForDrawer.model,
+                    "ai.model": selectedTraceForDrawer.model,
                     "ai.provider": selectedTraceForDrawer.provider,
-                    "ai.tokens.input": selectedTraceForDrawer.tokens_in || selectedTraceForDrawer.inTokens || 0,
-                    "ai.tokens.output": selectedTraceForDrawer.tokens_out || selectedTraceForDrawer.outTokens || 0,
+                    "ai.tokens.input": selectedTraceForDrawer.tokens_in || 0,
+                    "ai.tokens.output": selectedTraceForDrawer.tokens_out || 0,
                     "ai.cost": selectedTraceForDrawer.cost || 0,
                     "ai.status": selectedTraceForDrawer.status || "OK",
                     "ai.project": selectedTraceForDrawer.project || "KUDBEE-LIVE"
