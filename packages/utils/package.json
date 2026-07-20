@@ -8,7 +8,8 @@
   "exports": {
     ".": "./crypto-identity.ts",
     "./prompts/edge-sentinel": "./src/prompts/edge-sentinel.ts",
-    "./prompts/agent-core": "./src/prompts/agent-core.ts"
+    "./prompts/agent-core": "./src/prompts/agent-core.ts",
+    "./llm/providers": "./src/llm/providers.ts"
   },
   "scripts": {
     "build": "echo \"@kudbee/utils: source-only package, nothing to build\"",

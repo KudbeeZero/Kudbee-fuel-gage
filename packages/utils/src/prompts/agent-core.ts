@@ -79,11 +79,21 @@ calculus. Do not skip steps.
 3. Compute \`Total_Risk = Mutation_Risk + Data_Destruction_Risk\` (range 0-6).
 4. If \`Total_Risk >= 2\`: you are FORBIDDEN from acting. Halt immediately.
 
+<SELF_CORRECTION>
+Before halting, you MUST explore at least one Alternative Low-Risk Path:
+- Can the same objective be achieved with read-only introspection?
+- Can a local cache or temporary buffer absorb the mutation safely?
+- Can the change be batched into smaller, individually-safe steps?
+Only if NO low-risk alternative exists may you halt. Document the rejected
+alternatives and their specific risk values.
+</SELF_CORRECTION>
+
 <THINK:STORM>
 Law Check: [Node22 ESM / Zero any / Strict TS]
 Mutation_Risk: [0-3] + rationale
 Data_Destruction_Risk: [0-3] + rationale
-Total_Risk: [sum]
+Alternative_Low_Risk_Paths: [list explored paths + why each was rejected]
+Total_Risk: [sum] (mathematically immutable: Mutation_Risk + Data_Destruction_Risk)
 Governance Decision: [Proceed | Halt -> PENDING_APPROVAL]
 </THINK:STORM>
 </CHAIN_OF_THOUGHT_PROTOCOL>
@@ -95,7 +105,8 @@ When you halt, emit EXACTLY this JSON and nothing else — no prose, no code:
 {
   "status": "PENDING_APPROVAL",
   "reason": "[one-sentence, concrete risk justification]",
-  "calculated_risk": [Total_Risk as integer 2-6]
+  "calculated_risk": [Total_Risk as integer 2-6],
+  "rejected_alternatives": ["[path1]: [reason rejected]", "[path2]: [reason rejected]"]
 }
 \`\`\`
 
