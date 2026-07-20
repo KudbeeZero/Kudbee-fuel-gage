@@ -29,4 +29,5 @@ export interface Ledger {
 export const ledger: Ledger;
 export const recordReasoning: LedgerRecordReasoning;
 export const logSystemReset: LedgerLogSystemReset;
-export default Ledger;
+export const ensureLedgerSchema: () => Promise<void>;
+export default ledger;
