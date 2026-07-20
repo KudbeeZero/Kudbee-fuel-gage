@@ -16,7 +16,12 @@
 
 import { IngestRequestSchema, type IngestRequest } from '@kudbee/types';
 
-const BACKEND_URL = process.env.SENTINEL_BACKEND_URL ?? 'http://localhost:9876';
+// Egress topology: the Sentinel dyno is network-isolated on Heroku and CANNOT
+// reach the `web` dyno via `localhost`. Egress MUST route over the public
+// internet to our ingress. In production, set KUDBEE_API_URL to the public web
+// dyno URL (e.g. https://kudbee-web.herokuapp.com). The localhost fallback is
+// retained only for local development where both services share a host.
+const INGEST_URL = process.env.KUDBEE_API_URL || 'http://localhost:3000';
 const INGEST_PATH = '/api/telemetry/ingest';
 const AGENT_PASS = process.env.SENTINEL_AGENT_PASS ?? '';
 const POLL_INTERVAL_MS = Number(process.env.SENTINEL_POLL_MS ?? '2000');
@@ -86,7 +91,7 @@ interface EgressResult {
 /** Securely pushes a validated trace to the main backend. */
 async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
   try {
-    const res = await fetch(`${BACKEND_URL}${INGEST_PATH}`, {
+    const res = await fetch(`${INGEST_URL}${INGEST_PATH}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +129,7 @@ async function pollOnce(): Promise<void> {
 }
 
 function startPoller(): void {
-  console.log(`[Sentinel] heartbeat started — polling ${BACKEND_URL}${INGEST_PATH} every ${POLL_INTERVAL_MS}ms`);
+  console.log(`[Sentinel] heartbeat started — polling ${INGEST_URL}${INGEST_PATH} every ${POLL_INTERVAL_MS}ms`);
   void pollOnce();
   setInterval(() => {
     void pollOnce();

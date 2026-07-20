@@ -3,8 +3,13 @@ import * as d3 from 'd3';
 import { motion } from 'motion/react';
 import { BarChart3, Activity, Info, Clock } from 'lucide-react';
 
+interface LatencyLog {
+  model?: string;
+  tokens_out?: number;
+}
+
 interface LatencyHistogramProps {
-  logs: any[];
+  logs: LatencyLog[];
 }
 
 export function LatencyHistogram({ logs }: LatencyHistogramProps) {
@@ -12,20 +17,13 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 500, height: 220 });
 
-  // Safe D3 data array extractor: maps over both successful and failed metrics safely
+  // Real-data-only: extract latencies from organically ingested traces. No
+  // synthetic fallback — if the DB/feed is empty, the chart renders a clean
+  // empty architectural state instead of fabricated bars.
   const safeLogs = Array.isArray(logs) ? logs : [];
-  const extractedLatencies = safeLogs.map(l => {
-    if (!l) return 250;
-    const tokensOut = typeof l.tokens_out === 'number' ? l.tokens_out : 1000;
-    const model = typeof l.model === 'string' ? l.model : 'gpt-4o';
-    return getLatencyLocal(tokensOut, model);
-  });
-
-  // Default empty arrays to a clean fallback mock set so the chart canvas never renders invisible bars
-  const defaultFallbackMockSet = [
-    145, 160, 185, 210, 220, 250, 275, 310, 340, 390, 420, 450, 480, 520, 580, 650, 720
-  ];
-  const latencies = extractedLatencies.length > 0 ? extractedLatencies : defaultFallbackMockSet;
+  const extractedLatencies = safeLogs
+    .filter((l): l is LatencyLog => Boolean(l))
+    .map((l) => getLatencyLocal(l.tokens_out ?? 0, l.model ?? 'gpt-4o'));
 
   // Helper local function to compute latency matching the App core logic
   function getTtftLocal(m: string) {
@@ -44,14 +42,14 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
   }
 
   // Calculate quick stats
-  const count = latencies.length;
-  const avgLatency = count > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / count) : 0;
-  const minLatency = count > 0 ? Math.min(...latencies) : 0;
-  const maxLatency = count > 0 ? Math.max(...latencies) : 0;
+  const count = extractedLatencies.length;
+  const avgLatency = count > 0 ? Math.round(extractedLatencies.reduce((a, b) => a + b, 0) / count) : 0;
+  const minLatency = count > 0 ? Math.min(...extractedLatencies) : 0;
+  const maxLatency = count > 0 ? Math.max(...extractedLatencies) : 0;
   
   // P95 calculation
   const p95Latency = count > 0 ? (() => {
-    const sorted = [...latencies].sort((a, b) => a - b);
+    const sorted = [...extractedLatencies].sort((a, b) => a - b);
     const index = Math.ceil(sorted.length * 0.95) - 1;
     return sorted[Math.max(0, index)];
   })() : 0;
@@ -68,7 +66,7 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    if (latencies.length === 0) {
+    if (extractedLatencies.length === 0) {
       svg.append('text')
         .attr('x', dimensions.width / 2)
         .attr('y', dimensions.height / 2)
@@ -85,8 +83,8 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
     const height = dimensions.height - margin.top - margin.bottom;
     const safeHeight = Math.max(50, height);
 
-    const minVal = d3.min(latencies) || 0;
-    const maxVal = d3.max(latencies) || 1000;
+    const minVal = d3.min(extractedLatencies) || 0;
+    const maxVal = d3.max(extractedLatencies) || 1000;
     
     // Add extra margin to bounds for aesthetics
     const pad = Math.max(20, (maxVal - minVal) * 0.05);
@@ -102,7 +100,7 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
       .domain(x.domain() as [number, number])
       .thresholds(x.ticks(14)); // Ideal amount of buckets
 
-    const bins = histogram(latencies);
+    const bins = histogram(extractedLatencies);
 
     const yMax = d3.max(bins, d => d.length) || 1;
     const y = d3.scaleLinear()
@@ -333,7 +331,7 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
         .attr('height', d => Math.max(0, Math.min(safeHeight, safeHeight - y((d as any).length))));
     }
 
-  }, [latencies, dimensions]);
+  }, [extractedLatencies, dimensions]);
 
   return (
     <motion.div 

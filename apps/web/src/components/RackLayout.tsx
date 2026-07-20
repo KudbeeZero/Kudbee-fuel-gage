@@ -4,6 +4,10 @@ import { ThinkStreamPlugin } from './ThinkStreamPlugin';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
 import { GovernanceGatePlugin } from './GovernanceGatePlugin';
 import { EdgeSentinelPlugin } from './EdgeSentinelPlugin';
+import { HermesAuditorPlugin } from './HermesAuditorPlugin';
+import { HermesAuditLogSchema, type HermesAuditLog } from './HermesAuditorPlugin';
+import { useEffect, useState } from 'react';
+import { apiGet } from '../lib/apiClient';
 import type { IKudbeePlugin } from '@kudbee/types';
 
 const COL_SPAN_CLASS: Record<number, string> = {
@@ -21,7 +25,40 @@ const COL_SPAN_CLASS: Record<number, string> = {
   12: 'lg:col-span-12'
 };
 
-function renderPlugin(plugin: IKudbeePlugin) {
+// Real-data hook: poll the worker's HERMES audit log stream. Resilient-First —
+// a fetch failure degrades to an empty list (clean state), never throws.
+function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
+  const [logs, setLogs] = useState<HermesAuditLog[]>([]);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const raw = await apiGet<unknown>('/api/governance/hermes-logs');
+        if (cancelled || !Array.isArray(raw)) return;
+        const parsed = raw
+          .map((r) => HermesAuditLogSchema.safeParse(r))
+          .filter((r) => r.success)
+          .map((r) => r.data);
+        setLogs(parsed);
+        setConnected(parsed.length > 0);
+      } catch {
+        setConnected(false);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { logs, connected };
+}
+
+function renderPlugin(plugin: IKudbeePlugin, hermes: { logs: HermesAuditLog[]; connected: boolean }) {
   const span = COL_SPAN_CLASS[plugin.gridSpan.colSpan] ?? 'lg:col-span-4';
   switch (plugin.id) {
     case 'plugin-storm':
@@ -48,6 +85,12 @@ function renderPlugin(plugin: IKudbeePlugin) {
           <GovernanceGatePlugin plugin={plugin} />
         </div>
       );
+    case 'plugin-hermes-auditor':
+      return (
+        <div key={plugin.id} className={span}>
+          <HermesAuditorPlugin plugin={plugin} {...hermes} />
+        </div>
+      );
     default:
       return null;
   }
@@ -55,6 +98,7 @@ function renderPlugin(plugin: IKudbeePlugin) {
 
 export function RackLayout() {
   const plugins = Object.values(CORE_RACK_PLUGINS);
+  const hermes = useHermesAuditLogs();
 
   return (
     <section
@@ -73,7 +117,7 @@ export function RackLayout() {
         </span>
       </header>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
-        {plugins.map(renderPlugin)}
+        {plugins.map((plugin) => renderPlugin(plugin, hermes))}
         <div className="lg:col-span-12">
           <EdgeSentinelPlugin />
         </div>

@@ -1,5 +1,5 @@
 export type PluginStatus = 'active' | 'degraded' | 'offline' | 'pending' | 'standby';
-export type PluginCategory = 'storm' | 'stream' | 'storage' | 'governance' | 'metric' | 'adapter';
+export type PluginCategory = 'storm' | 'stream' | 'storage' | 'governance' | 'metric' | 'adapter' | 'auditor';
 
 export interface GridSpan {
   colSpan: number;

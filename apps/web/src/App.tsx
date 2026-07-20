@@ -277,24 +277,6 @@ function StarRating({ rating }: { rating: number }) {
 
 // --- SUB-COMPONENT: HISTORY VIEW ---
 
-const HISTORICAL_TRACES_MOCK = [
-  { timestamp: "2026-07-17T10:15:30Z", project: "frontier-core", model: "claude-3-5-sonnet", tokens_in: 85000, tokens_out: 42000, cost: 0.8850, timeframe: "24h" },
-  { timestamp: "2026-07-17T09:42:11Z", project: "kudbee-fuel-gauge", model: "deepseek-r1", tokens_in: 120000, tokens_out: 95000, cost: 0.2740, timeframe: "24h" },
-  { timestamp: "2026-07-17T08:05:19Z", project: "mesh-globe-3d", model: "gpt-4o", tokens_in: 45000, tokens_out: 32000, cost: 0.7050, timeframe: "24h" },
-  { timestamp: "2026-07-16T22:12:00Z", project: "frontier-core", model: "gemini-1.5-pro", tokens_in: 15000, tokens_out: 8500, cost: 0.0612, timeframe: "24h" },
-  { timestamp: "2026-07-16T15:30:45Z", project: "kudbee-fuel-gauge", model: "claude-3-5-sonnet", tokens_in: 30000, tokens_out: 12000, cost: 0.2700, timeframe: "24h" },
-  { timestamp: "2026-07-15T11:20:00Z", project: "mesh-globe-3d", model: "deepseek-r1", tokens_in: 80000, tokens_out: 45000, cost: 0.1425, timeframe: "7d" },
-  { timestamp: "2026-07-14T09:10:15Z", project: "frontier-core", model: "gpt-4o", tokens_in: 95000, tokens_out: 62000, cost: 1.4050, timeframe: "7d" },
-  { timestamp: "2026-07-13T14:55:32Z", project: "kudbee-fuel-gauge", model: "gemini-1.5-pro", tokens_in: 60000, tokens_out: 35000, cost: 0.2500, timeframe: "7d" },
-  { timestamp: "2026-07-12T16:40:10Z", project: "mesh-globe-3d", model: "claude-3-5-sonnet", tokens_in: 110000, tokens_out: 55000, cost: 1.1550, timeframe: "7d" },
-  { timestamp: "2026-07-10T10:30:22Z", project: "frontier-core", model: "deepseek-r1", tokens_in: 250000, tokens_out: 180000, cost: 0.5317, timeframe: "7d" },
-  { timestamp: "2026-07-08T11:15:00Z", project: "kudbee-fuel-gauge", model: "gpt-4o", tokens_in: 18000, tokens_out: 9500, cost: 0.2325, timeframe: "7d" },
-  { timestamp: "2026-06-30T09:00:00Z", project: "mesh-globe-3d", model: "gemini-1.5-pro", tokens_in: 25000, tokens_out: 15000, cost: 0.1062, timeframe: "all" },
-  { timestamp: "2026-06-25T14:20:11Z", project: "frontier-core", model: "claude-3-5-sonnet", tokens_in: 65000, tokens_out: 28000, cost: 0.6150, timeframe: "all" },
-  { timestamp: "2026-06-18T16:05:40Z", project: "kudbee-fuel-gauge", model: "deepseek-r1", tokens_in: 150000, tokens_out: 110000, cost: 0.3234, timeframe: "all" },
-  { timestamp: "2026-06-10T11:45:12Z", project: "mesh-globe-3d", model: "gpt-4o", tokens_in: 35000, tokens_out: 22000, cost: 0.5050, timeframe: "all" }
-];
-
 // --- TELEMETRY PERFORMANCE HELPERS ---
 
 function getTtft(model: string): number {
@@ -554,22 +536,21 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
 
   const currentSession = SESSIONS[scrubberVal];
 
-  // Merge real SQLite logs with baseline historical data
+  // REAL DATA ONLY: render only organically ingested telemetry logs. When the
+  // backend has not persisted anything, this is an empty array and the History
+  // view renders its clean, empty architectural state (no fabricated traces).
   const mergedLogs = React.useMemo(() => {
-    const raw = (!dbLogs || dbLogs.length === 0)
-      ? HISTORICAL_TRACES_MOCK
-      : [
-          ...dbLogs.map((l: any) => ({
-            timestamp: l.timestamp,
-            project: l.project_name || "kilo-fuel-gauge",
-            model: l.model_name,
-            tokens_in: l.input_tokens,
-            tokens_out: l.output_tokens,
-            cost: l.calculated_cost,
-            timeframe: "24h" as const
-          })),
-          ...HISTORICAL_TRACES_MOCK
-        ];
+    const raw = (dbLogs && dbLogs.length > 0)
+      ? dbLogs.map((l: any) => ({
+          timestamp: l.timestamp,
+          project: l.project_name || "kilo-fuel-gauge",
+          model: l.model_name,
+          tokens_in: l.input_tokens,
+          tokens_out: l.output_tokens,
+          cost: l.calculated_cost,
+          timeframe: "24h" as const
+        }))
+      : [];
 
     // Distribute logs into sessions based on project name
     return raw.map((log, index) => {
@@ -591,13 +572,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: { c
       else if (mLower.includes('gemini') || mLower.includes('google')) provider = "Google";
       else if (mLower.includes('deepseek')) provider = "DeepSeek";
 
-      // Infer model execution status (assign interesting statuses to mock traces for visual depth)
-      let status = "OK";
-      if (index % 5 === 1) {
-        status = "INTERCEPTED";
-      } else if (index % 6 === 2) {
-        status = "RATE_LIMITED";
-      }
+      const status = "OK";
 
       return { ...log, sessionId, provider, status };
     });
@@ -2413,8 +2388,6 @@ interface SettingsViewProps {
   initialSubTab: 'System Engine Settings' | 'Threshold Alert Rules';
   displayDensity: 'Compact' | 'Standard' | 'Comfortable';
   setDisplayDensity: (d: 'Compact' | 'Standard' | 'Comfortable') => void;
-  simulateTelemetry: boolean;
-  setSimulateTelemetry: (s: boolean) => void;
   onPurgeCompleted: () => void;
   showToast: (msg: string) => void;
   theme: 'Deep Space' | 'Midnight';
@@ -2429,8 +2402,6 @@ function SettingsView({
   initialSubTab,
   displayDensity,
   setDisplayDensity,
-  simulateTelemetry,
-  setSimulateTelemetry,
   onPurgeCompleted,
   showToast,
   theme,
@@ -2681,30 +2652,6 @@ function SettingsView({
               </div>
 
               <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-850 rounded-lg">
-                  <div className="space-y-1 pr-4">
-                    <span className="block text-xs font-semibold text-slate-300">Simulate Real-time Network Telemetry</span>
-                    <span className="block text-[10px] text-slate-500">
-                      Toggle active daemon polling fetching pipelines. Disabling this freezes the real-time ingest simulation.
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSimulateTelemetry(!simulateTelemetry);
-                      showToast(simulateTelemetry ? "Telemetry simulation paused." : "Telemetry simulation resumed.");
-                    }}
-                    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      simulateTelemetry ? 'bg-emerald-500' : 'bg-slate-800'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${
-                        simulateTelemetry ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
                 <div className="border border-amber-500/20 bg-amber-500/5 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div className="space-y-1">
                     <span className="block text-xs font-bold text-amber-400 font-mono uppercase tracking-wider">Danger Zone: Purge Cache</span>
@@ -3003,7 +2950,6 @@ export default function App() {
 
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP'>('USD');
   const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>('Standard');
-  const [simulateTelemetry, setSimulateTelemetry] = useState(true);
   const [toast, setToast] = useState<{ id: number; message: string; type: string } | null>(null);
   const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => localStorage.getItem('kudbee_reduced_motion') === 'true');
@@ -3089,56 +3035,26 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated || !simulateTelemetry) return;
-    const interval = setInterval(() => {
-      // Simulate an agent tool call that requires approval
-      executeAgentTool("claude-code-local", "Rule: bash_execute detected", {
-        action: "bash_execute",
-        command: "npm install -g malicious-package",
-        directory: "~/workspace/telemetry-db",
-        environment: { NODE_ENV: "production" }
-      }).then(() => {
-        showToast("Agent tool execution completed successfully.", "success");
-      }).catch((err) => {
-        console.warn("Agent tool execution blocked:", err);
-      });
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [simulateTelemetry, executeAgentTool, isAuthenticated]);
-
-  useEffect(() => {
     if (!isAuthenticated) return;
     fetchTelemetryData();
-    if (!simulateTelemetry) return;
     const interval = setInterval(fetchTelemetryData, 3000);
     return () => clearInterval(interval);
-  }, [simulateTelemetry, isAuthenticated]);
+  }, [isAuthenticated]);
 
-  // Derive dynamic telemetry statistics
+  // Derive dynamic telemetry statistics — REAL DATA ONLY.
+  // No synthetic base values: if the backend has not ingested anything yet,
+  // the dashboard renders the clean, empty architectural state (all zeros)
+  // instead of fabricated telemetry.
   const liveStats = React.useMemo(() => {
-    const baseIn = 1234567;
-    const baseOut = 3456789;
-    const baseCost = 45.2034;
-    
-    if (!dbSummary) {
-      return {
-        inTokens: baseIn,
-        outTokens: baseOut,
-        cost: baseCost,
-        totalRequests: 1482,
-        activeModels: 4
-      };
-    }
-    
-    const dbTokens = dbSummary.total_historical_tokens || 0;
-    const dbCost = dbSummary.total_24h_cost || 0;
-    
+    const dbTokens = dbSummary?.total_historical_tokens || 0;
+    const dbCost = dbSummary?.total_24h_cost || 0;
+
     return {
-      inTokens: baseIn + Math.floor(dbTokens * 0.4),
-      outTokens: baseOut + Math.floor(dbTokens * 0.6),
-      cost: baseCost + dbCost,
-      totalRequests: 1482 + dbLogs.length,
-      activeModels: dbSummary.total_active_models || 4
+      inTokens: Math.floor(dbTokens * 0.4),
+      outTokens: Math.floor(dbTokens * 0.6),
+      cost: dbCost,
+      totalRequests: dbLogs.length,
+      activeModels: dbSummary?.total_active_models || 0
     };
   }, [dbSummary, dbLogs]);
 
@@ -3175,31 +3091,19 @@ export default function App() {
     };
   }, [dbLogs]);
 
-  // Derive trajectory series for interactive charting
+  // Derive trajectory series for interactive charting — REAL DATA ONLY.
+  // Built exclusively from organic telemetry logs; empty (clean state) when the
+  // backend has not ingested anything yet. No fabricated historical points.
   const chartData = React.useMemo(() => {
-    const points = [
-      { name: "12h ago", tokens: 120000, cost: 0.25 },
-      { name: "10h ago", tokens: 180000, cost: 0.38 },
-      { name: "8h ago", tokens: 150000, cost: 0.31 },
-      { name: "6h ago", tokens: 280000, cost: 0.58 },
-      { name: "4h ago", tokens: 210000, cost: 0.44 },
-      { name: "2h ago", tokens: 340000, cost: 0.72 },
-    ];
-    
-    if (dbLogs && dbLogs.length > 0) {
-      const recentLogs = [...dbLogs].slice(0, 10).reverse();
-      const dbPoints = recentLogs.map((l: any) => {
-        const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        return {
-          name: timeStr,
-          tokens: l.input_tokens + l.output_tokens,
-          cost: l.calculated_cost
-        };
-      });
-      return [...points, ...dbPoints];
-    }
-    
-    return points;
+    if (!dbLogs || dbLogs.length === 0) return [];
+    return [...dbLogs].slice(0, 10).reverse().map((l: any) => {
+      const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return {
+        name: timeStr,
+        tokens: (l.input_tokens || 0) + (l.output_tokens || 0),
+        cost: Number(l.calculated_cost) || Number(l.cost) || 0
+      };
+    });
   }, [dbLogs]);
 
   // Derive circuit breaker real-time success vs failure request counts for the last 60 minutes
@@ -4026,8 +3930,6 @@ export default function App() {
               initialSubTab={'System Engine Settings'}
               displayDensity={displayDensity}
               setDisplayDensity={setDisplayDensity}
-              simulateTelemetry={simulateTelemetry}
-              setSimulateTelemetry={setSimulateTelemetry}
               onPurgeCompleted={fetchTelemetryData}
               showToast={showToast}
               theme={theme}
