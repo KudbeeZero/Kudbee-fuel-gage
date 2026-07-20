@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
 import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
   deserializePass,
@@ -11,6 +12,7 @@ import {
   verifySignature,
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
+import { buildAgentContext, evaluateRequiredSkills } from '@kudbee/agents';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
 import { listProposed, approveAction, rejectAction } from '../governance/router.js';
 import { archive_thought } from '../agents/hermes.js';
@@ -554,6 +556,40 @@ app.post('/api/think/archive', async (req, res) => {
     return res.status(500).json({ error: 'Failed to archive thought' });
   }
 });
+
+// --- Agent Context Factory (Phase 6/8) ---------------------------------------
+// Dynamically assembles the LLM system prompt per task from the active Skill
+// Tags. Accepts a Zod-validated `{ prompt: string }`, runs it through the
+// keyword heuristic (evaluateRequiredSkills), then buildAgentContext, and
+// returns the constructed System Prompt + the matched skills array.
+const AgentContextRequestSchema = z.object({
+  prompt: z.string().min(1).max(8000)
+});
+
+app.post('/api/agents/context', async (req, res) => {
+  try {
+    const parsed = AgentContextRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        issues: parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      });
+    }
+    const { prompt } = parsed.data;
+    const activeSkills = evaluateRequiredSkills(prompt);
+    const systemPrompt = buildAgentContext(prompt, activeSkills);
+    return res.status(200).json({
+      system_prompt: systemPrompt,
+      active_skills: activeSkills.map((s) => ({ id: s.id, description: s.description, destructive: s.destructive })),
+      skill_count: activeSkills.length
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[Agents] Context factory error:', message);
+    return res.status(500).json({ error: 'Failed to assemble agent context' });
+  }
+});
+
 
 app.get('/api/think/archive', async (req, res) => {
   try {

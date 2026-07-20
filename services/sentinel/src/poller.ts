@@ -103,7 +103,7 @@ async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
     return { ok: res.ok, status: res.status, detail: text.slice(0, 200) };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, status: 0, detail: message };
+    return { ok: false, status: 0, detail: `${message} (Target: ${INGEST_URL})` };
   }
 }
 
@@ -118,7 +118,7 @@ async function pollOnce(): Promise<void> {
     const payload = toIngestRequest(signal);
     const result = await egressIngest(payload);
     if (!result.ok) {
-      console.warn('[Sentinel] egress degraded:', result.status, result.detail);
+      console.warn(`[Sentinel] egress degraded: ${result.status} ${result.detail} (Target: ${INGEST_URL})`);
     } else {
       console.log(`[Sentinel] ingested ${payload.trace_id} (latency ${signal.latency_ms}ms)`);
     }
@@ -129,6 +129,14 @@ async function pollOnce(): Promise<void> {
 }
 
 function startPoller(): void {
+  // Boot-time topology guard: on Heroku the Sentinel dyno is network-isolated
+  // and CANNOT reach the web dyno via localhost. Egress will fail (fetch
+  // errors) unless KUDBEE_API_URL is set to the public ingress URL.
+  if (!process.env.KUDBEE_API_URL) {
+    console.warn(
+      '[Sentinel] ⚠️ KUDBEE_API_URL is undefined. Egressing to localhost, which will fail on Heroku isolated dynos.'
+    );
+  }
   console.log(`[Sentinel] heartbeat started — polling ${INGEST_URL}${INGEST_PATH} every ${POLL_INTERVAL_MS}ms`);
   void pollOnce();
   setInterval(() => {
