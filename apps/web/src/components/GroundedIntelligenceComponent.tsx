@@ -9,8 +9,7 @@ import {
   Zap, 
   Lightbulb, 
   ShieldAlert,
-  Activity,
-  ArrowRight
+  Activity
 } from 'lucide-react';
 
 interface Headline {
@@ -39,12 +38,17 @@ export function GroundedIntelligenceComponent() {
     setError(null);
     try {
       const res = await fetch('/api/news/headlines');
-      const data = await res.json();
-      setHeadlines(data.headlines || []);
-      setSources(data.sources || []);
+      const data = (await res.json()) as {
+        headlines?: Headline[];
+        sources?: Source[];
+        offline?: boolean;
+      };
+      setHeadlines(data.headlines ?? []);
+      setSources(data.sources ?? []);
       setOffline(!!data.offline);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch grounded intelligence.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch grounded intelligence.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -217,9 +221,6 @@ export function GroundedIntelligenceComponent() {
                             via {headline.source}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-600">
-                          ID: #QT-{3000 + idx * 13}
-                        </span>
                       </div>
 
                       <h3 className="font-display font-bold text-slate-100 group-hover:text-emerald-400 transition-colors text-base tracking-tight mb-2">
@@ -233,11 +234,8 @@ export function GroundedIntelligenceComponent() {
                       <div className="pt-3 border-t border-slate-800/40 flex items-center justify-between text-[10px] text-slate-500 font-mono">
                         <span className="flex items-center gap-1">
                           <Activity className="w-3.5 h-3.5 text-emerald-500/60" />
-                          Risk Tier: Low-Impact Audit
+                          Grounded via live search
                         </span>
-                        <div className="flex items-center gap-1 text-emerald-500/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Inspect telemetry <ArrowRight className="w-3 h-3" />
-                        </div>
                       </div>
                     </motion.div>
                   );

@@ -88,6 +88,12 @@ interface EgressResult {
   detail: string;
 }
 
+/** Safely coerce an unknown thrown value into a string (Resilient-First). */
+function toErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 /** Securely pushes a validated trace to the main backend. */
 async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
   try {
@@ -102,9 +108,25 @@ async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
     const text = await res.text();
     return { ok: res.ok, status: res.status, detail: text.slice(0, 200) };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     return { ok: false, status: 0, detail: message };
   }
+}
+
+// --- Resilient-First Egress State -------------------------------------------
+// Prevents log-spam (e.g. `egress degraded: 0 fetch failed`) during backend
+// sleep states / network drops. We track consecutive failures and only log a
+// warning on state transitions or every Nth failure, then back off quietly.
+let consecutiveFailures = 0;
+const MAX_QUIET_RETRIES = 5;
+const BACKOFF_BASE_MS = 2000;
+const BACKOFF_MAX_MS = 30000;
+
+/** Cost-zero exponential backoff: returns ms to wait before the next egress. */
+function nextBackoffMs(): number {
+  const attempt = Math.min(consecutiveFailures, 8);
+  const backoff = BACKOFF_BASE_MS * 2 ** attempt;
+  return Math.min(backoff, BACKOFF_MAX_MS);
 }
 
 async function pollOnce(): Promise<void> {
@@ -118,12 +140,25 @@ async function pollOnce(): Promise<void> {
     const payload = toIngestRequest(signal);
     const result = await egressIngest(payload);
     if (!result.ok) {
-      console.warn('[Sentinel] egress degraded:', result.status, result.detail);
+      consecutiveFailures += 1;
+      // Log only on first failure, or every Nth, to avoid flooding the logs
+      // during a sustained degradation window. Otherwise stay quiet.
+      if (consecutiveFailures === 1 || consecutiveFailures % MAX_QUIET_RETRIES === 0) {
+        console.warn(
+          `[Sentinel] egress degraded (attempt ${consecutiveFailures}, next retry in ~${nextBackoffMs()}ms):`,
+          result.status,
+          result.detail
+        );
+      }
     } else {
+      if (consecutiveFailures > 0) {
+        console.log(`[Sentinel] egress recovered after ${consecutiveFailures} failures`);
+      }
+      consecutiveFailures = 0;
       console.log(`[Sentinel] ingested ${payload.trace_id} (latency ${signal.latency_ms}ms)`);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     console.warn('[Sentinel] ingest validation failed (dropped):', message);
   }
 }
