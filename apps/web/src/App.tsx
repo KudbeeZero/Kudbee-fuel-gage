@@ -1916,26 +1916,20 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
     showToast("✗ Execution Denied. Core runtime killed with exit code 130.", "warning");
   };
 
-  const handleResetQueue = () => {
-    executeAgentTool(
-      "claude-code-local",
-      "Rule: bash_execute detected",
-      {
-        action: "bash_execute",
-        command: "docker run -d -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16",
-        directory: "~/workspace/telemetry-db",
-        environment: {
-          POSTGRES_DB: "telemetry",
-          POSTGRES_PASSWORD: "•••••••••••••"
+  const handleResetQueue = async () => {
+    // Real re-fetch of any genuine pending proxy interceptions (Resilient-First:
+    // failures degrade silently rather than fabricating a fake approval).
+    try {
+      const res = await fetch('/api/proxy/pending');
+      if (res.ok) {
+        const data = (await res.json()) as Array<{ id: string; payload?: unknown }>;
+        if (data.length === 0) {
+          showToast("No live interceptions pending. Holding pen is clear.", "info");
         }
       }
-    ).then(() => {
-      showToast("Simulation Agent tool execution completed successfully.", "success");
-    }).catch(() => {
-      showToast("Simulation Agent tool execution blocked.", "warning");
-    });
-    
-    showToast("Mock Agent execution paused by security policy. Ingestion intercepted.", "info");
+    } catch {
+      showToast("Interception service unreachable.", "warning");
+    }
   };
 
   return (
@@ -2263,7 +2257,7 @@ function FirewallView({ showToast, pendingApprovals, resolveApproval, rejectAppr
               onClick={handleResetQueue}
               className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] font-mono tracking-wider uppercase rounded transition-all cursor-pointer"
             >
-              Simulate Ingestion Intercept
+              Refresh Intercepts
             </button>
           )}
         </div>
@@ -2954,19 +2948,32 @@ export default function App() {
   const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => localStorage.getItem('kudbee_reduced_motion') === 'true');
 
-  // Simulated edge-gateway round-trip latency for the global footer indicator
-  const [footerPing, setFooterPing] = useState<number>(42);
+  // Real edge-gateway round-trip latency for the global footer indicator.
+  // Measured from an actual fetch round-trip to the backend (Resilient-First:
+  // degrades to "—" when the backend is unreachable instead of faking a value).
+  const [footerPing, setFooterPing] = useState<number | null>(null);
   const [footerPinging, setFooterPinging] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const pingTimer = setInterval(() => {
+    const measurePing = async () => {
       setFooterPinging(true);
-      setTimeout(() => {
-        setFooterPing(28 + Math.floor(Math.random() * 140));
+      const start = performance.now();
+      try {
+        const res = await fetch('/api/dashboard/summary', { method: 'GET' });
+        if (res.ok) {
+          setFooterPing(Math.round(performance.now() - start));
+        } else {
+          setFooterPing(null);
+        }
+      } catch {
+        setFooterPing(null);
+      } finally {
         setFooterPinging(false);
-      }, 350);
-    }, 4000);
+      }
+    };
+    void measurePing();
+    const pingTimer = setInterval(() => void measurePing(), 4000);
     return () => clearInterval(pingTimer);
   }, [isAuthenticated]);
 
@@ -3975,10 +3982,10 @@ export default function App() {
                 </span>
                 <span className="uppercase tracking-widest text-emerald-400 font-semibold">ENV: PRODUCTION</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Simulated edge gateway round-trip latency">
-                <Radio className={`w-3.5 h-3.5 ${footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400'} ${footerPinging ? 'animate-pulse' : ''}`} />
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Edge gateway round-trip latency (real fetch measurement)">
+                <Radio className={`w-3.5 h-3.5 ${footerPing !== null ? (footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${footerPinging ? 'animate-pulse' : ''}`} />
                 <span className="uppercase tracking-widest text-slate-400">PING</span>
-                <span className={`${footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400'}`}>{footerPing}ms</span>
+                <span className={`${footerPing !== null ? (footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{footerPing !== null ? `${footerPing}ms` : '—'}</span>
               </div>
             </div>
 
