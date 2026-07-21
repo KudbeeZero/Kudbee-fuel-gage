@@ -140,7 +140,7 @@ export const CostAnalysisPanel = memo(function CostAnalysisPanel({
               <div className="lg:col-span-7 space-y-4">
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-orange-400 font-semibold">Claude 3.5 Sonnet (Anthropic)</span>
+                    <span className="text-orange-400 font-semibold">Anthropic</span>
                     <span className="text-slate-300">{Math.round(relWeights.Anthropic)}%</span>
                   </div>
                   <input 
@@ -155,7 +155,7 @@ export const CostAnalysisPanel = memo(function CostAnalysisPanel({
 
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-blue-400 font-semibold">DeepSeek-R1 (DeepSeek)</span>
+                    <span className="text-blue-400 font-semibold">DeepSeek</span>
                     <span className="text-slate-300">{Math.round(relWeights.DeepSeek)}%</span>
                   </div>
                   <input 
@@ -170,7 +170,7 @@ export const CostAnalysisPanel = memo(function CostAnalysisPanel({
 
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-purple-400 font-semibold">Gemini 1.5 Pro (Google)</span>
+                    <span className="text-purple-400 font-semibold">Google</span>
                     <span className="text-slate-300">{Math.round(relWeights.Google)}%</span>
                   </div>
                   <input 
@@ -185,7 +185,7 @@ export const CostAnalysisPanel = memo(function CostAnalysisPanel({
 
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-pink-400 font-semibold">GPT-4o (OpenAI)</span>
+                    <span className="text-pink-400 font-semibold">OpenAI</span>
                     <span className="text-slate-300">{Math.round(relWeights.OpenAI)}%</span>
                   </div>
                   <input 

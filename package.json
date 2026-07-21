@@ -21,6 +21,7 @@
     "ingest:topology": "tsx scripts/ingest-topology.ts"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "tsx": "^4.21.0",
     "turbo": "^2.3.3",
     "typescript": "^7.0.0"

@@ -16,7 +16,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   const [payloadText, setPayloadText] = useState(
     `// Sample prompt / code block pipeline payload\nconst aiResponse = await anthropic.messages.create({\n  model: "unknown",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
   );
-  const [selectedModel, setSelectedModel] = useState('Claude 3.5 Sonnet');
+  const [selectedModel, setSelectedModel] = useState('Anthropic');
   const [singleCap, setSingleCap] = useState(0.05); // Slider cap (ranges from $0.01 to $2.00 in USD baseline)
   const [hourlyCapEnabled, setHourlyCapEnabled] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -78,10 +78,10 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   ) / 100;
 
   const pieData = useMemo(() => [
-    { name: 'Claude 3.5 Sonnet', value: Math.round(relWeights.Anthropic), color: '#f97316' },
-    { name: 'DeepSeek-R1', value: Math.round(relWeights.DeepSeek), color: '#3b82f6' },
-    { name: 'Gemini 1.5 Pro', value: Math.round(relWeights.Google), color: '#a855f7' },
-    { name: 'GPT-4o', value: Math.round(relWeights.OpenAI), color: '#ec4899' }
+    { name: 'Anthropic', value: Math.round(relWeights.Anthropic), color: '#f97316' },
+    { name: 'DeepSeek', value: Math.round(relWeights.DeepSeek), color: '#3b82f6' },
+    { name: 'Google', value: Math.round(relWeights.Google), color: '#a855f7' },
+    { name: 'OpenAI', value: Math.round(relWeights.OpenAI), color: '#ec4899' }
   ].filter(d => d.value > 0), [relWeights]);
 
   const applyPreset = useCallback((preset: 'cost' | 'reasoning' | 'balanced') => {
@@ -103,11 +103,11 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
 
   // Real market rates (Cost per 1M tokens in USD)
   const rates = useMemo(() => ({
-    'Anthropic': { in: 3.00, out: 15.00, name: 'Claude 3.5 Sonnet', platform: 'Anthropic API' },
-    'DeepSeek': { in: 0.55, out: 2.19, name: 'DeepSeek-R1', platform: 'DeepSeek Cloud' },
-    'Google': { in: 1.25, out: 5.00, name: 'Gemini 1.5 Pro', platform: 'Google AI Studio' },
-    'OpenAI': { in: 5.00, out: 15.00, name: 'GPT-4o', platform: 'OpenAI Developer Platform' },
-    'Ternary': { in: 0.80, out: 3.00, name: 'Ternary Bonsai 27B', platform: 'Ternary Network' }
+    'Anthropic': { in: 3.00, out: 15.00, name: 'Anthropic', platform: 'Anthropic API' },
+    'DeepSeek': { in: 0.55, out: 2.19, name: 'DeepSeek', platform: 'DeepSeek Cloud' },
+    'Google': { in: 1.25, out: 5.00, name: 'Google', platform: 'Google AI Studio' },
+    'OpenAI': { in: 5.00, out: 15.00, name: 'OpenAI', platform: 'OpenAI Developer Platform' },
+    'Ternary': { in: 0.80, out: 3.00, name: 'Ternary', platform: 'Ternary Network' }
   }), []);
 
   const calculateCost = useCallback((prov: keyof typeof rates) => {

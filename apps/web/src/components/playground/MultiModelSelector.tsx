@@ -7,10 +7,10 @@ interface MultiModelSelectorProps {
 
 export function MultiModelSelector({ selectedModel, setSelectedModel }: MultiModelSelectorProps) {
   const models = [
-    'Claude 3.5 Sonnet',
-    'DeepSeek-R1',
-    'GPT-4o',
-    'Gemini 1.5 Pro'
+    'Anthropic',
+    'DeepSeek',
+    'Google',
+    'OpenAI'
   ];
 
   return (

@@ -105,7 +105,7 @@ export const RoutingVisualizer = memo(function RoutingVisualizer({
               <ArrowRight className={`w-3 h-3 ${primaryActive ? 'text-blue-400' : 'text-slate-600'}`} />
               LLM LAYER
             </span>
-            <span className="text-[9px] text-slate-500">us-east-1 · Claude 3.5 Sonnet</span>
+              <span className="text-[9px] text-slate-500">us-east-1 · Primary Route</span>
           </div>
 
           {/* Outgoing → Redis/Memory Layer (bottom right) */}
@@ -123,7 +123,7 @@ export const RoutingVisualizer = memo(function RoutingVisualizer({
               <ArrowRight className={`w-3 h-3 ${failoverActive ? 'text-emerald-400' : 'text-slate-600'}`} />
               REDIS LAYER
             </span>
-            <span className="text-[9px] text-slate-500">eu-central-1 · DeepSeek-R1</span>
+              <span className="text-[9px] text-slate-500">eu-central-1 · Failover Route</span>
           </div>
         </div>
 
