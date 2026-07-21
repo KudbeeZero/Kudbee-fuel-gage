@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto';
 import { getDbPool, isDbHealthy } from '../lib/db.js';
 import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
+import type { ThinkToken } from '@kudbee/types';
 
 export interface TopologyMetadata {
   file_path: string;
