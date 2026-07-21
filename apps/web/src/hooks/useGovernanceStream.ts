@@ -41,6 +41,7 @@ export function useGovernanceStream(pollMs = 5000): GovernanceStream {
 
   const submitApproval = useCallback(
     async (id: string, decision: ApprovalDecision): Promise<boolean> => {
+      setPending((prev) => prev.filter((p) => p.id !== id));
       try {
         await apiPost<{ success: boolean }>('/api/governance/resolve', { id, decision });
         void refresh();

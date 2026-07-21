@@ -145,6 +145,7 @@ export interface DashboardSummary {
   total_requests: number;
   error_rate: number;
   health_matrix: ReadonlyArray<Record<string, unknown>>;
+  sink_token_balance: number;
 }
 
 /** A single event-log line in the Console Dock ticker. */
