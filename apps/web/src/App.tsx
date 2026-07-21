@@ -419,10 +419,111 @@ function getRawJson(log: MergedTelemetryLog) {
   };
 }
 
-function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
+// --- PHASE 22: HISTORY RESILIENCE & OPERATIONAL STANDBY STATES ---
+
+type OperationalState = 'STANDBY' | 'INTERCEPTING' | 'DISCONNECTED';
+
+interface SystemOperationalBadgeProps {
+  state: OperationalState;
+  traceCount: number;
+}
+
+function SystemOperationalBadge({ state, traceCount }: SystemOperationalBadgeProps) {
+  const config = {
+    STANDBY: {
+      color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+      dot: 'bg-emerald-400',
+      label: 'STANDBY',
+      desc: 'System operational. Standing by for telemetry events.'
+    },
+    INTERCEPTING: {
+      color: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+      dot: 'bg-amber-400 animate-pulse',
+      label: 'INTERCEPTING',
+      desc: 'Telemetry traces actively being received and processed.'
+    },
+    DISCONNECTED: {
+      color: 'bg-rose-500/10 border-rose-500/30 text-rose-400',
+      dot: 'bg-rose-400',
+      label: 'DISCONNECTED',
+      desc: 'Backend API unreachable. Check connection and retry.'
+    }
+  };
+
+  const c = config[state];
+
+  return (
+    <div className={`rounded-xl border p-4 flex items-center gap-3 ${c.color}`}>
+      <span className={`relative flex h-3 w-3`}>
+        <span className={`relative inline-flex rounded-full h-3 w-3 ${c.dot}`} />
+      </span>
+      <div>
+        <div className="text-[10px] font-mono font-bold uppercase tracking-widest">{c.label}</div>
+        <div className="text-[10px] font-mono text-slate-400 mt-0.5">{c.desc}</div>
+        {state === 'STANDBY' && traceCount === 0 && (
+          <div className="text-[9px] font-mono text-slate-500 mt-1">0 traces in database — ready to record live telemetry.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface HistoryErrorCardProps {
+  message: string;
+  onRetry: () => void;
+}
+
+function HistoryErrorCard({ message, onRetry }: HistoryErrorCardProps) {
+  return (
+    <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 flex flex-col items-center justify-center gap-3">
+      <XCircle className="w-8 h-8 text-rose-400" />
+      <h3 className="font-display font-semibold text-rose-300 text-sm">History View Error</h3>
+      <p className="text-xs text-rose-400/80 text-center max-w-md font-mono">{message}</p>
+      <button
+        onClick={onRetry}
+        className="mt-2 px-4 py-2 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-300 text-xs font-mono font-bold uppercase rounded-lg transition-all cursor-pointer"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+interface HistoryErrorBoundaryState {
+  hasError: boolean;
+  message: string;
+}
+
+class HistoryErrorBoundary extends React.Component<{ children: React.ReactNode; onRetry: () => void }, HistoryErrorBoundaryState> {
+  constructor(props: { children: React.ReactNode; onRetry: () => void }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error: unknown): HistoryErrorBoundaryState {
+    const message = error instanceof Error ? error.message : String(error);
+    return { hasError: true, message };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('HistoryView crashed:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <HistoryErrorCard message={this.state.message} onRetry={() => this.setState({ hasError: false, message: '' })} />;
+    }
+    return this.props.children;
+  }
+}
+
+function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLogTriggered, onRetry, onTraceSelect }: {
   currency: 'USD' | 'EUR' | 'GBP';
   dbLogs?: TelemetryLog[];
+  terminalOpState: 'STANDBY' | 'INTERCEPTING' | 'DISCONNECTED';
+  historyError?: string | null;
   onNewLogTriggered?: () => void;
+  onRetry?: () => void;
   onTraceSelect?: (trace: MergedTelemetryLog) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -593,83 +694,76 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
     }
   };
 
-  // Define logical sessions for the Replay Inspector
-  const SESSIONS = React.useMemo(() => [
-    { 
-      id: 'sess-alpha', 
-      name: 'Alpha Loop - Pipeline Ingest Validation', 
-      project: 'frontier-core', 
-      desc: 'Validating primary OTel distributed telemetry streams & system latency spikes.', 
-      count: 5, 
-      time: '10:15 AM' 
-    },
-    { 
-      id: 'sess-beta', 
-      name: 'Beta Loop - Human-in-the-Loop Guardrail Check', 
-      project: 'kudbee-fuel-gauge', 
-      desc: 'Evaluating real-time firewall gate intercepts, SSN scrubbing, and budgetary limits.', 
-      count: 4, 
-      time: '09:42 AM' 
-    },
-    { 
-      id: 'sess-gamma', 
-      name: 'Gamma Loop - Production Canvas Canvas Refactor', 
-      project: 'mesh-globe-3d', 
-      desc: 'Tracing active multi-model token throughput speeds, generation speeds, and network lags.', 
-      count: 6, 
-      time: '08:05 AM' 
-    }
-  ], []);
+   // REAL DATA ONLY: render only organically ingested telemetry logs. When the
+   // backend has not persisted anything, this is an empty array and the History
+   // view renders its clean, empty architectural state (no fabricated traces).
+   const mergedLogs = React.useMemo<MergedTelemetryLog[]>(() => {
+     const raw = (dbLogs && dbLogs.length > 0)
+       ? dbLogs.map((l: TelemetryLog) => ({
+           timestamp: l.timestamp,
+           project: l.project_name || "kilo-fuel-gauge",
+           model: l.model_name,
+           tokens_in: l.input_tokens,
+           tokens_out: l.output_tokens,
+           cost: l.calculated_cost,
+           timeframe: "24h" as const
+         }))
+       : [];
 
-  const [activeSessionId, setActiveSessionId] = useState<string | 'all'>('all');
-  const [scrubberVal, setScrubberVal] = useState<number>(0); // Selected session index on scrubber (0, 1, 2)
-  const [drawerTabs, setDrawerTabs] = useState<Record<string, 'waterfall' | 'json'>>({});
+     // Distribute logs into sessions based on project name
+     return raw.map((log, index) => {
+       let sessionId: 'sess-alpha' | 'sess-beta' | 'sess-gamma' = 'sess-alpha';
+       if (log.project.includes('fuel-gauge') || log.project.includes('kudbee')) {
+         sessionId = 'sess-beta';
+       } else if (log.project.includes('globe') || log.project.includes('mesh')) {
+         sessionId = 'sess-gamma';
+       } else {
+         const sIds: Array<'sess-alpha' | 'sess-beta' | 'sess-gamma'> = ['sess-alpha', 'sess-beta', 'sess-gamma'];
+         sessionId = sIds[index % sIds.length];
+       }
 
-  const currentSession = SESSIONS[scrubberVal];
+       // Infer model provider
+       const mLower = log.model.toLowerCase();
+       let provider = "Anthropic";
+       if (mLower.includes('claude') || mLower.includes('anthropic')) provider = "Anthropic";
+       else if (mLower.includes('gpt') || mLower.includes('openai')) provider = "OpenAI";
+       else if (mLower.includes('gemini') || mLower.includes('google')) provider = "Google";
+       else if (mLower.includes('deepseek')) provider = "DeepSeek";
 
-  // REAL DATA ONLY: render only organically ingested telemetry logs. When the
-  // backend has not persisted anything, this is an empty array and the History
-  // view renders its clean, empty architectural state (no fabricated traces).
-  const mergedLogs = React.useMemo<MergedTelemetryLog[]>(() => {
-    const raw = (dbLogs && dbLogs.length > 0)
-      ? dbLogs.map((l: TelemetryLog) => ({
-          timestamp: l.timestamp,
-          project: l.project_name || "kilo-fuel-gauge",
-          model: l.model_name,
-          tokens_in: l.input_tokens,
-          tokens_out: l.output_tokens,
-          cost: l.calculated_cost,
-          timeframe: "24h" as const
-        }))
-      : [];
+       const status = "OK";
 
-    // Distribute logs into sessions based on project name
-    return raw.map((log, index) => {
-      let sessionId: 'sess-alpha' | 'sess-beta' | 'sess-gamma' = 'sess-alpha';
-      if (log.project.includes('fuel-gauge') || log.project.includes('kudbee')) {
-        sessionId = 'sess-beta';
-      } else if (log.project.includes('globe') || log.project.includes('mesh')) {
-        sessionId = 'sess-gamma';
-      } else {
-        const sIds: Array<'sess-alpha' | 'sess-beta' | 'sess-gamma'> = ['sess-alpha', 'sess-beta', 'sess-gamma'];
-        sessionId = sIds[index % sIds.length];
-      }
+       return { ...log, sessionId, provider, status };
+     });
+   }, [dbLogs]);
 
-      // Infer model provider
-      const mLower = log.model.toLowerCase();
-      let provider = "Anthropic";
-      if (mLower.includes('claude') || mLower.includes('anthropic')) provider = "Anthropic";
-      else if (mLower.includes('gpt') || mLower.includes('openai')) provider = "OpenAI";
-      else if (mLower.includes('gemini') || mLower.includes('google')) provider = "Google";
-      else if (mLower.includes('deepseek')) provider = "DeepSeek";
+   // Derive logical sessions from real ingested telemetry logs.
+   const derivedSessions = React.useMemo(() => {
+     const sessionMap = new Map<string, { id: string; name: string; project: string; desc: string; count: number; time: string }>();
+     mergedLogs.forEach((log, idx) => {
+       const sid = log.sessionId || 'sess-unknown';
+       if (!sessionMap.has(sid)) {
+         const time = log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+         sessionMap.set(sid, {
+           id: sid,
+           name: `Session ${sessionMap.size + 1} — ${log.project}`,
+           project: log.project,
+           desc: `Auto-derived from ${log.project} telemetry traces.`,
+           count: 0,
+           time
+         });
+       }
+       sessionMap.get(sid)!.count++;
+     });
+     return Array.from(sessionMap.values());
+   }, [mergedLogs]);
 
-      const status = "OK";
+   const [activeSessionId, setActiveSessionId] = useState<string | 'all'>('all');
+   const [scrubberVal, setScrubberVal] = useState<number>(0);
+   const [drawerTabs, setDrawerTabs] = useState<Record<string, 'waterfall' | 'json'>>({});
 
-      return { ...log, sessionId, provider, status };
-    });
-  }, [dbLogs]);
+    const currentSession = derivedSessions.length > 0 ? derivedSessions[Math.min(scrubberVal, derivedSessions.length - 1)] : null;
 
-  // Filter logs based on search query, timeframe, selected session id, provider and status
+   // Filter logs based on search query, timeframe, selected session id, provider and status
   const filteredLogs = mergedLogs.filter(log => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
@@ -856,30 +950,28 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
       id="history-view-container"
     >
       
-      {/* EMPTY STATE: displayed when no telemetry logs have been ingested yet */}
-      {(!dbLogs || dbLogs.length === 0) && (
+      {historyError && terminalOpState === 'DISCONNECTED' && (
+        <HistoryErrorCard message={historyError} onRetry={onRetry || onNewLogTriggered || (() => {})} />
+      )}
+
+      {terminalOpState === 'STANDBY' && (
         <motion.div 
           variants={sectionVariants}
           className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden"
           id="history-empty-state"
         >
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-500/30 to-transparent"></div>
-          <div className="flex flex-col items-center justify-center gap-3 py-8">
-            <Database className="w-10 h-10 text-slate-600" />
-            <h3 className="font-display font-semibold text-slate-400 text-sm">No historical telemetry logs captured yet</h3>
-            <p className="text-xs text-slate-500 text-center max-w-md leading-relaxed">
-              Trigger agent activity or traffic simulation to populate the history view with real telemetry traces.
-            </p>
-          </div>
+          <SystemOperationalBadge state="STANDBY" traceCount={dbLogs?.length ?? 0} />
         </motion.div>
       )}
 
-      {/* 1. SESSION REPLAY INSPECTOR (Top of History View) */}
-      <motion.div 
-        variants={sectionVariants}
-        className="bg-slate-900/60 border border-slate-800 rounded-xl sm:p-6 p-3 relative overflow-hidden" 
-        id="session-replay-panel"
-      >
+      {/* 1. SESSION REPLAY INSPECTOR (Top of History View) — hidden when STANDBY or DISCONNECTED */}
+      {terminalOpState !== 'STANDBY' && terminalOpState !== 'DISCONNECTED' && (
+        <motion.div 
+          variants={sectionVariants}
+          className="bg-slate-900/60 border border-slate-800 rounded-xl sm:p-6 p-3 relative overflow-hidden" 
+          id="session-replay-panel"
+        >
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -905,7 +997,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
                 SHOW ALL TRACES
               </button>
               <button
-                onClick={() => setActiveSessionId(currentSession.id)}
+                onClick={() => currentSession && setActiveSessionId(currentSession.id)}
                 className={`px-3 py-2 min-h-[40px] flex items-center justify-center text-[10px] font-mono font-bold uppercase rounded transition-all cursor-pointer ${
                   activeSessionId !== 'all'
                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
@@ -925,7 +1017,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
               <span className="tracking-normal whitespace-nowrap">08:00 AM (SESSION START)</span>
               <span className="text-cyan-400 font-bold uppercase tracking-normal flex items-center gap-1.5 whitespace-nowrap">
                 <Clock className="w-3 h-3 animate-pulse" />
-                ACTIVE PLAYBACK RANGE: {currentSession.name.toUpperCase()}
+                ACTIVE PLAYBACK RANGE: {currentSession ? currentSession.name.toUpperCase() : 'NO ACTIVE SESSION'}
               </span>
               <span className="tracking-normal whitespace-nowrap">10:30 AM (NOMINAL RUNTIME)</span>
             </div>
@@ -944,7 +1036,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
               ></div>
 
               {/* Clickable circular ticks */}
-              {SESSIONS.map((sess, idx) => (
+              {derivedSessions.map((sess, idx) => (
                 <button
                   key={sess.id}
                   onClick={() => {
@@ -958,7 +1050,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
                       ? 'bg-cyan-400 border-slate-950 scale-125 shadow-[0_0_12px_rgba(34,211,238,0.65)]'
                       : 'bg-slate-950 border-slate-800 hover:border-cyan-500/60 hover:scale-110'
                   }`}
-                  style={{ left: `${idx * 50}%` }}
+                  style={{ left: `${(derivedSessions.length > 1 ? (idx / (derivedSessions.length - 1)) : 0) * 100}%` }}
                   title={sess.name}
                 />
               ))}
@@ -967,14 +1059,14 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
               <input 
                 type="range"
                 min="0"
-                max="2"
+                max={Math.max(0, derivedSessions.length - 1)}
                 step="1"
                 value={scrubberVal}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
                   setScrubberVal(val);
-                  if (activeSessionId !== 'all') {
-                    setActiveSessionId(SESSIONS[val].id);
+                  if (activeSessionId !== 'all' && derivedSessions[val]) {
+                    setActiveSessionId(derivedSessions[val].id);
                   }
                 }}
                 className="relative w-full opacity-0 cursor-ew-resize h-8 z-20"
@@ -982,7 +1074,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
 
               {/* Timestamps wrapped in perfectly distributed container with zero vertical drifting */}
               <div className="flex justify-between w-full mt-2 text-[10px] font-mono tracking-tight text-slate-400 select-none">
-                {SESSIONS.map((sess) => (
+                {derivedSessions.map((sess) => (
                   <span key={sess.id} className="whitespace-nowrap hover:text-slate-200 transition-colors">
                     {sess.time}
                   </span>
@@ -991,28 +1083,29 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
             </div>
           </div>
 
-          {/* Active stats panel */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-900/60">
-            <div className="md:col-span-2 space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Live Scrape Scope Details</span>
-              <h3 className="text-sm font-semibold text-slate-200">{currentSession.name}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{currentSession.desc}</p>
-            </div>
+           {/* Active stats panel */}
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-900/60">
+             <div className="md:col-span-2 space-y-1">
+               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Live Scrape Scope Details</span>
+               <h3 className="text-sm font-semibold text-slate-200">{currentSession?.name ?? 'No active session'}</h3>
+               <p className="text-xs text-slate-400 leading-relaxed">{currentSession?.desc ?? '—'}</p>
+             </div>
 
-            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
-              <span className="text-[9px] font-mono uppercase text-slate-500">Trace Count</span>
-              <span className="text-sm font-mono text-cyan-400 font-bold">{currentSession.count} Ingestion Points</span>
-            </div>
+             <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
+               <span className="text-[9px] font-mono uppercase text-slate-500">Trace Count</span>
+               <span className="text-sm font-mono text-cyan-400 font-bold">{currentSession?.count ?? 0} Ingestion Points</span>
+             </div>
 
-            <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
-              <span className="text-[9px] font-mono uppercase text-slate-500">Assigned Ingress Repository</span>
-              <span className="text-sm font-mono text-emerald-400 font-bold truncate">{currentSession.project}</span>
+             <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 flex flex-col justify-between">
+               <span className="text-[9px] font-mono uppercase text-slate-500">Assigned Ingress Repository</span>
+               <span className="text-sm font-mono text-emerald-400 font-bold truncate">{currentSession?.project ?? '—'}</span>
+             </div>
             </div>
-          </div>
-        </div>
-      </motion.div>
-      
-      {/* 2. PROJECT METADATA ROLLUP */}
+         </div>
+       </motion.div>
+       )}
+       
+       {/* 2. PROJECT METADATA ROLLUP */}
       <motion.div 
         variants={sectionVariants}
         className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" 
@@ -1420,7 +1513,7 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
               Historical Execution Traces ({filteredLogs.length} found)
             </h2>
           </div>
-          {activeSessionId !== 'all' && (
+          {activeSessionId !== 'all' && currentSession && (
             <span className="text-[10px] font-mono px-2 py-0.5 bg-cyan-950/40 border border-cyan-800/40 text-cyan-400 rounded-full font-bold">
               FILTERED: {currentSession.name.toUpperCase()}
             </span>
@@ -1511,8 +1604,8 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
                   const isExpanded = expandedRow === log.timestamp;
                   const traceId = `tr-${log.timestamp.replace(/[^0-9]/g, '').slice(-10)}`;
                   
-                  // Check if this trace belongs to the selected scrubber session
-                  const belongsToActiveSession = log.sessionId === currentSession.id;
+                   // Check if this trace belongs to the selected scrubber session
+                   const belongsToActiveSession = currentSession ? log.sessionId === currentSession.id : false;
                   const activeTab = drawerTabs[log.timestamp] || 'waterfall';
 
                   return (
@@ -3149,9 +3242,12 @@ export default function App() {
   // Unified real-time SQLite backend telemetry synchronization
   const [dbSummary, setDbSummary] = useState<DashboardSummary | null>(null);
   const [dbLogs, setDbLogs] = useState<TelemetryLog[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const operationalState: OperationalState = historyError ? 'DISCONNECTED' : dbLogs.length > 0 ? 'INTERCEPTING' : 'STANDBY';
 
   const fetchTelemetryData = async () => {
     if (!isAuthenticated) return;
+    setHistoryError(null);
     try {
       const summaryRes = await fetch('/api/dashboard/summary');
       if (summaryRes.ok) {
@@ -3161,12 +3257,16 @@ export default function App() {
       
       const logsRes = await fetch('/api/telemetry/logs?limit=50');
       if (logsRes.ok) {
-        const lData = (await logsRes.json()) as TelemetryLog[];
-        setDbLogs(lData || []);
+        const raw = await logsRes.json();
+        const lData = Array.isArray(raw) ? raw : [];
+        setDbLogs(lData);
+      } else {
+        setHistoryError(`Logs endpoint returned ${logsRes.status}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("Failed to fetch dashboard metrics:", message);
+      setHistoryError(message);
     }
   };
 
@@ -4052,7 +4152,19 @@ export default function App() {
           
           {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
-          {activeTab === 'History' && <HistoryView currency={currency} dbLogs={dbLogs} onNewLogTriggered={fetchTelemetryData} onTraceSelect={setSelectedTraceForDrawer} />}
+           {activeTab === 'History' && (
+            <HistoryErrorBoundary onRetry={fetchTelemetryData}>
+              <HistoryView 
+                currency={currency} 
+                dbLogs={dbLogs} 
+                terminalOpState={operationalState}
+                historyError={historyError}
+                onNewLogTriggered={fetchTelemetryData} 
+                onRetry={fetchTelemetryData}
+                onTraceSelect={setSelectedTraceForDrawer} 
+              />
+            </HistoryErrorBoundary>
+          )}
 
           {activeTab === 'Intelligence' && <IntelligenceView />}
 
