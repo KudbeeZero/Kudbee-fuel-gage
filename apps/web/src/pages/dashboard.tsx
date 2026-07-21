@@ -386,6 +386,45 @@ function SinkTokenCard({ balance }: { balance: number }) {
   );
 }
 
+function formatBytes(bytes: number | null): string {
+  if (bytes == null) return '—';
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function StorageGaugeCard({ bytes, label, icon: Icon, thresholdBytes }: { bytes: number | null; label: string; icon: typeof Database; thresholdBytes: number }) {
+  const displayBytes = bytes ?? 0;
+  const pct = Math.max(0, Math.min(100, Math.round((displayBytes / thresholdBytes) * 100)));
+  const hue = pct > 80 ? 'text-rose-400' : pct > 50 ? 'text-amber-400' : 'text-emerald-400';
+  const bar = pct > 80 ? 'bg-rose-500' : pct > 50 ? 'bg-amber-500' : 'bg-emerald-500';
+  const status = pct > 80 ? 'CRITICAL' : pct > 50 ? 'DEGRADED' : 'HEALTHY';
+  const statusColor = pct > 80 ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' : pct > 50 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Icon className="h-4 w-4 text-cyan-500/70" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">{label}</span>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${statusColor}`}>
+          {status}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="font-mono text-3xl font-bold text-slate-100">{formatBytes(displayBytes)}</span>
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className={`h-full ${bar} transition-all duration-500`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-2 text-[10px] font-mono text-slate-500">Threshold: {formatBytes(thresholdBytes)}</p>
+    </div>
+  );
+}
+
 function TelemetryFeed({
   items,
   onVerify,
@@ -1474,6 +1513,8 @@ export function DashboardPage() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
   const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(1000);
+  const [postgresSize, setPostgresSize] = useState<number | null>(null);
+  const [redisSize, setRedisSize] = useState<number | null>(null);
 
   // --- Real-time telemetry (SSE) ---
   const [thinking, setThinking] = useState(false);
@@ -1541,8 +1582,10 @@ export function DashboardPage() {
 
   const loadSinkTokenBalance = useCallback(async () => {
     try {
-      const data = await apiGet<{ sink_token_balance: number }>('/api/dashboard/summary');
+      const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number }>('/api/dashboard/summary');
       setSinkTokenBalance(data.sink_token_balance ?? 1000);
+      setPostgresSize(data.postgres_size_bytes ?? null);
+      setRedisSize(data.redis_size_bytes ?? null);
     } catch {
       // keep default
     }
@@ -1805,10 +1848,12 @@ export function DashboardPage() {
             onRun={runComparison}
           />
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />
             <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
             <SinkTokenCard balance={sinkTokenBalance} />
+            <StorageGaugeCard bytes={postgresSize} label="Postgres Storage" icon={Database} thresholdBytes={1073741824} />
+            <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
           <GovernanceFeed actions={governance} />
         </div>
