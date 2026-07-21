@@ -1805,6 +1805,15 @@ if (fs.existsSync(distPath)) {
   });
 }
 
+if (process.env.CRUCIBLE_ENABLED === 'true') {
+  try {
+    const { startCrucibleScheduler } = await import('./agents/crucible.js');
+    startCrucibleScheduler();
+  } catch (err) {
+    console.error('[Crucible] Failed to start:', err.message);
+  }
+}
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
