@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Cpu, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Cpu, ArrowRightLeft, DollarSign, BadgeCheck, XCircle } from 'lucide-react';
+import { apiPost } from '../lib/apiClient';
 
-export function LiveInterceptor() {
-  const [inputTokens, setInputTokens] = useState(14250);
-  const [outputTokens, setOutputTokens] = useState(3840);
+interface LiveInterceptorProps {
+  onResolved?: () => void;
+}
+
+export function LiveInterceptor({ onResolved }: LiveInterceptorProps) {
+  const [inputTokens, setInputTokens] = useState(0);
+  const [outputTokens, setOutputTokens] = useState(0);
+  const [verifying, setVerifying] = useState<number | null>(null);
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -14,6 +20,30 @@ export function LiveInterceptor() {
   }, []);
 
   const cost = (inputTokens * 3 / 1000000) + (outputTokens * 15 / 1000000);
+
+  const handleVerify = async (id: number) => {
+    setVerifying(id);
+    try {
+      await apiPost<{ success: boolean }>('/api/governance/resolve', { id: String(id), decision: 'APPROVE' });
+      onResolved?.();
+    } catch {
+      // keep item for retry
+    } finally {
+      setVerifying(null);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    setVerifying(id);
+    try {
+      await apiPost<{ success: boolean }>('/api/governance/resolve', { id: String(id), decision: 'REJECT' });
+      onResolved?.();
+    } catch {
+      // keep item for retry
+    } finally {
+      setVerifying(null);
+    }
+  };
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
@@ -59,6 +89,27 @@ export function LiveInterceptor() {
              ${cost.toFixed(4)}
            </div>
         </div>
+      </div>
+
+      <div className="mt-6 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => handleVerify(1)}
+          disabled={verifying === 1}
+          className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
+        >
+          <BadgeCheck className={`h-4 w-4 ${verifying === 1 ? 'animate-spin' : ''}`} />
+          {verifying === 1 ? 'Approving…' : 'Verify / Approve'}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleReject(1)}
+          disabled={verifying === 1}
+          className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-mono font-semibold text-rose-300 transition-all hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+        >
+          <XCircle className={`h-4 w-4 ${verifying === 1 ? 'animate-spin' : ''}`} />
+          {verifying === 1 ? 'Rejecting…' : 'Reject'}
+        </button>
       </div>
     </div>
   );

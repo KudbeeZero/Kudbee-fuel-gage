@@ -64,11 +64,11 @@ export const GatewayView = memo(function GatewayView({ showToast }: GatewayViewP
             <p className="text-sm text-slate-400 mt-1">Multi-Region Fallback Proxy & Circuit Breaker Visualizer</p>
           </div>
           
-          <RoutingVisualizer 
-            activeRoute={activeRoute} 
-            gatewayLogs={gatewayLogs} 
-            onTestRoute={() => executeGatewayRequest({ model: 'claude-3-5-sonnet' })} 
-          />
+            <RoutingVisualizer 
+              activeRoute={activeRoute} 
+              gatewayLogs={gatewayLogs} 
+              onTestRoute={() => executeGatewayRequest({ model: 'unknown' })} 
+            />
         </div>
 
       </div>
