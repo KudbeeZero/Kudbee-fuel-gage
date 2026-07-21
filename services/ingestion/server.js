@@ -1081,7 +1081,8 @@ app.post('/api/interceptor/verify', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      id: govId || Date.now(),
+      verified: true,
+      actionId: govId || Date.now(),
       type: 'GOVERNANCE_ACTION',
       trace_id: traceId,
       agent_id: agentId,
@@ -1356,15 +1357,15 @@ app.post('/api/governance/dispatch', async (req, res) => {
 
     if (process.env.CRUCIBLE_ENABLED === 'true') {
       try {
-        const { crucible: crucibleModule } = await import('./agents/crucible.js');
-        await crucibleModule.runCrucibleCycle();
+        const { crucible: crucibleModule } = await import('../agents/crucible.js');
+        const cycleResult = await crucibleModule.runCrucibleCycle();
         result = {
-          success: true,
-          cycle: crucibleModule.cycleCount,
+          success: cycleResult?.success ?? true,
+          cycle: cycleResult?.cycle ?? crucibleModule.cycleCount,
           maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
-          traceId: crypto.randomUUID(),
+          traceId: cycleResult?.traceId || crypto.randomUUID(),
           taskId: task || 'manual-dispatch',
-          message: `Crucible cycle ${crucibleModule.cycleCount}/${crucibleModule.MAX_CYCLES_PER_BOOT} dispatched`
+          message: cycleResult?.message || `Crucible cycle dispatched`
         };
       } catch (err) {
         result.message = `Dispatch failed: ${err instanceof Error ? err.message : String(err)}`;
@@ -1376,6 +1377,34 @@ app.post('/api/governance/dispatch', async (req, res) => {
   } catch (err) {
     console.error('[Dispatch] Error:', err.message);
     return res.status(500).json({ error: 'Failed to dispatch crucible cycle' });
+  }
+});
+
+app.post('/api/agents/crucible/run', async (req, res) => {
+  try {
+      if (process.env.CRUCIBLE_ENABLED !== 'true') {
+        return res.status(200).json({
+          success: false,
+          cycle: 0,
+          maxCycles: 5,
+          traceId: '',
+          message: 'Crucible not enabled'
+        });
+      }
+      const { crucible: crucibleModule } = await import('../agents/crucible.js');
+      const result = await crucibleModule.runCrucibleCycle();
+      const response = {
+        success: result?.success ?? true,
+        cycle: result?.cycle ?? crucibleModule.cycleCount,
+        maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
+        traceId: result?.traceId || `cycle-${result?.cycle ?? crucibleModule.cycleCount}`,
+        message: result?.message || 'Crucible cycle executed'
+      };
+    publishEvent('crucible', { ...response, ts: new Date().toISOString() });
+    return res.json(response);
+  } catch (err) {
+    console.error('[Crucible] Run error:', err.message);
+    return res.status(500).json({ error: 'Failed to run crucible cycle', details: err.message });
   }
 });
 
@@ -2019,7 +2048,7 @@ if (fs.existsSync(distPath)) {
 
 if (process.env.CRUCIBLE_ENABLED === 'true') {
   try {
-    const { startCrucibleScheduler } = await import('./agents/crucible.js');
+    const { startCrucibleScheduler } = await import('../agents/crucible.js');
     startCrucibleScheduler();
   } catch (err) {
     console.error('[Crucible] Failed to start:', err.message);
