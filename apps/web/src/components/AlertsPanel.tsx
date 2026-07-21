@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -9,9 +9,43 @@ import {
   Server,
   Wifi,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  BellOff,
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
-import { apiGet } from '../lib/apiClient';
+import { apiGet, apiPost } from '../lib/apiClient';
+import { useCommandDispatcher } from '../store/commandDispatcher';
+
+export interface SystemAlert {
+  id: string;
+  severity: 'INFO' | 'WARN' | 'CRITICAL';
+  source?: string;
+  title: string;
+  detail?: string;
+  status: 'OPEN' | 'ACK' | 'MITIGATED';
+  triageId?: number | string;
+  createdAt?: string;
+  acknowledgedAt?: string;
+  mitigatedAt?: string;
+}
+
+interface AlertsResponse {
+  alerts: SystemAlert[];
+}
+
+function severityClasses(severity: SystemAlert['severity'] | undefined): string {
+  if (severity === 'CRITICAL') return 'border-rose-500/30 bg-rose-500/10 text-rose-300';
+  if (severity === 'WARN') return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+  return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300';
+}
+
+function statusClasses(status: SystemAlert['status']): string {
+  if (status === 'MITIGATED') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+  if (status === 'ACK') return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+  return 'border-rose-500/30 bg-rose-500/10 text-rose-300';
+}
 
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'error';
@@ -98,15 +132,109 @@ export function AlertsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Live alerts feed (Phase 20)
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [busyAlertId, setBusyAlertId] = useState<string | null>(null);
+  const { enqueue, setState: dispatchSetState } = useCommandDispatcher();
+
+  const loadAlerts = useCallback(async () => {
+    setAlertsLoading(true);
+    setAlertsError(null);
+    try {
+      const data = await apiGet<AlertsResponse>('/api/system/alerts');
+      setAlerts(Array.isArray(data?.alerts) ? data.alerts : []);
+    } catch (e) {
+      setAlertsError(e instanceof Error ? e.message : 'Alerts feed unavailable');
+      setAlerts([]);
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, []);
+
+  const handleAck = useCallback(
+    async (alert: SystemAlert) => {
+      setBusyAlertId(alert.id);
+      const cmdId = enqueue({
+        kind: 'VERIFY_TRACE',
+        label: 'Acknowledge Alert',
+        description: `${alert.title}`
+      });
+      dispatchSetState(cmdId, 'PROCESSING', 'Acknowledging…');
+      // Optimistic update
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === alert.id ? { ...a, status: 'ACK' as const, acknowledgedAt: new Date().toISOString() } : a))
+      );
+      try {
+        const res = await apiPost<{ alert: SystemAlert }>(`/api/system/alerts/${alert.id}/ack`, {});
+        if (res?.alert) {
+          setAlerts((prev) => prev.map((a) => (a.id === alert.id ? res.alert : a)));
+        }
+        dispatchSetState(cmdId, 'SUCCESS', 'alert acknowledged');
+      } catch (e) {
+        // Roll back optimistic update
+        setAlerts((prev) => prev.map((a) => (a.id === alert.id ? alert : a)));
+        dispatchSetState(cmdId, 'FAILED', e instanceof Error ? e.message : 'ack failed');
+        setAlertsError(e instanceof Error ? e.message : 'Ack failed');
+      } finally {
+        setBusyAlertId(null);
+      }
+    },
+    [dispatchSetState, enqueue]
+  );
+
+  const handleMitigate = useCallback(
+    async (alert: SystemAlert) => {
+      setBusyAlertId(alert.id);
+      const cmdId = enqueue({
+        kind: 'CLEAR_TRIAGE',
+        label: 'Mitigate Alert',
+        description: alert.title
+      });
+      dispatchSetState(cmdId, 'PROCESSING', 'Mitigating…');
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === alert.id ? { ...a, status: 'MITIGATED' as const, mitigatedAt: new Date().toISOString() } : a))
+      );
+      try {
+        const res = await apiPost<{ alert: SystemAlert; linkedTriageId: number | null }>(
+          `/api/system/alerts/${alert.id}/mitigate`,
+          {}
+        );
+        if (res?.alert) {
+          setAlerts((prev) => prev.map((a) => (a.id === alert.id ? res.alert : a)));
+        }
+        // If the alert is linked to a triage id, dispatch the actual mitigation
+        // through the interceptor so the linked payload is purged.
+        const linked = res?.linkedTriageId;
+        if (linked !== null && linked !== undefined) {
+          try {
+            await apiPost(`/api/interceptor/revalidate/${linked}`, {});
+          } catch {
+            /* best effort */
+          }
+        }
+        dispatchSetState(cmdId, 'SUCCESS', 'alert mitigated');
+      } catch (e) {
+        setAlerts((prev) => prev.map((a) => (a.id === alert.id ? alert : a)));
+        dispatchSetState(cmdId, 'FAILED', e instanceof Error ? e.message : 'mitigate failed');
+        setAlertsError(e instanceof Error ? e.message : 'Mitigate failed');
+      } finally {
+        setBusyAlertId(null);
+      }
+    },
+    [dispatchSetState, enqueue]
+  );
+
   const load = async () => {
     setError(null);
     try {
-      const [healthData, deepData] = await Promise.all([
+      const [healthRes, deepRes] = await Promise.allSettled([
         apiGet<HealthResponse>('/health'),
         apiGet<DeepHealthResponse>('/api/system/health-deep')
       ]);
-      setHealth(healthData);
-      setDeepHealth(deepData);
+      if (healthRes.status === 'fulfilled') setHealth(healthRes.value);
+      if (deepRes.status === 'fulfilled') setDeepHealth(deepRes.value);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Health probe failed');
     } finally {
@@ -119,6 +247,12 @@ export function AlertsPanel() {
     const id = setInterval(() => void load(), 10000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    void loadAlerts();
+    const id = setInterval(() => void loadAlerts(), 5000);
+    return () => clearInterval(id);
+  }, [loadAlerts]);
 
   const overallStatus = health?.status || deepHealth?.status || 'unknown';
   const isOk = overallStatus === 'ok' || overallStatus === 'HEALTHY';
@@ -231,6 +365,151 @@ export function AlertsPanel() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Live Alert Stream & Threat Triage (Phase 20) */}
+      <div
+        id="live-alerts-feed"
+        className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-rose-400" />
+            <div>
+              <h3 className="font-display font-semibold text-slate-200 text-sm">Live Alert Stream</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Adaptive feed from <span className="text-rose-300">/api/system/alerts</span>. Acknowledge or mitigate to dispatch into the Console Dock.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              {alerts.filter((a) => a.status === 'OPEN').length} open
+            </span>
+            <button
+              id="alerts-refresh"
+              type="button"
+              onClick={() => void loadAlerts()}
+              disabled={alertsLoading}
+              className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-rose-300"
+              title="Refresh alerts"
+            >
+              <RefreshCw className={`h-3 w-3 ${alertsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {alertsError && (
+          <div className="mb-3 flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 font-mono text-[10px] text-amber-300">
+            <AlertTriangle className="w-3 h-3" />
+            {alertsError}
+          </div>
+        )}
+
+        {alertsLoading && alerts.length === 0 ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-16 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
+            <BellOff className="h-8 w-8 opacity-40" />
+            <span className="font-mono text-xs">No active alerts. System is quiet.</span>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {alerts.map((alert) => {
+              const isBusy = busyAlertId === alert.id;
+              const StatusIcon =
+                alert.status === 'MITIGATED'
+                  ? CheckCircle2
+                  : alert.status === 'ACK'
+                    ? ShieldCheck
+                    : AlertTriangle;
+              return (
+                <li
+                  key={alert.id}
+                  id={`alert-card-${alert.id}`}
+                  className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"
+                >
+                  <div className="flex flex-wrap items-start gap-2">
+                    <StatusIcon
+                      className={`mt-0.5 h-4 w-4 ${
+                        alert.status === 'MITIGATED'
+                          ? 'text-emerald-400'
+                          : alert.status === 'ACK'
+                            ? 'text-amber-400'
+                            : 'text-rose-400'
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-display text-xs font-semibold text-slate-200">
+                          {alert.title}
+                        </span>
+                        <span
+                          className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${severityClasses(alert.severity)}`}
+                        >
+                          {alert.severity}
+                        </span>
+                        <span
+                          className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${statusClasses(alert.status)}`}
+                        >
+                          {alert.status}
+                        </span>
+                        {alert.source && (
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">
+                            {alert.source}
+                          </span>
+                        )}
+                      </div>
+                      {alert.detail && (
+                        <p className="mt-1 font-mono text-[10px] text-slate-400">{alert.detail}</p>
+                      )}
+                      <div className="mt-1 font-mono text-[9px] text-slate-600">
+                        {alert.createdAt ? `opened ${new Date(alert.createdAt).toLocaleTimeString()}` : ''}
+                        {alert.acknowledgedAt
+                          ? ` · acked ${new Date(alert.acknowledgedAt).toLocaleTimeString()}`
+                          : ''}
+                        {alert.mitigatedAt
+                          ? ` · mitigated ${new Date(alert.mitigatedAt).toLocaleTimeString()}`
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        id={`alert-ack-${alert.id}`}
+                        type="button"
+                        onClick={() => void handleAck(alert)}
+                        disabled={isBusy || alert.status !== 'OPEN'}
+                        className="flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-40"
+                      >
+                        {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />}
+                        Ack
+                      </button>
+                      <button
+                        id={`alert-mitigate-${alert.id}`}
+                        type="button"
+                        onClick={() => void handleMitigate(alert)}
+                        disabled={isBusy || alert.status === 'MITIGATED'}
+                        className="flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
+                      >
+                        {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                        Mitigate
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );
