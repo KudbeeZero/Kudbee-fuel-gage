@@ -278,6 +278,72 @@ async function check20_SystemDiagnosticsEndpoint() {
   return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && typeof data.summary === 'object' && Array.isArray(data.routerProviders);
 }
 
+async function check21_AgentFeedbackEndpoint() {
+  const traceId = `tr-e2e-fb-${Date.now()}`;
+
+  const submitRes = await fetch(`${BASE}/api/governance/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      traceId,
+      verdict: 'thumbs_up',
+      policyTag: 'pii_redaction',
+      expectedBehavior: 'Should not block on benign prompt',
+      notes: 'E2E feedback test'
+    })
+  });
+  const submitData = await submitRes.json();
+  if (!(submitRes.status === 201 && submitData.success === true && typeof submitData.feedbackId === 'string')) {
+    return false;
+  }
+
+  const invalidRes = await fetch(`${BASE}/api/governance/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ traceId, verdict: 'maybe' })
+  });
+  if (invalidRes.status !== 400) {
+    return false;
+  }
+
+  const listRes = await fetch(`${BASE}/api/governance/feedback?traceId=${encodeURIComponent(traceId)}`);
+  const listData = await listRes.json();
+  return listRes.status === 200 &&
+    Array.isArray(listData.feedback) &&
+    listData.feedback.some((f) => f.traceId === traceId && f.verdict === 'thumbs_up' && f.policyTag === 'pii_redaction');
+}
+
+async function check22_PolicyAutoTuneEndpoint() {
+  const tuneRes = await fetch(`${BASE}/api/governance/tune`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lookbackHours: 24 })
+  });
+  const tuneData = await tuneRes.json();
+  if (!(tuneRes.status === 200 && tuneData.success === true &&
+        typeof tuneData.analysis === 'object' &&
+        tuneData.recommendations &&
+        typeof tuneData.recommendations.token_budget_cap === 'object' &&
+        typeof tuneData.recommendations.pii_redaction === 'object' &&
+        typeof tuneData.recommendations.secret_leak_prevention === 'object')) {
+    return false;
+  }
+
+  const getRes = await fetch(`${BASE}/api/governance/tune`);
+  const getData = await getRes.json();
+  if (!(getRes.status === 200 && getData.available === true && getData.lastAnalysis)) {
+    return false;
+  }
+
+  const applyRes = await fetch(`${BASE}/api/governance/tune/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recommendations: tuneData.recommendations })
+  });
+  const applyData = await applyRes.json();
+  return applyRes.status === 200 && applyData.success === true && Array.isArray(applyData.applied);
+}
+
 async function run() {
   try {
     await startServer();
@@ -301,6 +367,8 @@ async function run() {
     await runCheck('Check 18: Telemetry search endpoint', check18_TelemetrySearchEndpoint);
     await runCheck('Check 19: Audit export JSON endpoint', check19_AuditExportJsonEndpoint);
     await runCheck('Check 20: System diagnostics endpoint', check20_SystemDiagnosticsEndpoint);
+    await runCheck('Check 21: Agent feedback endpoint', check21_AgentFeedbackEndpoint);
+    await runCheck('Check 22: Policy auto-tune endpoint', check22_PolicyAutoTuneEndpoint);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -309,7 +377,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 20`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 22`);
   console.log('========================================');
 
   if (failed > 0) {

@@ -3158,6 +3158,157 @@ app.get('/api/system/diagnostics', async (_req, res) => {
   }
 });
 
+// --- Phase 23: Autonomous Agent Feedback Loop & Policy Auto-Tuning ---------------
+
+const feedbackState = {
+  feedback: []
+};
+
+app.post('/api/governance/feedback', async (req, res) => {
+  try {
+    const { traceId, verdict, policyTag, expectedBehavior, notes } = req.body || {};
+    if (!traceId || !verdict) {
+      return res.status(400).json({ error: 'traceId and verdict are required' });
+    }
+    if (!['thumbs_up', 'thumbs_down'].includes(verdict)) {
+      return res.status(400).json({ error: 'verdict must be thumbs_up or thumbs_down' });
+    }
+    const feedbackId = `fb-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const entry = {
+      id: feedbackId,
+      traceId,
+      verdict,
+      policyTag: policyTag || null,
+      expectedBehavior: expectedBehavior || null,
+      notes: notes || null,
+      timestamp: new Date().toISOString()
+    };
+    feedbackState.feedback.push(entry);
+    publishEvent('feedback', { kind: 'submitted', feedback: entry });
+    res.status(201).json({ success: true, feedbackId, timestamp: entry.timestamp });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/governance/feedback', async (req, res) => {
+  try {
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+    const traceId = String(req.query.traceId || '').trim();
+    let results = feedbackState.feedback;
+    if (traceId) {
+      results = results.filter((f) => f.traceId === traceId);
+    }
+    results = results.slice(-limit).reverse();
+    res.json({ count: results.length, feedback: results });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+const autoTuneState = {
+  lastAnalysis: null,
+  recommendations: null
+};
+
+app.post('/api/governance/tune', async (req, res) => {
+  try {
+    const lookbackHours = Math.min(168, Math.max(1, parseInt(String(req.body?.lookbackHours || '24'), 10) || 24));
+    const since = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
+    
+    const traces = await runQuery(
+      `SELECT status, model, tokens_in, tokens_out, cost FROM telemetry_traces WHERE timestamp >= $1`,
+      [since]
+    ).catch(() => []);
+
+    const totalTraces = traces.length;
+    const blocks = traces.filter((t) => t.status === 'BLOCK').length;
+    const warns = traces.filter((t) => t.status === 'WARN').length;
+    const passes = traces.filter((t) => t.status === 'OK' || t.status === 'PASS').length;
+    
+    const blockRate = totalTraces > 0 ? (blocks / totalTraces) * 100 : 0;
+    const warnRate = totalTraces > 0 ? (warns / totalTraces) * 100 : 0;
+    
+    const recommendations = {
+      token_budget_cap: {
+        currentThreshold: policyState.token_budget_cap.config.maxTokens,
+        recommendedThreshold: Math.round(policyState.token_budget_cap.config.maxTokens * (1 + (blockRate / 100))),
+        confidence: Math.min(95, 50 + (totalTraces / 10)),
+        rationale: blockRate > 10 ? 'High block rate suggests threshold too restrictive' : 'Block rate acceptable, maintaining current threshold'
+      },
+      secret_leak_prevention: {
+        currentEnabled: policyState.secret_leak_prevention.enabled,
+        recommendedEnabled: true,
+        confidence: 99,
+        rationale: 'Secret leak prevention should always be enabled'
+      },
+      pii_redaction: {
+        currentSeverity: policyState.pii_redaction.severity,
+        recommendedSeverity: warnRate > 15 ? 'BLOCK' : 'WARN',
+        confidence: Math.min(90, 60 + (warnRate * 2)),
+        rationale: warnRate > 15 ? 'High PII detection rate, escalating to BLOCK' : 'PII rate acceptable, maintaining WARN severity'
+      }
+    };
+
+    autoTuneState.lastAnalysis = {
+      timestamp: new Date().toISOString(),
+      lookbackHours,
+      totalTraces,
+      blocks,
+      warns,
+      passes,
+      blockRate: Number(blockRate.toFixed(2)),
+      warnRate: Number(warnRate.toFixed(2))
+    };
+    autoTuneState.recommendations = recommendations;
+
+    res.json({
+      success: true,
+      analysis: autoTuneState.lastAnalysis,
+      recommendations,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/governance/tune', async (_req, res) => {
+  try {
+    res.json({
+      lastAnalysis: autoTuneState.lastAnalysis,
+      recommendations: autoTuneState.recommendations,
+      available: autoTuneState.recommendations !== null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post('/api/governance/tune/apply', async (req, res) => {
+  try {
+    const { recommendations } = req.body || {};
+    if (!recommendations || typeof recommendations !== 'object') {
+      return res.status(400).json({ error: 'recommendations object required' });
+    }
+    
+    const applied = [];
+    if (recommendations.token_budget_cap?.recommendedThreshold) {
+      policyState.token_budget_cap.config.maxTokens = recommendations.token_budget_cap.recommendedThreshold;
+      applied.push('token_budget_cap');
+    }
+    if (recommendations.pii_redaction?.recommendedSeverity) {
+      policyState.pii_redaction.severity = recommendations.pii_redaction.recommendedSeverity;
+      applied.push('pii_redaction');
+    }
+    
+    publishEvent('policy', { kind: 'auto_tuned', applied, timestamp: new Date().toISOString() });
+    res.json({ success: true, applied, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 const distPath = resolveDistPath();
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

@@ -15,6 +15,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import { AutoTuneButton } from './AutoTuneButton';
 
 export type PolicySeverity = 'PASS' | 'WARN' | 'BLOCK';
 
@@ -313,6 +314,13 @@ export function PolicyEnginePanel() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      <div className="mt-4 border-t border-slate-800/60 pt-3">
+        <div className="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+          Auto-Tune
+        </div>
+        <AutoTuneButton onApplied={load} />
       </div>
     </section>
   );

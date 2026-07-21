@@ -23,6 +23,7 @@ import { apiGet } from '../lib/apiClient';
 import { useTelemetryStream, type StreamMode } from '../hooks/useTelemetryStream';
 import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
 import { useAuditExport } from '../hooks/useAuditExport';
+import { FeedbackButton } from '../components/FeedbackButton';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -275,6 +276,7 @@ export function HistoryPage() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Cost</th>
                   <th className="px-4 py-3">Timestamp</th>
+                  <th className="px-4 py-3">Feedback</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -294,6 +296,7 @@ export function HistoryPage() {
                     </td>
                     <td className="px-4 py-3 text-right text-amber-400">${Number(hit.cost || 0).toFixed(6)}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(hit.timestamp).toLocaleString()}</td>
+                    <td className="px-4 py-3"><FeedbackButton traceId={hit.traceId} /></td>
                   </tr>
                 ))}
               </tbody>
