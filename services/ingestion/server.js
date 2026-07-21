@@ -248,6 +248,19 @@ async function ensureSchema() {
     await pool.query(
       'CREATE INDEX IF NOT EXISTS idx_think_created_at ON think (created_at)'
     );
+    await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS think_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        original_trace_id VARCHAR,
+        task_context JSONB,
+        failed_state JSONB,
+        correction_delta TEXT,
+        embedding VECTOR(1536),
+        status VARCHAR NOT NULL DEFAULT 'PROVEN',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
     console.log('[DB] Neon schema ensured.');
   } catch (err) {
     console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
@@ -1128,6 +1141,32 @@ app.post('/api/governance/resolve', async (req, res) => {
   } catch (err) {
     console.error('[Governance] Resolve error:', err?.message);
     return res.status(500).json({ error: 'Failed to resolve governance action' });
+  }
+});
+
+// --- Think Token Forge: mint a permanent correction delta --------------------
+app.post('/api/governance/mint-think-token', async (req, res) => {
+  try {
+    const { traceId, taskContext, failedState, correctionDelta } = req.body || {};
+    if (!traceId || !correctionDelta) {
+      return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
+    }
+    const result = await runInsert(
+      `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [
+        String(traceId),
+        taskContext ? JSON.stringify(taskContext) : null,
+        failedState ? JSON.stringify(failedState) : null,
+        String(correctionDelta),
+        'PROVEN'
+      ]
+    );
+    return res.status(201).json({ success: true, tokenId: result.id });
+  } catch (err) {
+    console.error('[ThinkToken] Mint error:', err?.message);
+    return res.status(500).json({ error: 'Failed to mint think token' });
   }
 });
 

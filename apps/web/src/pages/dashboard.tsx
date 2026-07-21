@@ -1283,6 +1283,8 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
   const [localBusy, setLocalBusy] = useState<string | null>(null);
   const [diagnostic, setDiagnostic] = useState<{ service: string; status: string; latencyMs: number | null; timestamp: string } | null>(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+  const [corrections, setCorrections] = useState<Record<string, string>>({});
+  const [mintedIds, setMintedIds] = useState<Set<string>>(new Set());
 
   const runDiagnostic = useCallback(async () => {
     setDiagnosticLoading(true);
@@ -1320,6 +1322,30 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
     setLocalBusy(id);
     try {
       await onSubmit(id, decision);
+    } finally {
+      setLocalBusy(null);
+    }
+  };
+
+  const handleMintThinkToken = async (req: ApprovalRequest) => {
+    const delta = corrections[req.id]?.trim();
+    if (!delta) return;
+    setLocalBusy(req.id);
+    try {
+      await apiPost<{ success: boolean }>('/api/governance/mint-think-token', {
+        traceId: req.id,
+        taskContext: { task: req.task, reasoning: req.reasoning },
+        failedState: { status: req.status, reasoning: req.reasoning },
+        correctionDelta: delta
+      });
+      setMintedIds((prev) => new Set(prev).add(req.id));
+      setCorrections((prev) => {
+        const next = { ...prev };
+        delete next[req.id];
+        return next;
+      });
+    } catch {
+      // keep item in list for retry
     } finally {
       setLocalBusy(null);
     }
@@ -1394,7 +1420,7 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
             <span className="font-mono text-xs">No pending reasoning issues.</span>
           </div>
         )}
-        {proposed.map((req) => (
+        {proposed.filter((req) => !mintedIds.has(req.id)).map((req) => (
           <div key={req.id} className="space-y-2 rounded-xl border border-violet-500/15 bg-slate-950/40 p-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
               <span className="text-slate-400">
@@ -1405,15 +1431,22 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
             <p className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/50 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
               {req.reasoning || '(no reasoning provided)'}
             </p>
+            <textarea
+              value={corrections[req.id] || ''}
+              onChange={(e) => setCorrections((prev) => ({ ...prev, [req.id]: e.target.value }))}
+              placeholder="Human Correction (Delta)"
+              className="w-full rounded-lg border border-slate-800 bg-slate-950/50 p-2 font-mono text-[10px] text-slate-300 placeholder-slate-600 focus:border-violet-500/50 focus:outline-none"
+              rows={2}
+            />
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={localBusy === req.id}
-                onClick={() => void handleResolve(req.id, 'APPROVE')}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
+                disabled={localBusy === req.id || !corrections[req.id]?.trim()}
+                onClick={() => void handleMintThinkToken(req)}
+                className="flex items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-[10px] font-mono font-semibold text-violet-300 transition-all hover:bg-violet-500/20 active:scale-95 disabled:opacity-50"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Approve
+                Mint Think Token
               </button>
               <button
                 type="button"
