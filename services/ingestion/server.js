@@ -760,15 +760,58 @@ app.get('/api/dashboard/summary', async (req, res) => {
 
     const now = Date.now();
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
+    const last7d = new Date(now - 7 * 24 * 3600 * 1000).toISOString();
     const cost24hRow = await runQuery(
       `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
+    );
+    const dailyTokensRow = await runQuery(
+      `SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last24h]
+    );
+    const dailyInputRow = await runQuery(
+      `SELECT SUM(tokens_in) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last24h]
+    );
+    const dailyOutputRow = await runQuery(
+      `SELECT SUM(tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last24h]
+    );
+    const weeklyTokensRow = await runQuery(
+      `SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last7d]
+    );
+    const weeklyInputRow = await runQuery(
+      `SELECT SUM(tokens_in) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last7d]
+    );
+    const weeklyOutputRow = await runQuery(
+      `SELECT SUM(tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      [last7d]
     );
 
     const totalRequests = Number(totalRequestsRow[0]?.count || 0);
     const errorCount = Number(errorCountRow[0]?.count || 0);
     const errorRate = totalRequests > 0 ? Number(((errorCount / totalRequests) * 100).toFixed(2)) : 0;
     const sinkTokenBalance = Number(process.env.SINK_TOKEN_BALANCE || 1000);
+
+    let postgresSizeBytes = null;
+    let redisSizeBytes = null;
+    try {
+      const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
+      if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
+    } catch {
+      postgresSizeBytes = null;
+    }
+    try {
+      if (redis) {
+        const info = await redis.info('memory');
+        const match = info.match(/used_memory:(\d+)/);
+        if (match && match[1]) redisSizeBytes = Number(match[1]);
+      }
+    } catch {
+      redisSizeBytes = null;
+    }
 
     return res.json({
       total_24h_cost: Number((cost24hRow[0]?.total || 0).toFixed(6)),
@@ -779,7 +822,15 @@ app.get('/api/dashboard/summary', async (req, res) => {
       total_requests: totalRequests,
       error_rate: errorRate,
       health_matrix: [],
-      sink_token_balance: sinkTokenBalance
+      sink_token_balance: sinkTokenBalance,
+      daily_total_tokens: Number(dailyTokensRow[0]?.total || 0),
+      daily_input_tokens: Number(dailyInputRow[0]?.total || 0),
+      daily_output_tokens: Number(dailyOutputRow[0]?.total || 0),
+      weekly_total_tokens: Number(weeklyTokensRow[0]?.total || 0),
+      weekly_input_tokens: Number(weeklyInputRow[0]?.total || 0),
+      weekly_output_tokens: Number(weeklyOutputRow[0]?.total || 0),
+      postgres_size_bytes: postgresSizeBytes,
+      redis_size_bytes: redisSizeBytes
     });
   } catch (err) {
     console.error('[Summary] Error:', err.message);
@@ -1169,8 +1220,8 @@ app.post('/api/governance/reject', async (req, res) => {
 
 // --- HITL resolution: single entry point the dashboard calls ---------------
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
-// governance action. Resilient-First: input validation failures return 400,
-// unknown ids 404, runtime errors 500 + a warning — never a process crash.
+// governance action. Also handles numeric triage item IDs from the interceptor
+// by creating a governance record on the fly.
 app.post('/api/governance/resolve', async (req, res) => {
   try {
     const { id, decision } = req.body || {};
@@ -1179,7 +1230,34 @@ app.post('/api/governance/resolve', async (req, res) => {
       return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
     }
     if (decision === 'APPROVE') {
-      const proven = await approveActionAndBroadcast(String(id));
+      let proven = await approveActionAndBroadcast(String(id));
+      if (!proven && /^\d+$/.test(String(id))) {
+        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [Number(id)]);
+        if (rows.length > 0) {
+          const violation = rows[0];
+          const payload = safeParseJson(violation.payload);
+          const traceId = payload.trace_id || `triage-${id}`;
+          const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
+          const govRecord = {
+            id: govId,
+            trace_id: traceId,
+            action: 'VERIFY',
+            type: 'GOVERNANCE_ACTION',
+            agent_id: 'partner',
+            signature: 'signed',
+            signed_payload: JSON.stringify(payload),
+            value_score: 50,
+            note: `Approved triage #${id}`,
+            timestamp: Date.now()
+          };
+          if (redis) {
+            await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
+          }
+          await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
+          proven = govRecord;
+          publishEvent('governance', { kind: 'approved', action: proven });
+        }
+      }
       if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
       return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
     }

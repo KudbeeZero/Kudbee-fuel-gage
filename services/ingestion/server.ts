@@ -301,13 +301,21 @@ async function startServer() {
       
       const now = Date.now();
       const last24h = now - 24 * 3600 * 1000;
+      const last7d = now - 7 * 24 * 3600 * 1000;
       
       const logs24h = db.token_logs.filter(l => l.user_id === userId && new Date(l.timestamp).getTime() >= last24h);
       const totalCost24h = logs24h.reduce((sum, l) => sum + l.calculated_cost, 0);
       
+      const logs7d = db.token_logs.filter(l => l.user_id === userId && new Date(l.timestamp).getTime() >= last7d);
+      
       const allLogs = db.token_logs.filter(l => l.user_id === userId);
       const totalInput = allLogs.reduce((sum, l) => sum + l.input_tokens, 0);
       const totalOutput = allLogs.reduce((sum, l) => sum + l.output_tokens, 0);
+      
+      const dailyInput = logs24h.reduce((sum, l) => sum + l.input_tokens, 0);
+      const dailyOutput = logs24h.reduce((sum, l) => sum + l.output_tokens, 0);
+      const weeklyInput = logs7d.reduce((sum, l) => sum + l.input_tokens, 0);
+      const weeklyOutput = logs7d.reduce((sum, l) => sum + l.output_tokens, 0);
       
       const activeModelsSet = new Set(logs24h.map(l => l.model_name));
       
@@ -388,7 +396,13 @@ async function startServer() {
         total_active_models: activeModelsSet.size || 4,
         health_matrix: healthMatrix,
         postgres_size_bytes,
-        redis_size_bytes
+        redis_size_bytes,
+        daily_total_tokens: dailyInput + dailyOutput,
+        daily_input_tokens: dailyInput,
+        daily_output_tokens: dailyOutput,
+        weekly_total_tokens: weeklyInput + weeklyOutput,
+        weekly_input_tokens: weeklyInput,
+        weekly_output_tokens: weeklyOutput
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -505,6 +519,29 @@ async function startServer() {
       const rejected = await governanceRouter.rejectAction(id);
       if (!rejected) return res.status(404).json({ error: "Proposed action not found" });
       res.json(rejected);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Unified HITL resolution endpoint used by the Live Interceptor Triage cards.
+  // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
+  // governance action.
+  app.post("/api/governance/resolve", async (req, res) => {
+    try {
+      const { id, decision } = req.body || {};
+      if (!id) return res.status(400).json({ error: "Missing required field: id" });
+      if (decision !== "APPROVE" && decision !== "REJECT") {
+        return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
+      }
+      if (decision === "APPROVE") {
+        const proven = await governanceRouter.approveAction(id);
+        if (!proven) return res.status(404).json({ error: "Proposed action not found" });
+        return res.status(200).json({ success: true, decision: "APPROVE", action: proven });
+      }
+      const rejected = await governanceRouter.rejectAction(id);
+      if (!rejected) return res.status(404).json({ error: "Proposed action not found" });
+      return res.status(200).json({ success: true, decision: "REJECT", action: rejected });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

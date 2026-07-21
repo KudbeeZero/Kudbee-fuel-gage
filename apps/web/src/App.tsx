@@ -368,7 +368,7 @@ function StarRating({ rating }: { rating: number }) {
 function getTtft(model: string): number {
   if (model.includes('sonnet')) return 185;
   if (model.includes('deepseek')) return 420;
-  if (model.includes('gpt-4o')) return 145;
+  if (model.includes('gpt')) return 145;
   if (model.includes('gemini')) return 210;
   return 250;
 }
@@ -1363,9 +1363,9 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
                     The ingest processor supports standard columns mapped to the OTel tracing engine:
                   </p>
                   <div className="bg-slate-950 p-3 rounded border border-slate-800/80">
-                    <pre className="font-mono text-[10px] text-blue-400/90 whitespace-pre-wrap overflow-x-auto select-all">
-                      {"timestamp,project,model,input_tokens,output_tokens,provider\n2026-07-18T10:15:30Z,frontier-core,claude-3-5-sonnet,1200,4500,Anthropic\n2026-07-18T10:16:00Z,kudbee-fuel-gauge,gpt-4o,800,2400,OpenAI"}
-                    </pre>
+                     <pre className="font-mono text-[10px] text-blue-400/90 whitespace-pre-wrap overflow-x-auto select-all">
+                       {"timestamp,project,model,input_tokens,output_tokens,provider\n2026-07-18T10:15:30Z,frontier-core,unknown-model,1200,4500,Anthropic\n2026-07-18T10:16:00Z,kudbee-fuel-gauge,unknown-model,800,2400,OpenAI"}
+                     </pre>
                   </div>
                 </div>
 

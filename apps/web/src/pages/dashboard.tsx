@@ -498,6 +498,44 @@ function TelemetryGauges({ stats, loading, error }: { stats: TelemetryStats | nu
   );
 }
 
+function TokenMetrics({ daily, weekly }: { daily: number; weekly: number }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="token-metrics-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-cyan-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Token Throughput</h3>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Activity className="h-4 w-4 text-emerald-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Daily Tokens</span>
+          </div>
+          <div className="mt-2 font-mono text-2xl text-slate-100">
+            {daily.toLocaleString()}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Last 24 hours</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Activity className="h-4 w-4 text-violet-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">7-Day Tokens</span>
+          </div>
+          <div className="mt-2 font-mono text-2xl text-slate-100">
+            {weekly.toLocaleString()}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Last 7 days</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DispatchPanel({ onDispatched }: { onDispatched: () => void }) {
   const [dispatching, setDispatching] = useState(false);
   const [lastResult, setLastResult] = useState<CrucibleDispatchResponse | null>(null);
@@ -1081,7 +1119,7 @@ function AgentTerminal({
               title="Run Crucible Cycle"
             >
               <Zap className="h-3 w-3" />
-              Dispatch
+              Run Crucible Cycle
             </button>
           )}
           <button
@@ -1715,6 +1753,8 @@ export function DashboardPage() {
   const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(1000);
   const [postgresSize, setPostgresSize] = useState<number | null>(null);
   const [redisSize, setRedisSize] = useState<number | null>(null);
+  const [dailyTotalTokens, setDailyTotalTokens] = useState<number>(0);
+  const [weeklyTotalTokens, setWeeklyTotalTokens] = useState<number>(0);
 
   const [telemetryStats, setTelemetryStats] = useState<TelemetryStats | null>(null);
   const [telemetryStatsError, setTelemetryStatsError] = useState<string | null>(null);
@@ -1815,10 +1855,12 @@ export function DashboardPage() {
 
   const loadSinkTokenBalance = useCallback(async () => {
     try {
-      const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number }>('/api/dashboard/summary');
+      const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number; daily_total_tokens?: number; weekly_total_tokens?: number }>('/api/dashboard/summary');
       setSinkTokenBalance(data.sink_token_balance ?? 1000);
       setPostgresSize(data.postgres_size_bytes ?? null);
       setRedisSize(data.redis_size_bytes ?? null);
+      setDailyTotalTokens(data.daily_total_tokens ?? 0);
+      setWeeklyTotalTokens(data.weekly_total_tokens ?? 0);
     } catch {
       // keep default
     }
@@ -2131,6 +2173,7 @@ export function DashboardPage() {
             <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+          <TokenMetrics daily={dailyTotalTokens} weekly={weeklyTotalTokens} />
           <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />
           <GovernanceFeed actions={governance} />
         </div>

@@ -13,7 +13,7 @@ export function useTelemetryLogger(onNewLogTriggered?: () => void) {
       'Gemini 1.5 Pro': { provider: 'Google', model_name: 'gemini-1.5-pro' },
       'Ternary Bonsai 27B': { provider: 'Ternary', model_name: 'ternary-bonsai-27b' }
     };
-    const mapped = modelMap[selectedModel] || { provider: 'Anthropic', model_name: 'claude-3-5-sonnet' };
+    const mapped = modelMap[selectedModel] || { provider: 'unknown', model_name: selectedModel.toLowerCase().replace(/\s+/g, '-') };
 
     try {
       const res = await fetch('/api/telemetry/log', {

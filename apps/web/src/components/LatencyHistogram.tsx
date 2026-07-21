@@ -23,14 +23,14 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
   const safeLogs = Array.isArray(logs) ? logs : [];
   const extractedLatencies = safeLogs
     .filter((l): l is LatencyLog => Boolean(l))
-    .map((l) => getLatencyLocal(l.tokens_out ?? 0, l.model ?? 'gpt-4o'));
+    .map((l) => getLatencyLocal(l.tokens_out ?? 0, l.model ?? 'unknown'));
 
   // Helper local function to compute latency matching the App core logic
   function getTtftLocal(m: string) {
     const ml = m.toLowerCase();
     if (ml.includes('sonnet')) return 185;
     if (ml.includes('deepseek')) return 420;
-    if (ml.includes('gpt-4o')) return 145;
+    if (ml.includes('gpt')) return 145;
     if (ml.includes('gemini')) return 210;
     return 250;
   }

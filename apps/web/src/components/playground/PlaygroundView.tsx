@@ -14,7 +14,7 @@ interface PlaygroundViewProps {
 
 export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewProps) {
   const [payloadText, setPayloadText] = useState(
-    `// Sample prompt / code block pipeline payload\nconst aiResponse = await anthropic.messages.create({\n  model: "claude-3-5-sonnet",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
+    `// Sample prompt / code block pipeline payload\nconst aiResponse = await anthropic.messages.create({\n  model: "unknown",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
   );
   const [selectedModel, setSelectedModel] = useState('Claude 3.5 Sonnet');
   const [singleCap, setSingleCap] = useState(0.05); // Slider cap (ranges from $0.01 to $2.00 in USD baseline)

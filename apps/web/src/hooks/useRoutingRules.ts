@@ -17,11 +17,10 @@ export function useRoutingRules() {
 
   const executeGatewayRequest = useCallback(async (payload: any) => {
     setActiveRoute('PRIMARY');
-    addLog('INFO', `Routing request to Primary Region (us-east-1) for model: ${payload.model || 'claude-3-5-sonnet'}`);
+    addLog('INFO', `Routing request to Primary Region (us-east-1) for model: ${payload.model || 'unknown'}`);
     
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        // 30% chance to fail
         const isRateLimited = Math.random() < 0.3;
         
         if (isRateLimited) {
@@ -30,12 +29,13 @@ export function useRoutingRules() {
           
           setTimeout(() => {
             setActiveRoute('FAILOVER');
-            addLog('INFO', `Rerouting request to Failover Region (eu-central-1) for fallback model (deepseek-r1)...`);
+            const fallbackModel = payload.model || 'unknown';
+            addLog('INFO', `Rerouting request to Failover Region (eu-central-1) for fallback model (${fallbackModel})...`);
             
             setTimeout(() => {
               addLog('SUCCESS', `Failover request completed successfully via eu-central-1.`);
               setTimeout(() => setActiveRoute('IDLE'), 2000);
-              resolve({ success: true, region: 'eu-central-1', model: 'deepseek-r1' });
+              resolve({ success: true, region: 'eu-central-1', model: fallbackModel });
             }, 1000);
             
           }, 500);
@@ -43,7 +43,7 @@ export function useRoutingRules() {
         } else {
           addLog('SUCCESS', `Request completed successfully via Primary Region (us-east-1).`);
           setTimeout(() => setActiveRoute('IDLE'), 2000);
-          resolve({ success: true, region: 'us-east-1', model: payload.model || 'claude-3-5-sonnet' });
+          resolve({ success: true, region: 'us-east-1', model: payload.model || 'unknown' });
         }
       }, 1000);
     });
