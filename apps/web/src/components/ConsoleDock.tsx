@@ -57,10 +57,10 @@ export function ConsoleDock() {
     const intervalId = setInterval(() => {
       if (isPaused) return;
 
-      const randomTemplate = LOG_TEMPLATES[Math.floor(Math.random() * LOG_TEMPLATES.length)];
+      const randomTemplate = LOG_TEMPLATES[Math.floor(Math.random() * LOG_TEMPLATES.length)]!;
       const newLog: ConsoleLog = {
         id: `log-${Date.now()}-${logCounter++}`,
-        type: randomTemplate.type as any,
+        type: randomTemplate.type as ConsoleLog['type'],
         label: randomTemplate.label,
         message: randomTemplate.message,
         time: new Date().toLocaleTimeString(),

@@ -24,10 +24,10 @@ export function useKeyManager() {
 
     setKeys(prev => ({
       ...prev,
-      openai: { ...prev.openai, value: openaiKey, isConfigured: openaiKey.length > 10 },
-      anthropic: { ...prev.anthropic, value: anthropicKey, isConfigured: anthropicKey.length > 10 },
-      gemini: { ...prev.gemini, value: geminiKey, isConfigured: geminiKey.length > 10 },
-      local: { ...prev.local, value: otelPort, isConfigured: !!otelPort }
+      openai: { ...prev['openai']!, value: openaiKey, isConfigured: openaiKey.length > 10 },
+      anthropic: { ...prev['anthropic']!, value: anthropicKey, isConfigured: anthropicKey.length > 10 },
+      gemini: { ...prev['gemini']!, value: geminiKey, isConfigured: geminiKey.length > 10 },
+      local: { ...prev['local']!, value: otelPort, isConfigured: !!otelPort }
     }));
   }, []);
 
@@ -35,7 +35,7 @@ export function useKeyManager() {
     setKeys(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...prev[id]!,
         value: newValue,
         isConfigured: newValue.length > (id === 'local' ? 0 : 10)
       }
@@ -43,11 +43,11 @@ export function useKeyManager() {
   }, []);
 
   const saveKeys = useCallback(() => {
-    localStorage.setItem('kudbee_openai_key', keys.openai.value);
-    localStorage.setItem('kudbee_anthropic_key', keys.anthropic.value);
-    localStorage.setItem('kudbee_gemini_key', keys.gemini.value);
-    localStorage.setItem('kudbee_otel_port', keys.local.value);
-    return true; // indicates success
+    localStorage.setItem('kudbee_openai_key', keys['openai']!.value);
+    localStorage.setItem('kudbee_anthropic_key', keys['anthropic']!.value);
+    localStorage.setItem('kudbee_gemini_key', keys['gemini']!.value);
+    localStorage.setItem('kudbee_otel_port', keys['local']!.value);
+    return true;
   }, [keys]);
 
   return { keys, updateKey, saveKeys };

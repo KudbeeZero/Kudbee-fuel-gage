@@ -98,27 +98,27 @@ export async function mintThinkToken(
     if (pool && isDbHealthy()) {
       try {
         const res = await pool.query(
-          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status)
-           VALUES ($1, $2, $3, $4, $5::vector, $6)
+          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
+           VALUES ($1, $2, $3, $4, $5::vector, $6, $7)
            RETURNING id`,
-          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status]
+          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
         );
         tokenId = String(res.rows[0]?.id ?? originalTraceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn('[ThinkToken] DB insert failed, degrading to runInsert:', message);
         const result = await runInsert(
-          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status]
+          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
         );
         tokenId = String(result.id ?? originalTraceId);
       }
     } else {
       const result = await runInsert(
-        `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status]
+        `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
       );
       tokenId = String(result.id ?? originalTraceId);
     }

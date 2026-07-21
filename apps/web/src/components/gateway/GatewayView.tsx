@@ -37,10 +37,10 @@ export const GatewayView = memo(function GatewayView({ showToast }: GatewayViewP
             </div>
 
             <div className="space-y-4">
-              <ProviderKeyCard provider={keys.openai} onChange={(val) => updateKey('openai', val)} />
-              <ProviderKeyCard provider={keys.anthropic} onChange={(val) => updateKey('anthropic', val)} />
-              <ProviderKeyCard provider={keys.gemini} onChange={(val) => updateKey('gemini', val)} />
-              <ProviderKeyCard provider={keys.local} onChange={(val) => updateKey('local', val)} inputType="number" />
+              <ProviderKeyCard provider={keys.openai!} onChange={(val) => updateKey('openai', val)} />
+              <ProviderKeyCard provider={keys.anthropic!} onChange={(val) => updateKey('anthropic', val)} />
+              <ProviderKeyCard provider={keys.gemini!} onChange={(val) => updateKey('gemini', val)} />
+              <ProviderKeyCard provider={keys.local!} onChange={(val) => updateKey('local', val)} inputType="number" />
             </div>
 
             <div className="mt-6 flex justify-end">

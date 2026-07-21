@@ -9,7 +9,7 @@ interface ThinkStoragePluginProps {
 
 export function ThinkStoragePlugin({ plugin, trajectories }: ThinkStoragePluginProps) {
   const count = trajectories.length;
-  const dims = count > 0 ? trajectories[0].spatial_coordinates.length : 0;
+  const dims = count > 0 ? trajectories[0]!.spatial_coordinates.length : 0;
   const deltas = trajectories.filter((t) => t.correction_delta && t.correction_delta.length > 0).length;
 
   return (

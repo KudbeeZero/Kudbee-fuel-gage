@@ -312,11 +312,13 @@ function runInsertMemory(sql, params = []) {
     return { id: row.id, changes: 1 };
   }
   if (/INTO think_tokens/.test(s)) {
-    const [original_trace_id, task_context, failed_state, correction_delta, status, embedding] = params;
+    const [original_trace_id, task_context, failed_state, correction_delta, status, embedding, token_cost] = params;
     const row = {
       id: nextId(), original_trace_id, task_context, failed_state, correction_delta,
       embedding: embedding || null,
-      status: status || 'PROVEN', created_at: new Date().toISOString()
+      status: status || 'PROVEN', 
+      token_cost: Number(token_cost) || 0,
+      created_at: new Date().toISOString()
     };
     memory.think_tokens.push(row);
     return { id: row.id, changes: 1 };

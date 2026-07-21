@@ -48,7 +48,7 @@ export function useThinkStream(limit = 25, pollMs = 4000): ThinkStream {
     return () => clearInterval(id);
   }, [refresh, pollMs]);
 
-  const latest: ThinkThought | null = thoughts.length > 0 ? thoughts[0] : null;
+  const latest: ThinkThought | null = thoughts.length > 0 ? thoughts[0]! : null;
 
   return { thoughts, latest, loading, error, refresh };
 }

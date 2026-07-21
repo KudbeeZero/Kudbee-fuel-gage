@@ -113,7 +113,7 @@ export function InterceptorView({ currency, onNewLogTriggered }: { currency: 'US
 
   // Default the selection to the first real record once loaded.
   useEffect(() => {
-    if (!selectedId && requests.length > 0) setSelectedId(requests[0].id);
+    if (!selectedId && requests.length > 0) setSelectedId(requests[0]!.id);
   }, [requests, selectedId]);
 
   const selectedRequest = useMemo(

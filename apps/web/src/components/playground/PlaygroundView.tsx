@@ -126,8 +126,8 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   }), [rates, calculateCost]);
 
   // Find optimal (lowest) and most expensive
-  let optimalProvider = comparisons[0];
-  let expensiveProvider = comparisons[0];
+  let optimalProvider = comparisons[0]!;
+  let expensiveProvider = comparisons[0]!;
 
   comparisons.forEach(c => {
     if (c.cost < optimalProvider.cost) optimalProvider = c;

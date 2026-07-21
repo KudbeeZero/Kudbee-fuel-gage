@@ -51,7 +51,7 @@ export function LatencyHistogram({ logs }: LatencyHistogramProps) {
   const p95Latency = count > 0 ? (() => {
     const sorted = [...extractedLatencies].sort((a, b) => a - b);
     const index = Math.ceil(sorted.length * 0.95) - 1;
-    return sorted[Math.max(0, index)];
+    return sorted[Math.max(0, index)]!;
   })() : 0;
 
   // Static dimensions to ensure perfect responsive scaling
