@@ -1,6 +1,7 @@
 // services/ingestion/controllers/telemetry.ts
 import type { Request, Response } from 'express';
 import { EDGE_SENTINEL_SYSTEM_PROMPT } from '@kudbee/utils/prompts/edge-sentinel';
+import { mintThinkToken } from '@kudbee/memory/thinkTokenGenerator';
 
 interface IngestBody {
   [key: string]: unknown;
@@ -10,16 +11,16 @@ interface IngestBody {
  * Edge Sentinel telemetry ingestion webhook.
  *
  * Authenticates the request via the X-Agent-Pass header against
- * EDGE_AGENT_PASS, then accepts the payload. The Gemini pipe (using
- * EDGE_SENTINEL_SYSTEM_PROMPT) is stubbed for this PR; routing is mocked to
- * keep the ingestion path clean and verifiable.
+ * EDGE_AGENT_PASS, then accepts the payload. On successful ingestion,
+ * auto-mints a Think Token when the blast-radius evaluation indicates
+ * high confidence. Risky or high-latency events are tagged as
+ * PENDING_APPROVAL for the Governance Queue Tray.
  */
 export const handleTelemetryIngest = async (req: Request, res: Response): Promise<void> => {
   try {
     const agentPass = req.headers['x-agent-pass'];
     const expectedPass = process.env.EDGE_AGENT_PASS;
 
-    // 1. Auth check (Edge Sentinel secure key)
     if (typeof agentPass !== 'string' || agentPass !== expectedPass) {
       res.status(401).json({ error: 'Unauthorized: Invalid Sentinel Pass' });
       return;
@@ -27,11 +28,26 @@ export const handleTelemetryIngest = async (req: Request, res: Response): Promis
 
     const payload = (req.body ?? {}) as IngestBody;
 
-    // 2. Here we will eventually pipe the payload to Gemini using
-    //    EDGE_SENTINEL_SYSTEM_PROMPT. For this PR we mock successful ingestion
-    //    to ensure routing is clean.
     void payload;
     void EDGE_SENTINEL_SYSTEM_PROMPT;
+
+    const cost = Number(payload.cost) || 0;
+    const latencyMs = Number(payload.latency_ms) || 0;
+    const isRisky = cost > 0.1 || latencyMs > 2000 || payload.status === 'FAILED';
+    const tokenStatus = isRisky ? 'PENDING_APPROVAL' : 'VERIFIED';
+
+    void mintThinkToken({
+      traceId: String(payload.trace_id || `edge-${Date.now()}`),
+      taskContext: { source: 'edge-sentinel', model: payload.model },
+      failedState: isRisky ? { reason: 'high_cost_or_latency', cost, latencyMs } : {},
+      correctionDelta: 'Edge Sentinel ingestion accepted via blast-radius evaluation.',
+      reasoningSteps: [`status=${payload.status || 'OK'}`, `cost=${cost}`, `latencyMs=${latencyMs}`],
+      cost,
+      latencyMs,
+      status: tokenStatus
+    }).catch(() => {
+      // best-effort; never block ingestion on think token minting
+    });
 
     res.status(202).json({
       status: 'INGESTED',

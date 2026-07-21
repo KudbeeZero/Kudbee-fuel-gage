@@ -196,6 +196,33 @@ async function check15_ThinkTrajectories() {
   return res.status === 200 && Array.isArray(data.trajectories) && Array.isArray(data.count !== undefined ? [data.count] : []);
 }
 
+async function check16_AutoThinkTokenEmbedding() {
+  const res = await fetch(`${BASE}/api/governance/mint-think-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      traceId: `tr-e2e-auto-${Date.now()}`,
+      taskContext: { task: 'e2e-auto-check' },
+      failedState: { status: 'AUTO_TEST' },
+      correctionDelta: 'Automated verification correction delta',
+      reasoningSteps: ['Step 1: verify embedding generation', 'Step 2: verify persistence', 'Step 3: verify trajectory surfacing']
+    })
+  });
+  const data = await res.json();
+  const minted = res.status === 201 && data.success === true && typeof data.tokenId === 'string' && data.embedding_dim === 1536;
+
+  const trajRes = await fetch(`${BASE}/api/think/trajectories?limit=5`);
+  const trajData = await trajRes.json();
+  const hasValidTrajectory = trajRes.status === 200 &&
+    Array.isArray(trajData.trajectories) &&
+    trajData.trajectories.some((t) => {
+      const coords = Array.isArray(t.spatial_coordinates) ? t.spatial_coordinates : [];
+      return coords.length === 1536;
+    });
+
+  return minted && hasValidTrajectory;
+}
+
 async function run() {
   try {
     await startServer();
@@ -214,6 +241,7 @@ async function run() {
     await runCheck('Check 13: Model comparator endpoint', check13_ModelComparator);
     await runCheck('Check 14: Mint think token endpoint', check14_MintThinkToken);
     await runCheck('Check 15: Think trajectories endpoint', check15_ThinkTrajectories);
+    await runCheck('Check 16: Auto Think Token embedding & trajectory', check16_AutoThinkTokenEmbedding);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -222,7 +250,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 15`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 16`);
   console.log('========================================');
 
   if (failed > 0) {

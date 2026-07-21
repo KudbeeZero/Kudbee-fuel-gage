@@ -20,6 +20,7 @@ import { getRedisClient } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
+import { mintThinkToken } from '../memory/thinkTokenGenerator.ts';
 import {
   buildAgentContext,
   evaluateRequiredSkills,
@@ -1313,19 +1314,17 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
     if (!traceId || !correctionDelta) {
       return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
     }
-    const result = await runInsert(
-      `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, status)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id`,
-      [
-        String(traceId),
-        taskContext ? JSON.stringify(taskContext) : null,
-        failedState ? JSON.stringify(failedState) : null,
-        String(correctionDelta),
-        'PROVEN'
-      ]
-    );
-    return res.status(201).json({ success: true, tokenId: result.id });
+    const result = await mintThinkToken({
+      traceId: String(traceId),
+      taskContext: taskContext || {},
+      failedState: failedState || {},
+      correctionDelta: String(correctionDelta),
+      status: 'VERIFIED'
+    });
+    if (!result.ok) {
+      return res.status(500).json({ error: result.error });
+    }
+    return res.status(201).json({ success: true, tokenId: result.id, embedding_dim: result.embedding.length });
   } catch (err) {
     console.error('[ThinkToken] Mint error:', err?.message);
     return res.status(500).json({ error: 'Failed to mint think token' });

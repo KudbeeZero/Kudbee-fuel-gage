@@ -223,7 +223,6 @@ export async function runAudit() {
 
   for (const f of memoryFindings) {
     log.warn(`memory:${f.type}`, `(${f.count})`, f.detail);
-    // Surface memory-inefficiency findings as live operator toasts.
     await publishAuditEvent('hermes_suggestion', {
       id: `mem-${f.type}-${Date.now()}`,
       action: 'OPTIMIZE_MEMORY',
@@ -245,7 +244,6 @@ export async function runAudit() {
           id: `hermes-${f.id}`
         });
         promoted += 1;
-        // Live suggestion toast to promote the pair into the PROVEN index.
         await publishAuditEvent('hermes_suggestion', {
           id: proposed.id,
           action: proposed.action,
@@ -257,6 +255,32 @@ export async function runAudit() {
         log.error('failed to propose promotion:', err.message);
       }
     }
+  }
+
+  const hasRiskyMemoryFindings = memoryFindings.length > 0;
+  const tokenStatus = hasRiskyMemoryFindings ? 'PENDING_APPROVAL' : 'VERIFIED';
+
+  try {
+    const { mintThinkToken } = await import('../memory/thinkTokenGenerator.ts');
+    await mintThinkToken({
+      agentId: AGENT_ID,
+      taskContext: {
+        audit_type: 'hermes_runAudit',
+        memory_findings: memoryFindings.length,
+        logic_findings: logicFindings.length,
+        promoted
+      },
+      failedState: hasRiskyMemoryFindings ? { risk: 'memory_inefficiency', findings: memoryFindings } : {},
+      correctionDelta: `Audited ${memoryFindings.length} memory + ${logicFindings.length} logic findings; promoted ${promoted}.`,
+      reasoningSteps: [
+        `memory_findings=${memoryFindings.length}`,
+        `logic_findings=${logicFindings.length}`,
+        `promoted=${promoted}`
+      ],
+      status: tokenStatus
+    });
+  } catch (err) {
+    log.warn('think token minting failed (degraded):', err.message);
   }
 
   log.audit(
