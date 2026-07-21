@@ -311,3 +311,34 @@ export const TelemetryStatsSchema = z.object({
   timestamp: z.string()
 });
 export type TelemetryStats = z.infer<typeof TelemetryStatsSchema>;
+
+export const ThinkTokenSchema = z.object({
+  id: z.string().min(1),
+  original_trace_id: z.string().optional(),
+  task_context: z.record(z.unknown()).optional(),
+  failed_state: z.record(z.unknown()).optional(),
+  correction_delta: z.string().default(''),
+  embedding: z.array(z.number()).min(1),
+  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']).default('PENDING_APPROVAL'),
+  created_at: z.string().optional()
+});
+export type ThinkToken = z.infer<typeof ThinkTokenSchema>;
+
+export const ThinkTrajectorySchema = z.object({
+  id: z.string().min(1),
+  token_hash: z.string().min(1),
+  spatial_coordinates: z.array(z.number()).min(1),
+  similarity_score: z.number(),
+  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']),
+  task_context: z.record(z.unknown()).optional(),
+  failed_state: z.record(z.unknown()).optional(),
+  correction_delta: z.string().default(''),
+  created_at: z.string().optional()
+});
+export type ThinkTrajectory = z.infer<typeof ThinkTrajectorySchema>;
+
+export const ThinkTrajectoryResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+  trajectories: z.array(ThinkTrajectorySchema)
+});
+export type ThinkTrajectoryResponse = z.infer<typeof ThinkTrajectoryResponseSchema>;

@@ -23,18 +23,25 @@ export const CORE_RACK_PLUGINS: Record<string, IKudbeePlugin> = {
     status: 'active',
     gridSpan: { colSpan: 4 }
   },
+  'plugin-trajectories': {
+    id: 'plugin-trajectories',
+    title: 'THINK: TRAJECTORIES',
+    category: 'trajectories',
+    status: 'active',
+    gridSpan: { colSpan: 6 }
+  },
   'plugin-gov-gate': {
     id: 'plugin-gov-gate',
     title: 'GOVERNANCE: APPROVAL GATE',
     category: 'governance',
     status: 'pending',
-    gridSpan: { colSpan: 8 }
+    gridSpan: { colSpan: 6 }
   },
   'plugin-hermes-auditor': {
     id: 'plugin-hermes-auditor',
     title: 'HERMES: AUDITOR',
     category: 'auditor',
     status: 'active',
-    gridSpan: { colSpan: 4 }
+    gridSpan: { colSpan: 6 }
   }
 };
