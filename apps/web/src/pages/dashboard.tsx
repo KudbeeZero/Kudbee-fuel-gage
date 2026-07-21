@@ -356,6 +356,36 @@ function MetricCard({
   );
 }
 
+function SinkTokenCard({ balance }: { balance: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round((balance / 1000) * 100)));
+  const hue = pct > 60 ? 'text-emerald-400' : pct > 30 ? 'text-amber-400' : 'text-rose-400';
+  const bar = pct > 60 ? 'bg-emerald-500' : pct > 30 ? 'bg-amber-500' : 'bg-rose-500';
+  const status = pct > 60 ? 'HEALTHY' : pct > 30 ? 'DEGRADED' : 'CRITICAL';
+  const statusColor = pct > 60 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : pct > 30 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400';
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Gauge className="h-4 w-4 text-violet-500/70" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">Sink Token Balance</span>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${statusColor}`}>
+          {status}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="font-mono text-3xl font-bold text-slate-100">{balance.toLocaleString()}</span>
+        <span className="text-xs font-mono text-slate-500">/ 1,000 tok</span>
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className={`h-full ${bar} transition-all duration-500`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-2 text-[10px] font-mono text-slate-500">Rate-limit / budget circuit breaker for agent execution</p>
+    </div>
+  );
+}
+
 function TelemetryFeed({
   items,
   onVerify,
@@ -1443,6 +1473,7 @@ export function DashboardPage() {
 
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
+  const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(1000);
 
   // --- Real-time telemetry (SSE) ---
   const [thinking, setThinking] = useState(false);
@@ -1505,6 +1536,15 @@ export function DashboardPage() {
       setGovError(null);
     } catch (e) {
       setGovError(e instanceof Error ? e.message : 'Governance fetch failed');
+    }
+  }, []);
+
+  const loadSinkTokenBalance = useCallback(async () => {
+    try {
+      const data = await apiGet<{ sink_token_balance: number }>('/api/dashboard/summary');
+      setSinkTokenBalance(data.sink_token_balance ?? 1000);
+    } catch {
+      // keep default
     }
   }, []);
 
@@ -1670,11 +1710,12 @@ export function DashboardPage() {
       loadSessionHistory(),
       loadTriage(),
       loadMemory(),
-      loadGovernance()
+      loadGovernance(),
+      loadSinkTokenBalance()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
   // the 5s poll is reduced to a slow safety net (every 30s) instead of the
@@ -1764,9 +1805,10 @@ export function DashboardPage() {
             onRun={runComparison}
           />
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:col-span-3">
             <MetricCard icon={BadgeCheck} label="Verified Traces" value={communityValue?.verified_traces ?? 0} suffix="ok" />
             <MetricCard icon={Brain} label="Memory Hits" value={memories.length} suffix="vec" />
+            <SinkTokenCard balance={sinkTokenBalance} />
           </div>
           <GovernanceFeed actions={governance} />
         </div>

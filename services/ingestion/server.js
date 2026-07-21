@@ -738,6 +738,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
     const totalRequests = Number(totalRequestsRow[0]?.count || 0);
     const errorCount = Number(errorCountRow[0]?.count || 0);
     const errorRate = totalRequests > 0 ? Number(((errorCount / totalRequests) * 100).toFixed(2)) : 0;
+    const sinkTokenBalance = Number(process.env.SINK_TOKEN_BALANCE || 1000);
 
     return res.json({
       total_24h_cost: Number((cost24hRow[0]?.total || 0).toFixed(6)),
@@ -745,7 +746,8 @@ app.get('/api/dashboard/summary', async (req, res) => {
       total_active_models: Number(activeModelsRow[0]?.count || 0),
       total_requests: totalRequests,
       error_rate: errorRate,
-      health_matrix: []
+      health_matrix: [],
+      sink_token_balance: sinkTokenBalance
     });
   } catch (err) {
     console.error('[Summary] Error:', err.message);
