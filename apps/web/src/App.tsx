@@ -141,6 +141,8 @@ export interface ParsedCsvLog {
 export interface DashboardSummary {
   total_24h_cost: number;
   total_historical_tokens: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
   total_active_models: number;
   total_requests: number;
   error_rate: number;
@@ -3281,14 +3283,18 @@ export default function App() {
   // No synthetic base values: if the backend has not ingested anything yet,
   // the dashboard renders the clean, empty architectural state (all zeros)
   // instead of fabricated telemetry.
+  const BLENDED_TOKEN_RATE = 0.003 / 1000;
+
   const liveStats = React.useMemo(() => {
-    const dbTokens = dbSummary?.total_historical_tokens || 0;
-    const dbCost = dbSummary?.total_24h_cost || 0;
+    const totalInput = dbSummary?.total_input_tokens || 0;
+    const totalOutput = dbSummary?.total_output_tokens || 0;
+    const dbTokens = totalInput + totalOutput || dbSummary?.total_historical_tokens || 0;
+    const calculatedCost = Number((dbTokens * BLENDED_TOKEN_RATE).toFixed(6));
 
     return {
-      inTokens: Math.floor(dbTokens * 0.4),
-      outTokens: Math.floor(dbTokens * 0.6),
-      cost: dbCost,
+      inTokens: totalInput || Math.floor(dbTokens * 0.4),
+      outTokens: totalOutput || Math.floor(dbTokens * 0.6),
+      cost: calculatedCost,
       totalRequests: dbSummary?.total_requests || 0,
       activeModels: dbSummary?.total_active_models || 0,
       errorRate: dbSummary?.error_rate || 0

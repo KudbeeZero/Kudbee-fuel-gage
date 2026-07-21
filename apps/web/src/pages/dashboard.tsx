@@ -523,7 +523,7 @@ function MemoryInsights({ memories }: { memories: MemoryRecall[] }) {
         {memories.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
             <MemoryStick className="h-8 w-8 opacity-40" />
-            <span className="font-mono text-xs">Semantic memory store is empty.</span>
+            <span className="font-mono text-xs">No vector memory matches in the current session. Fast Brain is on Standby.</span>
           </div>
         ) : (
           memories.map((m) => (
