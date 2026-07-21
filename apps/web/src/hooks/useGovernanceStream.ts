@@ -17,7 +17,7 @@ export interface GovernanceStream {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  submitApproval: (id: string, decision: ApprovalDecision) => Promise<boolean>;
+  submitApproval: (id: string, decision: ApprovalDecision, onResolve?: (success: boolean, error?: string) => void) => Promise<boolean>;
 }
 
 export function useGovernanceStream(pollMs = 5000): GovernanceStream {
@@ -40,14 +40,17 @@ export function useGovernanceStream(pollMs = 5000): GovernanceStream {
   }, []);
 
   const submitApproval = useCallback(
-    async (id: string, decision: ApprovalDecision): Promise<boolean> => {
+    async (id: string, decision: ApprovalDecision, onResolve?: (success: boolean, error?: string) => void): Promise<boolean> => {
       setPending((prev) => prev.filter((p) => p.id !== id));
       try {
         await apiPost<{ success: boolean }>('/api/governance/resolve', { id, decision });
         void refresh();
+        onResolve?.(true);
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to submit approval');
+        const message = err instanceof Error ? err.message : 'Failed to submit approval';
+        setError(message);
+        onResolve?.(false, message);
         return false;
       }
     },

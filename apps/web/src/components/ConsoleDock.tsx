@@ -1,14 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '../store/uiStore';
+import { useTerminalStore } from '../store/terminalStore';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
+import type { ConsoleLog } from '../store/terminalStore';
 
-interface ConsoleLog {
-  id: string;
-  type: 'info' | 'warning' | 'error' | 'slate';
-  label: string;
-  message: string;
-  time: string;
+interface ConsoleDockProps {
+  externalLogs?: ConsoleLog[];
 }
 
 const LOG_TEMPLATES = [
@@ -27,6 +25,7 @@ const LOG_TEMPLATES = [
 export function ConsoleDock() {
   const isConsoleExpanded = useUIStore((state) => state.isConsoleExpanded);
   const toggleConsole = useUIStore((state) => state.toggleConsole);
+  const externalLogs = useTerminalStore((state) => state.externalLogs);
 
   // Maintain actual high-frequency logs in useRef
   const allLogsRef = useRef<ConsoleLog[]>([
@@ -34,6 +33,19 @@ export function ConsoleDock() {
     { id: 'initial-2', type: 'warning', label: 'WARN', message: 'Telemetry Cluster: Rolling 15-minute pipeline analysis initialized.', time: new Date().toLocaleTimeString() },
     { id: 'initial-3', type: 'slate', label: 'SYSTEM', message: 'Toolchain Context: Running active execution checks via TypeScript 7.0 engine.', time: new Date().toLocaleTimeString() }
   ]);
+
+  const processedExternalIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!externalLogs || externalLogs.length === 0) return;
+    const newLogs = externalLogs.filter((log) => !processedExternalIds.current.has(log.id));
+    if (newLogs.length === 0) return;
+    newLogs.forEach((log) => processedExternalIds.current.add(log.id));
+    const mapped = newLogs.map((log) => ({
+      ...log,
+      id: `external-${log.id}`
+    }));
+    allLogsRef.current = [...mapped, ...allLogsRef.current].slice(0, 100);
+  }, [externalLogs]);
 
   // Throttled rendered state updated at a lower interval (~150ms)
   const [renderedLogs, setRenderedLogs] = useState<ConsoleLog[]>([]);
