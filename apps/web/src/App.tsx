@@ -56,11 +56,13 @@ import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
 import { OSControlBar, CommandPalette } from './components/OSControlBar';
 import { GatewayView } from './components/gateway/GatewayView';
+import { lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
 import { HistoryPage } from './pages/history';
-import { FirewallPage } from './pages/firewall';
-import { AlertsPanel } from './components/AlertsPanel';
-import { InterceptorView } from './components/InterceptorView';
-import { GovernanceView } from './components/GovernanceView';
+const FirewallPage = lazy(() => import('./pages/firewall').then((m) => ({ default: m.FirewallPage })));
+const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel })));
+const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
+const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
@@ -4141,16 +4143,26 @@ export default function App() {
            {activeTab === 'Intelligence' && <IntelligenceView />}
 
            {activeTab === 'Firewall' && (
-             <FirewallPage />
+             <Suspense fallback={<RouteFallback label="Loading Firewall" />}>
+               <FirewallPage />
+             </Suspense>
            )}
 
            {activeTab === 'Gateway' && (
              <GatewayView showToast={showToast} />
            )}
 
-           {activeTab === 'Alerts' && <AlertsPanel />}
+           {activeTab === 'Alerts' && (
+             <Suspense fallback={<RouteFallback label="Loading Alerts" />}>
+               <AlertsPanel />
+             </Suspense>
+           )}
 
-          {activeTab === 'Governance' && <GovernanceView />}
+          {activeTab === 'Governance' && (
+            <Suspense fallback={<RouteFallback label="Loading Governance" />}>
+              <GovernanceView />
+            </Suspense>
+          )}
 
           {activeTab === 'Settings' && (
             <SettingsView 
@@ -4420,6 +4432,19 @@ export default function App() {
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
       <ConsoleDock />
+    </div>
+  );
+}
+
+function RouteFallback({ label }: { label: string }) {
+  return (
+    <div
+      id="route-fallback"
+      data-route-loading={label}
+      className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 flex flex-col items-center justify-center text-slate-500"
+    >
+      <Loader2 className="w-6 h-6 text-emerald-400 animate-spin mb-3" />
+      <span className="font-mono text-[10px] uppercase tracking-widest">{label}…</span>
     </div>
   );
 }

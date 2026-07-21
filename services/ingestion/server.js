@@ -26,13 +26,36 @@ import {
   evaluateRequiredSkills,
   BASE_IDENTITY
 } from '../agents/src/context-factory.ts';
+import { createAuditRouter } from './routes/audit.ts';
+import { createGovernanceRouter } from './routes/governance.ts';
+import { createTelemetryRouter } from './routes/telemetry.ts';
+import { createSystemRouter } from './routes/system.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+
+// Shared state holder — referenced lazily by the modular sub-routers so
+// they can be mounted near the top of the file without tripping
+// "Cannot access X before initialization" for state that is declared
+// further down (policyState, feedbackState, autoTuneState, evaluatePolicies,
+// alertsState, pool, redis, PROVIDER_CONFIG).
+const _state = {
+  policyState: null,
+  feedbackState: null,
+  autoTuneState: null,
+  evaluatePolicies: null,
+  alertsState: null,
+  bootTimeRef: { value: null },
+  redisRef: { value: null },
+  poolRef: { value: null },
+  providerConfigRef: { value: null }
+};
+globalThis.__KUBEE_STATE__ = _state;
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const BOOT_TIME = Date.now();
+_state.bootTimeRef.value = BOOT_TIME;
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 const HIGH_VALUE_MODELS = new Set([
   'gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro',
@@ -116,6 +139,42 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 
 app.use(express.json({ limit: '10mb' }));
 
+// --- Phase 25: Modular sub-router mounting (must run before inline routes) -
+
+// Tenant state holder — populated after the sub-routers are mounted, but
+// referenced lazily by the governance sub-router via the getPolicyState etc.
+// helpers defined at the end of this file.
+globalThis.__KUBEE_STATE__ = _state;
+
+const auditRouter = createAuditRouter({ runQuery, publishEvent, requireRole });
+app.use('/api/audit', auditRouter);
+
+const governanceRouter = createGovernanceRouter({
+  runQuery,
+  publishEvent,
+  requireRole,
+  getPolicyState: () => _state.policyState,
+  getFeedbackState: () => _state.feedbackState,
+  getAutoTuneState: () => _state.autoTuneState,
+  getEvaluatePolicies: () => _state.evaluatePolicies
+});
+app.use('/api/governance', governanceRouter);
+
+const telemetryRouter = createTelemetryRouter({ runQuery });
+app.use('/api/telemetry', telemetryRouter);
+
+const systemRouter = createSystemRouter({
+  runQuery,
+  publishEvent,
+  listProposed,
+  getBootTime: () => _state.bootTimeRef.value,
+  getRedis: () => _state.redisRef.value,
+  getPool: () => _state.poolRef.value,
+  getProviderConfig: () => _state.providerConfigRef.value,
+  getAlertsState: () => _state.alertsState
+});
+app.use('/api/system', systemRouter);
+
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
 // the Phase 6 context factory. We extract the raw intent from the body, tag it
@@ -155,6 +214,7 @@ function agentContextMiddleware(req, res, next) {
 // getDbPool() is lazy + tolerant: missing DATABASE_URL or pool errors degrade
 // to an in-memory store instead of crashing (Resilient-First). SQLite removed.
 const pool = getDbPool();
+_state.poolRef.value = pool;
 
 async function ensureSchema() {
   if (!pool || !isDbHealthy()) {
@@ -305,6 +365,7 @@ try {
   console.warn('[Redis] Failed to initialize client (degrading):', err.message);
   redis = null;
 }
+_state.redisRef.value = redis;
 
 if (redis) {
   const redisEventLabels = {
@@ -2446,6 +2507,7 @@ const vectorSyncState = {
 const alertsState = {
   alerts: []
 };
+_state.alertsState = alertsState;
 
 function evaluatePolicies(prompt) {
   const text = String(prompt || '');
@@ -2663,6 +2725,7 @@ const PROVIDER_CONFIG = {
   local:     { id: 'local',     label: 'Local VLLM',weight: 20, baseLatencyMs: 60,  maxLatencyMs: 500, rateLimitPct: 0.0, healthy: true, lastError: null },
   google:    { id: 'google',    label: 'Google',    weight: 10, baseLatencyMs: 210, maxLatencyMs: 700, rateLimitPct: 0.0, healthy: true, lastError: null }
 };
+_state.providerConfigRef.value = PROVIDER_CONFIG;
 
 const routerState = {
   decisionLog: [], // Recent routing decisions
@@ -3313,51 +3376,14 @@ app.post('/api/governance/tune/apply', async (req, res) => {
 });
 
 // --- Phase 24: Multi-Tenant RBAC, Audit Vault, Workspace Context ---------------
+// Tenant registry + RBAC are now extracted to lib/tenants.ts and re-imported
+// here so the modular sub-routers (mounted at the top of this file) can share
+// the same source of truth without circular-init errors.
 
-const TENANTS = {
-  'tenant-prod': { id: 'tenant-prod', name: 'Production / Default Workspace', role: 'ADMIN' },
-  'tenant-staging': { id: 'tenant-staging', name: 'Staging / Tenant B', role: 'OPERATOR' },
-  'tenant-audit': { id: 'tenant-audit', name: 'Auditor / Read-Only', role: 'AUDITOR' }
-};
-
-const ROLE_RANK = { AUDITOR: 1, OPERATOR: 2, ADMIN: 3 };
-
-const RBAC_MATRIX = {
-  '/api/governance/tune/apply': 'ADMIN',
-  '/api/governance/policies': 'OPERATOR',
-  '/api/governance/feedback': 'OPERATOR',
-  '/api/audit/export': 'AUDITOR',
-  '/api/audit/vault/anchor': 'ADMIN',
-  '/api/audit/vault/verify': 'AUDITOR',
-  '/api/governance/dispatch': 'OPERATOR',
-  '/api/agents/crucible/run': 'ADMIN'
-};
+import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantId } from './lib/tenants.ts';
 
 function resolveTenant(req) {
-  const headerTenant = req.headers['x-tenant-id'];
-  const queryTenant = req.query?.tenantId;
-  const candidate = String(headerTenant || queryTenant || 'tenant-prod');
-  return TENANTS[candidate] ? candidate : 'tenant-prod';
-}
-
-function requireRole(req, res, minRole) {
-  const tenantId = resolveTenant(req);
-  const tenant = TENANTS[tenantId];
-  if (!tenant) {
-    res.status(403).json({ error: 'unknown tenant', tenantId });
-    return null;
-  }
-  if (ROLE_RANK[tenant.role] < ROLE_RANK[minRole]) {
-    res.status(403).json({
-      error: 'forbidden',
-      reason: `tenant ${tenantId} has role ${tenant.role}, requires ${minRole}`,
-      tenantId,
-      role: tenant.role,
-      required: minRole
-    });
-    return null;
-  }
-  return { tenantId, role: tenant.role, name: tenant.name };
+  return resolveTenantId(req);
 }
 
 app.get('/api/governance/tenants', (_req, res) => {
@@ -3487,6 +3513,15 @@ if (process.env.CRUCIBLE_ENABLED === 'true') {
   } catch (err) {
     console.error('[Crucible] Failed to start:', err.message);
   }
+}
+
+// Populate the shared state holder so the modular sub-routers can read the
+// policy / feedback / auto-tune / evaluate state lazily.
+if (globalThis.__KUBEE_STATE__) {
+  globalThis.__KUBEE_STATE__.policyState = policyState;
+  globalThis.__KUBEE_STATE__.feedbackState = feedbackState;
+  globalThis.__KUBEE_STATE__.autoTuneState = autoTuneState;
+  globalThis.__KUBEE_STATE__.evaluatePolicies = evaluatePolicies;
 }
 
 app.listen(PORT, '0.0.0.0', () => {
