@@ -23,7 +23,8 @@
  * ---------------------------------------------------------------------------
  */
 
-// Minimal Upstash Redis REST helper (no SDK needed).
+import { searchSimilar, storeMemory } from '../memory/vectorStore.ts';
+import { embedText } from '../memory/embedText.ts';
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const REDIS_ENABLED = Boolean(REDIS_URL && REDIS_TOKEN);
@@ -145,11 +146,45 @@ function scorePromptAgainstTags(prompt, entries) {
 
 /**
  * matchLogic(prompt)
- * Searches the PROVEN index for an existing logic path matching the prompt's
- * semantic meaning (via tag/keyword matching). Returns either a proven path
- * (Fast Brain) or a flag to initiate Slow Brain LLM reasoning.
+ * ---------------------------------------------------------------------------
+ * Searches for a proven logic path matching the prompt's semantic meaning.
+ *
+ * Resolution order (Resilient-First):
+ *   1. Semantic vector search against the `vector_memory` store. If a proven
+ *      action embedding is within `VECTOR_SEARCH_MIN_SCORE` cosine similarity,
+ *      the call short-circuits to FAST_BRAIN.
+ *   2. Keyword/tag matching against the PROVEN Redis index (legacy fallback).
+ *   3. If neither layer yields a confident match, returns SLOW_BRAIN so the
+ *      caller can invoke LLM reasoning.
  */
+const VECTOR_SEARCH_MIN_SCORE = 0.7;
+
 export async function matchLogic(prompt) {
+  const text = String(prompt || '');
+
+  // --- Phase 26: Semantic vector search (primary path) ----------------------
+  try {
+    const embedding = await embedText(text);
+    const vectorResults = await searchSimilar(embedding, 5, VECTOR_SEARCH_MIN_SCORE);
+    if (vectorResults.ok && vectorResults.results.length > 0) {
+      const best = vectorResults.results[0];
+      const provenId = String(best.metadata?.proven_id || best.id);
+      const provenEntry = await kvGet(`governance:proven:${provenId}`);
+      if (provenEntry) {
+        return {
+          matched: true,
+          route: 'FAST_BRAIN',
+          confidence: 0.9,
+          logic: provenEntry,
+          source: 'vector_memory'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[Router] Vector search degraded, falling back to keyword matching:', err instanceof Error ? err.message : String(err));
+  }
+
+  // --- Fallback: keyword/tag matching against the PROVEN index ---------------
   const index = await readIndex();
   if (!index.proven.length) {
     return { matched: false, reason: 'no_proven_logic', route: 'SLOW_BRAIN' };
@@ -161,9 +196,9 @@ export async function matchLogic(prompt) {
     if (entry) provenEntries.push(entry);
   }
 
-  const best = scorePromptAgainstTags(prompt, provenEntries);
+  const best = scorePromptAgainstTags(text, provenEntries);
   if (best && best.confidence >= 0.34) {
-    return { matched: true, route: 'FAST_BRAIN', confidence: best.confidence, logic: best };
+    return { matched: true, route: 'FAST_BRAIN', confidence: best.confidence, logic: best, source: 'keyword' };
   }
 
   return { matched: false, reason: 'low_confidence', route: 'SLOW_BRAIN' };
@@ -209,6 +244,21 @@ export async function approveAction(id) {
   index.proposed = index.proposed.filter((x) => x !== id);
   if (!index.proven.includes(id)) index.proven.push(id);
   await writeIndex(index);
+
+  try {
+    const text = proven.prompt || proven.action || '';
+    const embedding = await embedText(text);
+    await storeMemory(text, {
+      file_path: `governance:proven:${id}`,
+      category: 'prompt',
+      version: '1.0.0',
+      tags: proven.tags ?? [],
+      proven_id: id
+    }, embedding);
+  } catch (err) {
+    console.warn('[Router] Failed to store proven action embedding:', err instanceof Error ? err.message : String(err));
+  }
+
   return proven;
 }
 

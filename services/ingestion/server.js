@@ -12,7 +12,7 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
-import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+import { listProposed, approveAction, rejectAction, matchLogic } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
@@ -260,6 +260,21 @@ async function ensureSchema() {
         status VARCHAR NOT NULL DEFAULT 'PROVEN',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vector_memory (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        text TEXT NOT NULL,
+        embedding VECTOR(1536) NOT NULL,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS vector_memory_embedding_idx
+        ON vector_memory
+        USING hnsw (embedding vector_cosine_ops)
+        WITH (m = 16, ef_construction = 64)
     `);
     console.log('[DB] Neon schema ensured.');
   } catch (err) {
@@ -1634,6 +1649,54 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
   } catch (err) {
     console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: 'Comparator failed', detail: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- Chat Completions with Semantic Fast Brain ------------------------------
+// Phase 26: queries the vector memory store via semantic embeddings before
+// falling back to Slow Brain LLM reasoning.
+app.post('/v1/chat/completions', async (req, res) => {
+  try {
+    const incomingPrompt =
+      req.body?.messages?.map((m) => m.content).join(' ') ||
+      req.body?.prompt ||
+      '';
+    let routing = { route: 'SLOW_BRAIN', matched: false };
+    try {
+      routing = await matchLogic(incomingPrompt);
+    } catch (routerErr) {
+      console.warn('[Server] Governance router unavailable, defaulting to Slow Brain:', routerErr instanceof Error ? routerErr.message : String(routerErr));
+    }
+
+    res.json({
+      id: 'chatcmpl-' + Math.random().toString(36).slice(2, 10),
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: req.body.model || 'kudbee-vector-brain',
+      governance: {
+        route: routing.route,
+        matched: routing.matched,
+        confidence: routing.confidence ?? 0,
+        proven_logic: routing.logic?.action ?? null,
+        source: routing.source ?? 'keyword'
+      },
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content:
+              routing.route === 'FAST_BRAIN'
+                ? `Fast Brain: applied proven logic path "${routing.logic?.action ?? 'unknown'}".`
+                : 'Slow Brain: no proven semantic match found — LLM reasoning required.'
+          },
+          finish_reason: 'stop'
+        }
+      ]
+    });
+  } catch (err) {
+    console.error('[Chat] Fatal error:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ error: 'Chat completions failed', detail: err instanceof Error ? err.message : String(err) });
   }
 });
 

@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS system_topology_embeddings (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Cosine-distance index for fast ANN retrieval.
+-- Cosine-distance index for fast ANN retrieval (HNSW avoids the IVFFlat
+-- empty-table pitfall and works reliably before/after bulk inserts).
 CREATE INDEX IF NOT EXISTS system_topology_embeddings_embedding_idx
   ON system_topology_embeddings
-  USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+  USING hnsw (embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
