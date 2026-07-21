@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { apiPost } from '../lib/apiClient';
 
 export function useTelemetryLogger(onNewLogTriggered?: () => void) {
   const [isLogged, setIsLogged] = useState(false);
@@ -13,28 +14,24 @@ export function useTelemetryLogger(onNewLogTriggered?: () => void) {
       'Gemini 1.5 Pro': { provider: 'Google', model_name: 'gemini-1.5-pro' },
       'Ternary Bonsai 27B': { provider: 'Ternary', model_name: 'ternary-bonsai-27b' }
     };
-    const mapped = modelMap[selectedModel] || { provider: 'unknown', model_name: selectedModel.toLowerCase().replace(/\s+/g, '-') };
+    const mapped = modelMap[selectedModel] || { provider: 'Anthropic', model_name: selectedModel.toLowerCase().replace(/\s+/g, '-') };
 
     try {
-      const res = await fetch('/api/telemetry/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: 1,
-          provider: mapped.provider,
-          model_name: mapped.model_name,
-          input_tokens: tokenCount,
-          output_tokens: predictedOutputTokens,
-          project_name: "kilo-fuel-gauge"
-        })
+      await apiPost('/api/telemetry/ingest', {
+        trace_id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        model: mapped.model_name,
+        tokens_in: tokenCount,
+        tokens_out: predictedOutputTokens,
+        cost: 0,
+        status: 'OK',
+        provider: mapped.provider,
+        project_name: 'kilo-fuel-gauge'
       });
-      if (res.ok) {
-        setIsLogged(true);
-        setTimeout(() => setIsLogged(false), 2000);
-        if (onNewLogTriggered) onNewLogTriggered();
-      }
+      setIsLogged(true);
+      setTimeout(() => setIsLogged(false), 2000);
+      if (onNewLogTriggered) onNewLogTriggered();
     } catch (e) {
-      console.error("Failed to inject playground trace to SQLite:", e);
+      console.error('Failed to inject playground trace:', e);
     } finally {
       setIsLogging(false);
     }
