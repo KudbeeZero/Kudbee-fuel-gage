@@ -30,10 +30,12 @@ import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
+import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
 import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
 import { RackLayout } from '../components/RackLayout';
 import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
-import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
+import { GovernanceQueueTray } from '../components/governance/GovernanceQueueTray';
+import { apiGet, apiPost, apiPatch, apiUrl } from '../lib/apiClient';
 import { useTerminalStore } from '../store/terminalStore';
 import type { ApprovalRequest, ApprovalDecision, ThinkThought, TelemetryStats, CrucibleDispatchResponse, ThinkTrajectory } from '@kudbee/types';
 
@@ -1846,6 +1848,7 @@ export function DashboardPage() {
   // HITL Governance Gate + Think: Stream bindings (Resilient-First hooks).
   const { pending: pendingApprovals, submitApproval } = useGovernanceStream();
   const { latest: latestThought } = useThinkStream();
+  const { pending: pendingThinkTokens, promoteToken } = useThinkGovernanceStream();
 
   const wrappedSubmitApproval = useCallback(
     async (id: string, decision: ApprovalDecision): Promise<boolean> => {
@@ -1860,6 +1863,21 @@ export function DashboardPage() {
       return success;
     },
     [submitApproval, pushTerminalEvent]
+  );
+
+  const wrappedPromoteToken = useCallback(
+    async (hash: string, status: 'VERIFIED' | 'RECYCLED', reviewerNotes?: string, tokenId?: string): Promise<boolean> => {
+      const label = status === 'VERIFIED' ? 'Promoted' : 'Recycled';
+      pushTerminalEvent(`${label} token ${hash}…`);
+      const success = await promoteToken(hash, status, reviewerNotes, tokenId);
+      if (success) {
+        pushTerminalEvent(`✓ ${label} token ${hash}`, `status=${status}`);
+      } else {
+        pushTerminalEvent(`✗ Failed to update token ${hash}`, 'unknown error');
+      }
+      return success;
+    },
+    [promoteToken, pushTerminalEvent]
   );
 
   const probeHealth = useCallback(async () => {
@@ -2214,6 +2232,11 @@ export function DashboardPage() {
           {/* HITL Governance Gate — high-priority, spans full width when pending. */}
           {pendingApprovals.length > 0 && (
             <ApprovalQueueTray pending={pendingApprovals} onResolve={wrappedSubmitApproval} />
+          )}
+
+          {/* Think Token Governance Queue — spans full width when pending. */}
+          {pendingThinkTokens.length > 0 && (
+            <GovernanceQueueTray pending={pendingThinkTokens} onPromote={wrappedPromoteToken} />
           )}
 
           <div className="lg:col-span-2">
