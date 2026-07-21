@@ -725,6 +725,8 @@ app.get('/api/dashboard/summary', async (req, res) => {
     const totalCostRow = await runQuery(`SELECT SUM(cost) as total FROM telemetry_traces`);
     const totalTokensRow = await runQuery(`SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces`);
     const activeModelsRow = await runQuery(`SELECT COUNT(DISTINCT model) as count FROM telemetry_traces`);
+    const totalRequestsRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces`);
+    const errorCountRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces WHERE status != 'OK'`);
 
     const now = Date.now();
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
@@ -733,10 +735,16 @@ app.get('/api/dashboard/summary', async (req, res) => {
       [last24h]
     );
 
+    const totalRequests = Number(totalRequestsRow[0]?.count || 0);
+    const errorCount = Number(errorCountRow[0]?.count || 0);
+    const errorRate = totalRequests > 0 ? Number(((errorCount / totalRequests) * 100).toFixed(2)) : 0;
+
     return res.json({
       total_24h_cost: Number((cost24hRow[0]?.total || 0).toFixed(6)),
       total_historical_tokens: Number(totalTokensRow[0]?.total || 0),
       total_active_models: Number(activeModelsRow[0]?.count || 0),
+      total_requests: totalRequests,
+      error_rate: errorRate,
       health_matrix: []
     });
   } catch (err) {

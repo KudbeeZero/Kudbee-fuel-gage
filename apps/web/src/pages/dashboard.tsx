@@ -932,37 +932,64 @@ function AgentTerminal({
         {!loading && !error && data.length === 0 && commands.length === 0 && (
           <div className="text-slate-600">No session history available. Type a command below to interact.</div>
         )}
-        {data.map((session) => (
-          <div key={session.pr_number} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-emerald-300">#{session.pr_number} {session.pr_title}</span>
-              <span className="shrink-0 text-[9px] text-slate-500">
-                {session.merged_at ? new Date(session.merged_at).toLocaleString() : ''}
-              </span>
-            </div>
-            <p className="mt-1 truncate text-[10px] text-slate-500">SHA: {session.github_sha.slice(0, 12)}</p>
+        {data.map((session) => {
+          const sessionTimestamp = session.merged_at ? new Date(session.merged_at).toLocaleString() : new Date().toLocaleString();
+          const sessionSink = session.github_sha ? session.github_sha.slice(0, 8) : `sess-${session.pr_number}`;
+          const sessionStatus = session.merged_at ? 'MERGED' : 'PENDING';
+          const sessionBody = session.pr_body || session.pr_title || session.diff_summary || '(no payload)';
+          const tokenCost = session.diff_summary ? Math.max(1, Math.round(session.diff_summary.length / 4)) : 0;
 
-            {session.struggles_encountered && session.struggles_encountered.length > 0 && (
-              <div className="mt-2">
-                <div className="flex items-center gap-1.5 text-amber-400">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Struggles Encountered</span>
+          return (
+            <div key={session.pr_number} className="rounded-xl border border-slate-800 bg-slate-900/40 p-0 overflow-hidden">
+              {/* Header: [TIMESTAMP] | [AGENT_ID / SINK] | [STATUS] */}
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950/40 border-b border-slate-800/60">
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                  <Clock className="h-3 w-3 text-slate-500" />
+                  <span>{sessionTimestamp}</span>
                 </div>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-amber-300/80">
-                  {session.struggles_encountered.map((struggle, idx) => (
-                    <li key={idx}>{struggle}</li>
-                  ))}
-                </ul>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded font-bold">
+                    SINK: {sessionSink}
+                  </span>
+                  <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                    sessionStatus === 'MERGED'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {sessionStatus}
+                  </span>
+                </div>
               </div>
-            )}
 
-            {session.lesson_learned && (
-              <div className="mt-2 border-t border-slate-800/60 pt-2 text-[10px] text-slate-400">
-                <span className="text-emerald-500/70">Lesson:</span> {session.lesson_learned}
+              {/* Body: Formatted reasoning/thought output or memory recall payload */}
+              <div className="p-3 space-y-2">
+                <div className="text-sm font-medium text-slate-200 truncate">
+                  #{session.pr_number} {session.pr_title}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                  {sessionBody}
+                </p>
+
+                {/* Badges: Skill tags or token cost if present */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[9px] font-mono text-slate-500 bg-slate-950 border border-slate-800/60 px-2 py-0.5 rounded">
+                    SHA: {session.github_sha.slice(0, 12)}
+                  </span>
+                  {tokenCost > 0 && (
+                    <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+                      ~{tokenCost} tok
+                    </span>
+                  )}
+                  {session.struggles_encountered && session.struggles_encountered.length > 0 && (
+                    <span className="text-[9px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-bold">
+                      {session.struggles_encountered.length} STRUGGLES
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
 
         {commands.map((cmd) => (
           <div key={cmd.id} className="text-slate-400">
