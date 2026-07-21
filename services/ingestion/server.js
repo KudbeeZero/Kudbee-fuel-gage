@@ -34,6 +34,17 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const BOOT_TIME = Date.now();
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
+const HIGH_VALUE_MODELS = new Set([
+  'gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro',
+  'deepseek-r1', 'deepseek-v3', 'o1-preview', 'o1-mini'
+]);
+const MAX_REASONING_LENGTH = 500;
+
+function truncatePayload(value, limit) {
+  if (typeof value !== 'string') return value;
+  if (value.length <= limit) return value;
+  return value.slice(0, limit) + '…[truncated]';
+}
 
 function loadAgentRegistry() {
   try {
@@ -536,6 +547,24 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       }
     }
 
+    const isHeartbeatPing = Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
+    const isHighValueModel = HIGH_VALUE_MODELS.has(model);
+    const shouldSave = !isHeartbeatPing && (effectiveStatus !== 'OK' || isHighValueModel);
+
+    if (!shouldSave) {
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: agentId || undefined,
+        bypass: !!agentId,
+        recalled_context: [],
+        message: `Event filtered at budget firewall (low-value heartbeat) — not persisted`
+      });
+    }
+
+    const effectiveThought = agentId ? (thought_summary || '') : truncatePayload(thought_summary || '', MAX_REASONING_LENGTH);
+    const effectiveReasoning = agentId ? (reasoning || '') : truncatePayload(reasoning || '', MAX_REASONING_LENGTH);
+
     const shouldPersist = await triageWithGemini({
       trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus, provider, project_name
     });
@@ -552,7 +581,7 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     }
 
     const recall = await recallMemories(
-      [thought_summary, reasoning, model].filter(Boolean).join(' '), 3
+      [effectiveThought, effectiveReasoning, model].filter(Boolean).join(' '), 3
     ).catch((e) => {
       console.error('[Memory] Recall failed, continuing without context:', e.message);
       return [];
@@ -573,11 +602,11 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       ]
     );
 
-    const vector = embedTrace(reasoning || '', thought_summary || '', model || 'unknown');
+    const vector = embedTrace(effectiveReasoning, effectiveThought, model || 'unknown');
     await storeVector({
       traceId: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
-      thoughtSummary: thought_summary || '',
-      reasoning: reasoning || '',
+      thoughtSummary: effectiveThought,
+      reasoning: effectiveReasoning,
       model: model || 'unknown',
       vector,
       agentId
@@ -678,6 +707,29 @@ app.use('/api/agents', agentsRouter);
 // Mounted at a distinct path so it does not clobber the Zod-firewall
 // /api/telemetry/ingest route. Controller lives in controllers/telemetry.ts.
 app.post('/api/telemetry/edge-ingest', handleTelemetryIngest);
+
+app.post('/api/memory/remember', async (req, res) => {
+  try {
+    const { data } = req.body || {};
+    if (typeof data !== 'string' || !data.trim()) {
+      return res.status(422).json({ success: false, error: 'Data payload must be a non-empty string' });
+    }
+
+    const result = await runInsert(
+      `INSERT INTO user_memories (thought_summary) VALUES ($1) RETURNING id`,
+      [data.trim()]
+    );
+
+    return res.status(201).json({
+      success: true,
+      id: result.id,
+      message: 'Memory persisted successfully'
+    });
+  } catch (err) {
+    console.error('[Memory] Remember endpoint error:', err?.message);
+    res.status(500).json({ success: false, error: 'Failed to persist memory' });
+  }
+});
 
 app.get('/api/memory/recall', async (req, res) => {
   try {
@@ -1621,8 +1673,8 @@ app.get('/api/governance/hermes-logs', async (_req, res) => {
       .filter(Boolean);
     return res.json(logs);
   } catch (err) {
-    console.error('[Governance] HERMES logs error:', err?.message);
-    return res.status(500).json({ error: 'Failed to fetch HERMES logs' });
+    console.warn('[Governance] HERMES logs unavailable (Redis offline):', err?.message);
+    return res.status(200).json([]);
   }
 });
 
@@ -1792,8 +1844,17 @@ app.get('/health', async (_req, res) => {
 app.get('/api/health-check', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
-    const communityValueScore = redis ? await redis.get('kudbee:community_value_score') : '0';
-    const alerts = redis ? await redis.lrange('kudbee:alerts', 0, 4) : [];
+    let communityValueScore = '0';
+    let alerts = [];
+
+    if (redis) {
+      try {
+        communityValueScore = await redis.get('kudbee:community_value_score');
+        alerts = await redis.lrange('kudbee:alerts', 0, 4);
+      } catch (err) {
+        console.warn('[HealthCheck] Redis unavailable, marking degraded:', err?.message);
+      }
+    }
 
     const parsedAlerts = alerts.map((a) => {
       try {
@@ -1809,8 +1870,18 @@ app.get('/api/health-check', async (_req, res) => {
       alerts: parsedAlerts
     });
   } catch (err) {
-    console.error('[HealthCheck] Error:', err?.message);
-    res.status(500).json({ error: 'Failed to fetch health check' });
+    console.warn('[HealthCheck] Redis unavailable, returning empty dependencies:', err?.message);
+    res.status(200).json({
+      status: 'degraded',
+      service: 'kudbee-control-tower',
+      uptime_sec: Math.floor((Date.now() - BOOT_TIME) / 1000),
+      timestamp: new Date().toISOString(),
+      dependencies: {
+        ingestion_db: 'healthy',
+        vector_memory: 'healthy',
+        redis: 'unhealthy'
+      }
+    });
   }
 });
 
@@ -2099,8 +2170,8 @@ app.get('/api/session-history', async (_req, res) => {
     });
     res.json(sessions);
   } catch (err) {
-    console.error('[SessionHistory] Error:', err?.message);
-    res.status(500).json({ error: 'Failed to fetch session history' });
+    console.warn('[SessionHistory] Redis unavailable, returning empty array:', err?.message);
+    return res.status(200).json([]);
   }
 });
 

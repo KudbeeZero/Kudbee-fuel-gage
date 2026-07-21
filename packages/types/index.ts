@@ -4,16 +4,18 @@ export const TelemetryStatusSchema = z.string().min(1).default('OK');
 export type TelemetryStatus = z.infer<typeof TelemetryStatusSchema>;
 
 export const TelemetryTraceSchema = z.object({
-  trace_id: z.string().min(1),
-  model: z.string().min(1),
+  trace_id: z.string().min(1).max(255),
+  model: z.string().min(1).max(100),
   tokens_in: z.number().int().nonnegative(),
   tokens_out: z.number().int().nonnegative(),
   cost: z.number().nonnegative(),
   status: TelemetryStatusSchema.default('OK'),
-  provider: z.string().default('unknown'),
-  project_name: z.string().default('kilo-fuel-gauge'),
+  provider: z.string().max(100).default('unknown'),
+  project_name: z.string().max(100).default('kilo-fuel-gauge'),
+  thought_summary: z.string().max(2000).default(''),
+  reasoning: z.string().max(5000).default(''),
   timestamp: z.string().optional()
-});
+}).strict();
 export type TelemetryTrace = z.infer<typeof TelemetryTraceSchema>;
 
 export const IngestRequestSchema = TelemetryTraceSchema;

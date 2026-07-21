@@ -1095,6 +1095,7 @@ function AgentTerminal({
           '  governance      — governance ledger summary',
           '  hermes          — HERMES auditor status',
           '  !recall         — show last 10 stored user memories',
+          '  !remember <data> — persist data to Postgres (TTL: forever)',
           '  clear           — clear the terminal',
           '  echo <text>     — print text'
         ].join('\n');
@@ -1151,12 +1152,45 @@ function AgentTerminal({
     }
   };
 
+  const runRemember = async (data: string): Promise<void> => {
+    const placeholderId = Date.now();
+    setCommands((prev) => [
+      ...prev,
+      { id: placeholderId, text: `!remember ${data}`, output: 'persisting…' }
+    ]);
+    try {
+      await apiPost('/api/memory/remember', { data });
+      setCommands((prev) =>
+        prev.map((c) => (c.id === placeholderId ? { ...c, output: `remembered: "${data}"` } : c))
+      );
+    } catch (e) {
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.id === placeholderId
+            ? { ...c, output: `error: failed to persist memory (${e instanceof Error ? e.message : 'unknown'})` }
+            : c
+        )
+      );
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
     if (text.toLowerCase() === '!recall') {
       void runRecall();
+      setInput('');
+      return;
+    }
+    if (text.startsWith('!remember ')) {
+      const data = text.slice('!remember '.length).trim();
+      if (!data) {
+        setCommands((prev) => [...prev, { id: Date.now(), text, output: 'usage: !remember <data>' }]);
+        setInput('');
+        return;
+      }
+      void runRemember(data);
       setInput('');
       return;
     }
