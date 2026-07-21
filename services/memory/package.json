@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./vectorStore.ts",
-    "./topology": "./topologyIngest.ts"
+    "./topology": "./topologyIngest.ts",
+    "./thinkTokenGenerator": "./thinkTokenGenerator.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
