@@ -13,7 +13,7 @@ function StatusBadge({ status }: { status: string }) {
     status === 'VERIFIED'
       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
       : status === 'RECYCLED'
-        ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+        ? 'border-slate-600 bg-slate-900/40 text-slate-500'
         : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
   return (
     <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${tone}`}>
@@ -22,11 +22,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function MiniSpatial({ coords }: { coords: number[] }) {
+function MiniSpatial({ coords, status }: { coords: number[]; status: string }) {
   const x = coords[0] ?? 0;
   const y = coords[1] ?? 0;
   const z = coords[2] ?? 0;
-  const hue = Math.abs(x) > 0.5 ? 'text-rose-300' : Math.abs(y) > 0.5 ? 'text-amber-300' : 'text-emerald-300';
+  const hue = status === 'VERIFIED'
+    ? 'text-emerald-300'
+    : status === 'RECYCLED'
+      ? 'text-slate-600'
+      : 'text-amber-300';
   return (
     <div className={`font-mono text-[9px] ${hue}`}>
       x:{x.toFixed(2)} y:{y.toFixed(2)} z:{z.toFixed(2)}
@@ -49,7 +53,11 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories, loading }: Think
             key={idx}
             className={`rounded-lg border p-1.5 ${
               trajectory
-                ? 'border-violet-500/20 bg-violet-500/[0.04]'
+                ? trajectory.status === 'VERIFIED'
+                  ? 'border-emerald-500/20 bg-emerald-500/[0.04]'
+                  : trajectory.status === 'RECYCLED'
+                    ? 'border-slate-800 bg-slate-950/40'
+                    : 'border-amber-500/20 bg-amber-500/[0.04]'
                 : 'border-slate-800 bg-slate-950/40'
             }`}
           >
@@ -61,7 +69,7 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories, loading }: Think
                   </span>
                   <StatusBadge status={trajectory.status} />
                 </div>
-                <MiniSpatial coords={trajectory.spatial_coordinates} />
+                <MiniSpatial coords={trajectory.spatial_coordinates} status={trajectory.status} />
                 <div className="mt-1 flex items-center justify-between">
                   <span className="font-mono text-[9px] text-slate-500">
                     sim {trajectory.similarity_score.toFixed(3)}

@@ -482,6 +482,14 @@ async function recallUserMemories(limit = 10) {
     .slice(0, limit);
 }
 
+async function storeUserMemory({ agentId, thoughtSummary, reasoning, model, vector }) {
+  return runInsert(
+    `INSERT INTO user_memories (agent_id, thought_summary, reasoning, model, embedding, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())`,
+    [agentId ? String(agentId) : null, String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), vector ? JSON.stringify(vector) : null]
+  );
+}
+
 // --- Telemetry ingest firewall: drop low-value / heartbeat events -----------
 // Heartbeat and no-op pings must never be persisted; only critical traces land
 // in the system of record. This is the deterministic layer that complements the
@@ -699,6 +707,27 @@ app.get('/api/memory/recall', async (req, res) => {
   } catch (err) {
     console.error('[Memory] Recall endpoint error:', err.message);
     return res.status(500).json({ error: 'Failed to recall memory' });
+  }
+});
+
+app.post('/api/memory/remember', async (req, res) => {
+  try {
+    const { data, agent_id, model, reasoning } = req.body || {};
+    if (!data || typeof data !== 'string') {
+      return res.status(400).json({ error: 'Missing required field: data (string)' });
+    }
+    const vector = embedTrace(data, data, 'user-memory');
+    await storeUserMemory({
+      agentId: agent_id || null,
+      thoughtSummary: data.slice(0, 512),
+      reasoning: reasoning || data,
+      model: model || 'user-input',
+      vector
+    });
+    res.json({ success: true, message: 'Memory stored' });
+  } catch (err) {
+    console.error('[Memory] Remember endpoint error:', err.message);
+    res.status(500).json({ error: 'Failed to store memory' });
   }
 });
 
@@ -2100,7 +2129,7 @@ app.get('/api/session-history', async (_req, res) => {
     res.json(sessions);
   } catch (err) {
     console.error('[SessionHistory] Error:', err?.message);
-    res.status(500).json({ error: 'Failed to fetch session history' });
+    res.json([]);
   }
 });
 

@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { apiGet } from '../lib/apiClient';
 import { useEventStream } from '../hooks/useEventStream';
 import { useThinkTrajectories } from '../hooks/useThinkTrajectories';
+import { useGovernanceStream } from '../hooks/useGovernanceStream';
+import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
 import type { ThinkTrajectory } from '@kudbee/types';
 import type { IKudbeePlugin } from '@kudbee/types';
 
@@ -110,7 +112,9 @@ function renderPlugin(
   plugin: IKudbeePlugin,
   hermes: { logs: HermesAuditLog[]; connected: boolean },
   trajectories: ThinkTrajectory[],
-  trajectoryLoading: boolean
+  trajectoryLoading: boolean,
+  pendingApprovals: number,
+  pendingThinkTokens: number
 ) {
   const span = COL_SPAN_CLASS[plugin.gridSpan.colSpan] ?? 'lg:col-span-4';
   switch (plugin.id) {
@@ -141,7 +145,7 @@ function renderPlugin(
     case 'plugin-gov-gate':
       return (
         <div key={plugin.id} className={span}>
-          <GovernanceGatePlugin plugin={plugin} />
+          <GovernanceGatePlugin plugin={plugin} pendingApprovals={pendingApprovals} pendingThinkTokens={pendingThinkTokens} />
         </div>
       );
     case 'plugin-hermes-auditor':
@@ -160,6 +164,8 @@ export function RackLayout() {
   const hermes = useHermesAuditLogs();
   const edge = useEdgeSignals();
   const { trajectories, loading: trajectoryLoading } = useThinkTrajectories();
+  const { pending: pendingApprovals } = useGovernanceStream();
+  const { pending: pendingThinkTokens } = useThinkGovernanceStream();
 
   return (
     <section
@@ -178,7 +184,7 @@ export function RackLayout() {
         </span>
       </header>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
-        {plugins.map((plugin) => renderPlugin(plugin, hermes, trajectories, trajectoryLoading))}
+        {plugins.map((plugin) => renderPlugin(plugin, hermes, trajectories, trajectoryLoading, pendingApprovals.length, pendingThinkTokens.length))}
         <div className="lg:col-span-12">
           <EdgeSentinelPlugin
             signals={edge.signals}

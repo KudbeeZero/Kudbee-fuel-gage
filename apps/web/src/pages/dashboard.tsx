@@ -1095,6 +1095,7 @@ function AgentTerminal({
           '  governance      — governance ledger summary',
           '  hermes          — HERMES auditor status',
           '  !recall         — show last 10 stored user memories',
+          '  !remember <data> — persist data to long-term memory',
           '  clear           — clear the terminal',
           '  echo <text>     — print text'
         ].join('\n');
@@ -1110,6 +1111,14 @@ function AgentTerminal({
       case 'echo':
         return rest.join(' ');
       default:
+        if (cmd.startsWith('!remember ')) {
+          const payload = raw.slice('!remember'.length).trim();
+          if (payload) {
+            void runRemember(payload);
+            return '';
+          }
+          return 'usage: !remember <data>';
+        }
         return `command not found: ${cmd} (type "help")`;
     }
   };
@@ -1151,12 +1160,51 @@ function AgentTerminal({
     }
   };
 
+  // `!remember <data>` — persist arbitrary text to the backend user_memories store.
+  // Async UX: push a placeholder, then swap in the server confirmation.
+  const runRemember = async (rawData: string): Promise<void> => {
+    const placeholderId = Date.now();
+    setCommands((prev) => [
+      ...prev,
+      { id: placeholderId, text: `!remember ${rawData.slice(0, 48)}${rawData.length > 48 ? '…' : ''}`, output: 'storing memory…' }
+    ]);
+    try {
+      await apiPost<{ success: boolean; message: string }>('/api/memory/remember', {
+        data: rawData,
+        agent_id: 'partner-terminal',
+        model: 'user-input',
+        reasoning: rawData
+      });
+      setCommands((prev) =>
+        prev.map((c) => (c.id === placeholderId ? { ...c, output: 'memory stored.' } : c))
+      );
+    } catch (e) {
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.id === placeholderId
+            ? { ...c, output: `remember failed: ${e instanceof Error ? e.message : 'unknown error'}` }
+            : c
+        )
+      );
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
     if (text.toLowerCase() === '!recall') {
       void runRecall();
+      setInput('');
+      return;
+    }
+    if (text.startsWith('!remember ')) {
+      const payload = text.slice('!remember '.length).trim();
+      if (payload) {
+        void runRemember(payload);
+      } else {
+        setCommands((prev) => [...prev, { id: Date.now(), text, output: 'usage: !remember <data>' }]);
+      }
       setInput('');
       return;
     }
