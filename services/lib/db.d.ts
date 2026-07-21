@@ -27,3 +27,5 @@ declare module '../lib/db.js' {
     fallbackInsertCount: number;
   };
 }
+
+export {};
