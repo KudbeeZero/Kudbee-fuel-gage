@@ -124,6 +124,7 @@ export interface MergedTelemetryLog {
   traceId?: string;
   service?: string;
   sdkVersion?: string;
+  durationMs?: number;
 }
 
 /** Concise log row used by CSV-dropzone preview / parse. */
@@ -141,6 +142,8 @@ export interface DashboardSummary {
   total_24h_cost: number;
   total_historical_tokens: number;
   total_active_models: number;
+  total_requests: number;
+  error_rate: number;
   health_matrix: ReadonlyArray<Record<string, unknown>>;
 }
 
@@ -665,9 +668,13 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
 
   // Filter logs based on search query, timeframe, selected session id, provider and status
   const filteredLogs = mergedLogs.filter(log => {
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
-      log.project.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      log.model.toLowerCase().includes(searchQuery.toLowerCase());
+      log.project.toLowerCase().includes(searchLower) || 
+      log.model.toLowerCase().includes(searchLower) ||
+      (log.traceId && log.traceId.toLowerCase().includes(searchLower)) ||
+      (log.service && log.service.toLowerCase().includes(searchLower)) ||
+      log.status.toLowerCase().includes(searchLower);
     
     let matchesTimeframe = true;
     if (timeframe === '24h') {
@@ -846,6 +853,24 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
       id="history-view-container"
     >
       
+      {/* EMPTY STATE: displayed when no telemetry logs have been ingested yet */}
+      {(!dbLogs || dbLogs.length === 0) && (
+        <motion.div 
+          variants={sectionVariants}
+          className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden"
+          id="history-empty-state"
+        >
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-500/30 to-transparent"></div>
+          <div className="flex flex-col items-center justify-center gap-3 py-8">
+            <Database className="w-10 h-10 text-slate-600" />
+            <h3 className="font-display font-semibold text-slate-400 text-sm">No historical telemetry logs captured yet</h3>
+            <p className="text-xs text-slate-500 text-center max-w-md leading-relaxed">
+              Trigger agent activity or traffic simulation to populate the history view with real telemetry traces.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* 1. SESSION REPLAY INSPECTOR (Top of History View) */}
       <motion.div 
         variants={sectionVariants}
@@ -1455,24 +1480,25 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
         {/* Data Table */}
         <div className="overflow-x-auto max-h-80 overscroll-contain overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
           <table className="w-full text-left border-collapse md:min-w-[700px] block md:table">
-            <thead className="hidden md:table-header-group">
-              <tr className="font-mono text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/70 border-b border-slate-800">
-                <th className="px-4 py-4 w-10 border-b border-slate-800"></th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Timestamp</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Project Name</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Model</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Provider</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Status</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800">Execution Status</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">In Tokens</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Out Tokens</th>
-                <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Total Cost</th>
-              </tr>
-            </thead>
+              <thead className="hidden md:table-header-group">
+                <tr className="font-mono text-slate-500 text-[10px] uppercase tracking-widest bg-slate-950/70 border-b border-slate-800">
+                  <th className="px-4 py-4 w-10 border-b border-slate-800"></th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Timestamp</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Trace ID</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Project Name</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Model</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Provider</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Status</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800">Execution Status</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">In Tokens</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Out Tokens</th>
+                  <th className="px-6 py-4 font-semibold border-b border-slate-800 text-right">Total Cost</th>
+                </tr>
+              </thead>
             <tbody className="font-mono text-xs divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0 bg-slate-950 md:bg-transparent">
               {filteredLogs.length === 0 ? (
                 <tr className="block md:table-row">
-                  <td colSpan={10} className="px-6 py-12 text-center font-mono text-slate-500 block md:table-cell">
+                  <td colSpan={11} className="px-6 py-12 text-center font-mono text-slate-500 block md:table-cell">
                     No historical traces matched the current filtering criteria.
                   </td>
                 </tr>
@@ -1511,6 +1537,12 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
                         <td className="px-6 py-3 font-mono text-slate-100 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
                           <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Timestamp:</span>
                           <span className="text-right md:text-left">{new Date(log.timestamp).toLocaleString()}</span>
+                        </td>
+                        <td className="px-6 py-3 font-mono text-slate-300 flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0">
+                          <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Trace ID:</span>
+                          <span className="text-right md:text-left text-emerald-400/80">
+                            {log.traceId || `tr-${log.timestamp.replace(/[^0-9]/g, '').slice(-10)}`}
+                          </span>
                         </td>
                         <td className="px-6 py-3 font-mono text-slate-300 font-semibold flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2 md:pb-0 gap-1.5">
                           <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Project:</span>
@@ -1720,17 +1752,25 @@ function HistoryView({ currency, dbLogs, onNewLogTriggered, onTraceSelect }: {
                                         )}
                                       </div>
 
-                                      {/* SDK Version Field */}
-                                      <div className="flex items-center justify-between py-0.5">
-                                        <span className="text-slate-500">SDK Version:</span>
-                                        {log.sdkVersion ? (
-                                          <span className="text-indigo-400 font-semibold">
-                                            {log.sdkVersion}
-                                          </span>
-                                        ) : (
-                                          <span className="text-indigo-400/80 font-medium">@opentelemetry/sdk-node@1.24.0</span>
-                                        )}
-                                      </div>
+                                       {/* SDK Version Field */}
+                                       <div className="flex items-center justify-between py-0.5">
+                                         <span className="text-slate-500">SDK Version:</span>
+                                         {log.sdkVersion ? (
+                                           <span className="text-indigo-400 font-semibold">
+                                             {log.sdkVersion}
+                                           </span>
+                                         ) : (
+                                           <span className="text-indigo-400/80 font-medium">@opentelemetry/sdk-node@1.24.0</span>
+                                         )}
+                                       </div>
+
+                                       {/* Duration Field */}
+                                       <div className="flex items-center justify-between py-0.5">
+                                         <span className="text-slate-500">Duration:</span>
+                                         <span className="text-slate-100 font-medium bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/60 text-[10px]">
+                                           {log.durationMs != null ? `${log.durationMs} ms` : '—'}
+                                         </span>
+                                       </div>
                                     </div>
                                   </motion.div>
 
@@ -3146,8 +3186,9 @@ export default function App() {
       inTokens: Math.floor(dbTokens * 0.4),
       outTokens: Math.floor(dbTokens * 0.6),
       cost: dbCost,
-      totalRequests: dbLogs.length,
-      activeModels: dbSummary?.total_active_models || 0
+      totalRequests: dbSummary?.total_requests || 0,
+      activeModels: dbSummary?.total_active_models || 0,
+      errorRate: dbSummary?.error_rate || 0
     };
   }, [dbSummary, dbLogs]);
 
@@ -3567,6 +3608,25 @@ export default function App() {
                   title="Live Pipeline Cost" 
                   value={getFormattedCost(liveStats.cost, currency, 4)} 
                   icon={DollarSign}
+                />
+              </div>
+
+              {/* AGGREGATE METRICS ROW */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <TelemetryCard 
+                  title="Total Requests" 
+                  value={liveStats.totalRequests.toLocaleString()} 
+                  icon={Activity}
+                />
+                <TelemetryCard 
+                  title="Error Rate" 
+                  value={`${liveStats.errorRate.toFixed(2)}%`} 
+                  icon={AlertTriangle}
+                />
+                <TelemetryCard 
+                  title="Active Models" 
+                  value={liveStats.activeModels.toLocaleString()} 
+                  icon={Server}
                 />
               </div>
 
