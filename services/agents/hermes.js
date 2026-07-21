@@ -223,7 +223,6 @@ export async function runAudit() {
 
   for (const f of memoryFindings) {
     log.warn(`memory:${f.type}`, `(${f.count})`, f.detail);
-    // Surface memory-inefficiency findings as live operator toasts.
     await publishAuditEvent('hermes_suggestion', {
       id: `mem-${f.type}-${Date.now()}`,
       action: 'OPTIMIZE_MEMORY',
@@ -231,6 +230,17 @@ export async function runAudit() {
       prompt: f.detail,
       detail: f.detail
     });
+    try {
+      await proposeAction({
+        action: `OPTIMIZE_MEMORY:${f.type}`,
+        tags: ['hermes-auditor', 'memory', 'optimization'],
+        prompt: `HERMES memory audit: ${f.detail}`,
+        id: `hermes-mem-${f.type}-${Date.now()}`,
+        agentId: 'HERMES'
+      });
+    } catch (err) {
+      log.error('failed to propose memory optimization:', err.message);
+    }
   }
 
   let promoted = 0;

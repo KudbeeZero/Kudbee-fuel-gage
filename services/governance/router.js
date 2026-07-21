@@ -181,14 +181,19 @@ export async function listProposed() {
   return out.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
-export async function proposeAction({ action, tags = [], prompt = '', id }) {
+/**
+ * Create a new proposed governance action.
+ * @param {{ action: string; tags?: string[]; prompt?: string; id?: string; status?: string; agentId?: string }} opts
+ */
+export async function proposeAction({ action, tags = [], prompt = '', id, status = 'PROPOSED', agentId }) {
   const finalId = id || `ga-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const entry = {
     id: finalId,
     action,
     tags: Array.isArray(tags) ? tags : [],
     prompt,
-    status: 'PROPOSED',
+    status,
+    agent_id: agentId || undefined,
     created_at: new Date().toISOString(),
   };
   await kvSet(`governance:proposed:${finalId}`, entry);
@@ -222,10 +227,23 @@ export async function rejectAction(id) {
   return entry;
 }
 
+export async function proposeSentinelAction({ action, tags = [], prompt = '', id }) {
+  const finalId = id || `gov-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  return proposeAction({
+    action,
+    tags: Array.isArray(tags) ? tags : [],
+    prompt,
+    id: finalId,
+    status: 'PENDING_APPROVAL',
+    agentId: 'EDGE_SENTINEL'
+  });
+}
+
 export const router = {
   matchLogic,
   listProposed,
   proposeAction,
+  proposeSentinelAction,
   approveAction,
   rejectAction,
   registerTag,

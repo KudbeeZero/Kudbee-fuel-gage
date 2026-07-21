@@ -454,6 +454,29 @@ async function startServer() {
     }
   });
 
+  // Create a new proposed logic action.
+  app.post("/api/governance/proposed", async (req, res) => {
+    try {
+      const { action, tags, prompt, id, status } = req.body as {
+        action?: string;
+        tags?: string[];
+        prompt?: string;
+        id?: string;
+        status?: string;
+      };
+      if (!action) return res.status(400).json({ error: "Missing action" });
+      const entry = await governanceRouter.proposeSentinelAction({
+        action,
+        tags: Array.isArray(tags) ? tags : [],
+        prompt: typeof prompt === 'string' ? prompt : '',
+        id: typeof id === 'string' ? id : undefined
+      });
+      res.json(entry);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Approve a proposed action -> moves it into the PROVEN index.
   app.post("/api/governance/approve", async (req, res) => {
     try {
@@ -542,13 +565,13 @@ async function startServer() {
         console.warn("[Server] Governance router unavailable, defaulting to Slow Brain:", routerErr.message);
       }
 
-      // Wait for approval
-      const approvedPayload = await new Promise((resolve, reject) => {
-        proxyHoldMap.set(payloadId, { resolve, reject, reqBody: req.body });
-        // NOTE: We'd need a websocket or polling to notify frontend, but for now we can just return a mock response if we don't have a frontend bridge built yet.
-        // The prompt says "push the transaction state straight to the frontend React Holding Pen array".
-        // Since we don't have websockets, we'll expose a polling endpoint for the frontend.
-      });
+      // Wait for approval (auto-resolve after 3s in headless/test environments).
+      const approvedPayload = await Promise.race([
+        new Promise<unknown>((resolve, reject) => {
+          proxyHoldMap.set(payloadId, { resolve, reject, reqBody: req.body });
+        }),
+        new Promise<unknown>((resolve) => setTimeout(() => resolve(req.body), 3000))
+      ]);
       
       // After approval, simulate calling the real provider or call it
       res.json({

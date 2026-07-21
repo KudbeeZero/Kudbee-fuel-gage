@@ -12,7 +12,7 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
-import { listProposed, approveAction, rejectAction } from '../governance/router.js';
+import { listProposed, approveAction, rejectAction, proposeAction } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
@@ -586,6 +586,61 @@ app.post('/api/telemetry/ingest', async (req, res) => {
       agent: agentId || null,
       ts: feedEntry.timestamp
     });
+
+    // --- Edge Sentinel Blast Radius Governance ---------------------------------
+    // Inline pure functions from services/sentinel/src/governance.ts to avoid
+    // cross-workspace .ts import friction in the ESM server runtime.
+    const RISK_THRESHOLD = 2;
+    const MUTATION_WEIGHT = { none: 0, local_cache: 1, db_write: 2, schema_env: 3 };
+    const DESTRUCTION_WEIGHT = { none: 0, soft_delete: 1, hard_delete: 2, widespread_drop: 3 };
+
+    function calculateRiskScore(mutationRisk, dataDestructionRisk) {
+      return (MUTATION_WEIGHT[mutationRisk] || 0) + (DESTRUCTION_WEIGHT[dataDestructionRisk] || 0);
+    }
+
+    function evaluateBlastRadius(signal, action) {
+      const calculatedRisk = calculateRiskScore(signal.mutationRisk, signal.dataDestructionRisk);
+      if (calculatedRisk < RISK_THRESHOLD) return null;
+      return {
+        id: `gov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        status: 'PENDING_APPROVAL',
+        agentId: 'EDGE_SENTINEL',
+        action,
+        calculatedRisk,
+        reason: `[${signal.mutationRisk}/${signal.dataDestructionRisk}] ${signal.detail}`
+      };
+    }
+
+    try {
+      const observedLatency = Number(req.body?.latency_ms) || 0;
+      const statusVal = String(effectiveStatus || 'OK');
+      const isAnomalousStatus = statusVal !== 'OK';
+      const isHighLatency = observedLatency > 1000;
+      const isHighCost = Number(cost) > 0.05;
+      const isHighTokens = (Number(tokens_in) || 0) + (Number(tokens_out) || 0) > 1000;
+
+      if (isAnomalousStatus || isHighLatency || isHighCost || isHighTokens) {
+        const mutationRisk = isAnomalousStatus ? 'db_write' : isHighLatency ? 'local_cache' : 'none';
+        const destructionRisk = isAnomalousStatus && statusVal === 'ERROR' ? 'hard_delete' : 'none';
+        const blast = evaluateBlastRadius(
+          { mutationRisk, dataDestructionRisk: destructionRisk, observedLatencyMs: observedLatency, detail: `Anomalous telemetry on trace ${feedEntry.trace_id}: status=${statusVal}, latency=${observedLatency}ms, cost=${cost}` },
+          'REVIEW_ANOMALY'
+        );
+        if (blast) {
+          await proposeAction({
+            action: blast.action,
+            tags: ['edge-sentinel', 'latency-anomaly', 'pending-approval'],
+            prompt: `Edge Sentinel anomaly (risk=${blast.calculatedRisk}): ${blast.reason}`,
+            id: blast.id,
+            status: 'PENDING_APPROVAL',
+            agentId: 'EDGE_SENTINEL'
+          });
+          console.log(`[Sentinel] PENDING_APPROVAL created: ${blast.id} (risk=${blast.calculatedRisk})`);
+        }
+      }
+    } catch (err) {
+      console.error('[Sentinel] Blast radius evaluation failed:', err.message);
+    }
 
     return res.status(201).json(responsePayload);
   } catch (err) {

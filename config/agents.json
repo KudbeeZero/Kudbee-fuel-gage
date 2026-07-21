@@ -5,6 +5,12 @@
       "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfWb1QScdSVEyNDYUmddR5rDWYgFzzt3Vde+wTv1sXFs=\n-----END PUBLIC KEY-----\n",
       "status": "active",
       "createdAt": "2026-07-19T01:47:57.178Z"
+    },
+    {
+      "agentId": "edge-sentinel-test",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAgnWYmZo7Y/NaoQoedYl1DgtnATe5KI1v4rhxqliaVfo=\n-----END PUBLIC KEY-----\n",
+      "status": "active",
+      "createdAt": "2026-07-21T02:49:22.469Z"
     }
   ],
   "note": "Private keys are held by agents only and never committed. On-chain registry replaces this file in a later phase."
