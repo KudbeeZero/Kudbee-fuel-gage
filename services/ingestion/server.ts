@@ -383,6 +383,8 @@ async function startServer() {
       return res.json({
         total_24h_cost: Number(totalCost24h.toFixed(6)),
         total_historical_tokens: totalInput + totalOutput,
+        total_input_tokens: totalInput,
+        total_output_tokens: totalOutput,
         total_active_models: activeModelsSet.size || 4,
         health_matrix: healthMatrix,
         postgres_size_bytes,
