@@ -966,6 +966,9 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
     });
   }
 
+  // --- Phase 20: Dynamic Policy Engine, Vector Sync, and Live Alerts -----------
+  registerPhase20Routes(app);
+
   // Bind server listener to port 3000
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] Core router active and listening on http://localhost:${PORT}`);
@@ -978,3 +981,218 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
 startServer().catch((err) => {
   console.error("[Server] Fatal bootstrap exception:", err);
 });
+
+// --- Phase 20: Dynamic Policy Engine, Vector Sync, and Live Alerts -----------
+function registerPhase20Routes(app: import("express").Express) {
+  interface PolicyConfig {
+    maxTokens?: number;
+    patterns?: string[];
+    denyTerms?: string[];
+    pattern?: string;
+  }
+  interface Policy {
+    id: string;
+    label: string;
+    enabled: boolean;
+    severity: "PASS" | "WARN" | "BLOCK";
+    config: PolicyConfig;
+  }
+  const policyState: Record<string, Policy> = {
+    token_budget_cap: { id: "token_budget_cap", label: "Token Budget Cap", enabled: true, severity: "BLOCK", config: { maxTokens: 200000 } },
+    secret_leak_prevention: { id: "secret_leak_prevention", label: "Secret Leak Prevention", enabled: true, severity: "BLOCK", config: { patterns: ["sk-ant-", "sk-proj-", "AIzaSy", "ghp_"] } },
+    system_prompt_guard: { id: "system_prompt_guard", label: "System Prompt Guard", enabled: true, severity: "WARN", config: { denyTerms: ["ignore previous", "disregard system"] } },
+    pii_redaction: { id: "pii_redaction", label: "PII Redaction", enabled: true, severity: "WARN", config: { pattern: "email" } }
+  };
+
+  const vectorSyncState: { state: "IDLE" | "INDEXING" | "SYNCED" | "FAILED"; lastSyncAt: string | null; totalChunks: number; totalVectors: number; recentDocs: Array<{ id: string; chunkCount: number }> } = {
+    state: "IDLE",
+    lastSyncAt: null,
+    totalChunks: 0,
+    totalVectors: 0,
+    recentDocs: []
+  };
+
+  const alertsState: { alerts: Array<Record<string, unknown>> } = { alerts: [] };
+
+  function evaluatePolicies(prompt: string) {
+    const text = String(prompt || "");
+    const results: Array<{ id: string; status: "PASS" | "WARN" | "BLOCK"; detail: string }> = [];
+    let worstStatus: "PASS" | "WARN" | "BLOCK" = "PASS";
+    for (const policy of Object.values(policyState)) {
+      if (!policy.enabled) continue;
+      let status: "PASS" | "WARN" | "BLOCK" = "PASS";
+      let detail = "";
+      if (policy.id === "token_budget_cap") {
+        const approx = Math.ceil(text.length / 4);
+        if (approx > (policy.config.maxTokens ?? Infinity)) {
+          status = policy.severity;
+          detail = `approx ${approx} tokens exceeds cap of ${policy.config.maxTokens}`;
+        }
+      } else if (policy.id === "secret_leak_prevention") {
+        const hit = (policy.config.patterns || []).find((p) => text.includes(p));
+        if (hit) {
+          status = policy.severity;
+          detail = `detected secret pattern "${hit}"`;
+        }
+      } else if (policy.id === "system_prompt_guard") {
+        const lower = text.toLowerCase();
+        const hit = (policy.config.denyTerms || []).find((t) => lower.includes(t));
+        if (hit) {
+          status = policy.severity;
+          detail = `matched forbidden phrase "${hit}"`;
+        }
+      } else if (policy.id === "pii_redaction") {
+        if (text.includes("@")) {
+          status = policy.severity;
+          detail = "email-like string detected";
+        }
+      }
+      if (status === "BLOCK") worstStatus = "BLOCK";
+      else if (status === "WARN" && worstStatus !== "BLOCK") worstStatus = "WARN";
+      results.push({ id: policy.id, status, detail });
+    }
+    return { overall: worstStatus, results };
+  }
+
+  app.get("/api/governance/policies", async (_req, res) => {
+    try {
+      res.json({ policies: Object.values(policyState) });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post("/api/governance/policies", async (req, res) => {
+    try {
+      const { id, enabled, severity, config } = req.body || {};
+      const policy = policyState[id as string];
+      if (!policy) return res.status(404).json({ error: `unknown policy ${id}` });
+      if (typeof enabled === "boolean") policy.enabled = enabled;
+      if (severity === "PASS" || severity === "WARN" || severity === "BLOCK") policy.severity = severity;
+      if (config && typeof config === "object") {
+        policy.config = { ...policy.config, ...(config as PolicyConfig) };
+      }
+      res.json({ policy });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post("/api/governance/policies/evaluate", async (req, res) => {
+    try {
+      const prompt = req.body?.prompt || req.body?.messages?.map((m: { content: string }) => m.content).join(" ") || "";
+      res.json(evaluatePolicies(String(prompt)));
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  function chunkText(text: string, size = 400) {
+    const out: Array<{ id: string; text: string; offset: number }> = [];
+    const t = String(text || "").trim();
+    if (!t) return out;
+    for (let i = 0; i < t.length; i += size) {
+      out.push({ id: `chunk-${out.length}`, text: t.slice(i, i + size), offset: i });
+    }
+    return out;
+  }
+
+  app.get("/api/vector/sync", async (_req, res) => {
+    res.json(vectorSyncState);
+  });
+
+  app.post("/api/vector/sync", async (req, res) => {
+    try {
+      vectorSyncState.state = "INDEXING";
+      const documents = Array.isArray(req.body?.documents) ? req.body.documents : [
+        { id: "doc-overview", text: "Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning)." },
+        { id: "doc-firewall", text: "The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies." },
+        { id: "doc-vectors", text: "Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger." }
+      ];
+      const newDocs: Array<{ id: string; chunkCount: number }> = [];
+      let totalChunks = 0;
+      for (const doc of documents as Array<{ id: string; text: string }>) {
+        const chunks = chunkText(doc.text);
+        totalChunks += chunks.length;
+        newDocs.push({ id: doc.id, chunkCount: chunks.length });
+      }
+      setTimeout(() => {
+        vectorSyncState.state = "SYNCED";
+        vectorSyncState.lastSyncAt = new Date().toISOString();
+        vectorSyncState.totalChunks = totalChunks;
+        vectorSyncState.totalVectors = totalChunks;
+        vectorSyncState.recentDocs = newDocs;
+      }, 600);
+      res.json({ ok: true, state: vectorSyncState.state, documents: newDocs.length, totalChunks });
+    } catch (err) {
+      vectorSyncState.state = "FAILED";
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post("/api/vector/recall", async (req, res) => {
+    try {
+      const prompt = String(req.body?.prompt || "").slice(0, 240);
+      const library = [
+        { id: "doc-overview", text: "Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning)." },
+        { id: "doc-firewall", text: "The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies." },
+        { id: "doc-vectors", text: "Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger." },
+        { id: "doc-routing", text: "Routing decisions are produced by /v1/chat/completions via matchLogic, which consults the vector store before invoking the LLM (Slow Brain)." }
+      ];
+      const ranked = library
+        .map((doc) => {
+          const terms = prompt.toLowerCase().split(/\s+/).filter(Boolean);
+          const score = terms.reduce((acc, term) => acc + (doc.text.toLowerCase().includes(term) ? 1 : 0), 0) / Math.max(1, terms.length);
+          return { ...doc, score: Number(score.toFixed(3)) };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      res.json({ prompt, retrieved: ranked });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  function pushAlert(alert: Record<string, unknown>) {
+    const entry = { ...alert, id: alert.id || `alert-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, status: alert.status || "OPEN", createdAt: alert.createdAt || new Date().toISOString() };
+    alertsState.alerts = [entry, ...alertsState.alerts].slice(0, 50) as Array<Record<string, unknown>>;
+    return entry;
+  }
+
+  if (alertsState.alerts.length === 0) {
+    pushAlert({
+      severity: "INFO",
+      source: "governance",
+      title: "Policy engine online",
+      detail: "Token Budget Cap, Secret Leak Prevention, and System Prompt Guard are active."
+    });
+  }
+
+  app.get("/api/system/alerts", async (_req, res) => {
+    res.json({ alerts: alertsState.alerts });
+  });
+
+  app.post("/api/system/alerts/:id/ack", async (req, res) => {
+    try {
+      const alert = alertsState.alerts.find((a) => a.id === req.params.id);
+      if (!alert) return res.status(404).json({ error: "alert not found" });
+      (alert as Record<string, unknown>).status = "ACK";
+      (alert as Record<string, unknown>).acknowledgedAt = new Date().toISOString();
+      res.json({ alert });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post("/api/system/alerts/:id/mitigate", async (req, res) => {
+    try {
+      const alert = alertsState.alerts.find((a) => a.id === req.params.id);
+      if (!alert) return res.status(404).json({ error: "alert not found" });
+      (alert as Record<string, unknown>).status = "MITIGATED";
+      (alert as Record<string, unknown>).mitigatedAt = new Date().toISOString();
+      res.json({ alert });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+}

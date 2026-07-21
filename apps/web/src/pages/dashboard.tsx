@@ -29,6 +29,7 @@ import {
 import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
 import { useCommandDispatcher, commandRunners } from '../store/commandDispatcher';
+import type { VectorSyncStatus } from '../hooks/useVectorSync';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
@@ -429,6 +430,121 @@ function StorageGaugeCard({ bytes, label, icon: Icon, thresholdBytes }: { bytes:
       </div>
       <p className="mt-2 text-[10px] font-mono text-slate-500">Threshold: {formatBytes(thresholdBytes)}</p>
     </div>
+  );
+}
+
+function VectorStoreCard() {
+  const [status, setStatus] = useState<VectorSyncStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resyncing, setResyncing] = useState(false);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const data = await apiGet<VectorSyncStatus>('/api/vector/sync');
+      setStatus(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Vector status unavailable');
+      setStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const id = setInterval(() => void load(), 5000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const handleResync = useCallback(async () => {
+    setResyncing(true);
+    setError(null);
+    try {
+      await apiPost('/api/vector/sync', {});
+      setTimeout(() => void load(), 800);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Vector sync failed');
+    } finally {
+      setTimeout(() => setResyncing(false), 400);
+    }
+  }, [load]);
+
+  return (
+    <section
+      id="vector-store-card"
+      className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"
+    >
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Database className="h-4 w-4 text-cyan-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Vector Store & RAG Pipeline</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            id="vector-card-state"
+            className={`rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest ${
+              status?.state === 'SYNCED'
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                : status?.state === 'INDEXING'
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                  : status?.state === 'FAILED'
+                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                    : 'border-slate-700 bg-slate-800 text-slate-400'
+            }`}
+          >
+            [{status?.state ?? 'IDLE'}]
+          </span>
+          <button
+            id="vector-card-resync"
+            type="button"
+            onClick={() => void handleResync()}
+            disabled={resyncing}
+            className="flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+          >
+            <Server className={`h-3 w-3 ${resyncing ? 'animate-spin' : ''}`} />
+            {resyncing ? 'Resyncing…' : 'Re-sync'}
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 p-5 md:grid-cols-4">
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Total Chunks</div>
+          <div className="mt-1 font-mono text-lg font-bold text-cyan-300">
+            {loading ? '…' : status?.totalChunks ?? 0}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Vectors</div>
+          <div className="mt-1 font-mono text-lg font-bold text-cyan-300">
+            {loading ? '…' : status?.totalVectors ?? 0}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Recent Documents</div>
+          <div className="mt-1 font-mono text-lg font-bold text-slate-300">
+            {loading ? '…' : status?.recentDocs.length ?? 0}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Last Sync</div>
+          <div className="mt-1 font-mono text-sm font-bold text-slate-300">
+            {loading
+              ? '…'
+              : status?.lastSyncAt
+                ? new Date(status.lastSyncAt).toLocaleTimeString()
+                : '—'}
+          </div>
+        </div>
+      </div>
+      {error && (
+        <div className="border-t border-slate-800/60 bg-amber-500/5 px-5 py-2 font-mono text-[10px] text-amber-300">
+          {error}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -2354,6 +2470,7 @@ export function DashboardPage() {
             <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+          <VectorStoreCard />
           <ThinkTrajectoriesCard trajectories={trajectories} loading={trajectoriesLoading} error={trajectoriesError} />
           <TokenMetrics metrics={thinkMetrics} error={thinkMetricsError} />
           <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />

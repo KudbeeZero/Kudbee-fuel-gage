@@ -12,10 +12,15 @@ import {
   Server,
   Inbox,
   Clock,
-  Gauge
+  Gauge,
+  Lock,
+  KeyRound,
+  EyeOff,
+  FileWarning
 } from 'lucide-react';
-import { apiGet } from '../lib/apiClient';
+import { apiGet, apiPost } from '../lib/apiClient';
 import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
+import { PolicyEnginePanel } from '../components/governance/PolicyEnginePanel';
 
 interface DeepServiceStatus {
   status: 'OK' | 'OFFLINE';
@@ -69,6 +74,8 @@ function describeIssues(payload: unknown): string[] {
 export function FirewallPage() {
   const [violations, setViolations] = useState<SecurityViolation[]>([]);
   const [deepHealth, setDeepHealth] = useState<DeepHealthResponse | null>(null);
+  const [triageLoading, setTriageLoading] = useState(true);
+  const [deepHealthLoading, setDeepHealthLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
@@ -83,6 +90,8 @@ export function FirewallPage() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load triage queue');
+    } finally {
+      setTriageLoading(false);
     }
   }, []);
 
@@ -94,6 +103,8 @@ export function FirewallPage() {
     } catch (e) {
       setDeepHealthError(e instanceof Error ? e.message : 'Deep health probe failed');
       setDeepHealth(null);
+    } finally {
+      setDeepHealthLoading(false);
     }
   }, []);
 
@@ -209,7 +220,16 @@ export function FirewallPage() {
               </div>
             </div>
 
-            {violations.length === 0 ? (
+            {triageLoading && violations.length === 0 ? (
+              <div className="space-y-2" id="firewall-skeleton">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-12 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : violations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-slate-600">
                 <Inbox className="w-10 h-10 mb-3 opacity-40" />
                 <span className="text-sm font-mono">No quarantined payloads. The firewall is clear.</span>
@@ -281,6 +301,7 @@ export function FirewallPage() {
         </div>
 
         <div className="space-y-6">
+          <PolicyEnginePanel />
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
             <div className="flex items-center gap-2 mb-4">
@@ -298,6 +319,19 @@ export function FirewallPage() {
             )}
 
             {!deepHealth ? (
+              deepHealthLoading ? (
+                <div className="space-y-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-16 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[11px] font-mono text-slate-600">Probing circuit breakers…</div>
+              )
+            ) : deepHealthError ? (
               <div className="text-[11px] font-mono text-slate-600">Probing circuit breakers…</div>
             ) : (
               <div className="space-y-3">

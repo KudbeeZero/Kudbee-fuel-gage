@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { apiPost } from '../lib/apiClient';
 import { useCommandDispatcher } from '../store/commandDispatcher';
 
+export type PolicyStatus = 'PASS' | 'WARN' | 'BLOCK';
+
 export interface PlaygroundMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -17,6 +19,8 @@ export interface PlaygroundResult {
   route: 'FAST_BRAIN' | 'SLOW_BRAIN';
   matched: boolean;
   traceId?: string;
+  policyStatus: PolicyStatus;
+  policyResults: Array<{ id: string; status: PolicyStatus; detail: string }>;
 }
 
 export interface PlaygroundRunInput {
@@ -102,6 +106,21 @@ export function usePlaygroundBackend() {
         const latencyMs = Math.round(performance.now() - start);
         const traceId = `pg-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
+        // Evaluate governance policies pre-flight and surface the verdict on
+        // the trace so operators see PASS/WARN/BLOCK alongside their request.
+        let policyStatus: PolicyStatus = 'PASS';
+        let policyResults: PlaygroundResult['policyResults'] = [];
+        try {
+          const evalRes = await apiPost<{ overall: PolicyStatus; results: PlaygroundResult['policyResults'] }>(
+            '/api/governance/policies/evaluate',
+            { prompt: input.prompt }
+          );
+          policyStatus = evalRes?.overall || 'PASS';
+          policyResults = Array.isArray(evalRes?.results) ? evalRes.results : [];
+        } catch {
+          /* policy engine is best-effort; fall back to PASS */
+        }
+
         // Best-effort telemetry persistence. Ingestion may be firewall-filtered
         // (low-value/heartbeat) without causing a hard error in the playground.
         apiPost('/api/telemetry/ingest', {
@@ -110,19 +129,20 @@ export function usePlaygroundBackend() {
           tokens_in: tokensIn,
           tokens_out: tokensOut,
           cost,
-          status: 'OK',
+          status: policyStatus === 'BLOCK' ? 'BLOCKED_BY_POLICY' : 'OK',
           provider: input.provider,
           project_name: 'kilo-fuel-gauge',
           thought_summary: content.slice(0, 200),
-          reasoning: input.prompt.slice(0, 200)
+          reasoning: input.prompt.slice(0, 200),
+          governance: { policy: policyStatus, results: policyResults }
         }).catch(() => {
           /* ingestion is best-effort; playground already records to console */
         });
 
         setState(
           cmdId,
-          'SUCCESS',
-          `${res.governance?.route ?? 'SLOW_BRAIN'} · ${latencyMs}ms · ${tokensIn}+${tokensOut}t`
+          policyStatus === 'BLOCK' ? 'FAILED' : 'SUCCESS',
+          `${res.governance?.route ?? 'SLOW_BRAIN'} · policy=${policyStatus} · ${latencyMs}ms`
         );
         return {
           content,
@@ -133,7 +153,9 @@ export function usePlaygroundBackend() {
           latencyMs,
           route: res.governance?.route ?? 'SLOW_BRAIN',
           matched: !!res.governance?.matched,
-          traceId
+          traceId,
+          policyStatus,
+          policyResults
         };
       } catch (err) {
         if (handle.cancelled) {

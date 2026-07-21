@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight, Loader2, WifiOff } from 'lucide-react';
+import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight, Loader2, WifiOff, Database, Server, FileSearch, ChevronLeft, X, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { MultiModelSelector } from './MultiModelSelector';
 import { TokenEstimator } from './TokenEstimator';
 import { CostAnalysisPanel } from './CostAnalysisPanel';
 import { useTelemetryLogger } from '../../hooks/useTelemetryLogger';
 import { usePlaygroundBackend, type PlaygroundResult } from '../../hooks/usePlaygroundBackend';
 import { getFormattedCost } from '../../utils/currency';
+import { useVectorSync, type RetrievedChunk } from '../../hooks/useVectorSync';
+import { RagContextDrawer } from './RagContextDrawer';
 
 const MODEL_PROVIDER_MAP: Record<string, string> = {
   'Claude 3.5 Sonnet': 'anthropic',
@@ -40,10 +43,13 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
 
   const { isLogged, isLogging, handleInjectTrace } = useTelemetryLogger(onNewLogTriggered);
   const { isRunning, error: backendError, run: runBackend, cancel: cancelBackend } = usePlaygroundBackend();
+  const { status: vectorStatus, resyncing, resync: resyncVector, recall, recalling, chunks, recallError } = useVectorSync();
   const [lastResult, setLastResult] = useState<PlaygroundResult | null>(null);
   const [streamedContent, setStreamedContent] = useState('');
   const streamTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [ragOpen, setRagOpen] = useState(false);
+  const [lastPolicy, setLastPolicy] = useState<{ status: 'PASS' | 'WARN' | 'BLOCK'; results: PlaygroundResult['policyResults'] } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -64,12 +70,14 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
     const provider = MODEL_PROVIDER_MAP[selectedModel] || 'anthropic';
     setStreamedContent('');
     setLastResult(null);
+    setLastPolicy(null);
     const result = await runBackend({ prompt: payloadText, model: selectedModel, provider });
     if (!result) {
       setIsTyping(false);
       return;
     }
     setLastResult(result);
+    setLastPolicy({ status: result.policyStatus, results: result.policyResults });
     setIsTyping(true);
     const words = result.content.split(/(\s+)/);
     let idx = 0;
@@ -83,10 +91,27 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
       streamTimerRef.current = setTimeout(tick, 18 + Math.random() * 30);
     };
     streamTimerRef.current = setTimeout(tick, 40);
+    // Pull RAG context in parallel for the drawer.
+    void recall(payloadText);
     if (onNewLogTriggered) onNewLogTriggered();
-  }, [cancelBackend, isRunning, onNewLogTriggered, payloadText, runBackend, selectedModel]);
+  }, [cancelBackend, isRunning, onNewLogTriggered, payloadText, recall, runBackend, selectedModel]);
+
+  const openRag = useCallback(() => {
+    setRagOpen(true);
+    if (chunks.length === 0 && !recalling) {
+      void recall(payloadText);
+    }
+  }, [chunks.length, payloadText, recall, recalling]);
 
   const displayOutput = isTyping || !lastResult ? streamedContent : (streamedContent || lastResult.content);
+
+  const policyClasses = lastPolicy
+    ? lastPolicy.status === 'BLOCK'
+      ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+      : lastPolicy.status === 'WARN'
+        ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+    : null;
 
   const totalWeight = weights.Anthropic + weights.DeepSeek + weights.Google + weights.OpenAI;
   const relWeights = useMemo(() => ({
@@ -291,6 +316,19 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                   Backend unreachable: {backendError}
                 </div>
               )}
+
+              {policyClasses && (
+                <div
+                  id="playground-policy-status"
+                  className={`rounded-lg border px-3 py-2 text-[10px] font-mono flex items-center gap-2 ${policyClasses}`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className="font-bold uppercase tracking-widest">{lastPolicy?.status}</span>
+                  <span className="opacity-80">
+                    {lastPolicy?.results.filter((r) => r.status !== 'PASS').length || 0} rule(s) flagged
+                  </span>
+                </div>
+              )}
             </div>
 
             </div>
@@ -315,6 +353,16 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
               <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
                 {isRunning ? 'PROCESSING' : isTyping ? 'STREAMING' : lastResult ? `${lastResult.route} · ${lastResult.latencyMs}ms` : 'IDLE'}
               </span>
+              <button
+                id="open-rag-drawer"
+                type="button"
+                onClick={openRag}
+                className="ml-2 flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-cyan-300 hover:bg-cyan-500/20"
+                title="Inspect RAG context"
+              >
+                <FileSearch className="w-3 h-3" />
+                RAG
+              </button>
             </div>
           </div>
 
@@ -466,6 +514,98 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
           )}
         </div>
       </div>
+
+      {/* 5. VECTOR STORE / RAG CONTROL STRIP */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="playground-vector-strip">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-cyan-400" />
+            <h2 className="font-display font-semibold text-slate-200 text-md">Vector Store & RAG Pipeline</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              id="vector-state-badge"
+              className={`rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest ${
+                vectorStatus.state === 'SYNCED'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  : vectorStatus.state === 'INDEXING'
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                    : vectorStatus.state === 'FAILED'
+                      ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                      : 'border-slate-700 bg-slate-800 text-slate-400'
+              }`}
+            >
+              [{vectorStatus.state}]
+            </span>
+            <button
+              id="vector-resync-btn"
+              type="button"
+              onClick={() => void resyncVector()}
+              disabled={resyncing}
+              className="flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:opacity-50"
+            >
+              <Server className={`h-3 w-3 ${resyncing ? 'animate-spin' : ''}`} />
+              {resyncing ? 'Resyncing…' : 'Re-sync Vector Store'}
+            </button>
+            <button
+              id="vector-open-rag-btn"
+              type="button"
+              onClick={openRag}
+              className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-slate-300 transition-colors hover:border-emerald-500/40 hover:text-emerald-300"
+            >
+              <FileSearch className="h-3 w-3" />
+              Inspect Chunks
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Total Chunks</div>
+            <div className="mt-1 font-mono text-lg font-bold text-cyan-300">{vectorStatus.totalChunks}</div>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Vectors Indexed</div>
+            <div className="mt-1 font-mono text-lg font-bold text-cyan-300">{vectorStatus.totalVectors}</div>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Recent Documents</div>
+            <div className="mt-1 font-mono text-lg font-bold text-slate-300">{vectorStatus.recentDocs.length}</div>
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Last Sync</div>
+            <div className="mt-1 font-mono text-sm font-bold text-slate-300">
+              {vectorStatus.lastSyncAt ? new Date(vectorStatus.lastSyncAt).toLocaleTimeString() : '—'}
+            </div>
+          </div>
+        </div>
+
+        {vectorStatus.recentDocs.length > 0 && (
+          <div className="mt-3">
+            <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-slate-500">Indexed Documents</div>
+            <ul className="space-y-0.5 font-mono text-[10px]">
+              {vectorStatus.recentDocs.map((d) => (
+                <li key={d.id} className="flex items-center gap-2 text-slate-300">
+                  <span className="text-cyan-400">›</span>
+                  <span className="truncate">{d.id}</span>
+                  <span className="ml-auto text-slate-500">{d.chunkCount} chunks</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <RagContextDrawer
+        open={ragOpen}
+        onClose={() => setRagOpen(false)}
+        chunks={chunks}
+        recalling={recalling}
+        recallError={recallError}
+        syncStatus={vectorStatus}
+        prompt={payloadText}
+      />
     </div>
   );
 }
