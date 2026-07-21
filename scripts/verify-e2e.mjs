@@ -471,6 +471,162 @@ async function check26_LazyBundleLoading() {
   return jsFiles.length >= 1;
 }
 
+// --- Phase 28: Agent Context Factory, Token Forge & Confidence surfaces -------
+
+// Check 27: The agent context factory assembles the hierarchical system prompt
+// (BASE_IDENTITY + IMMUTABLE_LAWS) for a given intent. Verifies the Phase 6
+// factory is wired and observable end-to-end via GET /api/agents/context.
+async function check27_AgentContextFactoryHierarchy() {
+  const res = await fetch(`${BASE}/api/agents/context?prompt=${encodeURIComponent('inspect the system telemetry dashboard')}`);
+  const data = await res.json();
+  return res.status === 200 &&
+    data.success === true &&
+    typeof data.system_prompt === 'string' &&
+    data.system_prompt.length > 0 &&
+    data.system_prompt.includes('BASE_IDENTITY') &&
+    data.system_prompt.includes('IMMUTABLE_LAWS');
+}
+
+// Check 28: Dynamic skill tagging — a destructive (DB mutation) intent MUST be
+// tagged with the DATABASE_MUTATION skill so the Governance Gate is armed.
+async function check28_DynamicSkillTagging() {
+  const res = await fetch(`${BASE}/api/agents/context`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: 'insert a new row into the postgres database table' })
+  });
+  const data = await res.json();
+  return res.status === 200 &&
+    data.success === true &&
+    Array.isArray(data.skills) &&
+    data.skills.includes('DATABASE_MUTATION');
+}
+
+// Check 29: Trajectories surface the Phase 28 confidence_score for the History
+// panel data contract (with graceful handling for any legacy row).
+async function check29_TrajectoriesExposeConfidence() {
+  const res = await fetch(`${BASE}/api/think/trajectories?limit=25`);
+  const data = await res.json();
+  if (!(res.status === 200 && Array.isArray(data.trajectories))) return false;
+  // Earlier checks (14/16/17) mint think tokens, so the store is non-empty.
+  if (data.trajectories.length === 0) return true;
+  return data.trajectories.every((t) => typeof t.confidence_score === 'number');
+}
+
+// Check 30: The uncertainty-gate parse variant (GET) normalizes a low
+// confidence and flags below_threshold without writing to the governance queue.
+async function check30_UncertaintyGateParse() {
+  const res = await fetch(`${BASE}/api/agents/evaluate?payload=${encodeURIComponent(JSON.stringify({ action: 'probe', confidence_score: 0.35, uncertainty_flag: false }))}`);
+  const data = await res.json();
+  return res.status === 200 &&
+    typeof data.confidence_score === 'number' &&
+    data.confidence_score < 0.8 &&
+    data.below_threshold === true &&
+    data.uncertainty_flag === true;
+}
+
+// --- Phase 28: Token Forge RAG + Probabilistic Uncertainty Gating ------------
+
+// Check 31: A low-confidence agent payload (confidence_score < 0.80) MUST be
+// intercepted by the Uncertainty Gate BEFORE execution and routed to the
+// PENDING_APPROVAL governance queue tagged `REASON: HIGH_UNCERTAINTY`. Also
+// verifies a high-confidence payload clears the gate (EXECUTE).
+async function check31_UncertaintyGateInterception() {
+  // (a) Low-confidence payload → trapped + routed to PENDING.
+  const lowRes = await fetch(`${BASE}/api/agents/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'deploy-schema-drop',
+      confidence_score: 0.42,
+      uncertainty_flag: true,
+      reasoning: 'Guessing the migration is safe without verifying topology.',
+      trace_id: `tr-uncertain-${Date.now()}`,
+      model: 'reasoning'
+    })
+  });
+  const lowData = await lowRes.json();
+  const trapped =
+    lowRes.status === 202 &&
+    lowData.intercepted === true &&
+    lowData.decision === 'PENDING_APPROVAL' &&
+    lowData.status === 'PENDING_APPROVAL' &&
+    typeof lowData.confidence_score === 'number' &&
+    lowData.confidence_score < 0.8 &&
+    lowData.tag === 'REASON: HIGH_UNCERTAINTY' &&
+    typeof lowData.governance_action_id === 'string';
+
+  if (!trapped) return false;
+
+  // (b) High-confidence payload → clears the gate (EXECUTE, not intercepted).
+  const highRes = await fetch(`${BASE}/api/agents/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'read-only-introspection',
+      confidence_score: 0.96,
+      uncertainty_flag: false,
+      reasoning: 'Verified against the system topology blueprint.',
+      trace_id: `tr-confident-${Date.now()}`,
+      model: 'reasoning'
+    })
+  });
+  const highData = await highRes.json();
+  const cleared =
+    highRes.status === 200 &&
+    highData.intercepted === false &&
+    highData.decision === 'EXECUTE' &&
+    highData.status === 'EXECUTING' &&
+    highData.confidence_score >= 0.8;
+
+  return cleared;
+}
+
+// Check 32: The Token Forge (getRelevantThinkTokens) MUST retrieve past
+// successful execution context without crashing. Asserts a well-formed payload
+// (ok boolean + count + results array). When the pgvector store is reachable,
+// count is > 0 because earlier checks (14/16/17) minted think tokens.
+async function check32_TokenForgeRetrieval() {
+  // Seed the forge with a known correction delta so there is at least one
+  // past-success candidate to retrieve.
+  await fetch(`${BASE}/api/governance/mint-think-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      traceId: `tr-forge-${Date.now()}`,
+      taskContext: { task: 'forge-retrieval-probe' },
+      failedState: { status: 'FORGE_TEST' },
+      correctionDelta: 'Token Forge retrieval probe: query pgvector for past successes.'
+    })
+  }).catch(() => {});
+
+  const res = await fetch(`${BASE}/api/memory/think-tokens?prompt=${encodeURIComponent('past successful execution context telemetry')}&limit=3`);
+  const data = await res.json();
+
+  const wellFormed =
+    res.status === 200 &&
+    typeof data.ok === 'boolean' &&
+    typeof data.count === 'number' &&
+    Array.isArray(data.results);
+
+  if (!wellFormed) return false;
+
+  // When context is retrieved, each result must carry the proven-success shape.
+  if (data.count > 0) {
+    const sample = data.results[0];
+    const resultShaped =
+      typeof sample.id === 'string' &&
+      typeof sample.correction_delta === 'string' &&
+      typeof sample.similarity === 'number';
+    if (!resultShaped) return false;
+  }
+
+  // Retrieval must not crash even with an empty/blank prompt (resilient path).
+  const emptyRes = await fetch(`${BASE}/api/memory/think-tokens?limit=3`);
+  const emptyData = await emptyRes.json();
+  return emptyRes.status === 200 && Array.isArray(emptyData.results);
+}
+
 async function run() {
   try {
     await startServer();
@@ -500,6 +656,12 @@ async function run() {
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
     await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
+    await runCheck('Check 27: Agent context factory hierarchy', check27_AgentContextFactoryHierarchy);
+    await runCheck('Check 28: Dynamic skill tagging (DATABASE_MUTATION)', check28_DynamicSkillTagging);
+    await runCheck('Check 29: Trajectories expose confidence_score', check29_TrajectoriesExposeConfidence);
+    await runCheck('Check 30: Uncertainty gate parse variant', check30_UncertaintyGateParse);
+    await runCheck('Check 31: Uncertainty gate low-confidence interception', check31_UncertaintyGateInterception);
+    await runCheck('Check 32: Token Forge retrieval (getRelevantThinkTokens)', check32_TokenForgeRetrieval);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -508,7 +670,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 26`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 32`);
   console.log('========================================');
 
   if (failed > 0) {

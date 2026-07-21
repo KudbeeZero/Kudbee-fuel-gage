@@ -699,15 +699,18 @@ function ThinkTrajectoriesCard({ trajectories, loading, error }: { trajectories:
             <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-mono text-xs text-violet-300">{t.token_hash}</span>
-                <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${
-                  t.status === 'VERIFIED'
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                    : t.status === 'RECYCLED'
-                      ? 'border-sky-500/30 bg-sky-500/10 text-sky-400'
-                      : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                }`}>
-                  {t.status}
-                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <ConfidenceBadge score={t.confidence_score} />
+                  <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                    t.status === 'VERIFIED'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                      : t.status === 'RECYCLED'
+                        ? 'border-sky-500/30 bg-sky-500/10 text-sky-400'
+                        : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {t.status}
+                  </span>
+                </div>
               </div>
               <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-500">
                 <span>sim {t.similarity_score.toFixed(4)}</span>
@@ -901,6 +904,109 @@ function MiniBar({ value }: { value: number }) {
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
       <div className={`h-full ${hue} transition-all duration-500`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+// --- Phase 28: Probabilistic Uncertainty Gating — Confidence Visualization ---
+// Color-coded confidence gauge for the History and Fleet panels. Green >90%,
+// Yellow 80-89%, Red/Paused <80% (intercepted by the Uncertainty Gate), and a
+// neutral [N/A] badge for legacy telemetry rows that predate the circuit.
+type ConfidenceTier = 'green' | 'yellow' | 'red' | 'none';
+
+interface ConfidenceRead {
+  label: string;
+  tier: ConfidenceTier;
+  pct: number;
+}
+
+function readConfidence(score: number | undefined | null): ConfidenceRead {
+  if (score === undefined || score === null || typeof score !== 'number' || Number.isNaN(score)) {
+    return { label: 'N/A', tier: 'none', pct: 0 };
+  }
+  const clamped = Math.max(0, Math.min(1, score));
+  const pct = Math.round(clamped * 100);
+  const tier: ConfidenceTier = pct >= 90 ? 'green' : pct >= 80 ? 'yellow' : 'red';
+  return { label: `${pct}%`, tier, pct };
+}
+
+const CONFIDENCE_TIER_STYLES: Record<ConfidenceTier, string> = {
+  green: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  yellow: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  red: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
+  none: 'border-slate-700 bg-slate-900/40 text-slate-400'
+};
+
+const CONFIDENCE_BAR_STYLES: Record<ConfidenceTier, string> = {
+  green: 'bg-emerald-500',
+  yellow: 'bg-amber-500',
+  red: 'bg-rose-500',
+  none: 'bg-slate-700'
+};
+
+/** Compact inline badge used per-row in the History (trajectories) panel. */
+function ConfidenceBadge({ score }: { score: number | undefined | null }) {
+  const read = readConfidence(score);
+  return (
+    <span
+      title={read.tier === 'none' ? 'Legacy row — confidence not recorded' : `Agent confidence ${read.label}`}
+      className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${CONFIDENCE_TIER_STYLES[read.tier]}`}
+    >
+      {read.label}
+    </span>
+  );
+}
+
+/** Fleet-level aggregate gauge card showing the latest agent confidence. */
+function ConfidenceGaugeCard({ score }: { score: number | undefined | null }) {
+  const read = readConfidence(score);
+  const stateLabel =
+    read.tier === 'red'
+      ? 'PAUSED · UNCERTAIN'
+      : read.tier === 'none'
+        ? 'NO DATA'
+        : read.tier === 'yellow'
+          ? 'REVIEW'
+          : 'CONFIDENT';
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="confidence-gauge-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Gauge className="h-4 w-4 text-emerald-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Uncertainty Gate</h3>
+        </div>
+        {read.tier === 'red' ? (
+          <span className="flex items-center gap-1 font-mono text-[9px] font-bold uppercase text-rose-400">
+            <Pause className="h-3 w-3" /> Held
+          </span>
+        ) : (
+          <span className="font-mono text-[10px] text-slate-500">≥80% clears gate</span>
+        )}
+      </div>
+
+      <div className="p-5">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="font-mono text-3xl text-slate-100">{read.label}</div>
+            <p className="mt-1 text-[10px] font-mono text-slate-500">Latest agent confidence_score</p>
+          </div>
+          <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold uppercase ${CONFIDENCE_TIER_STYLES[read.tier]}`}>
+            {stateLabel}
+          </span>
+        </div>
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div
+            className={`h-full transition-all duration-500 ${CONFIDENCE_BAR_STYLES[read.tier]}`}
+            style={{ width: `${read.tier === 'none' ? 100 : read.pct}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between font-mono text-[9px] text-slate-600">
+          <span>0%</span>
+          <span className="text-amber-500/70">80% gate</span>
+          <span>100%</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2019,6 +2125,8 @@ export function DashboardPage() {
   const [trajectories, setTrajectories] = useState<ThinkTrajectory[]>([]);
   const [trajectoriesError, setTrajectoriesError] = useState<string | null>(null);
   const [trajectoriesLoading, setTrajectoriesLoading] = useState(true);
+  // Phase 28 — latest agent confidence_score for the Fleet Uncertainty Gauge.
+  const latestConfidence = trajectories.length > 0 ? trajectories[0]?.confidence_score : undefined;
 
   const [thinkMetrics, setThinkMetrics] = useState<ThinkMetrics | null>(null);
   const [thinkMetricsError, setThinkMetricsError] = useState<string | null>(null);
@@ -2505,6 +2613,7 @@ export function DashboardPage() {
             <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+          <ConfidenceGaugeCard score={latestConfidence} />
           <VectorStoreCard />
           <CostLedgerCard />
           <ThinkTrajectoriesCard trajectories={trajectories} loading={trajectoriesLoading} error={trajectoriesError} />

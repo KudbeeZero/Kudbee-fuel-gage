@@ -12,7 +12,7 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
-import { listProposed, approveAction, rejectAction, matchLogic } from '../governance/router.js';
+import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
@@ -24,8 +24,12 @@ import { mintThinkToken } from '../memory/thinkTokenGenerator.ts';
 import {
   buildAgentContext,
   evaluateRequiredSkills,
+  appendForgeContext,
   BASE_IDENTITY
 } from '../agents/src/context-factory.ts';
+import { evaluateAgentPayload } from '../agents/worker.ts';
+import { routeAgentPayload, HIGH_UNCERTAINTY_TAG } from '../agents/router.ts';
+import { getRelevantThinkTokens, renderThinkTokenContext } from '../memory/vectorStore.ts';
 import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
@@ -181,10 +185,16 @@ app.use('/api/system', systemRouter);
 // with evaluateRequiredSkills(), then assemble the hierarchical system prompt via
 // buildAgentContext(). Both are attached to the request for downstream handlers.
 //
-// RESILIENT-FIRST: if either factory call throws (e.g. skill-lookup failure or
-// malformed tags), we console.warn and fall back to the canonical BASE_IDENTITY
-// instead of crashing the request.
-function agentContextMiddleware(req, res, next) {
+// Phase 28 — The Token Forge: BEFORE the context is handed to the LLM, we query
+// the pgvector `think_tokens` store for the 3 most semantically similar past
+// SUCCESSES and inject them as a "Past Successful Execution Context" section
+// (few-shot RAG). This grounds the agent in verified prior corrections instead
+// of reasoning from a cold start.
+//
+// RESILIENT-FIRST: if either factory call or the forge recall throws, we
+// console.warn and fall back to the canonical BASE_IDENTITY instead of
+// crashing the request. A forge failure NEVER blocks routing.
+async function agentContextMiddleware(req, res, next) {
   try {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const requestText =
@@ -197,7 +207,18 @@ function agentContextMiddleware(req, res, next) {
             : JSON.stringify(body || '');
 
     const agentSkills = evaluateRequiredSkills(requestText);
-    const agentContext = buildAgentContext(requestText, agentSkills);
+    let agentContext = buildAgentContext(requestText, agentSkills);
+
+    // Token Forge — dynamic few-shot RAG injection (Phase 28).
+    try {
+      const forgeResult = await getRelevantThinkTokens(requestText, 3);
+      if (forgeResult.ok && forgeResult.results.length > 0) {
+        const forgeSection = renderThinkTokenContext(forgeResult.results);
+        agentContext = appendForgeContext(agentContext, forgeSection);
+      }
+    } catch (forgeErr) {
+      console.warn('[AgentContext] Token Forge recall degraded (non-blocking):', forgeErr?.message);
+    }
 
     req.agentSkills = agentSkills;
     req.agentContext = agentContext;
@@ -745,7 +766,7 @@ agentsRouter.post('/context', (req, res) => {
     system_prompt: req.agentContext || ''
   });
 });
-agentsRouter.get('/context', (req, res) => {
+agentsRouter.get('/context', async (req, res) => {
   // GET support: intent supplied via ?prompt= or ?intent= query string.
   const requestText =
     typeof req.query.prompt === 'string'
@@ -755,7 +776,16 @@ agentsRouter.get('/context', (req, res) => {
         : '';
   try {
     const skills = evaluateRequiredSkills(requestText);
-    const ctx = buildAgentContext(requestText, skills);
+    let ctx = buildAgentContext(requestText, skills);
+    // Token Forge injection (Phase 28) — mirrors the middleware path.
+    try {
+      const forgeResult = await getRelevantThinkTokens(requestText, 3);
+      if (forgeResult.ok && forgeResult.results.length > 0) {
+        ctx = appendForgeContext(ctx, renderThinkTokenContext(forgeResult.results));
+      }
+    } catch (forgeErr) {
+      console.warn('[AgentContext] GET Token Forge degraded (non-blocking):', forgeErr?.message);
+    }
     res.json({ success: true, skills: skills.map((s) => s.id), skill_count: skills.length, system_prompt: ctx });
   } catch (err) {
     console.warn('[AgentContext] GET factory degraded:', err?.message);
@@ -763,6 +793,70 @@ agentsRouter.get('/context', (req, res) => {
   }
 });
 app.use('/api/agents', agentsRouter);
+
+// --- Phase 28: Probabilistic Uncertainty Gating ------------------------------
+// POST /api/agents/evaluate — the hard anti-hallucination circuit. Accepts a
+// raw agent output payload (with confidence_score + uncertainty_flag), runs it
+// through the uncertainty gate, and — when confidence < 0.80 OR
+// uncertainty_flag is true — intercepts the payload BEFORE execution and routes
+// it directly to the PENDING_APPROVAL governance queue tagged
+// `REASON: HIGH_UNCERTAINTY`. Returns the route decision so the caller can
+// short-circuit execution. Resilient-First: never throws; a sink failure still
+// returns PENDING_APPROVAL so an uncertain payload never silently executes.
+app.post('/api/agents/evaluate', async (req, res) => {
+  try {
+    const routeResult = await routeAgentPayload(req.body || {}, { proposeAction });
+    const status =
+      routeResult.decision === 'EXECUTE'
+        ? 'EXECUTING'
+        : 'PENDING_APPROVAL';
+    publishEvent('uncertainty_gate', {
+      decision: routeResult.decision,
+      intercepted: routeResult.intercepted,
+      confidence_score: routeResult.confidence_score,
+      uncertainty_flag: routeResult.uncertainty_flag,
+      governance_action_id: routeResult.governance_action_id,
+      reason: routeResult.reason,
+      tag: routeResult.intercepted ? HIGH_UNCERTAINTY_TAG : null,
+      timestamp: new Date().toISOString()
+    });
+    return res.status(routeResult.intercepted ? 202 : 200).json({
+      success: true,
+      status,
+      decision: routeResult.decision,
+      intercepted: routeResult.intercepted,
+      confidence_score: routeResult.confidence_score,
+      uncertainty_flag: routeResult.uncertainty_flag,
+      below_threshold: routeResult.evaluation.below_threshold,
+      degraded: routeResult.evaluation.degraded,
+      reason: routeResult.reason,
+      governance_action_id: routeResult.governance_action_id,
+      tag: routeResult.intercepted ? HIGH_UNCERTAINTY_TAG : null
+    });
+  } catch (err) {
+    console.error('[UncertaintyGate] Evaluate error:', err instanceof Error ? err.message : String(err));
+    return res.status(500).json({ error: 'Uncertainty gate evaluation failed' });
+  }
+});
+
+// Synchronous parse-only variant: returns the normalized confidence circuit
+// without writing to the governance queue. Useful for diagnostics / dashboard.
+app.get('/api/agents/evaluate', (req, res) => {
+  try {
+    const raw = typeof req.query.payload === 'string' ? req.query.payload : req.query;
+    const evaluation = evaluateAgentPayload(raw);
+    return res.json({
+      confidence_score: evaluation.confidence_score,
+      uncertainty_flag: evaluation.uncertainty_flag,
+      below_threshold: evaluation.below_threshold,
+      degraded: evaluation.degraded,
+      payload: evaluation.payload
+    });
+  } catch (err) {
+    console.error('[UncertaintyGate] GET error:', err instanceof Error ? err.message : String(err));
+    return res.status(500).json({ error: 'Uncertainty gate parse failed' });
+  }
+});
 
 // Edge Sentinel telemetry ingestion webhook (auth via X-Agent-Pass).
 // Mounted at a distinct path so it does not clobber the Zod-firewall
@@ -812,6 +906,30 @@ app.get('/api/memory/recall', async (req, res) => {
   } catch (err) {
     console.error('[Memory] Recall endpoint error:', err.message);
     return res.status(500).json({ error: 'Failed to recall memory' });
+  }
+});
+
+// --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
+// GET /api/memory/think-tokens?prompt=...&limit=3 — queries the pgvector
+// `think_tokens` store for the `limit` most semantically similar past SUCCESSES
+// to `prompt`. These are the "Think Tokens" injected into the active agent's
+// system prompt as "Past Successful Execution Context" before LLM routing.
+// Resilient-First: returns an empty result set (never an error) when Neon is
+// unavailable, so callers and the e2e suite always get a well-formed payload.
+app.get('/api/memory/think-tokens', async (req, res) => {
+  try {
+    const prompt = String(req.query.prompt || req.query.query || '');
+    const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 25);
+    const result = await getRelevantThinkTokens(prompt, limit);
+    if (!result.ok) {
+      // Degrade gracefully — return an empty success rather than a 500 so the
+      // forge never breaks the agent routing path.
+      return res.json({ ok: false, count: 0, results: [], error: result.error, prompt });
+    }
+    return res.json({ ok: true, count: result.results.length, results: result.results, prompt });
+  } catch (err) {
+    console.error('[TokenForge] think-tokens endpoint error:', err.message);
+    return res.json({ ok: false, count: 0, results: [], error: 'Failed to retrieve think tokens', prompt: String(req.query.prompt || '') });
   }
 });
 
@@ -880,13 +998,33 @@ app.get('/api/think/trajectories', async (req, res) => {
       const embedding = Array.isArray(rawEmbedding) ? rawEmbedding : new Array(1536).fill(0);
       const magnitude = Math.sqrt(embedding.reduce((acc, v) => acc + v * v, 0)) || 0;
       const tokenHash = computeTokenHash(row);
+      // Phase 28 — Probabilistic Uncertainty Gating confidence proxy. The
+      // think_tokens table predates the confidence circuit, so for legacy rows
+      // we derive a confidence_score from the token's lifecycle status (an
+      // explicit value stored in task_context overrides this when present).
+      // VERIFIED tokens are high-confidence past successes (>= 0.80, clear the
+      // gate); PENDING/RECYCLED tokens are below threshold (trapped by the
+      // gate). The UI renders [N/A] when confidence_score is absent.
+      const taskContext = safeParseJson(row.task_context);
+      const explicitConf =
+        taskContext && typeof taskContext.confidence_score === 'number'
+          ? Math.max(0, Math.min(1, Number(taskContext.confidence_score)))
+          : undefined;
+      const statusConfidence =
+        row.status === 'VERIFIED'
+          ? 0.95
+          : row.status === 'RECYCLED'
+            ? 0.25
+            : 0.55;
+      const confidence_score = explicitConf ?? statusConfidence;
       return {
         id: String(row.id),
         token_hash: tokenHash,
         spatial_coordinates: embedding,
         similarity_score: Number(magnitude.toFixed(4)),
+        confidence_score,
         status: row.status || 'PENDING_APPROVAL',
-        task_context: safeParseJson(row.task_context),
+        task_context: taskContext,
         failed_state: safeParseJson(row.failed_state),
         correction_delta: row.correction_delta || '',
         created_at: row.created_at
