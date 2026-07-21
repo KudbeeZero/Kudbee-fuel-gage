@@ -20,9 +20,10 @@ import {
   Filter
 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
-import { useTelemetryStream, type StreamMode } from '../hooks/useTelemetryStream';
 import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
 import { useAuditExport } from '../hooks/useAuditExport';
+import { useHistoryStream } from '../hooks/useHistoryStream';
+import { StreamModeBadge } from '../components/StreamModeBadge';
 import { FeedbackButton } from '../components/FeedbackButton';
 import { AuditVaultCard } from '../components/audit/AuditVaultCard';
 
@@ -61,8 +62,7 @@ export function HistoryPage() {
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
 
-  const { mode: streamMode, throughput, error: streamError, reconnect } = useTelemetryStream();
-  const [streamPaused, setStreamPaused] = useState(false);
+  const { mode: streamMode, throughput, error: streamError, paused: streamPaused, togglePause, reconnect } = useHistoryStream();
 
   const search = useTelemetrySearch();
   const auditExport = useAuditExport();
@@ -137,7 +137,7 @@ export function HistoryPage() {
               Chronological audit of merged agent runs and telemetry ingestion. Expand sessions to inspect token costs, execution status, and trace IDs.
             </p>
           </div>
-          <StreamModeBadge mode={streamMode} paused={streamPaused} onTogglePause={() => setStreamPaused((p) => !p)} onReconnect={() => reconnect()} />
+          <StreamModeBadge mode={streamMode} paused={streamPaused} onTogglePause={togglePause} onReconnect={() => reconnect()} />
         </div>
 
         {/* Universal Search & Export (Phase 22) */}
@@ -513,61 +513,6 @@ function ThroughputCard({
       <div className={`mt-1 font-mono text-xl font-bold ${accentMap[accent]}`}>
         {value}
       </div>
-    </div>
-  );
-}
-
-function StreamModeBadge({
-  mode,
-  paused,
-  onTogglePause,
-  onReconnect
-}: {
-  mode: StreamMode;
-  paused: boolean;
-  onTogglePause: () => void;
-  onReconnect: () => void;
-}) {
-  const effective = paused ? 'DISCONNECTED' : mode;
-  const config = {
-    SSE: {
-      color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
-      label: 'STREAM · SSE',
-      icon: <Radio className="h-3 w-3 animate-pulse" />
-    },
-    POLLING: {
-      color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
-      label: 'STREAM · POLL',
-      icon: <Wifi className="h-3 w-3" />
-    },
-    DISCONNECTED: {
-      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
-      label: paused ? 'STREAM · PAUSED' : 'STREAM · OFFLINE',
-      icon: <WifiOff className="h-3 w-3" />
-    }
-  }[effective];
-  return (
-    <div className="flex items-center gap-1.5">
-      <button
-        id="stream-mode-badge"
-        type="button"
-        onClick={onReconnect}
-        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${config.color}`}
-        title="Reconnect stream"
-      >
-        {config.icon}
-        {config.label}
-      </button>
-      <button
-        id="stream-pause-toggle"
-        type="button"
-        onClick={onTogglePause}
-        className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-cyan-300"
-        title={paused ? 'Resume stream' : 'Pause stream'}
-      >
-        <Timer className="h-3 w-3" />
-        {paused ? 'Resume' : 'Pause'}
-      </button>
     </div>
   );
 }

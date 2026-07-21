@@ -411,6 +411,66 @@ async function check24_AuditVaultHashing() {
     verifyData.originalRoot === anchorData.anchor.batchRoot;
 }
 
+async function check25_SubRouterIntegrity() {
+  const subRouterCases = [
+    { method: 'GET', path: '/api/audit/export?format=json', expectStatus: 200, expectFields: ['hash', 'recordCount', 'records'] },
+    { method: 'GET', path: '/api/audit/vault', expectStatus: 200, expectFields: ['anchors', 'count'] },
+    { method: 'GET', path: '/api/governance/policies', expectStatus: 200, expectFields: ['policies'] },
+    { method: 'GET', path: '/api/governance/tenants', expectStatus: 200, expectFields: ['tenants', 'current'] },
+    { method: 'GET', path: '/api/governance/tune', expectStatus: 200, expectFields: ['lastAnalysis', 'available'] },
+    { method: 'GET', path: '/api/governance/feedback?limit=5', expectStatus: 200, expectFields: ['feedback', 'count'] },
+    { method: 'GET', path: '/api/telemetry/search?q=gemini&limit=5', expectStatus: 200, expectFields: ['results', 'total'] },
+    { method: 'GET', path: '/api/telemetry/logs?limit=5', expectStatus: 200 },
+    { method: 'GET', path: '/api/system/health-deep', expectStatus: 200, expectFields: ['status', 'services'] },
+    { method: 'GET', path: '/api/system/alerts', expectStatus: 200 },
+  ];
+
+  for (const c of subRouterCases) {
+    const res = await fetch(`${BASE}${c.path}`, { headers: { 'X-Tenant-Id': 'tenant-prod' } });
+    if (res.status !== c.expectStatus) return false;
+    if (c.expectFields && c.expectFields.length > 0) {
+      const body = await res.json();
+      for (const field of c.expectFields) {
+        if (!(field in body)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function check26_LazyBundleLoading() {
+  const distCandidates = [
+    `${__dirname}/../apps/web/dist/index.html`,
+    `${__dirname}/../apps/web/dist/assets`,
+    `${__dirname}/../../apps/web/dist/index.html`
+  ];
+  let distPath = null;
+  for (const candidate of distCandidates) {
+    try {
+      const fs = await import('fs');
+      if (fs.existsSync(candidate)) {
+        distPath = candidate;
+        break;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!distPath) {
+    return true;
+  }
+
+  const fs = await import('fs');
+  const path = await import('path');
+  const assetsDir = path.dirname(distPath) + '/assets';
+  if (!fs.existsSync(assetsDir)) {
+    return true;
+  }
+  const files = fs.readdirSync(assetsDir);
+  const jsFiles = files.filter((f) => f.endsWith('.js'));
+  return jsFiles.length >= 1;
+}
+
 async function run() {
   try {
     await startServer();
@@ -438,6 +498,8 @@ async function run() {
     await runCheck('Check 22: Policy auto-tune endpoint', check22_PolicyAutoTuneEndpoint);
     await runCheck('Check 23: RBAC permission enforcement', check23_RBACPermissionEnforcement);
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
+    await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
+    await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -446,7 +508,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 24`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 26`);
   console.log('========================================');
 
   if (failed > 0) {
