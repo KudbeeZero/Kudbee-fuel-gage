@@ -9,6 +9,8 @@ import { usePlaygroundBackend, type PlaygroundResult } from '../../hooks/usePlay
 import { getFormattedCost } from '../../utils/currency';
 import { useVectorSync, type RetrievedChunk } from '../../hooks/useVectorSync';
 import { RagContextDrawer } from './RagContextDrawer';
+import { FeedbackButton } from '../FeedbackButton';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 const MODEL_PROVIDER_MAP: Record<string, string> = {
   'Claude 3.5 Sonnet': 'anthropic',
@@ -27,7 +29,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   const [payloadText, setPayloadText] = useState(
     `// Sample prompt / code block pipeline payload\nconst aiResponse = await anthropic.messages.create({\n  model: "unknown",\n  max_tokens: 1024,\n  messages: [{ role: "user", content: "Implement a highly parallel telemetry parser." }]\n});`
   );
-  const [selectedModel, setSelectedModel] = useState('Claude 3.5 Sonnet');
+  const [selectedModel, setSelectedModel] = usePersistentState<string>('kudbee.playground.selectedModel', 'Claude 3.5 Sonnet');
   const [singleCap, setSingleCap] = useState(0.05); // Slider cap (ranges from $0.01 to $2.00 in USD baseline)
   const [hourlyCapEnabled, setHourlyCapEnabled] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -408,6 +410,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                 <span className="text-emerald-400">{lastResult.tokensIn}+{lastResult.tokensOut}t</span>
                 <span className="text-amber-400">{getFormattedCost(lastResult.cost, currency, 4)}</span>
                 <span className="text-slate-400">{lastResult.latencyMs}ms</span>
+                {lastResult.traceId && <FeedbackButton traceId={lastResult.traceId} />}
               </span>
             ) : (
               <span>{displayOutput ? `${displayOutput.length} chars` : '0 chars'}</span>
