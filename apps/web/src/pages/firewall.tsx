@@ -16,11 +16,13 @@ import {
   Lock,
   KeyRound,
   EyeOff,
-  FileWarning
+  FileWarning,
+  Download
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
 import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
 import { PolicyEnginePanel } from '../components/governance/PolicyEnginePanel';
+import { useAuditExport } from '../hooks/useAuditExport';
 
 interface DeepServiceStatus {
   status: 'OK' | 'OFFLINE';
@@ -80,6 +82,8 @@ export function FirewallPage() {
   const [error, setError] = useState<string | null>(null);
   const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+
+  const auditExport = useAuditExport();
 
   const loadTriage = useCallback(async () => {
     try {
@@ -190,6 +194,16 @@ export function FirewallPage() {
             <span className="text-[10px] font-mono text-rose-400 uppercase tracking-widest font-bold">
               {violations.length} Pending Triage
             </span>
+            <button
+              id="firewall-export-btn"
+              type="button"
+              onClick={() => void auditExport.triggerExport()}
+              disabled={auditExport.exporting}
+              className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:opacity-40"
+            >
+              {auditExport.exporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Export Audit Package
+            </button>
           </div>
         </div>
         {lastSync && (
@@ -203,6 +217,12 @@ export function FirewallPage() {
         <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="text-xs font-mono text-amber-300">{error}</span>
+        </div>
+      )}
+      {auditExport.error && (
+        <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="text-xs font-mono text-amber-300">{auditExport.error}</span>
         </div>
       )}
 

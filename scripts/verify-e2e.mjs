@@ -260,6 +260,24 @@ async function check17_GovernancePromotionEndpoint() {
   return updated !== undefined && updated.status === 'VERIFIED';
 }
 
+async function check18_TelemetrySearchEndpoint() {
+  const res = await fetch(`${BASE}/api/telemetry/search?q=gemini&limit=5`);
+  const data = await res.json();
+  return res.status === 200 && Array.isArray(data.results) && typeof data.total === 'number';
+}
+
+async function check19_AuditExportJsonEndpoint() {
+  const res = await fetch(`${BASE}/api/audit/export?format=json`);
+  const data = await res.json();
+  return res.status === 200 && typeof data.hash === 'string' && typeof data.recordCount === 'number';
+}
+
+async function check20_SystemDiagnosticsEndpoint() {
+  const res = await fetch(`${BASE}/api/system/diagnostics`);
+  const data = await res.json();
+  return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && typeof data.summary === 'object' && Array.isArray(data.routerProviders);
+}
+
 async function run() {
   try {
     await startServer();
@@ -280,6 +298,9 @@ async function run() {
     await runCheck('Check 15: Think trajectories endpoint', check15_ThinkTrajectories);
     await runCheck('Check 16: Auto Think Token embedding & trajectory', check16_AutoThinkTokenEmbedding);
     await runCheck('Check 17: Governance promotion endpoint (PATCH status)', check17_GovernancePromotionEndpoint);
+    await runCheck('Check 18: Telemetry search endpoint', check18_TelemetrySearchEndpoint);
+    await runCheck('Check 19: Audit export JSON endpoint', check19_AuditExportJsonEndpoint);
+    await runCheck('Check 20: System diagnostics endpoint', check20_SystemDiagnosticsEndpoint);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -288,7 +309,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 17`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 20`);
   console.log('========================================');
 
   if (failed > 0) {
