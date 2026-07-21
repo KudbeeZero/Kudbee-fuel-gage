@@ -12,6 +12,8 @@ import {
   Gauge,
   HeartPulse,
   MemoryStick,
+  Pause,
+  Play,
   Radio,
   RefreshCw,
   ScrollText,
@@ -843,13 +845,48 @@ function AgentTerminal({
 }) {
   const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
+  const [displayedData, setDisplayedData] = useState<SessionHistoryItem[]>([]);
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const latestDataRef = useRef(data);
+
+  useEffect(() => {
+    latestDataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    if (!isPaused) {
+      setDisplayedData(data);
+    }
+  }, [data, isPaused]);
+
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => {
+      if (!prev) {
+        setDisplayedData(latestDataRef.current);
+      }
+      return !prev;
+    });
+  }, []);
+
+  const toggleCollapse = useCallback((prNumber: number) => {
+    setCollapsedSessions(prev => {
+      const next = new Set(prev);
+      if (next.has(prNumber)) {
+        next.delete(prNumber);
+      } else {
+        next.add(prNumber);
+      }
+      return next;
+    });
+  }, []);
 
   // Auto-scroll to the newest content whenever data or local commands change.
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [data, commands, error]);
+    if (el && !isPaused) el.scrollTop = el.scrollHeight;
+  }, [displayedData, commands, error, isPaused]);
 
   // Interactive command handling — queries live dashboard context and prints
   // real values back into the terminal instead of a no-op echo.
@@ -966,12 +1003,24 @@ function AgentTerminal({
           <Terminal className="h-4 w-4 text-emerald-400" />
           <span className="text-[10px] font-semibold uppercase tracking-widest">Live Agent Terminal</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={togglePause}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-mono font-bold uppercase transition-colors ${
+              isPaused
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-300'
+            }`}
+            title={isPaused ? 'Resume stream' : 'Pause stream'}
+          >
+            {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
           <span className={`relative flex h-2 w-2 ${live ? '' : 'opacity-60'}`}>
             {live && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
             <span className={`relative inline-flex rounded-full h-2 w-2 ${live ? 'bg-emerald-500' : 'bg-rose-500'}`} />
           </span>
-          <span className="text-[10px] font-mono text-slate-500">{thinking ? 'REASONING' : live ? 'ONLINE' : 'OFFLINE'}</span>
+          <span className="text-[10px] font-mono text-slate-500">{isPaused ? 'FROZEN' : thinking ? 'REASONING' : live ? 'ONLINE' : 'OFFLINE'}</span>
           {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
         </div>
       </div>
@@ -1001,61 +1050,99 @@ function AgentTerminal({
         {!loading && !error && data.length === 0 && commands.length === 0 && (
           <div className="text-slate-600">No session history available. Type a command below to interact.</div>
         )}
-        {data.map((session) => {
+        {loading && !error && displayedData.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">Loading session history…</div>
+        )}
+        {!loading && !error && displayedData.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">No session history available. Type a command below to interact.</div>
+        )}
+        {displayedData.map((session, index) => {
           const sessionTimestamp = session.merged_at ? new Date(session.merged_at).toLocaleString() : new Date().toLocaleString();
           const sessionSink = session.github_sha ? session.github_sha.slice(0, 8) : `sess-${session.pr_number}`;
           const sessionStatus = session.merged_at ? 'MERGED' : 'PENDING';
           const sessionBody = session.pr_body || session.pr_title || session.diff_summary || '(no payload)';
           const tokenCost = session.diff_summary ? Math.max(1, Math.round(session.diff_summary.length / 4)) : 0;
+          const isCollapsed = collapsedSessions.has(session.pr_number);
+          const isLast = index === displayedData.length - 1;
 
           return (
-            <div key={session.pr_number} className="rounded-xl border border-slate-800 bg-slate-900/40 p-0 overflow-hidden">
-              {/* Header: [TIMESTAMP] | [AGENT_ID / SINK] | [STATUS] */}
-              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950/40 border-b border-slate-800/60">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
-                  <Clock className="h-3 w-3 text-slate-500" />
-                  <span>{sessionTimestamp}</span>
+            <div key={session.pr_number}>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-0 overflow-hidden">
+                {/* Header: [TIMESTAMP] | [AGENT_ID / SINK] | [STATUS] */}
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950/40 border-b border-slate-800/60">
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                    <Clock className="h-3 w-3 text-slate-500" />
+                    <span>{sessionTimestamp}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded font-bold">
+                      SINK: {sessionSink}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      sessionStatus === 'MERGED'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    }`}>
+                      {sessionStatus}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded font-bold">
-                    SINK: {sessionSink}
-                  </span>
-                  <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                    sessionStatus === 'MERGED'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                      : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                  }`}>
-                    {sessionStatus}
-                  </span>
+
+                {/* Body: Formatted reasoning/thought output or memory recall payload */}
+                <div className="p-3 space-y-2">
+                  <div className="text-sm font-medium text-slate-200 truncate">
+                    #{session.pr_number} {session.pr_title}
+                  </div>
+                  {!isCollapsed ? (
+                    <p className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                      {sessionBody}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => toggleCollapse(session.pr_number)}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      Show payload
+                    </button>
+                  )}
+                  {!isCollapsed && (
+                    <button
+                      onClick={() => toggleCollapse(session.pr_number)}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      Hide payload
+                    </button>
+                  )}
+
+                  {/* Badges: Skill tags or token cost if present */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-[9px] font-mono text-slate-500 bg-slate-950 border border-slate-800/60 px-2 py-0.5 rounded">
+                      SHA: {session.github_sha.slice(0, 12)}
+                    </span>
+                    {tokenCost > 0 && (
+                      <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+                        ~{tokenCost} tok
+                      </span>
+                    )}
+                    {session.struggles_encountered && session.struggles_encountered.length > 0 && (
+                      <span className="text-[9px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-bold">
+                        {session.struggles_encountered.length} STRUGGLES
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Body: Formatted reasoning/thought output or memory recall payload */}
-              <div className="p-3 space-y-2">
-                <div className="text-sm font-medium text-slate-200 truncate">
-                  #{session.pr_number} {session.pr_title}
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
-                  {sessionBody}
-                </p>
-
-                {/* Badges: Skill tags or token cost if present */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-[9px] font-mono text-slate-500 bg-slate-950 border border-slate-800/60 px-2 py-0.5 rounded">
-                    SHA: {session.github_sha.slice(0, 12)}
+              {/* Checkpoint divider for completed sessions */}
+              {sessionStatus === 'MERGED' && !isLast && (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                    Checkpoint
                   </span>
-                  {tokenCost > 0 && (
-                    <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
-                      ~{tokenCost} tok
-                    </span>
-                  )}
-                  {session.struggles_encountered && session.struggles_encountered.length > 0 && (
-                    <span className="text-[9px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-bold">
-                      {session.struggles_encountered.length} STRUGGLES
-                    </span>
-                  )}
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
@@ -1703,10 +1790,20 @@ export function DashboardPage() {
   const loadSessionHistory = useCallback(async () => {
     try {
       const data = await apiGet<SessionHistoryItem[]>('/api/session-history');
-      setSessionHistory(Array.isArray(data) ? data : []);
+      const items = Array.isArray(data) ? data : [];
+      setSessionHistory(prev => {
+        const map = new Map(prev.map(item => [item.pr_number, item]));
+        for (const item of items) {
+          map.set(item.pr_number, item);
+        }
+        return Array.from(map.values()).sort((a, b) => {
+          const ta = a.merged_at ? new Date(a.merged_at).getTime() : 0;
+          const tb = b.merged_at ? new Date(b.merged_at).getTime() : 0;
+          return tb - ta;
+        });
+      });
       setSessionHistoryError(null);
     } catch (e) {
-      setSessionHistory([]);
       setSessionHistoryError(e instanceof Error ? e.message : 'Session history fetch failed');
     } finally {
       setSessionHistoryLoading(false);
