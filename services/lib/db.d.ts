@@ -19,6 +19,11 @@ declare module '../lib/db.js' {
     sql: string,
     params?: unknown[]
   ): Promise<{ id: unknown; changes: number }>;
-}
 
-export {};
+  export const dbTelemetry: {
+    primaryQueryCount: number;
+    fallbackQueryCount: number;
+    primaryInsertCount: number;
+    fallbackInsertCount: number;
+  };
+}

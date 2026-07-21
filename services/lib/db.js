@@ -26,8 +26,8 @@ let _pool = null;
 // Defaulting to `false` would bypass `pool.query()` forever (the Catch-22 from
 // Phase 10), so we start `true` and let real connect/query failures flip it.
 let _healthy = false;
-// Tracks whether the pool was explicitly disabled (no DATABASE_URL).
 let _disabled = false;
+const dbTelemetry = { primaryQueryCount: 0, fallbackQueryCount: 0, primaryInsertCount: 0, fallbackInsertCount: 0 };
 
 /**
  * Proactively establish a Neon connection in the background. The Pool defers
@@ -155,15 +155,18 @@ export async function runQuery(sql, params = []) {
   if (pool && isDbHealthy()) {
     try {
       const res = await pool.query(sql, params);
+      dbTelemetry.primaryQueryCount += 1;
       return res.rows;
     } catch (err) {
       _healthy = false;
+      dbTelemetry.fallbackQueryCount += 1;
       console.warn(
         '[DB] Neon query failed (degrading to in-memory):',
         err instanceof Error ? err.message : String(err)
       );
     }
   }
+  dbTelemetry.fallbackQueryCount += 1;
   return runQueryMemory(sql, params);
 }
 
@@ -173,15 +176,18 @@ export async function runInsert(sql, params = []) {
   if (pool && isDbHealthy()) {
     try {
       const res = await pool.query(sql, params);
+      dbTelemetry.primaryInsertCount += 1;
       return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
     } catch (err) {
       _healthy = false;
+      dbTelemetry.fallbackInsertCount += 1;
       console.warn(
         '[DB] Neon insert failed (degrading to in-memory):',
         err instanceof Error ? err.message : String(err)
       );
     }
   }
+  dbTelemetry.fallbackInsertCount += 1;
   return runInsertMemory(sql, params);
 }
 
@@ -343,4 +349,5 @@ function runInsertMemory(sql, params = []) {
 }
 
 export { memory as _memoryStore };
+export { dbTelemetry };
 export default getDbPool;

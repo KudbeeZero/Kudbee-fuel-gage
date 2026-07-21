@@ -2,6 +2,8 @@ import http from 'http';
 import { spawn } from 'child_process';
 import { setTimeout as delay } from 'timers/promises';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import { spawnSync } from 'child_process';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
@@ -471,6 +473,56 @@ async function check26_LazyBundleLoading() {
   return jsFiles.length >= 1;
 }
 
+async function check33_DriftSentinel() {
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'verify-drift.mjs')], {
+    cwd: __dirname,
+    encoding: 'utf-8'
+  });
+  if (result.error) {
+    return false;
+  }
+  const passed = result.status === 0;
+  return passed;
+}
+
+async function check34_DegradationMonitorTracking() {
+  const beforeRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+  if (!beforeRes.ok) return false;
+  const before = await beforeRes.json();
+
+  const ingestPayload = {
+    trace_id: `tr-e2e-deg-${Date.now()}`,
+    model: 'gemini-1.5-pro',
+    tokens_in: 100,
+    tokens_out: 50,
+    cost: 0.001,
+    status: 'OK',
+    provider: 'Google',
+    project_name: 'degradation-monitor-test'
+  };
+  const ingestRes = await fetch(`${BASE}/api/telemetry/log`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ingestPayload)
+  });
+  if (!ingestRes.ok) return false;
+
+  const afterRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+  if (!afterRes.ok) return false;
+  const after = await afterRes.json();
+
+  const hasCounters = typeof after.counters === 'object' &&
+    typeof after.counters.primaryQueryCount === 'number' &&
+    typeof after.counters.fallbackQueryCount === 'number' &&
+    typeof after.counters.redisPrimaryCount === 'number' &&
+    typeof after.counters.redisFallbackCount === 'number';
+
+  const countersAdvanced = (after.counters.primaryQueryCount + after.counters.fallbackQueryCount) >
+    (before.counters.primaryQueryCount + before.counters.fallbackQueryCount);
+
+  return hasCounters && countersAdvanced;
+}
+
 async function run() {
   try {
     await startServer();
@@ -500,6 +552,8 @@ async function run() {
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
     await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
+    await runCheck('Check 33: Dual-source drift sentinel', check33_DriftSentinel);
+    await runCheck('Check 34: Degradation monitor tracking', check34_DegradationMonitorTracking);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -508,7 +562,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 26`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 28`);
   console.log('========================================');
 
   if (failed > 0) {

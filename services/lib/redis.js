@@ -20,6 +20,7 @@ import Redis from 'ioredis';
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
 let _client = null;
+const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
 /**
  * Returns a shared, resilient ioredis client.
@@ -44,16 +45,13 @@ export function getRedisClient(opts = {}) {
     retryStrategy: () => null
   });
 
-  client.on('connect', () => console.log(`[${label}] Redis connected`));
-  client.on('ready', () => console.log(`[${label}] Redis ready`));
-  client.on('error', (err) => console.warn(`[${label}] Redis error:`, err.message));
-  client.on('reconnecting', (delay) =>
-    console.warn(`[${label}] Redis reconnecting in ${delay ?? '?'}ms`)
-  );
-  client.on('end', () => console.warn(`[${label}] Redis connection closed`));
+  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis connected`); });
+  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
+  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn(`[${label}] Redis connection closed`); });
 
   _client = client;
   return _client;
 }
 
+export { redisTelemetry };
 export default getRedisClient;
