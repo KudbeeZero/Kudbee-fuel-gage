@@ -54,6 +54,7 @@ import { DiagnosticTicker } from './components/dashboard/DiagnosticTicker';
 import { LatencyHistogram } from './components/LatencyHistogram';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
+import { OSControlBar, CommandPalette } from './components/OSControlBar';
 import { GatewayView } from './components/gateway/GatewayView';
 import { HistoryPage } from './pages/history';
 import { FirewallPage } from './pages/firewall';
@@ -3176,6 +3177,34 @@ export default function App() {
     }
   }, [theme]);
 
+  // Global command palette (Cmd+K / Ctrl+K)
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (e.key === 'Escape' && paletteOpen) {
+        setPaletteOpen(false);
+        return;
+      }
+      if (e.key === '/' && !isEditable && isAuthenticated) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAuthenticated, paletteOpen]);
+
   const showToast = (message: string, type: 'warning' | 'info' | 'success' = 'warning') => {
     const id = Date.now();
     setToast({ id, message, type });
@@ -3231,22 +3260,31 @@ export default function App() {
   // Derive dynamic telemetry statistics — REAL DATA ONLY.
   // No synthetic base values: if the backend has not ingested anything yet,
   // the dashboard renders the clean, empty architectural state (all zeros)
-  // instead of fabricated telemetry.
-  const BLENDED_TOKEN_RATE = 0.003 / 1000;
-
+  // instead of fabricated telemetry. The cost figure is the sum of the actual
+  // per-trace `calculated_cost` values from the database (via
+  // /api/dashboard/summary's 24-hour aggregate when available, otherwise the
+  // sum of `dbLogs.calculated_cost` over the loaded window).
   const liveStats = React.useMemo(() => {
     const totalInput = dbSummary?.total_input_tokens || 0;
     const totalOutput = dbSummary?.total_output_tokens || 0;
     const dbTokens = totalInput + totalOutput || dbSummary?.total_historical_tokens || 0;
-    const calculatedCost = Number((dbTokens * BLENDED_TOKEN_RATE).toFixed(6));
+
+    // Real cost: prefer the database's authoritative daily rollup when
+    // present, otherwise sum the cost of the loaded trace window.
+    const liveWindowCost = (dbLogs || []).reduce(
+      (sum, log) => sum + (Number(log.calculated_cost) || 0),
+      0
+    );
+    const calculatedCost = dbSummary?.total_24h_cost ?? Number(liveWindowCost.toFixed(6));
 
     return {
-      inTokens: totalInput || Math.floor(dbTokens * 0.4),
-      outTokens: totalOutput || Math.floor(dbTokens * 0.6),
+      inTokens: totalInput,
+      outTokens: totalOutput,
       cost: calculatedCost,
       totalRequests: dbSummary?.total_requests || 0,
       activeModels: dbSummary?.total_active_models || 0,
-      errorRate: dbSummary?.error_rate || 0
+      errorRate: dbSummary?.error_rate || 0,
+      totalTokens: dbTokens
     };
   }, [dbSummary, dbLogs]);
 
@@ -4366,6 +4404,19 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      {/* 1b. GLOBAL OS CONTROL BAR + COMMAND PALETTE (Phase 19) */}
+      {isAuthenticated && (
+        <OSControlBar
+          isAuthenticated={isAuthenticated}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
+      )}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={(label) => setActiveTab(label)}
+      />
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
       <ConsoleDock />
