@@ -32,7 +32,9 @@ import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
 import { RackLayout } from '../components/RackLayout';
+import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
+import { useTerminalStore } from '../store/terminalStore';
 import type { ApprovalRequest, ApprovalDecision, ThinkThought } from '@kudbee/types';
 
 interface HealthResponse {
@@ -606,95 +608,6 @@ function GovernanceFeed({ actions }: { actions: GovernanceAction[] }) {
   );
 }
 
-/**
- * High-priority HITL (Human-in-the-Loop) Governance Gate card. Rendered only
- * when the backend reports `PENDING_APPROVAL` actions via useGovernanceStream.
- * Surfaces the agent's proposed model, estimated cost, and reasoning tokens,
- * and lets the operator APPROVE (release) or REJECT (kill) the task.
- */
-function GovernanceInterventionCard({
-  pending,
-  onResolve
-}: {
-  pending: ApprovalRequest[];
-  onResolve: (id: string, decision: ApprovalDecision) => Promise<boolean>;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const handle = async (id: string, decision: ApprovalDecision) => {
-    setBusyId(id);
-    try {
-      await onResolve(id, decision);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  return (
-    <div
-      id="governance-intervention-card"
-      className="relative overflow-hidden rounded-2xl border border-rose-500/40 bg-rose-500/5 lg:col-span-3"
-    >
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-rose-500/60 to-transparent" />
-      <div className="flex items-center justify-between border-b border-rose-500/20 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 animate-pulse text-rose-400" />
-          <h3 className="font-display text-sm font-semibold text-rose-200">
-            Governance Intervention Required
-          </h3>
-        </div>
-        <span className="rounded bg-rose-500/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-rose-300">
-          {pending.length} pending
-        </span>
-      </div>
-
-      <div className="divide-y divide-rose-500/10">
-        {pending.map((req) => (
-          <div key={req.id} className="space-y-2 p-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
-              <span className="text-slate-400">
-                model <span className="text-rose-200">{req.proposed_model}</span>
-              </span>
-              <span className="text-slate-400">
-                est. cost <span className="text-amber-300">${Number(req.estimated_cost).toFixed(4)}</span>
-              </span>
-              <span className="text-slate-400">
-                reasoning <span className="text-emerald-300">{req.reasoning_tokens} tok</span>
-              </span>
-              {req.agent_id && (
-                <span className="text-slate-500">agent {req.agent_id}</span>
-              )}
-            </div>
-            <p className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950/50 p-2 font-mono text-[10px] leading-relaxed text-slate-400">
-              {req.reasoning || '(no reasoning provided)'}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={busyId === req.id}
-                onClick={() => void handle(req.id, 'APPROVE')}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-mono font-semibold text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <BadgeCheck className="h-3.5 w-3.5" />
-                Approve &amp; Release
-              </button>
-              <button
-                type="button"
-                disabled={busyId === req.id}
-                onClick={() => void handle(req.id, 'REJECT')}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-mono font-semibold text-rose-300 transition-all hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <ShieldX className="h-3.5 w-3.5" />
-                Reject &amp; Kill
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function CommunityValueScore({ data }: { data: CommunityValue | null }) {
   const score = data ? Number(data.community_value_score) : 0;
   const ringPct = Math.min(100, Math.round(score));
@@ -833,7 +746,8 @@ function AgentTerminal({
   live,
   thinking,
   thinkLatest,
-  context
+  context,
+  externalCommands
 }: {
   data: SessionHistoryItem[];
   loading: boolean;
@@ -842,6 +756,7 @@ function AgentTerminal({
   thinking?: boolean;
   thinkLatest?: string | null;
   context?: TerminalContext;
+  externalCommands?: { id: number; text: string; output?: string }[];
 }) {
   const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
@@ -850,6 +765,15 @@ function AgentTerminal({
   const [collapsedSessions, setCollapsedSessions] = useState<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const latestDataRef = useRef(data);
+  const processedCmdIds = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!externalCommands || externalCommands.length === 0) return;
+    const newCmds = externalCommands.filter((cmd) => !processedCmdIds.current.has(cmd.id));
+    if (newCmds.length === 0) return;
+    newCmds.forEach((cmd) => processedCmdIds.current.add(cmd.id));
+    setCommands((prev) => [...prev, ...newCmds]);
+  }, [externalCommands]);
 
   useEffect(() => {
     latestDataRef.current = data;
@@ -1641,6 +1565,20 @@ export function DashboardPage() {
   const [suggestions, setSuggestions] = useState<HermesSuggestion[]>([]);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [terminalCommands, setTerminalCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
+
+  const pushTerminalEvent = useCallback((text: string, output?: string) => {
+    const id = Date.now() + Math.random();
+    setTerminalCommands((prev) => [...prev, { id, text, output }]);
+    useTerminalStore.getState().pushExternalLog({
+      id: `gov-${id}`,
+      type: 'info',
+      label: 'GOVERNANCE',
+      message: text,
+      time: new Date().toLocaleTimeString()
+    });
+  }, []);
+
   const dismissSuggestion = useCallback((id: string) => {
     setSuggestions((prev) => prev.filter((s) => s.id !== id));
   }, []);
@@ -1650,6 +1588,21 @@ export function DashboardPage() {
   // HITL Governance Gate + Think: Stream bindings (Resilient-First hooks).
   const { pending: pendingApprovals, submitApproval } = useGovernanceStream();
   const { latest: latestThought } = useThinkStream();
+
+  const wrappedSubmitApproval = useCallback(
+    async (id: string, decision: ApprovalDecision): Promise<boolean> => {
+      pushTerminalEvent(`Submitting ${decision} for ${id}…`);
+      const success = await submitApproval(id, decision, (ok, err) => {
+        if (ok) {
+          pushTerminalEvent(`✓ ${decision} confirmed for ${id}`, 'promoted to PROVEN index');
+        } else {
+          pushTerminalEvent(`✗ Failed to resolve ${id}`, err || 'unknown error');
+        }
+      });
+      return success;
+    },
+    [submitApproval, pushTerminalEvent]
+  );
 
   const probeHealth = useCallback(async () => {
     try {
@@ -1736,7 +1689,14 @@ export function DashboardPage() {
     });
 
     // Governance change (approve/reject) or triage -> refresh the relevant feed.
-    const offGov = stream.on('governance', () => { void loadGovernance(); });
+    const offGov = stream.on('governance', (data: any) => {
+      void loadGovernance();
+      const kind = data?.kind || 'updated';
+      const action = data?.action;
+      if (action) {
+        pushTerminalEvent(`Backend confirmed ${kind}`, `action ${action.id || action.trace_id || ''}`);
+      }
+    });
     const offTriage = stream.on('triage', () => { void loadTriage(); });
 
     // Initial snapshot of proposed actions from the SSE handshake.
@@ -1758,7 +1718,7 @@ export function DashboardPage() {
       offTriage();
       offSnapshot();
     };
-  }, [stream.on, loadGovernance, loadTriage]);
+  }, [stream.on, loadGovernance, loadTriage, pushTerminalEvent]);
 
   const loadSystemStatus = useCallback(async () => {
     try {
@@ -1955,7 +1915,7 @@ export function DashboardPage() {
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* HITL Governance Gate — high-priority, spans full width when pending. */}
           {pendingApprovals.length > 0 && (
-            <GovernanceInterventionCard pending={pendingApprovals} onResolve={submitApproval} />
+            <ApprovalQueueTray pending={pendingApprovals} onResolve={wrappedSubmitApproval} />
           )}
 
           <div className="lg:col-span-2">
@@ -2002,6 +1962,7 @@ export function DashboardPage() {
             live={live}
             thinking={thinking}
             thinkLatest={latestThought?.thought ?? null}
+            externalCommands={terminalCommands}
             context={{
               live,
               health: health?.status ?? (healthError ? 'error' : 'unknown'),
