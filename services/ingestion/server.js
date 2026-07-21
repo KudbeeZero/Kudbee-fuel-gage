@@ -734,6 +734,42 @@ app.get('/api/think/archive', async (req, res) => {
   }
 });
 
+app.get('/api/think/trajectories', async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    const rows = await runQuery(
+      `SELECT id, original_trace_id, task_context, failed_state, correction_delta, embedding, status, created_at
+       FROM think_tokens
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    const trajectories = rows.map((row) => {
+      const rawEmbedding = safeParseJson(row.embedding);
+      const embedding = Array.isArray(rawEmbedding) ? rawEmbedding : new Array(1536).fill(0);
+      const magnitude = Math.sqrt(embedding.reduce((acc, v) => acc + v * v, 0)) || 0;
+      const tokenHash = row.original_trace_id
+        ? `0x${Buffer.from(String(row.original_trace_id)).toString('hex').slice(0, 16)}`
+        : `0x${String(row.id).slice(0, 16)}`;
+      return {
+        id: String(row.id),
+        token_hash: tokenHash,
+        spatial_coordinates: embedding,
+        similarity_score: Number(magnitude.toFixed(4)),
+        status: row.status || 'PENDING_APPROVAL',
+        task_context: safeParseJson(row.task_context),
+        failed_state: safeParseJson(row.failed_state),
+        correction_delta: row.correction_delta || '',
+        created_at: row.created_at
+      };
+    });
+    return res.json({ count: trajectories.length, trajectories });
+  } catch (err) {
+    console.error('[Think] Trajectories error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch think trajectories' });
+  }
+});
+
 app.get('/api/telemetry/logs', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;

@@ -35,7 +35,7 @@ import { RackLayout } from '../components/RackLayout';
 import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 import { useTerminalStore } from '../store/terminalStore';
-import type { ApprovalRequest, ApprovalDecision, ThinkThought, TelemetryStats, CrucibleDispatchResponse } from '@kudbee/types';
+import type { ApprovalRequest, ApprovalDecision, ThinkThought, TelemetryStats, CrucibleDispatchResponse, ThinkTrajectory } from '@kudbee/types';
 
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'error';
@@ -532,6 +532,60 @@ function TokenMetrics({ daily, weekly }: { daily: number; weekly: number }) {
           <p className="mt-1 text-[10px] font-mono text-slate-500">Last 7 days</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ThinkTrajectoriesCard({ trajectories, loading, error }: { trajectories: ThinkTrajectory[]; loading: boolean; error: string | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="think-trajectories-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-violet-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Think Trajectories</h3>
+        </div>
+        <span className="font-mono text-[10px] text-slate-500">vector · 1536-dim</span>
+      </div>
+
+      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+        {trajectories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
+            <Brain className="h-8 w-8 opacity-40" />
+            <span className="font-mono text-xs">No think token trajectories minted yet.</span>
+          </div>
+        ) : (
+          trajectories.slice(0, 8).map((t) => (
+            <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate font-mono text-xs text-violet-300">{t.token_hash}</span>
+                <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                  t.status === 'VERIFIED'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                    : t.status === 'RECYCLED'
+                      ? 'border-sky-500/30 bg-sky-500/10 text-sky-400'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                }`}>
+                  {t.status}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                <span>sim {t.similarity_score.toFixed(4)}</span>
+                <span>dims {t.spatial_coordinates.length}</span>
+              </div>
+              {t.correction_delta && (
+                <p className="mt-1.5 truncate text-[10px] text-slate-400">{t.correction_delta}</p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {error && (
+        <div className="mx-5 mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono text-amber-300">
+          <span className="line-clamp-2">{error}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1760,6 +1814,10 @@ export function DashboardPage() {
   const [telemetryStatsError, setTelemetryStatsError] = useState<string | null>(null);
   const [telemetryStatsLoading, setTelemetryStatsLoading] = useState(true);
 
+  const [trajectories, setTrajectories] = useState<ThinkTrajectory[]>([]);
+  const [trajectoriesError, setTrajectoriesError] = useState<string | null>(null);
+  const [trajectoriesLoading, setTrajectoriesLoading] = useState(true);
+
   // --- Real-time telemetry (SSE) ---
   const [thinking, setThinking] = useState(false);
   const [suggestions, setSuggestions] = useState<HermesSuggestion[]>([]);
@@ -1875,6 +1933,18 @@ export function DashboardPage() {
       setTelemetryStatsError(e instanceof Error ? e.message : 'Telemetry stats fetch failed');
     } finally {
       setTelemetryStatsLoading(false);
+    }
+  }, []);
+
+  const loadTrajectories = useCallback(async () => {
+    try {
+      const data = await apiGet<{ count: number; trajectories: ThinkTrajectory[] }>('/api/think/trajectories?limit=25');
+      setTrajectories(Array.isArray(data?.trajectories) ? data.trajectories : []);
+      setTrajectoriesError(null);
+    } catch (e) {
+      setTrajectoriesError(e instanceof Error ? e.message : 'Trajectories fetch failed');
+    } finally {
+      setTrajectoriesLoading(false);
     }
   }, []);
 
@@ -2059,11 +2129,12 @@ export function DashboardPage() {
       loadMemory(),
       loadGovernance(),
       loadSinkTokenBalance(),
-      loadTelemetryStats()
+      loadTelemetryStats(),
+      loadTrajectories()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance, loadTelemetryStats]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance, loadTelemetryStats, loadTrajectories]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
   // the 5s poll is reduced to a slow safety net (every 30s) instead of the
@@ -2173,6 +2244,7 @@ export function DashboardPage() {
             <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+          <ThinkTrajectoriesCard trajectories={trajectories} loading={trajectoriesLoading} error={trajectoriesError} />
           <TokenMetrics daily={dailyTotalTokens} weekly={weeklyTotalTokens} />
           <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />
           <GovernanceFeed actions={governance} />

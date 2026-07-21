@@ -190,6 +190,12 @@ async function check14_MintThinkToken() {
   return res.status === 201 && data.success === true && typeof data.tokenId === 'string';
 }
 
+async function check15_ThinkTrajectories() {
+  const res = await fetch(`${BASE}/api/think/trajectories?limit=10`);
+  const data = await res.json();
+  return res.status === 200 && Array.isArray(data.trajectories) && Array.isArray(data.count !== undefined ? [data.count] : []);
+}
+
 async function run() {
   try {
     await startServer();
@@ -207,6 +213,7 @@ async function run() {
     await runCheck('Check 12: Deep health endpoint', check12_DeepHealthEndpoint);
     await runCheck('Check 13: Model comparator endpoint', check13_ModelComparator);
     await runCheck('Check 14: Mint think token endpoint', check14_MintThinkToken);
+    await runCheck('Check 15: Think trajectories endpoint', check15_ThinkTrajectories);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -215,7 +222,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 14`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 15`);
   console.log('========================================');
 
   if (failed > 0) {

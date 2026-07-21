@@ -2,6 +2,7 @@ import { CORE_RACK_PLUGINS } from '../registry/frontend-plugins';
 import { ThinkStormPlugin } from './ThinkStormPlugin';
 import { ThinkStreamPlugin } from './ThinkStreamPlugin';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
+import { ThinkTrajectoriesPlugin } from './ThinkTrajectoriesPlugin';
 import { GovernanceGatePlugin } from './GovernanceGatePlugin';
 import { EdgeSentinelPlugin, parseRawSignal, type EdgeSignal } from './EdgeSentinelPlugin';
 import { HermesAuditorPlugin } from './HermesAuditorPlugin';
@@ -9,6 +10,8 @@ import { HermesAuditLogSchema, type HermesAuditLog } from './HermesAuditorPlugin
 import { useEffect, useState } from 'react';
 import { apiGet } from '../lib/apiClient';
 import { useEventStream } from '../hooks/useEventStream';
+import { useThinkTrajectories } from '../hooks/useThinkTrajectories';
+import type { ThinkTrajectory } from '@kudbee/types';
 import type { IKudbeePlugin } from '@kudbee/types';
 
 const COL_SPAN_CLASS: Record<number, string> = {
@@ -105,26 +108,34 @@ function useEdgeSignals(): {
 
 function renderPlugin(
   plugin: IKudbeePlugin,
-  hermes: { logs: HermesAuditLog[]; connected: boolean }
+  hermes: { logs: HermesAuditLog[]; connected: boolean },
+  trajectories: ThinkTrajectory[],
+  trajectoryLoading: boolean
 ) {
   const span = COL_SPAN_CLASS[plugin.gridSpan.colSpan] ?? 'lg:col-span-4';
   switch (plugin.id) {
     case 'plugin-storm':
       return (
         <div key={plugin.id} className={span}>
-          <ThinkStormPlugin plugin={plugin} />
+          <ThinkStormPlugin plugin={plugin} trajectories={trajectories} />
         </div>
       );
     case 'plugin-stream':
       return (
         <div key={plugin.id} className={span}>
-          <ThinkStreamPlugin plugin={plugin} />
+          <ThinkStreamPlugin plugin={plugin} trajectories={trajectories} />
         </div>
       );
     case 'plugin-storage':
       return (
         <div key={plugin.id} className={span}>
-          <ThinkStoragePlugin plugin={plugin} />
+          <ThinkStoragePlugin plugin={plugin} trajectories={trajectories} />
+        </div>
+      );
+    case 'plugin-trajectories':
+      return (
+        <div key={plugin.id} className={span}>
+          <ThinkTrajectoriesPlugin plugin={plugin} trajectories={trajectories} loading={trajectoryLoading} />
         </div>
       );
     case 'plugin-gov-gate':
@@ -148,6 +159,7 @@ export function RackLayout() {
   const plugins = Object.values(CORE_RACK_PLUGINS);
   const hermes = useHermesAuditLogs();
   const edge = useEdgeSignals();
+  const { trajectories, loading: trajectoryLoading } = useThinkTrajectories();
 
   return (
     <section
@@ -166,7 +178,7 @@ export function RackLayout() {
         </span>
       </header>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
-        {plugins.map((plugin) => renderPlugin(plugin, hermes))}
+        {plugins.map((plugin) => renderPlugin(plugin, hermes, trajectories, trajectoryLoading))}
         <div className="lg:col-span-12">
           <EdgeSentinelPlugin
             signals={edge.signals}
