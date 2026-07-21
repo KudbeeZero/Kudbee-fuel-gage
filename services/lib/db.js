@@ -134,7 +134,8 @@ const memory = {
   user_memories: [],
   security_violations: [],
   governance_actions: [],
-  think: []
+  think: [],
+  think_tokens: []
 };
 
 let _seq = 1;
@@ -208,6 +209,9 @@ function runQueryMemory(sql, params = []) {
   }
   if (/FROM think/.test(s)) {
     return [...memory.think].reverse();
+  }
+  if (/FROM think_tokens/.test(s)) {
+    return [...memory.think_tokens].reverse();
   }
   if (/FROM governance_actions/.test(s)) {
     return [...memory.governance_actions].reverse();
@@ -305,6 +309,15 @@ function runInsertMemory(sql, params = []) {
       model: model || 'reasoning', created_at: new Date().toISOString()
     };
     memory.think.push(row);
+    return { id: row.id, changes: 1 };
+  }
+  if (/INTO think_tokens/.test(s)) {
+    const [original_trace_id, task_context, failed_state, correction_delta, status] = params;
+    const row = {
+      id: nextId(), original_trace_id, task_context, failed_state, correction_delta,
+      status: status || 'PROVEN', created_at: new Date().toISOString()
+    };
+    memory.think_tokens.push(row);
     return { id: row.id, changes: 1 };
   }
   if (/DELETE FROM telemetry_traces/.test(s)) {

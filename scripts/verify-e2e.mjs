@@ -175,6 +175,21 @@ async function check13_ModelComparator() {
   return res.status === 200 && (data.status === 'OK' || data.status === 'PROVIDER_UNREACHABLE') && typeof data.traceId === 'string';
 }
 
+async function check14_MintThinkToken() {
+  const res = await fetch(`${BASE}/api/governance/mint-think-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      traceId: `tr-e2e-${Date.now()}`,
+      taskContext: { task: 'e2e-test' },
+      failedState: { status: 'FAILED' },
+      correctionDelta: 'E2E correction delta'
+    })
+  });
+  const data = await res.json();
+  return res.status === 201 && data.success === true && typeof data.tokenId === 'string';
+}
+
 async function run() {
   try {
     await startServer();
@@ -191,6 +206,7 @@ async function run() {
     await runCheck('Check 11: Dashboard aggregate query', check11_DashboardAggregate);
     await runCheck('Check 12: Deep health endpoint', check12_DeepHealthEndpoint);
     await runCheck('Check 13: Model comparator endpoint', check13_ModelComparator);
+    await runCheck('Check 14: Mint think token endpoint', check14_MintThinkToken);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -199,7 +215,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 13`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 14`);
   console.log('========================================');
 
   if (failed > 0) {
