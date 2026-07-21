@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
+import { useCommandDispatcher, commandRunners } from '../store/commandDispatcher';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
@@ -622,8 +623,23 @@ function DispatchPanel({ onDispatched }: { onDispatched: () => void }) {
     setError(null);
     setLastResult(null);
     try {
-      const data = await apiPost<CrucibleDispatchResponse>('/api/governance/dispatch', { task: 'manual-dispatch' });
-      setLastResult(data);
+      const { id } = await commandRunners.crucibleDispatch();
+      // Bridge the dispatcher result back into the local panel for inline feedback.
+      const unsub = useCommandDispatcher.subscribe((state) => {
+        const cmd = state.commands.find((c) => c.id === id);
+        if (!cmd) return;
+        if (cmd.state === 'SUCCESS' || cmd.state === 'FAILED') {
+          setLastResult({
+            success: cmd.state === 'SUCCESS',
+            cycle: 0,
+            maxCycles: 5,
+            traceId: cmd.traceId || '',
+            taskId: cmd.kind,
+            message: cmd.detail || cmd.description
+          });
+          unsub();
+        }
+      });
       onDispatched();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Dispatch failed');
@@ -2159,6 +2175,18 @@ export function DashboardPage() {
       const valueScore = 50 + (item.id % 50);
       setVerifying(item.id);
       setVerifyError(null);
+      // Bridge the verifier into the OS Command Dispatcher so the operator
+      // sees [QUEUED] → [PROCESSING] → [SUCCESS] in the Console Dock.
+      const { id, setState: dispatchSetState } = (() => {
+        const { enqueue, setState } = useCommandDispatcher.getState();
+        const cmdId = enqueue({
+          kind: 'VERIFY_TRACE',
+          label: 'Verify Trace',
+          description: `Trace #${item.id} — ${effectiveTraceId}`
+        });
+        setState(cmdId, 'PROCESSING', 'Re-validating through interceptor…');
+        return { id: cmdId, setState };
+      })();
       try {
         const proof = await signTrace(effectiveTraceId, valueScore);
         const result = await apiPost<{ success: boolean; verified: boolean }>('/api/interceptor/verify', {
@@ -2173,10 +2201,15 @@ export function DashboardPage() {
         });
         if (result.success && result.verified) {
           setVerifiedIds((prev) => new Set(prev).add(item.id));
+          dispatchSetState(id, 'SUCCESS', `trace #${item.id} verified`);
+        } else {
+          dispatchSetState(id, 'FAILED', 'interceptor rejected verification');
         }
         await loadGovernance();
       } catch (e) {
-        setVerifyError(e instanceof Error ? e.message : 'Verification failed');
+        const message = e instanceof Error ? e.message : 'Verification failed';
+        setVerifyError(message);
+        dispatchSetState(id, 'FAILED', message);
       } finally {
         setVerifying(null);
       }
@@ -2426,8 +2459,135 @@ export function DashboardPage() {
           <span>Kudbee Control Tower · live SSE {stream.connected ? 'connected' : 'connecting…'} · 30s safety poll</span>
           <span>{apiUrl('/health')}</span>
         </footer>
+        <QuickCommandPanel
+          onAfterAction={() => {
+            void loadTelemetryStats();
+            void loadGovernance();
+            void loadTriage();
+          }}
+        />
       </div>
     </div>
+  );
+}
+
+function QuickCommandPanel({ onAfterAction }: { onAfterAction?: () => void }) {
+  const commands = useCommandDispatcher((s) => s.commands);
+  const recent = commands.slice(0, 5);
+
+  return (
+    <section
+      id="os-quick-command-panel"
+      className="mt-5 relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"
+    >
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-amber-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">OS Quick Command Panel</h3>
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-amber-300">
+            Phase 19 Dispatcher
+          </span>
+        </div>
+        <p className="text-[10px] font-mono text-slate-500">
+          Every action emits [QUEUED] → [PROCESSING] → [SUCCESS] / [FAILED] into the Console Dock.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickCommandButton
+          id="qcmd-hermes"
+          label="Trigger HERMES Audit"
+          description="Spawn auditor sweep"
+          accent="emerald"
+          onRun={() => commandRunners.hermesAudit().then(() => onAfterAction?.())}
+        />
+        <QuickCommandButton
+          id="qcmd-crucible"
+          label="Run Crucible Cycle"
+          description="Autonomous reasoning pass"
+          accent="violet"
+          onRun={() => commandRunners.crucibleDispatch().then(() => onAfterAction?.())}
+        />
+        <QuickCommandButton
+          id="qcmd-resync"
+          label="Re-sync Vector Store"
+          description="Reconcile vector memory"
+          accent="cyan"
+          onRun={() => commandRunners.resyncVector().then(() => onAfterAction?.())}
+        />
+        <QuickCommandButton
+          id="qcmd-clear"
+          label="Clear Triage Queue"
+          description="Purge interceptor backlog"
+          accent="amber"
+          onRun={() => commandRunners.clearTriage().then(() => onAfterAction?.())}
+        />
+      </div>
+      <div className="border-t border-slate-800/60 bg-slate-950/30 px-5 py-3">
+        <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+          Recent dispatches
+        </div>
+        {recent.length === 0 ? (
+          <div className="font-mono text-[10px] text-slate-600">No commands dispatched yet.</div>
+        ) : (
+          <ul className="space-y-1">
+            {recent.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center gap-2 font-mono text-[10px] text-slate-400"
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    c.state === 'SUCCESS'
+                      ? 'bg-emerald-400'
+                      : c.state === 'FAILED'
+                        ? 'bg-rose-400'
+                        : c.state === 'PROCESSING'
+                          ? 'bg-amber-400 animate-pulse'
+                          : 'bg-slate-500'
+                  }`}
+                />
+                <span className="font-semibold text-slate-300">[{c.state}]</span>
+                <span className="truncate">{c.label}</span>
+                {c.detail && <span className="truncate text-slate-500">— {c.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function QuickCommandButton({
+  id,
+  label,
+  description,
+  accent,
+  onRun
+}: {
+  id: string;
+  label: string;
+  description: string;
+  accent: 'emerald' | 'violet' | 'cyan' | 'amber';
+  onRun: () => void;
+}) {
+  const accentMap: Record<typeof accent, string> = {
+    emerald: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20',
+    violet: 'border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20',
+    cyan: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20',
+    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+  };
+  return (
+    <button
+      id={id}
+      type="button"
+      onClick={onRun}
+      className={`flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left font-mono text-[10px] font-semibold uppercase tracking-widest transition-all active:scale-95 ${accentMap[accent]}`}
+    >
+      <span>{label}</span>
+      <span className="text-[9px] normal-case tracking-normal opacity-80">{description}</span>
+    </button>
   );
 }
 

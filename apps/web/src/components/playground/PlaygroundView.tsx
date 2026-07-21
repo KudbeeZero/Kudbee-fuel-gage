@@ -1,11 +1,19 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight, Loader2, WifiOff } from 'lucide-react';
 import { MultiModelSelector } from './MultiModelSelector';
 import { TokenEstimator } from './TokenEstimator';
 import { CostAnalysisPanel } from './CostAnalysisPanel';
 import { useTelemetryLogger } from '../../hooks/useTelemetryLogger';
-import { useStreamEngine } from '../../hooks/useStreamEngine';
+import { usePlaygroundBackend, type PlaygroundResult } from '../../hooks/usePlaygroundBackend';
 import { getFormattedCost } from '../../utils/currency';
+
+const MODEL_PROVIDER_MAP: Record<string, string> = {
+  'Claude 3.5 Sonnet': 'anthropic',
+  'DeepSeek-R1': 'deepseek',
+  'GPT-4o': 'openai',
+  'Gemini 1.5 Pro': 'google',
+  'Ternary Bonsai 27B': 'deepseek'
+};
 
 interface PlaygroundViewProps {
   currency: 'USD' | 'EUR' | 'GBP';
@@ -31,7 +39,54 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   });
 
   const { isLogged, isLogging, handleInjectTrace } = useTelemetryLogger(onNewLogTriggered);
-  const { isStreaming, streamOutput, startStream, cancelStream } = useStreamEngine();
+  const { isRunning, error: backendError, run: runBackend, cancel: cancelBackend } = usePlaygroundBackend();
+  const [lastResult, setLastResult] = useState<PlaygroundResult | null>(null);
+  const [streamedContent, setStreamedContent] = useState('');
+  const streamTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (streamTimerRef.current) clearTimeout(streamTimerRef.current);
+    };
+  }, []);
+
+  const handleRunStream = useCallback(async () => {
+    if (isRunning) {
+      cancelBackend();
+      if (streamTimerRef.current) {
+        clearTimeout(streamTimerRef.current);
+        streamTimerRef.current = null;
+      }
+      setIsTyping(false);
+      return;
+    }
+    const provider = MODEL_PROVIDER_MAP[selectedModel] || 'anthropic';
+    setStreamedContent('');
+    setLastResult(null);
+    const result = await runBackend({ prompt: payloadText, model: selectedModel, provider });
+    if (!result) {
+      setIsTyping(false);
+      return;
+    }
+    setLastResult(result);
+    setIsTyping(true);
+    const words = result.content.split(/(\s+)/);
+    let idx = 0;
+    const tick = () => {
+      if (idx >= words.length) {
+        setIsTyping(false);
+        return;
+      }
+      setStreamedContent((prev) => prev + words[idx]);
+      idx += 1;
+      streamTimerRef.current = setTimeout(tick, 18 + Math.random() * 30);
+    };
+    streamTimerRef.current = setTimeout(tick, 40);
+    if (onNewLogTriggered) onNewLogTriggered();
+  }, [cancelBackend, isRunning, onNewLogTriggered, payloadText, runBackend, selectedModel]);
+
+  const displayOutput = isTyping || !lastResult ? streamedContent : (streamedContent || lastResult.content);
 
   const totalWeight = weights.Anthropic + weights.DeepSeek + weights.Google + weights.OpenAI;
   const relWeights = useMemo(() => ({
@@ -209,16 +264,17 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                 </div>
                 
                 <div className="flex items-end">
-                  {isStreaming ? (
+                  {isRunning ? (
                     <button
-                      onClick={cancelStream}
+                      onClick={handleRunStream}
                       className="w-full font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer h-10 bg-red-950/40 text-red-400 border border-red-500/30 hover:bg-red-900/60"
                     >
-                      CANCEL STREAM
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      CANCEL
                     </button>
                   ) : (
                     <button
-                      onClick={() => startStream(payloadText, selectedModel)}
+                      onClick={handleRunStream}
                       className="w-full font-semibold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer h-10 bg-blue-950/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500 hover:text-slate-950 hover:border-blue-400"
                     >
                       RUN STREAM
@@ -226,8 +282,17 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
                   )}
                 </div>
               </div>
+              {backendError && (
+                <div
+                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300 flex items-center gap-2"
+                  id="playground-error-banner"
+                >
+                  <WifiOff className="w-3.5 h-3.5" />
+                  Backend unreachable: {backendError}
+                </div>
+              )}
             </div>
-            
+
             </div>
 
           {lastCalculation && (
@@ -246,20 +311,30 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
               <span className="font-display text-sm font-semibold text-slate-200">Response Terminal</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-amber-400 animate-pulse' : 'bg-slate-700'}`} />
+              <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-amber-400 animate-pulse' : isTyping ? 'bg-cyan-400 animate-pulse' : lastResult ? 'bg-emerald-400' : 'bg-slate-700'}`} />
               <span className="text-[9px] font-mono uppercase tracking-widest text-slate-500">
-                {isStreaming ? 'STREAMING' : 'IDLE'}
+                {isRunning ? 'PROCESSING' : isTyping ? 'STREAMING' : lastResult ? `${lastResult.route} · ${lastResult.latencyMs}ms` : 'IDLE'}
               </span>
             </div>
           </div>
 
           <div className="flex-1 min-h-[280px] max-h-[420px] overflow-y-auto p-4 font-mono text-xs leading-relaxed">
-            {streamOutput ? (
+            {displayOutput ? (
               <div className="text-slate-300 whitespace-pre-wrap">
                 <span className="text-emerald-400 font-bold block mb-2">$ kx run --model "{selectedModel}"</span>
-                <span className="text-blue-400 font-bold block mb-2">[{selectedModel}]</span>
-                {streamOutput}
-                {isStreaming && <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse ml-1 align-middle" />}
+                <span className="text-blue-400 font-bold block mb-2">
+                  [{lastResult?.model ?? selectedModel} · {lastResult?.route ?? 'SLOW_BRAIN'}]
+                </span>
+                {displayOutput}
+                {(isRunning || isTyping) && <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse ml-1 align-middle" />}
+              </div>
+            ) : isRunning ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-500">
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                <p className="font-mono text-xs">Awaiting backend completion…</p>
+                <p className="font-mono text-[10px] text-slate-700">
+                  POST /v1/chat/completions
+                </p>
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-600">
@@ -280,7 +355,15 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
 
           <div className="px-4 py-2 border-t border-slate-800/60 bg-slate-900/20 flex items-center justify-between text-[10px] font-mono text-slate-600">
             <span>MODEL: <span className="text-slate-400">{selectedModel}</span></span>
-            <span>{streamOutput ? `${streamOutput.length} chars` : '0 chars'}</span>
+            {lastResult ? (
+              <span className="flex items-center gap-3">
+                <span className="text-emerald-400">{lastResult.tokensIn}+{lastResult.tokensOut}t</span>
+                <span className="text-amber-400">{getFormattedCost(lastResult.cost, currency, 4)}</span>
+                <span className="text-slate-400">{lastResult.latencyMs}ms</span>
+              </span>
+            ) : (
+              <span>{displayOutput ? `${displayOutput.length} chars` : '0 chars'}</span>
+            )}
           </div>
         </div>
 

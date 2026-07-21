@@ -12,3 +12,4 @@ coverage/
 !config/.env.example
 .turbo/
 .agent_private_key.pem
+kudbee_telemetry_db.json
