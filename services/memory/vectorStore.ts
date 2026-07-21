@@ -50,6 +50,7 @@ interface TopologyRow {
   chunk_text: unknown;
   metadata: TopologyMetadata;
   embedding: unknown;
+  similarity?: number;
 }
 
 // In-memory mock store (Resilient-First degrade path).
@@ -69,6 +70,20 @@ function cosineSimilarity(a: number[], b: number[]): number {
   }
   const denom = Math.sqrt(na) * Math.sqrt(nb);
   return denom === 0 ? 0 : dot / denom;
+}
+
+function parseVectorString(value: unknown): number[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  const trimmed = value.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return trimmed
+      .slice(1, -1)
+      .split(',')
+      .map((v) => Number(v.trim()))
+      .filter((n) => !Number.isNaN(n));
+  }
+  return [];
 }
 
 function toVectorLiteral(embedding: number[]): string {
@@ -134,7 +149,7 @@ export async function querySystemTopology(
         id: String(row.id),
         chunk_text: String(row.chunk_text),
         metadata: row.metadata,
-        embedding: Array.isArray(row.embedding) ? (row.embedding as number[]) : []
+        embedding: parseVectorString(row.embedding)
       }));
       return { ok: true, results };
     } catch (err) {
@@ -163,6 +178,115 @@ export async function storeSystemChunkText(
 ): Promise<StoreChunkResult> {
   const embedding = embedTextLocal(text);
   return storeSystemChunk(text, metadata, embedding);
+}
+
+/**
+ * Semantic similarity search over the vector memory store.
+ *
+ * Accepts either raw text or a precomputed embedding. When text is supplied it
+ * is embedded first via `embedText`, then queried against the `vector_memory`
+ * table using pgvector cosine distance (`<=>`). Only rows whose cosine
+ * similarity meets `minScore` are returned.
+ *
+ * Resilient-First: if Neon/pgvector is unavailable the search degrades to the
+ * in-process mock store using JS cosine similarity.
+ */
+export async function searchSimilar(
+  textOrEmbedding: string | number[],
+  limit = 5,
+  minScore = 0.3
+): Promise<QueryResult> {
+  let embedding: number[];
+  if (typeof textOrEmbedding === 'string') {
+    const { embedText } = await import('./embedText.ts');
+    embedding = await embedText(textOrEmbedding);
+  } else {
+    embedding = textOrEmbedding;
+  }
+
+  const pool = getDbPool();
+  if (pool && isDbHealthy()) {
+    try {
+      const res = await pool.query(
+        `SELECT id, text AS chunk_text, metadata, embedding,
+                1 - (embedding <=> $1::vector) AS similarity
+         FROM vector_memory
+         ORDER BY embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(embedding), limit]
+      );
+      const results: SystemChunk[] = res.rows
+        .filter((row: TopologyRow) => (Number(row.similarity) || 0) >= minScore)
+        .map((row: TopologyRow) => ({
+          id: String(row.id),
+          chunk_text: String(row.chunk_text),
+          metadata: row.metadata,
+          embedding: parseVectorString(row.embedding)
+        }));
+      return { ok: true, results };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[Vector] DB search failed, degrading to memory mock:', message);
+    }
+  }
+
+  const ranked = memoryStore
+    .map((entry) => ({ entry, score: cosineSimilarity(embedding, entry.embedding) }))
+    .filter(({ score }) => score >= minScore)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ entry }) => ({
+      id: entry.id,
+      chunk_text: entry.chunk_text,
+      metadata: entry.metadata,
+      embedding: entry.embedding
+    }));
+  return { ok: true, results: ranked };
+}
+
+/**
+ * Persists an arbitrary text+embedding pair into the `vector_memory` table.
+ * Used by the Governance Router to index approved proven actions for Fast Brain
+ * semantic recall. Degrades to the in-memory mock when Neon is unavailable.
+ */
+export async function storeMemory(
+  text: string,
+  metadata: TopologyMetadata,
+  embedding: number[]
+): Promise<StoreChunkResult> {
+  if (embedding.length !== EMBEDDING_DIM) {
+    return {
+      ok: false,
+      error: `Embedding dimension mismatch: expected ${EMBEDDING_DIM}, got ${embedding.length}`
+    };
+  }
+
+  const pool = getDbPool();
+  if (pool && isDbHealthy()) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO vector_memory (id, text, embedding, metadata)
+         VALUES ($1, $2, $3::vector, $4)
+         RETURNING id`,
+        [randomUUID(), text, toVectorLiteral(embedding), JSON.stringify(metadata)]
+      );
+      return { ok: true, id: String(res.rows[0]?.id ?? randomUUID()) };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[Vector] DB store failed, degrading to memory mock:', message);
+    }
+  }
+
+  const id = randomUUID();
+  memoryStore.push({ id, chunk_text: text, metadata, embedding });
+  return { ok: true, id };
+}
+
+/** Convenience: embed text and store it in vector memory in one call. */
+export async function storeMemoryText(text: string, metadata: TopologyMetadata): Promise<StoreChunkResult> {
+  const { embedText } = await import('./embedText.ts');
+  const embedding = await embedText(text);
+  return storeMemory(text, metadata, embedding);
 }
 
 export { EMBEDDING_DIM };

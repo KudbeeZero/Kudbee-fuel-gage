@@ -14,6 +14,7 @@ export function matchLogic(prompt: string): Promise<{
   confidence?: number;
   reason?: string;
   logic?: ProposedAction;
+  source?: 'vector_memory' | 'keyword';
 }>;
 
 export function listProposed(): Promise<ProposedAction[]>;
