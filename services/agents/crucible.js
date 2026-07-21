@@ -80,7 +80,7 @@ async function simulateFlawedExecution(task) {
 export async function runCrucibleCycle() {
   if (cycleCount >= MAX_CYCLES_PER_BOOT) {
     log.warn(`Circuit breaker active — ${cycleCount}/${MAX_CYCLES_PER_BOOT} cycles exhausted. Halting.`);
-    return;
+    return { success: false, cycle: cycleCount, maxCycles: MAX_CYCLES_PER_BOOT, traceId: '', message: 'Circuit breaker active' };
   }
 
   cycleCount += 1;
@@ -124,8 +124,10 @@ export async function runCrucibleCycle() {
     });
 
     log.info(`Cycle ${cycleCount} complete`, `traceId=${traceId}`, `task=${task.id}`);
+    return { success: true, cycle: cycleCount, maxCycles: MAX_CYCLES_PER_BOOT, traceId, taskId: task.id, message: 'Cycle complete' };
   } catch (err) {
     log.error(`Cycle ${cycleCount} failed`, err instanceof Error ? err.message : String(err));
+    return { success: false, cycle: cycleCount, maxCycles: MAX_CYCLES_PER_BOOT, traceId, message: err instanceof Error ? err.message : String(err) };
   }
 }
 
