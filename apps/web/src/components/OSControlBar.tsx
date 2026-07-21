@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope } from 'lucide-react';
 import { useCommandDispatcher, commandRunners, type DispatchedCommand } from '../store/commandDispatcher';
 
 export type OSToggleState = {
@@ -354,6 +354,43 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
               description: `status ${r.status}`
             }))
             .catch(() => {});
+          onClose();
+        }
+      },
+      {
+        id: 'diag-search',
+        label: 'Search Telemetry',
+        description: 'Open History and run universal search',
+        icon: Search,
+        group: 'Diagnostic',
+        keywords: ['search', 'telemetry', 'logs', 'audit'],
+        perform: () => {
+          onNavigate('History');
+          onClose();
+        }
+      },
+      {
+        id: 'diag-system',
+        label: 'Run System Diagnostic',
+        description: 'Comprehensive self-diagnostic probe',
+        icon: Stethoscope,
+        group: 'Diagnostic',
+        keywords: ['diagnostic', 'system', 'health', 'probe'],
+        perform: () => {
+          fetch('/api/system/diagnostics', { method: 'GET' })
+            .then((r) => r.ok ? r.json() : Promise.reject())
+            .then((data) => useCommandDispatcher.getState().enqueue({
+              kind: 'PLAYGROUND_RUN',
+              label: 'System Diagnostic',
+              description: `status: ${data?.status || 'unknown'}`
+            }))
+            .catch(() => {
+              useCommandDispatcher.getState().enqueue({
+                kind: 'PLAYGROUND_RUN',
+                label: 'System Diagnostic',
+                description: 'failed'
+              });
+            });
           onClose();
         }
       }

@@ -2922,6 +2922,242 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
   }
 });
 
+// --- Phase 22: Universal Search, Audit Export, System Diagnostics ---------------
+
+app.get('/api/telemetry/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    const traceId = String(req.query.traceId || '').trim();
+    const provider = String(req.query.provider || '').trim();
+    const verdict = String(req.query.verdict || '').trim().toUpperCase();
+    const from = String(req.query.from || '').trim();
+    const to = String(req.query.to || '').trim();
+    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+
+    const conditions = [];
+    const params = [];
+    let idx = 1;
+
+    if (q) {
+      conditions.push(`(model ILIKE $${idx} OR provider ILIKE $${idx} OR project_name ILIKE $${idx} OR trace_id ILIKE $${idx})`);
+      params.push(`%${q}%`);
+      idx++;
+    }
+    if (traceId) {
+      conditions.push(`trace_id ILIKE $${idx}`);
+      params.push(`%${traceId}%`);
+      idx++;
+    }
+    if (provider) {
+      conditions.push(`provider = $${idx}`);
+      params.push(provider);
+      idx++;
+    }
+    if (verdict && ['BLOCK', 'WARN', 'PASS'].includes(verdict)) {
+      conditions.push(`status = $${idx}`);
+      params.push(verdict);
+      idx++;
+    }
+    if (from) {
+      conditions.push(`timestamp >= $${idx}`);
+      params.push(from);
+      idx++;
+    }
+    if (to) {
+      conditions.push(`timestamp <= $${idx}`);
+      params.push(to);
+      idx++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await runQuery(
+      `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+         FROM telemetry_traces ${where} ORDER BY timestamp DESC LIMIT $${idx}`,
+      [...params, limit]
+    ).catch(() => []);
+
+    const results = (rows || []).map((r) => ({
+      id: r.id,
+      traceId: r.trace_id,
+      model: r.model,
+      provider: r.provider,
+      status: r.status,
+      cost: Number(r.cost || 0),
+      tokensIn: Number(r.tokens_in || 0),
+      tokensOut: Number(r.tokens_out || 0),
+      timestamp: r.timestamp,
+      projectName: r.project_name
+    }));
+
+    res.json({ query: { q, traceId, provider, verdict, from, to, limit }, total: results.length, results });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/audit/export', async (req, res) => {
+  try {
+    const format = String(req.query.format || 'json').toLowerCase() === 'csv' ? 'csv' : 'json';
+    const from = String(req.query.from || '').trim();
+    const to = String(req.query.to || '').trim();
+    const provider = String(req.query.provider || '').trim();
+    const status = String(req.query.status || '').trim().toUpperCase();
+
+    const conditions = [];
+    const params = [];
+    let idx = 1;
+
+    if (from) { conditions.push(`timestamp >= $${idx}`); params.push(from); idx++; }
+    if (to) { conditions.push(`timestamp <= $${idx}`); params.push(to); idx++; }
+    if (provider) { conditions.push(`provider = $${idx}`); params.push(provider); idx++; }
+    if (status && ['OK', 'ERROR', 'BLOCKED', 'INTERCEPTED'].includes(status)) {
+      conditions.push(`status = $${idx}`); params.push(status); idx++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await runQuery(
+      `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+         FROM telemetry_traces ${where} ORDER BY timestamp ASC`,
+      params
+    ).catch(() => []);
+
+    const payload = (rows || []).map((r) => ({
+      id: r.id,
+      traceId: r.trace_id,
+      model: r.model,
+      provider: r.provider,
+      status: r.status,
+      cost: Number(r.cost || 0),
+      tokensIn: Number(r.tokens_in || 0),
+      tokensOut: Number(r.tokens_out || 0),
+      timestamp: r.timestamp,
+      projectName: r.project_name
+    }));
+
+    const canonical = JSON.stringify(payload);
+    const hash = crypto.createHash('sha256').update(canonical).digest('hex');
+
+    if (format === 'csv') {
+      const header = 'id,trace_id,model,provider,status,cost,tokens_in,tokens_out,timestamp,project_name';
+      const lines = payload.map((r) =>
+        [r.id, r.traceId, r.model, r.provider, r.status, r.cost, r.tokensIn, r.tokensOut, r.timestamp, r.projectName || ''].join(',')
+      );
+      const csv = [header, ...lines].join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-export-${Date.now()}.csv"`);
+      res.setHeader('X-Audit-Hash', hash);
+      return res.send(csv);
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-export-${Date.now()}.json"`);
+    res.json({ exportedAt: new Date().toISOString(), format: 'json', hash, recordCount: payload.length, records: payload });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/system/diagnostics', async (_req, res) => {
+  try {
+    const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
+    const services = {
+      postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null, poolInfo: null },
+      redis: { status: 'OFFLINE', latencyMs: null, lastPing: null, info: null }
+    };
+    const checks = {};
+
+    let dbOk = false;
+    try {
+      const t0 = Date.now();
+      const rows = await runQuery('SELECT 1 as ok');
+      const latencyMs = Date.now() - t0;
+      dbOk = Array.isArray(rows) && rows[0]?.ok === 1;
+      services.postgres = {
+        status: dbOk ? 'OK' : 'OFFLINE',
+        latencyMs: dbOk ? latencyMs : null,
+        lastPing: new Date().toISOString(),
+        poolInfo: pool ? { totalCount: pool.totalCount || 0, idleCount: pool.idleCount || 0, waitingCount: pool.waitingCount || 0 } : null
+      };
+      checks.dbConnection = dbOk ? 'PASS' : 'FAIL';
+    } catch {
+      services.postgres = { status: 'OFFLINE', latencyMs: null, lastPing: null, poolInfo: null };
+      checks.dbConnection = 'FAIL';
+    }
+
+    if (redis) {
+      try {
+        const t0 = Date.now();
+        await redis.ping();
+        const latencyMs = Date.now() - t0;
+        let memInfo = null;
+        try { memInfo = await redis.info('memory'); } catch { /* ignore */ }
+        services.redis = { status: 'OK', latencyMs, lastPing: new Date().toISOString(), info: memInfo };
+        checks.redisConnection = 'PASS';
+      } catch {
+        services.redis = { status: 'OFFLINE', latencyMs: null, lastPing: null, info: null };
+        checks.redisConnection = 'FAIL';
+      }
+    } else {
+      checks.redisConnection = 'SKIP';
+    }
+
+    let vectorIndexOk = false;
+    let vectorIndexDetail = 'no vector store';
+    try {
+      const countRow = await runQuery('SELECT COUNT(*) as cnt FROM telemetry_traces');
+      vectorIndexOk = Array.isArray(countRow);
+      vectorIndexDetail = vectorIndexOk ? `${countRow[0]?.cnt || 0} trace rows indexed` : 'count query failed';
+      checks.vectorIndex = vectorIndexOk ? 'PASS' : 'FAIL';
+    } catch {
+      checks.vectorIndex = 'FAIL';
+    }
+
+    const routerProviders = Object.values(PROVIDER_CONFIG || {}).map((p) => ({
+      id: p.id,
+      status: p.healthy && p.rateLimitPct < 0.5 ? 'OK' : p.rateLimitPct < 0.9 ? 'DEGRADED' : 'OFFLINE',
+      latencyMs: p.measuredLatencyMs,
+      lastError: p.lastError || null
+    }));
+    checks.routerProviders = routerProviders.some((p) => p.status === 'OFFLINE') ? 'FAIL' : 'PASS';
+
+    let logBufferOk = false;
+    let logBufferDetail = 'unknown';
+    try {
+      const countRow = await runQuery('SELECT COUNT(*) as cnt FROM telemetry_logs');
+      logBufferOk = Array.isArray(countRow);
+      logBufferDetail = logBufferOk ? `${countRow[0]?.cnt || 0} log rows` : 'count query failed';
+      checks.logBuffer = logBufferOk ? 'PASS' : 'FAIL';
+    } catch {
+      checks.logBuffer = 'FAIL';
+    }
+
+    let governanceOk = false;
+    try {
+      const proposed = await listProposed();
+      governanceOk = Array.isArray(proposed);
+      checks.governanceLedger = governanceOk ? 'PASS' : 'FAIL';
+    } catch {
+      checks.governanceLedger = 'FAIL';
+    }
+
+    const overall = Object.values(checks).every((c) => c === 'PASS' || c === 'SKIP') ? 'HEALTHY' : 'DEGRADED';
+
+    res.json({
+      status: overall,
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: uptimeSec,
+      summary: checks,
+      services,
+      routerProviders,
+      logBuffer: { detail: logBufferDetail },
+      vectorIndex: { detail: vectorIndexDetail },
+      governanceLedger: checks.governanceLedger === 'PASS'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 const distPath = resolveDistPath();
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

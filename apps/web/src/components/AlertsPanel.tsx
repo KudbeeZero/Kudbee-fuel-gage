@@ -13,10 +13,12 @@ import {
   Bell,
   BellOff,
   ShieldCheck,
-  Loader2
+  Loader2,
+  Stethoscope
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
 import { useCommandDispatcher } from '../store/commandDispatcher';
+import { useSystemDiagnostics } from '../hooks/useSystemDiagnostics';
 
 export interface SystemAlert {
   id: string;
@@ -138,6 +140,7 @@ export function AlertsPanel() {
   const [alertsError, setAlertsError] = useState<string | null>(null);
   const [busyAlertId, setBusyAlertId] = useState<string | null>(null);
   const { enqueue, setState: dispatchSetState } = useCommandDispatcher();
+  const diagnostics = useSystemDiagnostics();
 
   const loadAlerts = useCallback(async () => {
     setAlertsLoading(true);
@@ -281,6 +284,33 @@ export function AlertsPanel() {
             <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isOk ? 'text-emerald-400' : isDegraded ? 'text-amber-400' : 'text-rose-400'}`}>
               {loading ? 'Probing…' : isOk ? 'Live' : isDegraded ? 'Degraded' : 'Offline'}
             </span>
+            <button
+              id="run-system-diagnostic"
+              type="button"
+              onClick={() => {
+                const cmdId = enqueue({
+                  kind: 'PLAYGROUND_RUN',
+                  label: 'Run System Diagnostic',
+                  description: 'Comprehensive self-diagnostic probe'
+                });
+                dispatchSetState(cmdId, 'PROCESSING', 'Probing system health…');
+                void diagnostics.refresh().then(() => {
+                  const report = diagnostics.diagnostics;
+                  if (report) {
+                    dispatchSetState(cmdId, 'SUCCESS', `status: ${report.status}`);
+                  } else {
+                    dispatchSetState(cmdId, 'FAILED', 'diagnostic failed');
+                  }
+                }).catch(() => {
+                  dispatchSetState(cmdId, 'FAILED', 'diagnostic error');
+                });
+              }}
+              disabled={diagnostics.running}
+              className="flex items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-violet-300 transition-all hover:bg-violet-500/20 disabled:opacity-40"
+            >
+              {diagnostics.running ? <Loader2 className="h-3 w-3 animate-spin" /> : <Stethoscope className="h-3 w-3" />}
+              Run Diagnostic
+            </button>
           </div>
         </div>
 
@@ -511,6 +541,69 @@ export function AlertsPanel() {
           </ul>
         )}
       </div>
+
+      {/* System Diagnostic Report (Phase 22) */}
+      {diagnostics.diagnostics && (
+        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+          <div className="flex items-center gap-2 mb-4">
+            <Stethoscope className="w-5 h-5 text-violet-400" />
+            <h3 className="font-display font-semibold text-slate-200 text-sm">System Diagnostic Report</h3>
+            <span className={`rounded border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${
+              diagnostics.diagnostics.status === 'HEALTHY' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+            }`}>
+              {diagnostics.diagnostics.status}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Object.entries(diagnostics.diagnostics.summary).map(([key, value]) => (
+              <div key={key} className="p-2 bg-slate-950/40 border border-slate-800 rounded text-center">
+                <div className="text-[10px] font-mono text-slate-500 uppercase">{key}</div>
+                <div className={`text-xs font-mono font-bold mt-1 ${
+                  value === 'PASS' ? 'text-emerald-400' : value === 'SKIP' ? 'text-slate-400' : 'text-rose-400'
+                }`}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 bg-slate-950/40 border border-slate-800 rounded-lg">
+              <div className="text-[10px] font-mono text-slate-500 uppercase">Router Providers</div>
+              <div className="mt-1 space-y-1">
+                {diagnostics.diagnostics.routerProviders.map((rp) => (
+                  <div key={rp.id} className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-slate-300 uppercase">{rp.id}</span>
+                    <span className={`text-[10px] font-mono font-bold ${
+                      rp.status === 'OK' ? 'text-emerald-400' : rp.status === 'DEGRADED' ? 'text-amber-400' : 'text-rose-400'
+                    }`}>{rp.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-3 bg-slate-950/40 border border-slate-800 rounded-lg">
+              <div className="text-[10px] font-mono text-slate-500 uppercase">Buffers & Index</div>
+              <div className="mt-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-300">Log Buffer</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-300">{diagnostics.diagnostics.logBuffer.detail}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-300">Vector Index</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-300">{diagnostics.diagnostics.vectorIndex.detail}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-300">Governance</span>
+                  <span className={`text-[10px] font-mono font-bold ${diagnostics.diagnostics.governanceLedger ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {diagnostics.diagnostics.governanceLedger ? 'HEALTHY' : 'OFFLINE'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 font-mono text-[9px] text-slate-600">
+            Probed at {new Date(diagnostics.diagnostics.timestamp).toLocaleString()} · uptime {diagnostics.diagnostics.uptimeSeconds}s
+          </div>
+        </div>
+      )}
     </div>
   );
 }

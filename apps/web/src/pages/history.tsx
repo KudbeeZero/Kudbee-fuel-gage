@@ -14,10 +14,15 @@ import {
   Radio,
   Wifi,
   WifiOff,
-  Timer
+  Timer,
+  Search,
+  Download,
+  Filter
 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
 import { useTelemetryStream, type StreamMode } from '../hooks/useTelemetryStream';
+import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
+import { useAuditExport } from '../hooks/useAuditExport';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -56,6 +61,9 @@ export function HistoryPage() {
 
   const { mode: streamMode, throughput, error: streamError, reconnect } = useTelemetryStream();
   const [streamPaused, setStreamPaused] = useState(false);
+
+  const search = useTelemetrySearch();
+  const auditExport = useAuditExport();
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +134,52 @@ export function HistoryPage() {
           </div>
           <StreamModeBadge mode={streamMode} paused={streamPaused} onTogglePause={() => setStreamPaused((p) => !p)} onReconnect={() => reconnect()} />
         </div>
+
+        {/* Universal Search & Export (Phase 22) */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex flex-1 min-w-[240px] items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+            <Search className="h-3.5 w-3.5 text-slate-500" />
+            <input
+              id="history-search-input"
+              type="text"
+              value={search.filters.query}
+              onChange={(e) => search.updateFilter({ query: e.target.value })}
+              placeholder="Search traces, providers, models, verdicts…"
+              className="flex-1 bg-transparent font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none"
+            />
+            <Filter className="h-3.5 w-3.5 text-slate-500" />
+          </div>
+          <select
+            id="history-verdict-filter"
+            value={search.filters.verdict}
+            onChange={(e) => search.updateFilter({ verdict: e.target.value })}
+            className="rounded-md border border-slate-800 bg-slate-950/40 px-2 py-1.5 font-mono text-[10px] text-slate-300 focus:outline-none"
+          >
+            <option value="">All Verdicts</option>
+            <option value="PASS">PASS</option>
+            <option value="WARN">WARN</option>
+            <option value="BLOCK">BLOCK</option>
+          </select>
+          <button
+            id="history-export-btn"
+            type="button"
+            onClick={() => void auditExport.triggerExport()}
+            disabled={auditExport.exporting}
+            className="flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:opacity-40"
+          >
+            {auditExport.exporting ? <Activity className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+            Export Audit Package
+          </button>
+        </div>
+        {auditExport.error && (
+          <div className="mt-2 flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 font-mono text-[10px] text-amber-300">
+            <AlertTriangle className="h-3 w-3" />
+            {auditExport.error}
+          </div>
+        )}
+        {auditExport.lastHash && (
+          <div className="mt-1 font-mono text-[9px] text-slate-500">Audit hash: {auditExport.lastHash}</div>
+        )}
       </div>
 
       {/* Live Throughput Metrics (Phase 21) */}
@@ -178,6 +232,72 @@ export function HistoryPage() {
               value={String(throughput.sampleCount)}
               accent="amber"
             />
+          </div>
+        )}
+      </section>
+
+      {/* Search Results (Phase 22) */}
+      <section className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-violet-400" />
+            <h3 className="font-display text-sm font-semibold text-slate-200">Search Results</h3>
+            <span className="rounded border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+              {search.total} matches
+            </span>
+          </div>
+        </div>
+        {search.loading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-12 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse" />
+            ))}
+          </div>
+        ) : search.error ? (
+          <div className="flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-mono text-[10px] text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {search.error}
+          </div>
+        ) : search.results.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-slate-600">
+            <Search className="h-8 w-8 mb-3 opacity-40" />
+            <span className="font-mono text-xs">[NO MATCHES FOUND]</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950/50">
+            <table className="w-full text-left text-sm font-mono">
+              <thead className="bg-slate-900/60 text-slate-400 text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3">Trace ID</th>
+                  <th className="px-4 py-3">Model</th>
+                  <th className="px-4 py-3">Provider</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                  <th className="px-4 py-3">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {search.results.map((hit) => (
+                  <tr key={hit.id} className="align-top hover:bg-slate-900/40">
+                    <td className="px-4 py-3 text-slate-300">{hit.traceId}</td>
+                    <td className="px-4 py-3 text-slate-300">{hit.model}</td>
+                    <td className="px-4 py-3 text-slate-400 uppercase">{hit.provider}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${
+                        hit.status === 'OK' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' :
+                        hit.status === 'BLOCKED' || hit.status === 'ERROR' ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' :
+                        'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                      }`}>
+                        {hit.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-amber-400">${Number(hit.cost || 0).toFixed(6)}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(hit.timestamp).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
