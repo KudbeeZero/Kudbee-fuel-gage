@@ -670,11 +670,13 @@ function DispatchPanel({ onDispatched }: { onDispatched: () => void }) {
 function TelemetryFeed({
   items,
   onVerify,
-  verifying
+  verifying,
+  verifiedIds
 }: {
   items: TriageItem[];
   onVerify: (item: TriageItem) => void;
   verifying: number | null;
+  verifiedIds: Set<number>;
 }) {
   return (
     <div
@@ -704,9 +706,15 @@ function TelemetryFeed({
               <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-900/40">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-rose-400">
-                      BLOCKED
-                    </span>
+                    {verifiedIds.has(item.id) ? (
+                      <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-emerald-400">
+                        VERIFIED
+                      </span>
+                    ) : (
+                      <span className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-rose-400">
+                        BLOCKED
+                      </span>
+                    )}
                     <span className="truncate font-mono text-xs text-slate-300">#{item.id}</span>
                     <span className="shrink-0 font-mono text-[10px] text-slate-500">{item.timestamp}</span>
                   </div>
@@ -1803,6 +1811,7 @@ export function DashboardPage() {
 
   const [verifying, setVerifying] = useState<number | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifiedIds, setVerifiedIds] = useState<Set<number>>(new Set());
 
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
@@ -2111,12 +2120,12 @@ export function DashboardPage() {
         ? (item.payload as Record<string, unknown>).trace_id
         : `triage-${item.id}`;
       const effectiveTraceId = String(traceId || `triage-${item.id}`);
-      const valueScore = 50 + (item.id % 50); // deterministic value attribution from the real trace id
+      const valueScore = 50 + (item.id % 50);
       setVerifying(item.id);
       setVerifyError(null);
       try {
         const proof = await signTrace(effectiveTraceId, valueScore);
-        await apiPost('/api/interceptor/verify', {
+        const result = await apiPost<{ success: boolean; verified: boolean }>('/api/interceptor/verify', {
           trace_id: effectiveTraceId,
           agent_id: proof.agent_id,
           agent_pass: proof.agent_pass,
@@ -2126,6 +2135,9 @@ export function DashboardPage() {
           value_score: valueScore,
           note: `Partner verified triage #${item.id}`
         });
+        if (result.success && result.verified) {
+          setVerifiedIds((prev) => new Set(prev).add(item.id));
+        }
         await loadGovernance();
       } catch (e) {
         setVerifyError(e instanceof Error ? e.message : 'Verification failed');
@@ -2248,7 +2260,7 @@ export function DashboardPage() {
           <SystemStatusCard data={systemStatus} loading={systemStatusLoading} error={systemStatusError} />
           <MemoryInsights memories={memories} />
 
-          <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} />
+          <TelemetryFeed items={triage} onVerify={handleVerify} verifying={verifying} verifiedIds={verifiedIds} />
           <ReasoningLedgerTriage proposed={pendingApprovals} onSubmit={submitApproval} deepHealth={deepHealth} />
           <ModelComparator
             result={comparisonResult}

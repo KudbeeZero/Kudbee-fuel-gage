@@ -1206,7 +1206,8 @@ app.post('/api/interceptor/verify', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      id: govId || Date.now(),
+      verified: true,
+      actionId: govId || Date.now(),
       type: 'GOVERNANCE_ACTION',
       trace_id: traceId,
       agent_id: agentId,
@@ -1479,15 +1480,15 @@ app.post('/api/governance/dispatch', async (req, res) => {
 
     if (process.env.CRUCIBLE_ENABLED === 'true') {
       try {
-        const { crucible: crucibleModule } = await import('./agents/crucible.js');
-        await crucibleModule.runCrucibleCycle();
+        const { crucible: crucibleModule } = await import('../agents/crucible.js');
+        const cycleResult = await crucibleModule.runCrucibleCycle();
         result = {
-          success: true,
-          cycle: crucibleModule.cycleCount,
+          success: cycleResult?.success ?? true,
+          cycle: cycleResult?.cycle ?? crucibleModule.cycleCount,
           maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
-          traceId: crypto.randomUUID(),
+          traceId: cycleResult?.traceId || crypto.randomUUID(),
           taskId: task || 'manual-dispatch',
-          message: `Crucible cycle ${crucibleModule.cycleCount}/${crucibleModule.MAX_CYCLES_PER_BOOT} dispatched`
+          message: cycleResult?.message || `Crucible cycle dispatched`
         };
       } catch (err) {
         result.message = `Dispatch failed: ${err instanceof Error ? err.message : String(err)}`;
@@ -1499,6 +1500,69 @@ app.post('/api/governance/dispatch', async (req, res) => {
   } catch (err) {
     console.error('[Dispatch] Error:', err.message);
     return res.status(500).json({ error: 'Failed to dispatch crucible cycle' });
+  }
+});
+
+app.post('/api/agents/crucible/run', async (req, res) => {
+  try {
+    if (process.env.CRUCIBLE_ENABLED !== 'true') {
+      return res.status(200).json({
+        success: false,
+        cycle: 0,
+        maxCycles: 5,
+        traceId: '',
+        message: 'Crucible not enabled'
+      });
+    }
+    const { crucible: crucibleModule } = await import('../agents/crucible.js');
+    const result = await crucibleModule.runCrucibleCycle();
+    console.log('[Crucible] runCrucibleCycle result:', JSON.stringify(result));
+    const response = {
+      success: result?.success ?? true,
+      cycle: result?.cycle ?? 0,
+      maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
+      traceId: result?.traceId || `cycle-${result?.cycle ?? 0}`,
+      message: result?.message || 'Crucible cycle executed'
+    };
+    publishEvent('crucible', { ...response, ts: new Date().toISOString() });
+    return res.json(response);
+  } catch (err) {
+    console.error('[Crucible] Run error:', err.message);
+    return res.status(500).json({ error: 'Failed to run crucible cycle', details: err.message });
+  }
+});
+
+app.get('/api/reasoning/ledger', async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+    const rows = await runQuery(
+      `SELECT id, context, input, output, result_status, provider, event_type, reason, created_at
+       FROM reasoning_ledger
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    const entries = rows.map((row) => {
+      let input = {};
+      let output = {};
+      try { input = JSON.parse(row.input || '{}'); } catch { /* ignore */ }
+      try { output = JSON.parse(row.output || '{}'); } catch { /* ignore */ }
+      return {
+        id: row.id,
+        context: row.context,
+        input,
+        output,
+        result_status: row.result_status,
+        provider: row.provider,
+        event_type: row.event_type,
+        reason: row.reason,
+        created_at: row.created_at
+      };
+    });
+    return res.json({ count: entries.length, entries });
+  } catch (err) {
+    console.error('[ReasoningLedger] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch reasoning ledger' });
   }
 });
 
@@ -2142,7 +2206,7 @@ if (fs.existsSync(distPath)) {
 
 if (process.env.CRUCIBLE_ENABLED === 'true') {
   try {
-    const { startCrucibleScheduler } = await import('./agents/crucible.js');
+    const { startCrucibleScheduler } = await import('../agents/crucible.js');
     startCrucibleScheduler();
   } catch (err) {
     console.error('[Crucible] Failed to start:', err.message);
