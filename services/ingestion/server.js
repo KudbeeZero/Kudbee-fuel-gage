@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import Redis from 'ioredis';
+import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
@@ -404,6 +404,21 @@ function safeParseJson(value) {
   }
 }
 
+function reverseTokenHash(hash) {
+  const hex = String(hash || '').replace(/^0x/i, '');
+  if (hex.length % 2 !== 0 || hex.length === 0) return null;
+  try {
+    return Buffer.from(hex, 'hex').toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+function computeTokenHash(row) {
+  const key = String(row.id || row.original_trace_id || '');
+  return `0x${crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)}`;
+}
+
 function storeVector({ traceId, thoughtSummary, reasoning, model, vector, agentId = null }) {
   return runInsert(
     `INSERT INTO telemetry_vectors (trace_id, thought_summary, reasoning, model, vector, timestamp)
@@ -749,9 +764,7 @@ app.get('/api/think/trajectories', async (req, res) => {
       const rawEmbedding = safeParseJson(row.embedding);
       const embedding = Array.isArray(rawEmbedding) ? rawEmbedding : new Array(1536).fill(0);
       const magnitude = Math.sqrt(embedding.reduce((acc, v) => acc + v * v, 0)) || 0;
-      const tokenHash = row.original_trace_id
-        ? `0x${Buffer.from(String(row.original_trace_id)).toString('hex').slice(0, 16)}`
-        : `0x${String(row.id).slice(0, 16)}`;
+      const tokenHash = computeTokenHash(row);
       return {
         id: String(row.id),
         token_hash: tokenHash,
@@ -768,6 +781,81 @@ app.get('/api/think/trajectories', async (req, res) => {
   } catch (err) {
     console.error('[Think] Trajectories error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch think trajectories' });
+  }
+});
+
+app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const { status, reviewerNotes, tokenId } = req.body || {};
+    const allowedStatuses = ['VERIFIED', 'RECYCLED'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status: ${status}. Allowed: ${allowedStatuses.join(', ')}` });
+    }
+
+    let matched = null;
+    if (tokenId) {
+      const rows = await runQuery(
+        `SELECT id, original_trace_id FROM think_tokens WHERE id = $1`,
+        [String(tokenId)]
+      );
+      if (rows.length > 0) {
+        matched = rows[0];
+      }
+    }
+    if (!matched) {
+      const reversed = reverseTokenHash(hash);
+      let candidates = [];
+      if (reversed) {
+        candidates = await runQuery(
+          `SELECT id, original_trace_id FROM think_tokens WHERE original_trace_id LIKE $1 || '%'`,
+          [reversed]
+        );
+      }
+      if (candidates.length === 0) {
+        const idPrefix = String(hash).replace(/^0x/i, '');
+        candidates = await runQuery(
+          `SELECT id, original_trace_id FROM think_tokens WHERE id::text LIKE $1 || '%'`,
+          [idPrefix]
+        );
+      }
+
+      const exactMatches = candidates.filter((c) => {
+        const byId = String(c.id) === hash;
+        const byTrace = String(c.original_trace_id) === hash;
+        const byHash = computeTokenHash(c) === hash;
+        return byId || byTrace || byHash;
+      });
+      if (exactMatches.length === 1) {
+        matched = exactMatches[0];
+      } else if (exactMatches.length > 1) {
+        return res.status(409).json({ error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.' });
+      }
+    }
+
+    if (!matched) {
+      return res.status(404).json({ error: 'Think token not found for hash' });
+    }
+
+    const finalTokenId = String(matched.id);
+    await runQuery(
+      `UPDATE think_tokens SET status = $1 WHERE id = $2`,
+      [status, finalTokenId]
+    );
+
+    const eventData = {
+      id: finalTokenId,
+      hash,
+      status,
+      reviewerNotes: reviewerNotes || null,
+      timestamp: new Date().toISOString()
+    };
+    publishEvent('think_token_status_updated', eventData);
+
+    return res.json({ success: true, tokenId: finalTokenId, status, reviewerNotes: reviewerNotes || null });
+  } catch (err) {
+    console.error('[Think] Status update error:', err.message);
+    return res.status(500).json({ error: 'Failed to update think token status' });
   }
 });
 
@@ -1310,7 +1398,7 @@ app.post('/api/governance/resolve', async (req, res) => {
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
   try {
-    const { traceId, taskContext, failedState, correctionDelta } = req.body || {};
+    const { traceId, taskContext, failedState, correctionDelta, status } = req.body || {};
     if (!traceId || !correctionDelta) {
       return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
     }
@@ -1319,7 +1407,7 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
       taskContext: taskContext || {},
       failedState: failedState || {},
       correctionDelta: String(correctionDelta),
-      status: 'VERIFIED'
+      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status) ? status : 'PENDING_APPROVAL'
     });
     if (!result.ok) {
       return res.status(500).json({ error: result.error });

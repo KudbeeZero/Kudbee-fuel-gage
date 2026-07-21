@@ -63,4 +63,35 @@ export async function apiPost<T = unknown>(
   return (await res.json()) as T;
 }
 
+export async function apiPatch<T = unknown>(
+  path: string,
+  body: unknown,
+  init?: RequestInit
+): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    ...init,
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(init?.headers || {})
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let detail = '';
+    try {
+      detail = JSON.stringify(await res.json());
+    } catch {
+      /* ignore */
+    }
+    const err = new Error(
+      `PATCH ${path} failed with status ${res.status}${detail ? `: ${detail}` : ''}`
+    ) as Error & { status: number };
+    err.status = res.status;
+    throw err;
+  }
+  return (await res.json()) as T;
+}
+
 export default apiGet;
