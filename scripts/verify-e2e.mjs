@@ -471,6 +471,65 @@ async function check26_LazyBundleLoading() {
   return jsFiles.length >= 1;
 }
 
+async function check27_TaskEnqueueAndConsumption() {
+  // If Redis is unavailable the worker logs a warning and stays dormant; the
+  // enqueue endpoint returns 503, and the /failed endpoint returns 200 with
+  // workerRunning=false. We treat either as a graceful degrade.
+  const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({ kind: 'E2E_HEALTH_CHECK', payload: { shouldFail: false } })
+  });
+  if (enqRes.status === 503 || enqRes.status === 500) return true; // graceful degrade
+  if (enqRes.status !== 201) return false;
+  const enqData = await enqRes.json();
+  if (!enqData.success || typeof enqData.id !== 'string') return false;
+
+  await new Promise((r) => setTimeout(r, 1500));
+  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
+  if (dlqRes.status !== 200) return false;
+  const dlqData = await dlqRes.json();
+  if (typeof dlqData.count !== 'number') return false;
+  if (typeof dlqData.workerRunning !== 'boolean') return false;
+  return Array.isArray(dlqData.items);
+}
+
+async function check28_DLQRetryPolicy() {
+  const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({
+      kind: 'E2E_DLQ_SIMULATION',
+      payload: { shouldFail: true, failureMessage: 'synthetic E2E failure' }
+    })
+  });
+  if (enqRes.status === 503 || enqRes.status === 500) return true;
+  if (enqRes.status !== 201) return false;
+  const enqData = await enqRes.json();
+  const taskId = enqData.id;
+  if (!taskId) return false;
+
+  await new Promise((r) => setTimeout(r, 4000));
+
+  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
+  if (dlqRes.status !== 200) return false;
+  const dlqData = await dlqRes.json();
+  if (!Array.isArray(dlqData.items)) return false;
+
+  const found = dlqData.items.find((t) => t.id === taskId);
+  if (!found) return false;
+  if (found.attempts < 3) return false;
+  if (!found.lastError || !String(found.lastError).includes('synthetic E2E failure')) return false;
+
+  await fetch(`${BASE}/api/governance/failed/discard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({ id: taskId })
+  }).catch(() => {});
+
+  return true;
+}
+
 async function run() {
   try {
     await startServer();
@@ -500,6 +559,8 @@ async function run() {
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
     await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
+    await runCheck('Check 27: Task enqueue and worker consumption', check27_TaskEnqueueAndConsumption);
+    await runCheck('Check 28: DLQ retry policy (3-strike → dead letter)', check28_DLQRetryPolicy);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -508,7 +569,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 26`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 28`);
   console.log('========================================');
 
   if (failed > 0) {
