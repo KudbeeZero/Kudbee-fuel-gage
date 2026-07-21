@@ -500,40 +500,60 @@ function TelemetryGauges({ stats, loading, error }: { stats: TelemetryStats | nu
   );
 }
 
-function TokenMetrics({ daily, weekly }: { daily: number; weekly: number }) {
+function TokenMetrics({ metrics, error }: { metrics: ThinkMetrics | null; error: string | null }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="token-metrics-card">
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
       <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-cyan-400" />
-          <h3 className="font-display text-sm font-semibold text-slate-200">Token Throughput</h3>
+          <h3 className="font-display text-sm font-semibold text-slate-200">Think Token Metrics</h3>
         </div>
+        {!metrics && !error && <span className="text-[10px] font-mono text-slate-500">Probing…</span>}
       </div>
 
       <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
           <div className="flex items-center gap-2 text-slate-500">
-            <Activity className="h-4 w-4 text-emerald-500/70" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest">Daily Tokens</span>
+            <Brain className="h-4 w-4 text-violet-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Total Think Tokens</span>
           </div>
           <div className="mt-2 font-mono text-2xl text-slate-100">
-            {daily.toLocaleString()}
+            {metrics ? metrics.total_think_tokens.toLocaleString() : '—'}
           </div>
-          <p className="mt-1 text-[10px] font-mono text-slate-500">Last 24 hours</p>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Processed</p>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
           <div className="flex items-center gap-2 text-slate-500">
-            <Activity className="h-4 w-4 text-violet-500/70" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest">7-Day Tokens</span>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Verified Trajectories</span>
           </div>
           <div className="mt-2 font-mono text-2xl text-slate-100">
-            {weekly.toLocaleString()}
+            {metrics ? metrics.verified_trajectories.toLocaleString() : '—'}
           </div>
-          <p className="mt-1 text-[10px] font-mono text-slate-500">Last 7 days</p>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Active</p>
         </div>
       </div>
+
+      <div className="px-5 pb-5">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Activity className="h-4 w-4 text-amber-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Cumulative Pipeline Cost</span>
+          </div>
+          <div className="mt-2 font-mono text-2xl text-slate-100">
+            {metrics ? `$${metrics.cumulative_token_cost.toFixed(4)}` : '—'}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Dynamic elastic budget</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-5 mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono text-amber-300">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
@@ -1478,7 +1498,7 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
       if (data.services.redis.status === 'OFFLINE') offlineServices.push({ name: 'Upstash Redis', ...data.services.redis });
 
       if (offlineServices.length > 0) {
-        const svc = offlineServices[0];
+        const svc = offlineServices[0]!;
         setDiagnostic({
           service: svc.name,
           status: svc.status,
@@ -1765,6 +1785,12 @@ function ModelComparator({ result, loading, error, provider, onProviderChange, o
   );
 }
 
+interface ThinkMetrics {
+  total_think_tokens: number;
+  verified_trajectories: number;
+  cumulative_token_cost: number;
+}
+
 export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -1815,11 +1841,9 @@ export function DashboardPage() {
 
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(0);
-  const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(1000);
+  const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(0);
   const [postgresSize, setPostgresSize] = useState<number | null>(null);
   const [redisSize, setRedisSize] = useState<number | null>(null);
-  const [dailyTotalTokens, setDailyTotalTokens] = useState<number>(0);
-  const [weeklyTotalTokens, setWeeklyTotalTokens] = useState<number>(0);
 
   const [telemetryStats, setTelemetryStats] = useState<TelemetryStats | null>(null);
   const [telemetryStatsError, setTelemetryStatsError] = useState<string | null>(null);
@@ -1828,6 +1852,9 @@ export function DashboardPage() {
   const [trajectories, setTrajectories] = useState<ThinkTrajectory[]>([]);
   const [trajectoriesError, setTrajectoriesError] = useState<string | null>(null);
   const [trajectoriesLoading, setTrajectoriesLoading] = useState(true);
+
+  const [thinkMetrics, setThinkMetrics] = useState<ThinkMetrics | null>(null);
+  const [thinkMetricsError, setThinkMetricsError] = useState<string | null>(null);
 
   // --- Real-time telemetry (SSE) ---
   const [thinking, setThinking] = useState(false);
@@ -1940,14 +1967,23 @@ export function DashboardPage() {
 
   const loadSinkTokenBalance = useCallback(async () => {
     try {
-      const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number; daily_total_tokens?: number; weekly_total_tokens?: number }>('/api/dashboard/summary');
-      setSinkTokenBalance(data.sink_token_balance ?? 1000);
+      const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number }>('/api/dashboard/summary');
+      setSinkTokenBalance(data.sink_token_balance ?? 0);
       setPostgresSize(data.postgres_size_bytes ?? null);
       setRedisSize(data.redis_size_bytes ?? null);
-      setDailyTotalTokens(data.daily_total_tokens ?? 0);
-      setWeeklyTotalTokens(data.weekly_total_tokens ?? 0);
     } catch {
-      // keep default
+      setSinkTokenBalance(0);
+    }
+  }, []);
+
+  const loadThinkMetrics = useCallback(async () => {
+    try {
+      const data = await apiGet<ThinkMetrics>('/api/think/metrics');
+      setThinkMetrics(data);
+      setThinkMetricsError(null);
+    } catch (e) {
+      setThinkMetricsError(e instanceof Error ? e.message : 'Think metrics fetch failed');
+      setThinkMetrics(null);
     }
   }, []);
 
@@ -2177,6 +2213,12 @@ export function DashboardPage() {
     void syncAll();
   }, 30_000);
 
+  useEffect(() => {
+    void loadThinkMetrics();
+    const id = setInterval(() => void loadThinkMetrics(), 5000);
+    return () => clearInterval(id);
+  }, [loadThinkMetrics]);
+
   const live = health?.status === 'ok' || health?.status === 'degraded';
 
   return (
@@ -2280,7 +2322,7 @@ export function DashboardPage() {
           </div>
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
           <ThinkTrajectoriesCard trajectories={trajectories} loading={trajectoriesLoading} error={trajectoriesError} />
-          <TokenMetrics daily={dailyTotalTokens} weekly={weeklyTotalTokens} />
+          <TokenMetrics metrics={thinkMetrics} error={thinkMetricsError} />
           <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />
           <GovernanceFeed actions={governance} />
         </div>

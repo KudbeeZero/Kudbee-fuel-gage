@@ -259,9 +259,11 @@ async function ensureSchema() {
         correction_delta TEXT,
         embedding VECTOR(1536),
         status VARCHAR NOT NULL DEFAULT 'PROVEN',
+        token_cost NUMERIC DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS token_cost NUMERIC DEFAULT 0`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vector_memory (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -993,6 +995,24 @@ app.get('/api/telemetry/stats', async (_req, res) => {
   } catch (err) {
     console.error('[Stats] Error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch telemetry stats' });
+  }
+});
+
+// --- Phase 32: Live Think Metrics Aggregation ----------------------------------
+app.get('/api/think/metrics', async (_req, res) => {
+  try {
+    const totalRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [{ count: 0 }]);
+    const verifiedRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'`).catch(() => [{ count: 0 }]);
+    const costRows = await runQuery(`SELECT SUM(token_cost) as total FROM think_tokens`).catch(() => [{ total: 0 }]);
+
+    res.json({
+      total_think_tokens: Number(totalRows[0]?.count || 0),
+      verified_trajectories: Number(verifiedRows[0]?.count || 0),
+      cumulative_token_cost: Number(costRows[0]?.total || 0)
+    });
+  } catch (err) {
+    console.error('[Metrics] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch think metrics' });
   }
 });
 

@@ -292,57 +292,6 @@ function TelemetryCard({ title, value, prefix = "", suffix = "", icon: Icon }: T
   );
 }
 
-function HealthRing({ provider, percent, offsetMins }: { provider: string; percent: number; offsetMins: number }) {
-  const [timeLeft, setTimeLeft] = useState(offsetMins * 60 + Math.floor(Math.random() * 60));
-  
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(t => t > 0 ? t - 1 : offsetMins * 60);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [offsetMins]);
-
-  const h = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
-  const m = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
-  const s = (timeLeft % 60).toString().padStart(2, '0');
-
-  const radius = 32;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percent / 100) * circumference;
-
-  return (
-    <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 flex flex-col items-center relative overflow-hidden" id={`health-ring-${provider.toLowerCase()}`}>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-emerald-500/20"></div>
-      
-      <div className="relative flex items-center justify-center mb-3">
-        <svg className="-rotate-90 w-24 h-24">
-          <circle cx="48" cy="48" r={radius} stroke="currentColor" strokeWidth="4" fill="none" className="text-slate-800" />
-          <circle 
-            cx="48" 
-            cy="48" 
-            r={radius} 
-            stroke="currentColor" 
-            strokeWidth="4" 
-            fill="none" 
-            className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)] transition-all duration-1000"
-            strokeDasharray={circumference} 
-            strokeDashoffset={strokeDashoffset} 
-            strokeLinecap="round" 
-          />
-        </svg>
-        <div className="absolute flex flex-col items-center justify-center">
-          <span className="font-mono text-xl font-bold text-slate-200">{percent}%</span>
-        </div>
-      </div>
-      
-      <div className="text-slate-300 font-medium text-sm mb-1">{provider}</div>
-      <div className="font-mono text-[10px] text-slate-500 tracking-widest bg-slate-950 px-2 py-1 rounded border border-slate-800">
-        {h}:{m}:{s}
-      </div>
-    </div>
-  );
-}
-
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
@@ -563,7 +512,7 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
       }
 
       // Parse headers and normalize them
-      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+      const headers = lines[0]!.split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ''));
       
       const timestampIdx = headers.findIndex(h => h.includes('time') || h.includes('date'));
       const projectIdx = headers.findIndex(h => h.includes('project'));
@@ -579,15 +528,15 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
 
       const logs: ParsedCsvLog[] = [];
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
+        const cols = lines[i]!.split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
         if (cols.length < Math.max(modelIdx, tokensInIdx, tokensOutIdx) + 1) {
-          continue; // skip malformed line
+          continue;
         }
 
-        const model = cols[modelIdx];
-        const tokens_in = parseInt(cols[tokensInIdx], 10) || 0;
-        const tokens_out = parseInt(cols[tokensOutIdx], 10) || 0;
-        const project = projectIdx !== -1 && cols[projectIdx] ? cols[projectIdx] : "offline-csv-import";
+        const model = cols[modelIdx]!;
+        const tokens_in = parseInt(cols[tokensInIdx]!, 10) || 0;
+        const tokens_out = parseInt(cols[tokensOutIdx]!, 10) || 0;
+        const project = projectIdx !== -1 && cols[projectIdx] ? cols[projectIdx]! : "offline-csv-import";
         const timestamp = timestampIdx !== -1 && cols[timestampIdx] ? cols[timestampIdx] : new Date().toISOString();
         
         // Auto-infer provider if not explicitly given
@@ -719,10 +668,10 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
          sessionId = 'sess-beta';
        } else if (log.project.includes('globe') || log.project.includes('mesh')) {
          sessionId = 'sess-gamma';
-       } else {
-         const sIds: Array<'sess-alpha' | 'sess-beta' | 'sess-gamma'> = ['sess-alpha', 'sess-beta', 'sess-gamma'];
-         sessionId = sIds[index % sIds.length];
-       }
+        } else {
+          const sIds: Array<'sess-alpha' | 'sess-beta' | 'sess-gamma'> = ['sess-alpha', 'sess-beta', 'sess-gamma'];
+          sessionId = sIds[index % sIds.length]!;
+        }
 
        // Infer model provider
        const mLower = log.model.toLowerCase();
@@ -876,11 +825,10 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
 
   // Rollup stats logic
   const projectStats = filteredLogs.reduce((acc, log) => {
-    if (!acc[log.project]) {
-      acc[log.project] = { cost: 0, requests: 0 };
-    }
-    acc[log.project].cost += log.cost;
-    acc[log.project].requests += 1;
+    const stats = acc[log.project] ?? { cost: 0, requests: 0 };
+    acc[log.project] = stats;
+    stats.cost += log.cost;
+    stats.requests += 1;
     return acc;
   }, {} as Record<string, { cost: number; requests: number }>);
 
@@ -3157,10 +3105,10 @@ export default function App() {
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
 
   // --- SUBSCRIPTION LEDGER BUDGET CAPS (GAP TRACKER) ---
-  const [claudeProCap, setClaudeProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_claude') || '20.00'));
-  const [cursorProCap, setCursorProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_cursor') || '20.00'));
-  const [chatGptCap, setChatGptCap] = useState(() => Number(localStorage.getItem('kudbee_cap_chatgpt') || '20.00'));
-  const [apiGatewayCap, setApiGatewayCap] = useState(() => Number(localStorage.getItem('kudbee_cap_api') || '50.00'));
+  const [claudeProCap, setClaudeProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_claude') || '0'));
+  const [cursorProCap, setCursorProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_cursor') || '0'));
+  const [chatGptCap, setChatGptCap] = useState(() => Number(localStorage.getItem('kudbee_cap_chatgpt') || '0'));
+  const [apiGatewayCap, setApiGatewayCap] = useState(() => Number(localStorage.getItem('kudbee_cap_api') || '0'));
 
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [tempCapVal, setTempCapVal] = useState('');
@@ -3371,13 +3319,13 @@ export default function App() {
         const oneHourAgo = now.getTime() - 60 * 60 * 1000;
         if (logTime >= oneHourAgo && logTime <= now.getTime()) {
           // Find closest bin
-          let closestBin = bins[0];
-          let minDiff = Math.abs(logTime - bins[0].timestamp);
+          let closestBin = bins[0]!;
+          let minDiff = Math.abs(logTime - bins[0]!.timestamp);
           for (let i = 1; i < bins.length; i++) {
-            const diff = Math.abs(logTime - bins[i].timestamp);
+            const diff = Math.abs(logTime - bins[i]!.timestamp);
             if (diff < minDiff) {
               minDiff = diff;
-              closestBin = bins[i];
+              closestBin = bins[i]!;
             }
           }
           
@@ -3431,13 +3379,6 @@ export default function App() {
     { name: "Gemini 1.5 Pro", org: "Google", costIn: "1.25", costOut: "5.00", speed: 78, quality: 4.5, status: "ACTIVE" },
     { name: "Llama 3.1 70B", org: "Meta", costIn: "0.70", costOut: "0.90", speed: 95, quality: 4, status: "STANDBY" },
     { name: "Mistral Large 2", org: "Mistral", costIn: "3.00", costOut: "9.00", speed: 82, quality: 4.5, status: "STANDBY" }
-  ];
-
-  const quotas = [
-    { provider: "OpenAI", percent: 79, offsetMins: 145 },
-    { provider: "Anthropic", percent: 45, offsetMins: 212 },
-    { provider: "Google", percent: 92, offsetMins: 45 },
-    { provider: "Meta", percent: 61, offsetMins: 340 }
   ];
 
   if (!isAuthenticated) {
@@ -4014,21 +3955,14 @@ export default function App() {
                               <span className="text-slate-400">Remaining: {getFormattedCost(remaining, currency, 4)}</span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 </div>
+               </div>
 
-                  {/* HEALTH MATRIX QUOTA RING BLOCKS */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {quotas.map((q, i) => (
-                      <HealthRing key={i} provider={q.provider} percent={q.percent} offsetMins={q.offsetMins} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* BOTTOM ROW: DUAL TELEMETRY & GATEWAY CHARTS */}
+               {/* BOTTOM ROW: DUAL TELEMETRY & GATEWAY CHARTS */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* 24-HOUR TELEMETRY CONTAINER */}
