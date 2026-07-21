@@ -13,8 +13,14 @@ export default defineConfig(() => {
       },
     },
     server: {
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        '/api': 'http://127.0.0.1:3000',
+        '/health': 'http://127.0.0.1:3000',
+        '/v1': 'http://127.0.0.1:3000'
+      }
     },
     build: {
       outDir: 'dist',
