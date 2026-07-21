@@ -55,10 +55,11 @@ import { LatencyHistogram } from './components/LatencyHistogram';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
 import { GatewayView } from './components/gateway/GatewayView';
-import { AlertsView } from './components/AlertsView';
+import { HistoryPage } from './pages/history';
+import { FirewallPage } from './pages/firewall';
+import { AlertsPanel } from './components/AlertsPanel';
 import { InterceptorView } from './components/InterceptorView';
 import { GovernanceView } from './components/GovernanceView';
-import { TriageView } from './components/TriageView';
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
@@ -4097,42 +4098,19 @@ export default function App() {
           
           {activeTab === 'Playground' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 
-           {activeTab === 'History' && (
-            <HistoryErrorBoundary onRetry={fetchTelemetryData}>
-              <HistoryView 
-                currency={currency} 
-                dbLogs={dbLogs} 
-                terminalOpState={operationalState}
-                historyError={historyError}
-                onNewLogTriggered={fetchTelemetryData} 
-                onRetry={fetchTelemetryData}
-                onTraceSelect={setSelectedTraceForDrawer} 
-              />
-            </HistoryErrorBoundary>
-          )}
+           {activeTab === 'History' && <HistoryPage />}
 
-          {activeTab === 'Intelligence' && <IntelligenceView />}
+           {activeTab === 'Intelligence' && <IntelligenceView />}
 
-          {activeTab === 'Firewall' && (
-            <>
-              <FirewallView
-                showToast={showToast}
-                pendingApprovals={pendingApprovals}
-                resolveApproval={resolveApproval}
-                rejectApproval={rejectApproval}
-                executeAgentTool={executeAgentTool}
-              />
-              <div className="mt-6">
-                <TriageView />
-              </div>
-            </>
-          )}
+           {activeTab === 'Firewall' && (
+             <FirewallPage />
+           )}
 
-          {activeTab === 'Gateway' && (
-            <GatewayView showToast={showToast} />
-          )}
+           {activeTab === 'Gateway' && (
+             <GatewayView showToast={showToast} />
+           )}
 
-          {activeTab === 'Alerts' && <AlertsView />}
+           {activeTab === 'Alerts' && <AlertsPanel />}
 
           {activeTab === 'Governance' && <GovernanceView />}
 
