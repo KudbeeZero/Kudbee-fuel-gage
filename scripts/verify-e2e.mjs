@@ -3,9 +3,11 @@ import { spawn } from 'child_process';
 import { setTimeout as delay } from 'timers/promises';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const require = createRequire(import.meta.url);
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -39,7 +41,8 @@ async function waitForServer(url, timeoutMs = 10000) {
 
 async function startServer() {
   console.log('[E2E] Starting ingestion server...');
-  serverProcess = spawn(process.execPath, ['server.js'], {
+  const tsxPath = require.resolve('tsx/cli');
+  serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
     stdio: ['pipe', 'pipe', 'pipe']
@@ -486,9 +489,18 @@ async function check33_DriftSentinel() {
 }
 
 async function check34_DegradationMonitorTracking() {
-  const beforeRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
-  if (!beforeRes.ok) return false;
-  const before = await beforeRes.json();
+  let before;
+  try {
+    const beforeRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!beforeRes.ok) {
+      console.error(`[Check34] degradation-status before: HTTP ${beforeRes.status}`);
+      return false;
+    }
+    before = await beforeRes.json();
+  } catch (e) {
+    console.error(`[Check34] degradation-status before read failed: ${e.message}`);
+    return false;
+  }
 
   const ingestPayload = {
     trace_id: `tr-e2e-deg-${Date.now()}`,
@@ -500,16 +512,32 @@ async function check34_DegradationMonitorTracking() {
     provider: 'Google',
     project_name: 'degradation-monitor-test'
   };
-  const ingestRes = await fetch(`${BASE}/api/telemetry/log`, {
+  const ingestRes = await fetch(`${BASE}/api/telemetry/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(ingestPayload)
   });
-  if (!ingestRes.ok) return false;
+  if (!ingestRes.ok) {
+    const txt = await ingestRes.text().catch(() => 'no body');
+    console.error(`[Check34] ingest failed: ${ingestRes.status} ${txt}`);
+    return false;
+  }
 
-  const afterRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
-  if (!afterRes.ok) return false;
-  const after = await afterRes.json();
+  let after;
+  try {
+    const afterRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!afterRes.ok) {
+      console.error(`[Check34] degradation-status after: HTTP ${afterRes.status}`);
+      return false;
+    }
+    after = await afterRes.json();
+  } catch (e) {
+    console.error(`[Check34] degradation-status after read failed: ${e.message}`);
+    return false;
+  }
+
+  console.error(`[Check34] before: ${JSON.stringify(before.counters)}`);
+  console.error(`[Check34] after: ${JSON.stringify(after.counters)}`);
 
   const hasCounters = typeof after.counters === 'object' &&
     typeof after.counters.primaryQueryCount === 'number' &&

@@ -153,5 +153,14 @@ export function createDegradationRouter() {
     }
   });
 
+  router.get("/degradation-status", async (_req: Request, res: Response) => {
+    try {
+      const status = getDegradationStatus();
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   return router;
 }
