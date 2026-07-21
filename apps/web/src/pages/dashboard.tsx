@@ -35,7 +35,7 @@ import { RackLayout } from '../components/RackLayout';
 import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
 import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 import { useTerminalStore } from '../store/terminalStore';
-import type { ApprovalRequest, ApprovalDecision, ThinkThought } from '@kudbee/types';
+import type { ApprovalRequest, ApprovalDecision, ThinkThought, TelemetryStats, CrucibleDispatchResponse } from '@kudbee/types';
 
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'error';
@@ -429,6 +429,150 @@ function StorageGaugeCard({ bytes, label, icon: Icon, thresholdBytes }: { bytes:
   );
 }
 
+function TelemetryGauges({ stats, loading, error }: { stats: TelemetryStats | null; loading: boolean; error: string | null }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="telemetry-gauges-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-emerald-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Live OS Telemetry</h3>
+        </div>
+        {loading && <span className="text-[10px] font-mono text-slate-500">Probing…</span>}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Server className="h-4 w-4 text-cyan-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Vector Memories</span>
+          </div>
+          <div className="mt-2 font-mono text-2xl text-slate-100">
+            {stats ? stats.vector_memory_count.toLocaleString() : '—'}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">HNSW embeddings stored</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Brain className="h-4 w-4 text-violet-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Think Tokens Minted</span>
+          </div>
+          <div className="mt-2 font-mono text-2xl text-slate-100">
+            {stats ? stats.think_tokens_minted.toLocaleString() : '—'}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Correction deltas forged</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 text-slate-500">
+            <Activity className="h-4 w-4 text-amber-500/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest">Crucible Health</span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-mono text-2xl text-slate-100">
+              {stats ? `${stats.crucible.cycleCount}/${stats.crucible.maxCycles}` : '—'}
+            </span>
+            {stats && (
+              <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                stats.crucible.status === 'ACTIVE'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : stats.crucible.status === 'EXHAUSTED'
+                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                    : 'border-slate-700 bg-slate-900/40 text-slate-400'
+              }`}>
+                {stats.crucible.status}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[10px] font-mono text-slate-500">Circuit breaker cycles</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-5 mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-mono text-amber-300">
+          <span className="line-clamp-2">{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DispatchPanel({ onDispatched }: { onDispatched: () => void }) {
+  const [dispatching, setDispatching] = useState(false);
+  const [lastResult, setLastResult] = useState<CrucibleDispatchResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDispatch = useCallback(async () => {
+    setDispatching(true);
+    setError(null);
+    setLastResult(null);
+    try {
+      const data = await apiPost<CrucibleDispatchResponse>('/api/governance/dispatch', { task: 'manual-dispatch' });
+      setLastResult(data);
+      onDispatched();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Dispatch failed');
+    } finally {
+      setDispatching(false);
+    }
+  }, [onDispatched]);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="dispatch-panel-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-violet-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Manual Dispatch</h3>
+        </div>
+        <span className="rounded-full border border-slate-800 bg-slate-950 px-2.5 py-1 font-mono text-[10px] text-slate-400">
+          Instant Execution
+        </span>
+      </div>
+
+      <div className="p-5">
+        <p className="text-xs text-slate-400 mb-4">
+          Trigger a Crucible reasoning cycle on demand. Failed states are recorded to the Reasoning Ledger and proposed for Think Token minting.
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleDispatch()}
+          disabled={dispatching}
+          className="flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-xs font-mono font-semibold text-violet-300 transition-all hover:bg-violet-500/20 active:scale-95 disabled:opacity-50"
+        >
+          <Zap className="h-4 w-4" />
+          {dispatching ? 'Dispatching…' : 'Run Crucible Cycle'}
+        </button>
+
+        {lastResult && (
+          <div className={`mt-4 rounded-lg border px-3 py-2 text-[10px] font-mono ${
+            lastResult.success
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+          }`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold uppercase">{lastResult.success ? 'Dispatched' : 'Failed'}</span>
+              <span className="opacity-70">{lastResult.message}</span>
+            </div>
+            {lastResult.success && (
+              <div className="mt-1 text-slate-400">
+                Cycle {lastResult.cycle}/{lastResult.maxCycles} · trace {lastResult.traceId}
+              </div>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-mono text-rose-300">
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TelemetryFeed({
   items,
   onVerify,
@@ -747,7 +891,8 @@ function AgentTerminal({
   thinking,
   thinkLatest,
   context,
-  externalCommands
+  externalCommands,
+  onDispatch
 }: {
   data: SessionHistoryItem[];
   loading: boolean;
@@ -757,6 +902,7 @@ function AgentTerminal({
   thinkLatest?: string | null;
   context?: TerminalContext;
   externalCommands?: { id: number; text: string; output?: string }[];
+  onDispatch?: () => void;
 }) {
   const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
@@ -928,6 +1074,16 @@ function AgentTerminal({
           <span className="text-[10px] font-semibold uppercase tracking-widest">Live Agent Terminal</span>
         </div>
         <div className="flex items-center gap-2">
+          {onDispatch && (
+            <button
+              onClick={onDispatch}
+              className="flex items-center gap-1 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono font-bold uppercase text-violet-300 transition-colors hover:bg-violet-500/20 active:scale-95"
+              title="Run Crucible Cycle"
+            >
+              <Zap className="h-3 w-3" />
+              Dispatch
+            </button>
+          )}
           <button
             onClick={togglePause}
             className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-mono font-bold uppercase transition-colors ${
@@ -1560,6 +1716,10 @@ export function DashboardPage() {
   const [postgresSize, setPostgresSize] = useState<number | null>(null);
   const [redisSize, setRedisSize] = useState<number | null>(null);
 
+  const [telemetryStats, setTelemetryStats] = useState<TelemetryStats | null>(null);
+  const [telemetryStatsError, setTelemetryStatsError] = useState<string | null>(null);
+  const [telemetryStatsLoading, setTelemetryStatsLoading] = useState(true);
+
   // --- Real-time telemetry (SSE) ---
   const [thinking, setThinking] = useState(false);
   const [suggestions, setSuggestions] = useState<HermesSuggestion[]>([]);
@@ -1661,6 +1821,18 @@ export function DashboardPage() {
       setRedisSize(data.redis_size_bytes ?? null);
     } catch {
       // keep default
+    }
+  }, []);
+
+  const loadTelemetryStats = useCallback(async () => {
+    try {
+      const data = await apiGet<TelemetryStats>('/api/telemetry/stats');
+      setTelemetryStats(data);
+      setTelemetryStatsError(null);
+    } catch (e) {
+      setTelemetryStatsError(e instanceof Error ? e.message : 'Telemetry stats fetch failed');
+    } finally {
+      setTelemetryStatsLoading(false);
     }
   }, []);
 
@@ -1844,11 +2016,12 @@ export function DashboardPage() {
       loadTriage(),
       loadMemory(),
       loadGovernance(),
-      loadSinkTokenBalance()
+      loadSinkTokenBalance(),
+      loadTelemetryStats()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance, loadTelemetryStats]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
   // the 5s poll is reduced to a slow safety net (every 30s) instead of the
@@ -1885,6 +2058,18 @@ export function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-2.5 py-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-400">NEON</span>
+              <span className="text-[9px] font-mono text-slate-500">OK</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-2.5 py-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-cyan-400">VECTOR</span>
+              <span className="text-[9px] font-mono text-slate-500">HNSW ACTIVE</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-2.5 py-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-violet-400">CRUCIBLE</span>
+              <span className="text-[9px] font-mono text-slate-500">{telemetryStats ? telemetryStats.crucible.status : 'READY'}</span>
+            </div>
             <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
               <Signal
                 className={`h-4 w-4 ${live ? 'text-emerald-400' : 'text-rose-400'}`}
@@ -1945,6 +2130,8 @@ export function DashboardPage() {
             <StorageGaugeCard bytes={postgresSize} label="Postgres Storage" icon={Database} thresholdBytes={1073741824} />
             <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
           </div>
+          <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+          <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />
           <GovernanceFeed actions={governance} />
         </div>
 
@@ -1963,6 +2150,15 @@ export function DashboardPage() {
             thinking={thinking}
             thinkLatest={latestThought?.thought ?? null}
             externalCommands={terminalCommands}
+            onDispatch={async () => {
+              pushTerminalEvent('Dispatching Crucible cycle…');
+              try {
+                const data = await apiPost<CrucibleDispatchResponse>('/api/governance/dispatch', { task: 'manual-dispatch' });
+                pushTerminalEvent(`Crucible cycle dispatched`, `cycle ${data.cycle}/${data.maxCycles} — ${data.message}`);
+              } catch (e) {
+                pushTerminalEvent('Dispatch failed', e instanceof Error ? e.message : 'unknown error');
+              }
+            }}
             context={{
               live,
               health: health?.status ?? (healthError ? 'error' : 'unknown'),
@@ -1981,7 +2177,7 @@ export function DashboardPage() {
           onApproved={dismissSuggestion}
         />
 
-        {(triageError || memoryError || govError || verifyError || systemStatusError || deepHealthError || sessionHistoryError) && (
+        {(triageError || memoryError || govError || verifyError || systemStatusError || deepHealthError || sessionHistoryError || telemetryStatsError) && (
           <div className="mt-5 space-y-2">
             {triageError && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
@@ -2023,6 +2219,12 @@ export function DashboardPage() {
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
                 <Terminal className="h-4 w-4 shrink-0" />
                 <span className="truncate">Session History: {sessionHistoryError}</span>
+              </div>
+            )}
+            {telemetryStatsError && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
+                <Activity className="h-4 w-4 shrink-0" />
+                <span className="truncate">Telemetry Stats: {telemetryStatsError}</span>
               </div>
             )}
           </div>

@@ -787,6 +787,39 @@ app.get('/api/dashboard/summary', async (req, res) => {
   }
 });
 
+// --- Phase 28: Live OS Telemetry Stats ---------------------------------------
+app.get('/api/telemetry/stats', async (_req, res) => {
+  try {
+    const vectorRows = await runQuery(`SELECT COUNT(*) as count FROM vector_memory`).catch(() => [{ count: 0 }]);
+    const tokenRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [{ count: 0 }]);
+
+    let crucible = { cycleCount: 0, maxCycles: 5, status: 'READY' };
+    if (process.env.CRUCIBLE_ENABLED === 'true') {
+      try {
+        const { crucible: crucibleModule } = await import('./agents/crucible.js');
+        const remaining = crucibleModule.MAX_CYCLES_PER_BOOT - crucibleModule.cycleCount;
+        crucible = {
+          cycleCount: crucibleModule.cycleCount,
+          maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
+          status: remaining > 0 ? 'ACTIVE' : 'EXHAUSTED'
+        };
+      } catch {
+        crucible = { cycleCount: 0, maxCycles: 5, status: 'READY' };
+      }
+    }
+
+    return res.json({
+      vector_memory_count: Number(vectorRows[0]?.count || 0),
+      think_tokens_minted: Number(tokenRows[0]?.count || 0),
+      crucible,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[Stats] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to fetch telemetry stats' });
+  }
+});
+
 app.post('/api/telemetry/inject-csv', async (req, res) => {
   try {
     const { logs } = req.body;
@@ -1227,6 +1260,44 @@ app.get('/api/governance/health', async (_req, res) => {
   } catch (err) {
     console.error('[Governance] Health error:', err?.message);
     return res.status(500).json({ error: 'Failed to fetch governance health' });
+  }
+});
+
+// --- Phase 28: Manual Crucible Dispatch --------------------------------------
+app.post('/api/governance/dispatch', async (req, res) => {
+  try {
+    const { task } = req.body || {};
+    let result = {
+      success: false,
+      cycle: 0,
+      maxCycles: 5,
+      traceId: '',
+      taskId: task || 'manual-dispatch',
+      message: 'Crucible not enabled'
+    };
+
+    if (process.env.CRUCIBLE_ENABLED === 'true') {
+      try {
+        const { crucible: crucibleModule } = await import('./agents/crucible.js');
+        await crucibleModule.runCrucibleCycle();
+        result = {
+          success: true,
+          cycle: crucibleModule.cycleCount,
+          maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
+          traceId: crypto.randomUUID(),
+          taskId: task || 'manual-dispatch',
+          message: `Crucible cycle ${crucibleModule.cycleCount}/${crucibleModule.MAX_CYCLES_PER_BOOT} dispatched`
+        };
+      } catch (err) {
+        result.message = `Dispatch failed: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+
+    publishEvent('crucible', { ...result, ts: new Date().toISOString() });
+    return res.json(result);
+  } catch (err) {
+    console.error('[Dispatch] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to dispatch crucible cycle' });
   }
 });
 
