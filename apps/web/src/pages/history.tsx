@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -10,9 +10,14 @@ import {
   XCircle,
   Copy,
   Server,
-  Database
+  Database,
+  Radio,
+  Wifi,
+  WifiOff,
+  Timer
 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
+import { useTelemetryStream, type StreamMode } from '../hooks/useTelemetryStream';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -48,6 +53,9 @@ export function HistoryPage() {
   const [expandedSession, setExpandedSession] = useState<number | null>(null);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
+
+  const { mode: streamMode, throughput, error: streamError, reconnect } = useTelemetryStream();
+  const [streamPaused, setStreamPaused] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,20 +105,82 @@ export function HistoryPage() {
     return <Activity className="w-3.5 h-3.5 text-slate-400" />;
   };
 
+  const totals = useMemo(() => {
+    const inTok = logs.reduce((acc, l) => acc + (l.input_tokens || 0), 0);
+    const outTok = logs.reduce((acc, l) => acc + (l.output_tokens || 0), 0);
+    const cost = logs.reduce((acc, l) => acc + (Number(l.calculated_cost) || Number(l.cost) || 0), 0);
+    return { inTok, outTok, cost };
+  }, [logs]);
+
   return (
     <div className="space-y-6" id="history-page-container">
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Clock className="w-5 h-5 text-emerald-400" />
-          <div>
+          <div className="flex-1 min-w-0">
             <h2 className="font-display font-semibold text-slate-200 text-lg">Audit Trail & Session History</h2>
             <p className="text-xs text-slate-500 mt-1">
               Chronological audit of merged agent runs and telemetry ingestion. Expand sessions to inspect token costs, execution status, and trace IDs.
             </p>
           </div>
+          <StreamModeBadge mode={streamMode} paused={streamPaused} onTogglePause={() => setStreamPaused((p) => !p)} onReconnect={() => reconnect()} />
         </div>
       </div>
+
+      {/* Live Throughput Metrics (Phase 21) */}
+      <section
+        id="history-throughput-panel"
+        className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+        <div className="mb-3 flex items-center gap-2">
+          <Activity className="h-4 w-4 text-cyan-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Live Throughput</h3>
+          <span className="ml-auto rounded border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+            rolling 60s
+          </span>
+        </div>
+        {streamError && !throughput ? (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-mono text-[10px] text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {streamError}
+          </div>
+        ) : !throughput ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-16 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <ThroughputCard
+              id="throughput-tps"
+              label="Tokens / sec"
+              value={throughput.tokensPerSec.toFixed(2)}
+              accent="cyan"
+            />
+            <ThroughputCard
+              id="throughput-ttft"
+              label="Time-To-First-Token"
+              value={throughput.ttftAvgMs !== null ? `${throughput.ttftAvgMs}ms` : '—'}
+              accent="emerald"
+            />
+            <ThroughputCard
+              id="throughput-tokens"
+              label="Total Tokens (60s)"
+              value={throughput.totalTokens.toLocaleString()}
+              accent="violet"
+            />
+            <ThroughputCard
+              id="throughput-samples"
+              label="Traces Sampled"
+              value={String(throughput.sampleCount)}
+              accent="amber"
+            />
+          </div>
+        )}
+      </section>
 
       {error && (
         <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2">
@@ -120,11 +190,21 @@ export function HistoryPage() {
       )}
 
       {loading ? (
-        <div className="text-[11px] font-mono text-slate-600">Loading audit trail…</div>
+        <div className="space-y-2" id="history-skeleton">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-14 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse"
+            />
+          ))}
+        </div>
       ) : sessions.length === 0 && logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-600">
+        <div className="flex flex-col items-center justify-center py-12 text-slate-600" id="history-empty-state">
           <Clock className="w-8 h-8 mb-3 opacity-40" />
-          <span className="font-mono text-xs">Awaiting telemetry · no session history or logs available.</span>
+          <span className="font-mono text-xs">[NO TRACES] · awaiting telemetry ingestion.</span>
+          <span className="font-mono text-[10px] text-slate-700 mt-1">
+            Window totals — in {totals.inTok.toLocaleString()} · out {totals.outTok.toLocaleString()} · {formatCost(totals.cost)}
+          </span>
         </div>
       ) : (
         <div className="space-y-3">
@@ -274,6 +354,93 @@ export function HistoryPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ThroughputCard({
+  id,
+  label,
+  value,
+  accent
+}: {
+  id: string;
+  label: string;
+  value: string;
+  accent: 'cyan' | 'emerald' | 'violet' | 'amber';
+}) {
+  const accentMap: Record<typeof accent, string> = {
+    cyan: 'text-cyan-300',
+    emerald: 'text-emerald-300',
+    violet: 'text-violet-300',
+    amber: 'text-amber-300'
+  };
+  return (
+    <div
+      id={id}
+      className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"
+    >
+      <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+        {label}
+      </div>
+      <div className={`mt-1 font-mono text-xl font-bold ${accentMap[accent]}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function StreamModeBadge({
+  mode,
+  paused,
+  onTogglePause,
+  onReconnect
+}: {
+  mode: StreamMode;
+  paused: boolean;
+  onTogglePause: () => void;
+  onReconnect: () => void;
+}) {
+  const effective = paused ? 'DISCONNECTED' : mode;
+  const config = {
+    SSE: {
+      color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+      label: 'STREAM · SSE',
+      icon: <Radio className="h-3 w-3 animate-pulse" />
+    },
+    POLLING: {
+      color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+      label: 'STREAM · POLL',
+      icon: <Wifi className="h-3 w-3" />
+    },
+    DISCONNECTED: {
+      color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
+      label: paused ? 'STREAM · PAUSED' : 'STREAM · OFFLINE',
+      icon: <WifiOff className="h-3 w-3" />
+    }
+  }[effective];
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        id="stream-mode-badge"
+        type="button"
+        onClick={onReconnect}
+        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${config.color}`}
+        title="Reconnect stream"
+      >
+        {config.icon}
+        {config.label}
+      </button>
+      <button
+        id="stream-pause-toggle"
+        type="button"
+        onClick={onTogglePause}
+        className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-cyan-300"
+        title={paused ? 'Resume stream' : 'Pause stream'}
+      >
+        <Timer className="h-3 w-3" />
+        {paused ? 'Resume' : 'Pause'}
+      </button>
     </div>
   );
 }

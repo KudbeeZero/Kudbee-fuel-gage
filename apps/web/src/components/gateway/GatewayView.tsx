@@ -4,6 +4,7 @@ import { useKeyManager } from '../../hooks/useKeyManager';
 import { useRoutingRules } from '../../hooks/useRoutingRules';
 import { ProviderKeyCard } from './ProviderKeyCard';
 import { RoutingVisualizer } from './RoutingVisualizer';
+import { ProviderStatusGrid } from './ProviderStatusGrid';
 
 interface GatewayViewProps {
   showToast?: (msg: string) => void;
@@ -72,6 +73,9 @@ export const GatewayView = memo(function GatewayView({ showToast }: GatewayViewP
         </div>
 
       </div>
+
+      {/* Phase 21: Multi-Provider Load Balancer status + routing decisions */}
+      <ProviderStatusGrid />
     </div>
   );
 });
