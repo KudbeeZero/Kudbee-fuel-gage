@@ -3556,12 +3556,17 @@ export default function App() {
         </nav>
         
         <div className="p-5 border-t border-slate-800/60 bg-slate-900/20">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="relative flex h-2 w-2">
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
             </div>
             <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest drop-shadow-[0_0_4px_rgba(52,211,153,0.25)]">System Status: Nominal</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-emerald-400">[NEON: OK]</span>
+            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-cyan-400">[VECTOR: HNSW ACTIVE]</span>
+            <span className="rounded-full border border-violet-500/20 bg-violet-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-violet-400">[CRUCIBLE: READY]</span>
           </div>
         </div>
       </aside>

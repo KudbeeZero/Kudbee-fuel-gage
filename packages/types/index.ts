@@ -287,3 +287,27 @@ export type SkillTag = z.infer<typeof SkillTagSchema>;
 
 export const SkillTagListSchema = z.array(SkillTagSchema);
 export type SkillTagList = z.infer<typeof SkillTagListSchema>;
+
+// --- Phase 28: Manual Task Dispatch & Live OS Telemetry ----------------------
+
+export const CrucibleDispatchResponseSchema = z.object({
+  success: z.boolean(),
+  cycle: z.number(),
+  maxCycles: z.number(),
+  traceId: z.string().optional(),
+  taskId: z.string().optional(),
+  message: z.string()
+});
+export type CrucibleDispatchResponse = z.infer<typeof CrucibleDispatchResponseSchema>;
+
+export const TelemetryStatsSchema = z.object({
+  vector_memory_count: z.number(),
+  think_tokens_minted: z.number(),
+  crucible: z.object({
+    cycleCount: z.number(),
+    maxCycles: z.number(),
+    status: z.string()
+  }),
+  timestamp: z.string()
+});
+export type TelemetryStats = z.infer<typeof TelemetryStatsSchema>;
