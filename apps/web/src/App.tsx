@@ -146,6 +146,8 @@ export interface DashboardSummary {
   error_rate: number;
   health_matrix: ReadonlyArray<Record<string, unknown>>;
   sink_token_balance: number;
+  postgres_size_bytes: number;
+  redis_size_bytes: number;
 }
 
 /** A single event-log line in the Console Dock ticker. */

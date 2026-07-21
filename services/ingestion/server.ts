@@ -7,6 +7,8 @@ import { IngestRequestSchema } from "@kudbee/types";
 import { router as governanceRouter } from "../governance/router.js";
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from "../governance/ledger.js";
 import { createProvider, wrapPromptForOpenWeights, type ProviderKind } from "@kudbee/utils/llm/providers";
+import { runQuery } from "../lib/db.js";
+import { getRedisClient } from "../lib/redis.js";
 
 // --- 1. LOCAL TELEMETRY ENGINE TYPE DEFINITIONS ---
 
@@ -354,11 +356,37 @@ async function startServer() {
       // Update DB with auto-reset quota statuses
       await saveDb(db);
       
+      let postgres_size_bytes = 0;
+      let redis_size_bytes = 0;
+      
+      try {
+        const pgResult = await runQuery("SELECT pg_database_size(current_database()) as db_size");
+        const firstRow = pgResult[0];
+        if (firstRow && firstRow.db_size) {
+          postgres_size_bytes = Number(firstRow.db_size);
+        }
+      } catch {
+        postgres_size_bytes = 0;
+      }
+      
+      try {
+        const redisClient = getRedisClient();
+        const info = await redisClient.info('memory');
+        const match = info.match(/used_memory:(\d+)/);
+        if (match && match[1]) {
+          redis_size_bytes = Number(match[1]);
+        }
+      } catch {
+        redis_size_bytes = 0;
+      }
+      
       return res.json({
         total_24h_cost: Number(totalCost24h.toFixed(6)),
         total_historical_tokens: totalInput + totalOutput,
         total_active_models: activeModelsSet.size || 4,
-        health_matrix: healthMatrix
+        health_matrix: healthMatrix,
+        postgres_size_bytes,
+        redis_size_bytes
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
