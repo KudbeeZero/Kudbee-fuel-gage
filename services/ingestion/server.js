@@ -3287,6 +3287,9 @@ app.get('/api/governance/tune', async (_req, res) => {
 
 app.post('/api/governance/tune/apply', async (req, res) => {
   try {
+    const ctx = requireRole(req, res, 'ADMIN');
+    if (!ctx) return;
+
     const { recommendations } = req.body || {};
     if (!recommendations || typeof recommendations !== 'object') {
       return res.status(400).json({ error: 'recommendations object required' });
@@ -3304,6 +3307,166 @@ app.post('/api/governance/tune/apply', async (req, res) => {
     
     publishEvent('policy', { kind: 'auto_tuned', applied, timestamp: new Date().toISOString() });
     res.json({ success: true, applied, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- Phase 24: Multi-Tenant RBAC, Audit Vault, Workspace Context ---------------
+
+const TENANTS = {
+  'tenant-prod': { id: 'tenant-prod', name: 'Production / Default Workspace', role: 'ADMIN' },
+  'tenant-staging': { id: 'tenant-staging', name: 'Staging / Tenant B', role: 'OPERATOR' },
+  'tenant-audit': { id: 'tenant-audit', name: 'Auditor / Read-Only', role: 'AUDITOR' }
+};
+
+const ROLE_RANK = { AUDITOR: 1, OPERATOR: 2, ADMIN: 3 };
+
+const RBAC_MATRIX = {
+  '/api/governance/tune/apply': 'ADMIN',
+  '/api/governance/policies': 'OPERATOR',
+  '/api/governance/feedback': 'OPERATOR',
+  '/api/audit/export': 'AUDITOR',
+  '/api/audit/vault/anchor': 'ADMIN',
+  '/api/audit/vault/verify': 'AUDITOR',
+  '/api/governance/dispatch': 'OPERATOR',
+  '/api/agents/crucible/run': 'ADMIN'
+};
+
+function resolveTenant(req) {
+  const headerTenant = req.headers['x-tenant-id'];
+  const queryTenant = req.query?.tenantId;
+  const candidate = String(headerTenant || queryTenant || 'tenant-prod');
+  return TENANTS[candidate] ? candidate : 'tenant-prod';
+}
+
+function requireRole(req, res, minRole) {
+  const tenantId = resolveTenant(req);
+  const tenant = TENANTS[tenantId];
+  if (!tenant) {
+    res.status(403).json({ error: 'unknown tenant', tenantId });
+    return null;
+  }
+  if (ROLE_RANK[tenant.role] < ROLE_RANK[minRole]) {
+    res.status(403).json({
+      error: 'forbidden',
+      reason: `tenant ${tenantId} has role ${tenant.role}, requires ${minRole}`,
+      tenantId,
+      role: tenant.role,
+      required: minRole
+    });
+    return null;
+  }
+  return { tenantId, role: tenant.role, name: tenant.name };
+}
+
+app.get('/api/governance/tenants', (_req, res) => {
+  try {
+    res.json({
+      tenants: Object.values(TENANTS).map((t) => ({ id: t.id, name: t.name, role: t.role })),
+      current: 'tenant-prod'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+const auditVaultState = {
+  anchors: []
+};
+
+function hashTraceRow(row) {
+  const canonical = JSON.stringify({
+    id: row.id,
+    trace_id: row.trace_id,
+    model: row.model,
+    status: row.status,
+    cost: Number(row.cost || 0),
+    timestamp: row.timestamp || row.created_at
+  });
+  return crypto.createHash('sha256').update(canonical).digest('hex');
+}
+
+app.post('/api/audit/vault/anchor', async (req, res) => {
+  try {
+    const ctx = req.tenantCtx || requireRole(req, res, 'ADMIN');
+    if (!ctx) return;
+
+    const limit = Math.min(500, Math.max(1, parseInt(String(req.body?.limit || '50'), 10) || 50));
+    const rows = await runQuery(
+      `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+       FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
+      [limit]
+    ).catch(() => []);
+
+    const leafHashes = (rows || []).map(hashTraceRow);
+    const batchRoot = crypto
+      .createHash('sha256')
+      .update(leafHashes.join('|'))
+      .digest('hex');
+
+    const anchor = {
+      anchorId: `vault-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tenantId: ctx.tenantId,
+      tenantRole: ctx.role,
+      batchRoot,
+      leafCount: leafHashes.length,
+      sampleLeafHashes: leafHashes.slice(0, 5),
+      createdAt: new Date().toISOString()
+    };
+    auditVaultState.anchors.push(anchor);
+    publishEvent('audit_vault', { kind: 'anchored', anchor });
+
+    res.status(201).json({ success: true, anchor });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/audit/vault', async (_req, res) => {
+  try {
+    res.json({
+      count: auditVaultState.anchors.length,
+      anchors: auditVaultState.anchors.slice(-25).reverse()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post('/api/audit/vault/verify', async (req, res) => {
+  try {
+    const ctx = req.tenantCtx || requireRole(req, res, 'AUDITOR');
+    if (!ctx) return;
+
+    const anchorId = String(req.body?.anchorId || '');
+    const anchor = auditVaultState.anchors.find((a) => a.anchorId === anchorId);
+    if (!anchor) {
+      return res.status(404).json({ verified: false, error: 'anchor not found' });
+    }
+
+    const rows = await runQuery(
+      `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+       FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
+      [anchor.leafCount]
+    ).catch(() => []);
+
+    const leafHashes = (rows || []).map(hashTraceRow);
+    const recomputedRoot = crypto
+      .createHash('sha256')
+      .update(leafHashes.join('|'))
+      .digest('hex');
+
+    const verified = recomputedRoot === anchor.batchRoot;
+    res.json({
+      verified,
+      anchorId,
+      originalRoot: anchor.batchRoot,
+      recomputedRoot,
+      leafCount: anchor.leafCount,
+      currentLeafCount: leafHashes.length,
+      verifiedAt: new Date().toISOString()
+    });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }

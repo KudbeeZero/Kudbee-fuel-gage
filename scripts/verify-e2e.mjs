@@ -344,6 +344,73 @@ async function check22_PolicyAutoTuneEndpoint() {
   return applyRes.status === 200 && applyData.success === true && Array.isArray(applyData.applied);
 }
 
+async function check23_RBACPermissionEnforcement() {
+  const tenantsRes = await fetch(`${BASE}/api/governance/tenants`);
+  const tenantsData = await tenantsRes.json();
+  if (!(tenantsRes.status === 200 && Array.isArray(tenantsData.tenants) && tenantsData.tenants.length >= 2)) {
+    return false;
+  }
+
+  const auditor = tenantsData.tenants.find((t) => t.role === 'AUDITOR');
+  const operator = tenantsData.tenants.find((t) => t.role === 'OPERATOR');
+  if (!auditor || !operator) return false;
+
+  const auditorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': auditor.id },
+    body: JSON.stringify({ recommendations: { token_budget_cap: { recommendedThreshold: 12345 } } })
+  });
+  if (auditorTuneApply.status !== 403) return false;
+
+  const operatorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
+    body: JSON.stringify({ recommendations: { token_budget_cap: { recommendedThreshold: 12345 } } })
+  });
+  if (operatorTuneApply.status !== 403) return false;
+
+  const operatorAnchor = await fetch(`${BASE}/api/audit/vault/anchor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
+    body: JSON.stringify({ limit: 5 })
+  });
+  if (operatorAnchor.status !== 403) return false;
+
+  return true;
+}
+
+async function check24_AuditVaultHashing() {
+  const anchorRes = await fetch(`${BASE}/api/audit/vault/anchor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({ limit: 10 })
+  });
+  const anchorData = await anchorRes.json();
+  if (!(anchorRes.status === 201 && anchorData.success === true &&
+        typeof anchorData.anchor?.batchRoot === 'string' &&
+        anchorData.anchor.batchRoot.length === 64 &&
+        typeof anchorData.anchor.leafCount === 'number')) {
+    return false;
+  }
+
+  const listRes = await fetch(`${BASE}/api/audit/vault`);
+  const listData = await listRes.json();
+  if (!(listRes.status === 200 && Array.isArray(listData.anchors) && listData.count >= 1)) {
+    return false;
+  }
+
+  const verifyRes = await fetch(`${BASE}/api/audit/vault/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-audit' },
+    body: JSON.stringify({ anchorId: anchorData.anchor.anchorId })
+  });
+  const verifyData = await verifyRes.json();
+  return verifyRes.status === 200 &&
+    typeof verifyData.verified === 'boolean' &&
+    verifyData.anchorId === anchorData.anchor.anchorId &&
+    verifyData.originalRoot === anchorData.anchor.batchRoot;
+}
+
 async function run() {
   try {
     await startServer();
@@ -369,6 +436,8 @@ async function run() {
     await runCheck('Check 20: System diagnostics endpoint', check20_SystemDiagnosticsEndpoint);
     await runCheck('Check 21: Agent feedback endpoint', check21_AgentFeedbackEndpoint);
     await runCheck('Check 22: Policy auto-tune endpoint', check22_PolicyAutoTuneEndpoint);
+    await runCheck('Check 23: RBAC permission enforcement', check23_RBACPermissionEnforcement);
+    await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -377,7 +446,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 22`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 24`);
   console.log('========================================');
 
   if (failed > 0) {

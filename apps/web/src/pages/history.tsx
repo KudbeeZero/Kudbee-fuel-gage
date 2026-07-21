@@ -24,6 +24,7 @@ import { useTelemetryStream, type StreamMode } from '../hooks/useTelemetryStream
 import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
 import { useAuditExport } from '../hooks/useAuditExport';
 import { FeedbackButton } from '../components/FeedbackButton';
+import { AuditVaultCard } from '../components/audit/AuditVaultCard';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -123,6 +124,9 @@ export function HistoryPage() {
 
   return (
     <div className="space-y-6" id="history-page-container">
+      <div className="flex justify-end">
+        <AuditVaultCard />
+      </div>
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
         <div className="flex flex-wrap items-center gap-2">
