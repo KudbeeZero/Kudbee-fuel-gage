@@ -27,6 +27,8 @@ interface TokenLog {
   model_name: string;
   input_tokens: number;
   output_tokens: number;
+  tokens_in?: number;
+  tokens_out?: number;
   calculated_cost: number;
   project_name?: string;
   timestamp: string;
@@ -310,13 +312,13 @@ async function startServer() {
       const logs7d = db.token_logs.filter(l => l.user_id === userId && new Date(l.timestamp).getTime() >= last7d);
       
       const allLogs = db.token_logs.filter(l => l.user_id === userId);
-      const totalInput = allLogs.reduce((sum, l) => sum + l.input_tokens, 0);
-      const totalOutput = allLogs.reduce((sum, l) => sum + l.output_tokens, 0);
-      
-      const dailyInput = logs24h.reduce((sum, l) => sum + l.input_tokens, 0);
-      const dailyOutput = logs24h.reduce((sum, l) => sum + l.output_tokens, 0);
-      const weeklyInput = logs7d.reduce((sum, l) => sum + l.input_tokens, 0);
-      const weeklyOutput = logs7d.reduce((sum, l) => sum + l.output_tokens, 0);
+      const totalInput = allLogs.reduce((sum, l) => sum + (l.tokens_in || l.input_tokens || 0), 0);
+      const totalOutput = allLogs.reduce((sum, l) => sum + (l.tokens_out || l.output_tokens || 0), 0);
+
+      const dailyInput = logs24h.reduce((sum, l) => sum + (l.tokens_in || l.input_tokens || 0), 0);
+      const dailyOutput = logs24h.reduce((sum, l) => sum + (l.tokens_out || l.output_tokens || 0), 0);
+      const weeklyInput = logs7d.reduce((sum, l) => sum + (l.tokens_in || l.input_tokens || 0), 0);
+      const weeklyOutput = logs7d.reduce((sum, l) => sum + (l.tokens_out || l.output_tokens || 0), 0);
       
       const activeModelsSet = new Set(logs24h.map(l => l.model_name));
       

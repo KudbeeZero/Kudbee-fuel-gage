@@ -1131,10 +1131,10 @@ app.get('/api/telemetry/logs', async (req, res) => {
 
 app.get('/api/dashboard/summary', async (req, res) => {
   try {
-    const totalCostRow = await runQuery(`SELECT SUM(cost) as total FROM telemetry_traces`);
-    const totalTokensRow = await runQuery(`SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces`);
-    const totalInputRow = await runQuery(`SELECT SUM(tokens_in) as total FROM telemetry_traces`);
-    const totalOutputRow = await runQuery(`SELECT SUM(tokens_out) as total FROM telemetry_traces`);
+    const totalCostRow = await runQuery(`SELECT COALESCE(SUM(cost), 0) as total FROM telemetry_traces`);
+    const totalTokensRow = await runQuery(`SELECT COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0) as total FROM telemetry_traces`);
+    const totalInputRow = await runQuery(`SELECT COALESCE(SUM(tokens_in), 0) as total FROM telemetry_traces`);
+    const totalOutputRow = await runQuery(`SELECT COALESCE(SUM(tokens_out), 0) as total FROM telemetry_traces`);
     const activeModelsRow = await runQuery(`SELECT COUNT(DISTINCT model) as count FROM telemetry_traces`);
     const totalRequestsRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces`);
     const errorCountRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces WHERE status != 'OK'`);
@@ -1143,31 +1143,31 @@ app.get('/api/dashboard/summary', async (req, res) => {
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
     const last7d = new Date(now - 7 * 24 * 3600 * 1000).toISOString();
     const cost24hRow = await runQuery(
-      `SELECT SUM(cost) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(cost), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
     const dailyTokensRow = await runQuery(
-      `SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
     const dailyInputRow = await runQuery(
-      `SELECT SUM(tokens_in) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(tokens_in), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
     const dailyOutputRow = await runQuery(
-      `SELECT SUM(tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(tokens_out), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last24h]
     );
     const weeklyTokensRow = await runQuery(
-      `SELECT SUM(tokens_in + tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last7d]
     );
     const weeklyInputRow = await runQuery(
-      `SELECT SUM(tokens_in) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(tokens_in), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last7d]
     );
     const weeklyOutputRow = await runQuery(
-      `SELECT SUM(tokens_out) as total FROM telemetry_traces WHERE timestamp >= $1`,
+      `SELECT COALESCE(SUM(tokens_out), 0) as total FROM telemetry_traces WHERE timestamp >= $1`,
       [last7d]
     );
 
