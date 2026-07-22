@@ -2193,6 +2193,20 @@ app.post('/api/system/test-connections', async (req, res) => {
   try { const results = await testAllConnections(); return res.status(200).json({ results, timestamp: new Date().toISOString() }); } catch { return res.status(500).json({ error: 'Connection test failed' }); }
 });
 
+// --- PR #206: OS Control Center — agent fleet + Groq archives ---
+app.get('/api/agents/fleet', async (req, res) => {
+  try { const agents = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {}; const fleet = Object.entries(agents).map(([id, raw]) => { try { return JSON.parse(raw); } catch { return { id, status: 'unknown' }; } }); return res.status(200).json({ fleet, count: fleet.length }); } catch { return res.status(200).json({ fleet: [], count: 0 }); }
+});
+app.post('/api/agents/fleet', async (req, res) => {
+  try { const { id, status, task } = req.body || {}; if (!id) return res.status(400).json({ error: 'Agent id required' }); const state = { id, status: status || 'standby', task: task || 'idle', updatedAt: new Date().toISOString() }; if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify(state)); return res.status(200).json({ success: true, agent: state }); } catch { return res.status(500).json({ error: 'Fleet update failed' }); }
+});
+app.get('/api/groq/archives', async (req, res) => {
+  try { const limit = Math.min(Number(req.query.limit) || 20, 100); const archives = redis ? (await redis.lrange('kudbee:groq:archives', 0, limit - 1)).map((r) => { try { return JSON.parse(r); } catch { return { raw: r }; } }) : []; return res.status(200).json({ archives, count: archives.length }); } catch { return res.status(200).json({ archives: [], count: 0 }); }
+});
+app.post('/api/agents/dispatch', async (req, res) => {
+  try { const { task, agentId } = req.body || {}; if (!task) return res.status(400).json({ error: 'Task required' }); const id = agentId || `agent-${Date.now()}`; if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify({ id, status: 'active', task, dispatchedAt: new Date().toISOString() })); return res.status(200).json({ success: true, agentId: id, task, status: 'dispatched' }); } catch { return res.status(500).json({ error: 'Dispatch failed' }); }
+});
+
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
 const HERMES_HEARTBEAT_MAX_AGE_MS = 45_000; // treat stale heartbeats as Offline
 
