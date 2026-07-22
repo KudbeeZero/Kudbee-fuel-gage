@@ -42,6 +42,7 @@ import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
+import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -2012,6 +2013,31 @@ app.post('/api/governance/union/negotiate', async (req, res) => {
 });
 app.get('/api/governance/union/active', async (req, res) => {
   try { return res.status(200).json({ unions: await getActiveUnions() }); } catch { return res.status(200).json({ unions: [] }); }
+});
+
+// --- Phase 56: Assume-Guarantee Contracts ---
+app.post('/api/governance/contract/sign', async (req, res) => {
+  try {
+    const parsed = AGCSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
+    const state = await signContract(parsed.data);
+    return res.status(201).json(state);
+  } catch (err) {
+    return res.status(500).json({ error: 'Contract signing failed' });
+  }
+});
+app.post('/api/governance/contract/verify/:id', async (req, res) => {
+  try {
+    const { id } = req.params ?? {};
+    const token = req.body ?? {};
+    const result = await verifyContract(id, token);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ error: 'Contract verification failed' });
+  }
+});
+app.get('/api/governance/contract/active', async (req, res) => {
+  try { return res.status(200).json({ contracts: await getActiveContracts() }); } catch { return res.status(200).json({ contracts: [] }); }
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
