@@ -52,6 +52,8 @@
     "POST:/api/alerts/configure",
     "GET:/api/alerts/history",
     "PATCH:/api/settings/tenant/:id",
+    "PUT:/api/settings/preferences",
+    "GET:/api/settings/preferences",
     "GET:/api/settings/tenant/:id",
     "GET:/metrics",
     "POST:/api/memory/dictionary/lookup",
