@@ -172,12 +172,11 @@ const apiLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.headers['x-tenant-id'] || req.ip || 'unknown',
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', apiLimiter);
 
-const ingestLimiter = rateLimit({ windowMs: 60 * 1000, max: process.env.NODE_ENV === 'test' ? 500 : 50, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => req.headers['x-tenant-id'] || req.ip || 'unknown', message: { error: 'Ingest rate limit exceeded' } });
+const ingestLimiter = rateLimit({ windowMs: 60 * 1000, max: process.env.NODE_ENV === 'test' ? 500 : 50, standardHeaders: true, legacyHeaders: false, message: { error: 'Ingest rate limit exceeded' } });
 app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
