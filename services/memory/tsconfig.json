@@ -4,5 +4,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vectorStore.ts", "embedText.ts", "topologyIngest.ts", "../lib/db.d.ts"]
+  "include": ["vectorStore.ts", "embedText.ts", "topologyIngest.ts", "pcaReducer.ts", "../lib/db.d.ts"]
 }
