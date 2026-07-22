@@ -3805,6 +3805,17 @@ try {
   console.error('[Worker] Failed to start background loop:', err instanceof Error ? err.message : String(err));
 }
 
+// --- Phase 34: Bootstrap shared receptor lock registry from Redis -----------
+if (redis) {
+  try {
+    void receptorGate.bootstrap().then(() => {
+      console.log('[Receptor] P2P lock sync active');
+    });
+  } catch (err) {
+    console.warn('[Receptor] Bootstrap deferred (Redis unavailable):', err?.message);
+  }
+}
+
 // Populate the shared state holder so the modular sub-routers can read the
 // policy / feedback / auto-tune / evaluate state lazily.
 if (globalThis.__KUBEE_STATE__) {

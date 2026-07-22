@@ -17,8 +17,12 @@
  * same spatial coordinates is rejected with a 423 Locked response. Only an
  * aut h enticated CHALLENGE_TOKEN with a superior Kd can displace the guard.
  *
- * Every state transition emits a cryptographically hashed AuditEvent to the
- * `kudbee:stream:audit` Redis pub/sub channel and persists to Postgres.
+ * Phase 34 — P2P Peer Discovery: the lock store is now backed by a shared
+ * Redis hash (kudbee:receptor:locks) with pub/sub sync (kudbee:receptor:sync)
+ * so that every sentinel dyno and worker process sees a coherent lock map.
+ * Locks survive process restarts and propagate across Heroku dyno boundaries
+ * in real time. The in-memory Map is still a synchronous cache for sub-ms
+ * reads, but writes fan out through Redis.
  * ---------------------------------------------------------------------------
  */
 
@@ -27,6 +31,8 @@ import { getDbPool, isDbHealthy, runInsert } from '../../lib/db.js';
 
 export const LOCK_THRESHOLD = 0.05;
 export const GUARD_TOKEN_AFFINITY_MIN = 0.90;
+const REDIS_LOCK_KEY = 'kudbee:receptor:locks';
+const REDIS_SYNC_CHANNEL = 'kudbee:receptor:sync';
 
 export interface CellSlot {
   x: number;
@@ -118,7 +124,48 @@ async function publishAuditEvent(event: Record<string, unknown>): Promise<void> 
   } catch { /* best-effort persistence */ }
 }
 
+// --- Phase 34: Shared Redis lock registry with pub/sub sync ----------------
+// Locks are stored as a Redis hash (kudbee:receptor:locks) mapping slotKey →
+// JSON-serialised LockRecord. Every write publishes to kudbee:receptor:sync
+// so other processes can apply the update to their local caches immediately.
+
+async function persistLock(record: LockRecord): Promise<void> {
+  try {
+    const redis = getRedisClient({ label: 'receptor-locks' });
+    await redis.hset(REDIS_LOCK_KEY, record.slotKey, JSON.stringify(record));
+    await redis.publish(REDIS_SYNC_CHANNEL, JSON.stringify({ type: 'lock_set', record }));
+  } catch { /* best-effort — local cache still holds the lock */ }
+}
+
+async function removeLock(slotKey: string): Promise<void> {
+  try {
+    const redis = getRedisClient({ label: 'receptor-locks' });
+    await redis.hdel(REDIS_LOCK_KEY, slotKey);
+    await redis.publish(REDIS_SYNC_CHANNEL, JSON.stringify({ type: 'lock_released', slotKey }));
+  } catch { /* best-effort */ }
+}
+
+async function loadAllLocks(): Promise<Map<string, LockRecord>> {
+  const map = new Map<string, LockRecord>();
+  try {
+    const redis = getRedisClient({ label: 'receptor-locks' });
+    const all = await redis.hgetall(REDIS_LOCK_KEY);
+    if (all) {
+      for (const [key, value] of Object.entries(all)) {
+        try {
+          const record = JSON.parse(value as string) as LockRecord;
+          if (record.slotKey && record.tokenHash) {
+            map.set(key, record);
+          }
+        } catch { /* skip malformed */ }
+      }
+    }
+  } catch { /* return empty cache on Redis failure */ }
+  return map;
+}
+
 const lockStore: Map<string, LockRecord> = new Map();
+let lockStoreLoaded = false;
 
 function cosineSimilarityLocal(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -137,6 +184,33 @@ export class ReceptorGatingEngine {
 
   constructor() {
     this.lockStore = lockStore;
+  }
+
+  async bootstrap(): Promise<void> {
+    if (lockStoreLoaded) return;
+    const remote = await loadAllLocks();
+    for (const [key, record] of remote) {
+      this.lockStore.set(key, record);
+    }
+    lockStoreLoaded = true;
+
+    try {
+      const redis = getRedisClient({ label: 'receptor-sync' });
+      const sub = redis.duplicate();
+      await sub.subscribe(REDIS_SYNC_CHANNEL);
+      sub.on('message', (channel: string, message: string) => {
+        if (channel !== REDIS_SYNC_CHANNEL) return;
+        try {
+          const msg = JSON.parse(message);
+          if (msg.type === 'lock_set' && msg.record) {
+            this.lockStore.set(msg.record.slotKey, msg.record);
+          } else if (msg.type === 'lock_released' && msg.slotKey) {
+            this.lockStore.delete(msg.slotKey);
+          }
+        } catch { /* skip malformed sync messages */ }
+      });
+    } catch { /* resilient — keep working with local cache */ }
+    console.log('[Receptor] Lock registry bootstrapped from Redis.');
   }
 
   getSlotKey(slot: CellSlot): string {
@@ -188,7 +262,7 @@ export class ReceptorGatingEngine {
           lockedAt: new Date().toISOString()
         };
         this.lockStore.set(key, lockRecord);
-
+        void persistLock(lockRecord);
         const auditEvent = {
           ...baseAudit,
           action: 'LOCK_ACQUIRED',
@@ -238,6 +312,7 @@ export class ReceptorGatingEngine {
         kd: token.kd,
         lockedAt: new Date().toISOString()
       });
+      void persistLock({ slotKey: key, tokenHash: token.tokenHash, kd: token.kd, lockedAt: new Date().toISOString() });
 
       const auditEvent = {
         ...baseAudit,
@@ -305,6 +380,7 @@ export class ReceptorGatingEngine {
 
     if (existing.tokenHash === tokenHash) {
       this.lockStore.delete(key);
+      void removeLock(key);
       const auditEvent = {
         action: 'LOCK_RELEASED',
         slot: key,
