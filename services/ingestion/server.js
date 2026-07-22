@@ -975,6 +975,18 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
   }
 });
 
+// --- Phase 48: Anomaly Stream — low-confidence Groq-synthesized tokens ---
+app.get('/api/think/anomalies', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const members = redis ? (await redis.smembers('kudbee:anomalies')).slice(0, limit) : [];
+    const anomalies = members.map((m) => { try { return JSON.parse(m); } catch { return { raw: m }; } });
+    return res.status(200).json({ count: anomalies.length, anomalies });
+  } catch {
+    return res.status(200).json({ count: 0, anomalies: [] });
+  }
+});
+
 // --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
 // GET /api/memory/think-tokens?prompt=...&limit=3 — queries the pgvector
 // `think_tokens` store for the `limit` most semantically similar past SUCCESSES
