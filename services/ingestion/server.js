@@ -1860,6 +1860,49 @@ app.post('/api/think/synthesize', async (req, res) => {
   }
 });
 
+// --- Phase 40: Self-Boot Kernel Rollover — System Lifecycle ---------------
+app.post('/api/system/lifecycle', async (req, res) => {
+  try {
+    const { action } = req.body || {};
+    const health = { pg: false, redis: false, worker: false, receptor: false, sentinel: false, groq: groqConfigured };
+    let pgLatency = -1, redisLatency = -1;
+
+    if (pool) {
+      try { const s = Date.now(); await pool.query('SELECT 1 AS health'); pgLatency = Date.now() - s; health.pg = true; } catch {}
+    }
+    if (redis) {
+      try { const s = Date.now(); await redis.ping(); redisLatency = Date.now() - s; health.redis = true; } catch {}
+    }
+
+    health.worker = typeof _running !== 'undefined' ? _running : null;
+    health.receptor = typeof receptorGate !== 'undefined';
+
+    const allHealthy = Object.values(health).every(v => v === true || v === null);
+    const status = allHealthy ? 'HEALTHY' : pgLatency >= 0 && redisLatency >= 0 ? 'DEGRADED' : 'UNHEALTHY';
+
+    if (action === 'restart-worker') {
+      if (typeof _stopRequested !== 'undefined') _stopRequested = true;
+      setTimeout(async () => {
+        try { const { startWorker } = await import('../agents/worker.ts'); void startWorker(); } catch {}
+      }, 2000);
+    }
+
+    return res.status(200).json({
+      status, health,
+      metrics: { pgLatencyMs: pgLatency, redisLatencyMs: redisLatency },
+      services: {
+        postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
+        redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
+        groq: { status: groqConfigured ? 'configured' : 'disabled' }
+      },
+      agent: { status: health.worker ? 'running' : 'idle' },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Lifecycle check failed', detail: err?.message });
+  }
+});
+
 // --- Governance health + HERMES auditor status ---------------------------
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
