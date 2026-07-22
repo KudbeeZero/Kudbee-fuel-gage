@@ -3683,9 +3683,9 @@ export default function App() {
               </span>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-              <a href="#" className="hover:text-emerald-400 transition-colors">Docs</a>
-              <a href="#" className="hover:text-emerald-400 transition-colors">Support</a>
-              <a href="#" className="hover:text-emerald-400 transition-colors">API</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('Intelligence'); }} className="hover:text-emerald-400 transition-colors">Docs</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('Alerts'); }} className="hover:text-emerald-400 transition-colors">Support</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('Gateway'); }} className="hover:text-emerald-400 transition-colors">API</a>
             </div>
           </div>
 
