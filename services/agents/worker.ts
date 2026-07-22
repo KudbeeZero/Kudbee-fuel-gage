@@ -161,14 +161,36 @@ export default evaluateAgentPayload;
 
 import { getRedisClient } from '../lib/redis.js';
 
-const TASK_QUEUE = 'kudbee:governance:tasks';
-const TASK_DLQ = 'kudbee:governance:tasks:failed';
+const TASK_QUEUE = 'kudbee-governance-tasks';
+const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
 const MAX_ATTEMPTS = 3;
 const IDLE_POLL_MS = 200;
 
 let _running = false;
 let _stopRequested = false;
+let shuttingDown = false;
+let tickTimeout: ReturnType<typeof setTimeout> | null = null;
+
+process.on('SIGTERM', async () => {
+  console.log('[Worker] SIGTERM received – draining current task...');
+  shuttingDown = true;
+  _stopRequested = true;
+  if (tickTimeout) {
+    clearTimeout(tickTimeout);
+    tickTimeout = null;
+  }
+  try {
+    const redis = getRedisClient();
+    if (redis) {
+      await redis.quit();
+      console.log('[Worker] Redis connection closed gracefully.');
+    }
+  } catch (err) {
+    console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
+  }
+  process.exit(0);
+});
 
 function broadcast(type: string, data: any) {
   const redis = getRedisClient();
@@ -284,6 +306,7 @@ export async function processTask(task: any) {
 }
 
 export async function _tick() {
+  if (shuttingDown) return false;
   const redis = getRedisClient();
   if (!redis) return false;
   const raw = await redis.rpop(TASK_QUEUE).catch(() => null);
@@ -326,20 +349,25 @@ export async function startWorker() {
   _running = true;
   _stopRequested = false;
   console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
-  (async function loop() {
-    while (!_stopRequested) {
-      try {
-        const processed = await _tick();
-        if (!processed) {
-          await sleep(IDLE_POLL_MS);
-        }
-      } catch (err) {
-        console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
-        await sleep(IDLE_POLL_MS);
-      }
+  const loop = () => {
+    if (_stopRequested) {
+      _running = false;
+      return;
     }
-    _running = false;
-  })().catch((err) => console.error('[Worker] loop crashed:', err));
+    _tick()
+      .then((processed) => {
+        if (!processed) {
+          tickTimeout = setTimeout(loop, IDLE_POLL_MS);
+        } else {
+          tickTimeout = setTimeout(loop, 0);
+        }
+      })
+      .catch((err) => {
+        console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
+        tickTimeout = setTimeout(loop, IDLE_POLL_MS);
+      });
+  };
+  loop();
 }
 
 export function stopWorker() {
