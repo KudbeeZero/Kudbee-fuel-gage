@@ -1,10 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { Network, Key } from 'lucide-react';
 import { useKeyManager } from '../../hooks/useKeyManager';
 import { useRoutingRules } from '../../hooks/useRoutingRules';
 import { ProviderKeyCard } from './ProviderKeyCard';
 import { RoutingVisualizer } from './RoutingVisualizer';
 import { ProviderStatusGrid } from './ProviderStatusGrid';
+import { apiGet } from '../../lib/apiClient';
 
 interface GatewayViewProps {
   showToast?: (msg: string) => void;
@@ -13,6 +14,14 @@ interface GatewayViewProps {
 export const GatewayView = memo(function GatewayView({ showToast }: GatewayViewProps) {
   const { keys, updateKey, saveKeys } = useKeyManager();
   const { activeRoute, gatewayLogs, executeGatewayRequest } = useRoutingRules();
+  const [routerStatus, setRouterStatus] = useState<{ provider?: string; model?: string; healthy?: boolean }>({});
+
+  useEffect(() => {
+    const fetch = async () => {
+      try { const data = await apiGet<typeof routerStatus>('/api/router/status'); setRouterStatus(data || {}); } catch {}
+    };
+    void fetch(); const id = setInterval(() => void fetch(), 8000); return () => clearInterval(id);
+  }, []);
 
   const handleSaveKeys = () => {
     if (saveKeys()) {
@@ -20,9 +29,14 @@ export const GatewayView = memo(function GatewayView({ showToast }: GatewayViewP
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6">
+   return (
+     <div className="space-y-6">
+       <div className="flex items-center gap-3 px-4 py-2 rounded-lg border border-slate-800 bg-slate-900/60">
+         <span className={`h-2 w-2 rounded-full ${routerStatus.healthy ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+         <span className="font-mono text-[10px] text-slate-400">Router: {routerStatus.provider || 'idle'} · {routerStatus.model || '—'}</span>
+         <span className={`ml-auto font-mono text-[9px] uppercase ${routerStatus.healthy ? 'text-emerald-300' : 'text-rose-300'}`}>{routerStatus.healthy ? 'LIVE' : 'OFFLINE'}</span>
+       </div>
+       <div className="flex flex-col md:flex-row gap-6">
         
         {/* Left Side: Keys Management */}
         <div className="w-full md:w-1/2 flex flex-col space-y-6">
