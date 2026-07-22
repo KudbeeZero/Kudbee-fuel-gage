@@ -40,6 +40,7 @@ import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
+import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1988,6 +1989,16 @@ app.post('/api/system/diagnose-breadcrumb', async (req, res) => {
     return res.status(200).json({ analysis, breadcrumbs: crumbs, count: crumbs.length });
   } catch (err) {
     return res.status(500).json({ error: 'Diagnose failed' });
+  }
+});
+
+// --- Phase 54: Quantitative Energy Mesh ---
+app.get('/api/think/energy-mesh', async (req, res) => {
+  try {
+    const heatmap = getEnergyHeatmap();
+    return res.status(200).json(heatmap);
+  } catch (err) {
+    return res.status(500).json({ error: 'Energy mesh unavailable' });
   }
 });
 
