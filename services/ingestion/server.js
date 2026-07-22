@@ -40,6 +40,7 @@ import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
+import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
