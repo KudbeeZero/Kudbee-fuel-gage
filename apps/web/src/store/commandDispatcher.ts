@@ -15,7 +15,8 @@ export type CommandKind =
   | 'PROPOSE_GOVERNANCE'
   | 'MEMORY_RECALL'
   | 'SYSTEM_PROBE'
-  | 'GOVERNANCE_BULK_APPROVE';
+  | 'GOVERNANCE_BULK_APPROVE'
+  | 'DICTIONARY_LOOKUP';
 
 export interface DispatchedCommand {
   id: string;
@@ -301,6 +302,24 @@ export const commandRunners = {
         return {
           success: true,
           detail: `${approved}/${items.length} actions approved`
+        };
+      }
+    }),
+  dictionaryLookup: (query?: string) =>
+    runWithDispatcher({
+      kind: 'DICTIONARY_LOOKUP',
+      label: `Dictionary Lookup${query ? `: "${query}"` : ''}`,
+      description: 'pgvector cosine similarity search over victory snapshots',
+      run: async (setState) => {
+        setState('PROCESSING', 'Searching dictionary…');
+        const q = query || 'reasoning pattern';
+        const res = await apiPost<{ found?: boolean; similarity?: number; snapshot?: { text: string } }>(
+          '/api/memory/dictionary/lookup',
+          { query: q }
+        );
+        return {
+          success: !!res?.found,
+          detail: res?.found ? `Snapshot found (sim ${(res.similarity ?? 0).toFixed(3)})` : 'No matching snapshot'
         };
       }
     })

@@ -29,6 +29,8 @@ export interface MintThinkTokenPayload {
   kd?: number;
   efficacy?: number;
   locked_by?: string | null;
+  struggleLog?: string[];
+  remediationPath?: string[];
 }
 
 export type MintThinkTokenResult =
