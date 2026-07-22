@@ -51,6 +51,8 @@
     "POST:/api/system/lifecycle",
     "POST:/api/alerts/configure",
     "GET:/api/alerts/history",
+    "PATCH:/api/settings/tenant/:id",
+    "GET:/api/settings/tenant/:id",
     "GET:/api/telemetry/degradation-status",
     "POST:/api/agents/evaluate",
     "GET:/api/agents/evaluate",
