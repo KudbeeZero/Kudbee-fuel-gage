@@ -39,6 +39,7 @@ import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
+import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
@@ -2182,6 +2183,14 @@ app.put('/api/settings/preferences', async (req, res) => {
 app.get('/api/settings/preferences', async (req, res) => {
   try { const settings = await getSettings(req.query.tenantId || 'default'); return res.status(200).json({ settings }); }
   catch { return res.status(200).json({ settings: {} }); }
+});
+
+// --- Agent Audit Layer: history + connection tests ---
+app.get('/api/system/audit-history', async (req, res) => {
+  try { const limit = Math.min(Number(req.query.limit) || 50, 200); return res.status(200).json({ history: await getAuditHistory(limit), count: (await getAuditHistory(limit)).length }); } catch { return res.status(200).json({ history: [], count: 0 }); }
+});
+app.post('/api/system/test-connections', async (req, res) => {
+  try { const results = await testAllConnections(); return res.status(200).json({ results, timestamp: new Date().toISOString() }); } catch { return res.status(500).json({ error: 'Connection test failed' }); }
 });
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
