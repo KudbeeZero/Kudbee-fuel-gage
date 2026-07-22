@@ -273,6 +273,7 @@ async function check17_GovernancePromotionEndpoint() {
   const confirmRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);
   const confirmData = await confirmRes.json();
   const updated = confirmData.trajectories.find((t) => t.token_hash === token.token_hash);
+  console.error('[C17DBG] Confirmation: found=', updated !== undefined, 'hash=', token.token_hash.slice(0, 12), 'status=', updated?.status, 'id=', updated?.id);
   return updated !== undefined && updated.status === 'VERIFIED';
 }
 
