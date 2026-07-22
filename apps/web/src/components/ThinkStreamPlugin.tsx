@@ -7,10 +7,10 @@ interface ThinkStreamPluginProps {
   trajectories: ThinkTrajectory[];
 }
 
-export function ThinkStreamPlugin({ plugin, trajectories }: ThinkStreamPluginProps) {
+export function ThinkStreamPlugin({ plugin, trajectories = [] }: ThinkStreamPluginProps) {
   const count = trajectories.length;
   const avgSim = count > 0
-    ? trajectories.reduce((acc, t) => acc + t.similarity_score, 0) / count
+    ? trajectories.reduce((acc, t) => acc + (t.similarity_score ?? 0), 0) / count
     : 0;
 
   return (

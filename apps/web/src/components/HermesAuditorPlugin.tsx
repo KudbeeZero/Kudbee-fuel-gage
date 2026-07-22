@@ -29,6 +29,7 @@ const LEVEL_ORDER = ['AUDIT', 'WARN', 'ERROR', 'INFO'] as const;
 // Extract a stable level + target from a raw [HERMES:AUDITOR] log line.
 // Example: "2026-07-20T00:15:32.123Z [HERMES:AUDITOR] AUDIT audit pass started"
 function parseSweep(raw: HermesAuditLog): ParsedSweep | null {
+  if (!raw?.line) return null;
   const levelMatch = raw.line.match(/\[(HERMES:AUDITOR)\]\s*(AUDIT|WARN|ERROR|INFO)/i);
   const level = (levelMatch?.[2]?.toUpperCase() as ParsedSweep['level']) || 'UNKNOWN';
   // Target: the first meaningful token after the level (e.g. "audit", "memory",

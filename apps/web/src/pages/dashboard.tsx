@@ -794,8 +794,8 @@ function ThinkTrajectoriesCard({ trajectories, loading, error }: { trajectories:
                 </div>
               </div>
               <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-500">
-                <span>sim {t.similarity_score.toFixed(4)}</span>
-                <span>dims {t.spatial_coordinates.length}</span>
+                <span>sim {t.similarity_score?.toFixed(4) ?? '—'}</span>
+                <span>dims {t.spatial_coordinates?.length ?? 0}</span>
               </div>
               {t.correction_delta && (
                 <p className="mt-1.5 truncate text-[10px] text-slate-400">{t.correction_delta}</p>

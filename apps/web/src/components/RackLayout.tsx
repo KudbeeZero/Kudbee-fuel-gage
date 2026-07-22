@@ -116,7 +116,7 @@ function renderPlugin(
   trajectories: ThinkTrajectory[],
   trajectoryLoading: boolean
 ) {
-  const span = COL_SPAN_CLASS[plugin.gridSpan.colSpan] ?? 'lg:col-span-4';
+  const span = COL_SPAN_CLASS[plugin.gridSpan?.colSpan ?? 999] ?? 'lg:col-span-4';
   switch (plugin.id) {
     case 'plugin-storm':
       return (
