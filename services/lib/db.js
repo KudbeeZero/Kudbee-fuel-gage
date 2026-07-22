@@ -189,7 +189,7 @@ const memory = {
 };
 
 let _seq = 1;
-const nextId = () => _seq++;
+const nextId = () => String(_seq++);
 
 function rowToObject(row) {
   return row;
