@@ -38,6 +38,7 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
+import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -633,7 +634,7 @@ function isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status 
   return false;
 }
 
-app.post('/api/telemetry/ingest', async (req, res) => {
+app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
   try {
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, thought_summary, reasoning } = req.body || {};
@@ -1516,7 +1517,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
   }
 });
 
-app.post('/api/interceptor/verify', async (req, res) => {
+app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
   try {
     const {
       trace_id,
