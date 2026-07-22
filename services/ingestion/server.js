@@ -167,6 +167,7 @@ app.use('/api/telemetry', createDegradationRouter());
 
 const systemRouter = createSystemRouter({
   runQuery,
+  isDbHealthy,
   publishEvent,
   listProposed,
   getBootTime: () => _state.bootTimeRef.value,
@@ -2013,7 +2014,11 @@ app.get('/api/system/health-deep', async (_req, res) => {
       const t0 = Date.now();
       const rows = await runQuery('SELECT 1 as ok');
       const latencyMs = Date.now() - t0;
-      dbOk = Array.isArray(rows) && rows[0]?.ok === 1;
+      // `runQuery` transparently falls back to an in-memory store when the pool
+      // is unhealthy, and that fallback hardcodes `SELECT 1 as ok` -> [{ok:1}].
+      // Gate on isDbHealthy() so a fully-degraded server reports OFFLINE
+      // instead of a false-positive OK (which masked missing Control Tower data).
+      dbOk = isDbHealthy() && Array.isArray(rows) && rows[0]?.ok === 1;
       services.postgres = {
         status: dbOk ? 'OK' : 'OFFLINE',
         latencyMs: dbOk ? latencyMs : null,
@@ -3515,6 +3520,17 @@ if (process.env.CRUCIBLE_ENABLED === 'true') {
   } catch (err) {
     console.error('[Crucible] Failed to start:', err.message);
   }
+}
+
+// --- Phase 26: Background worker (Crucible task queue) -----------------------
+// The worker is fire-and-forget; it never blocks the API event loop. If
+// Redis is offline the worker logs a warning and remains dormant until
+// the next process restart.
+try {
+  const { startWorker } = await import('../agents/worker.ts');
+  void startWorker();
+} catch (err) {
+  console.error('[Worker] Failed to start background loop:', err instanceof Error ? err.message : String(err));
 }
 
 // Populate the shared state holder so the modular sub-routers can read the
