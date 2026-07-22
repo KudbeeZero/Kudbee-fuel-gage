@@ -16,7 +16,6 @@ const LOG_TEMPLATES = [
   { type: 'warning', label: 'DB', message: 'Postgres single-container schema: cache miss on user query. Fetching from storage.' },
   { type: 'info', label: 'METRIC', message: 'Ingestion rate: 423 spans/sec. Outbound buffer status: STABLE.' },
   { type: 'error', label: 'SEC', message: 'DLP scrub: Detected credit card pattern in inbound trace. Scrubbed payload.' },
-  { type: 'slate', label: 'DOCKER', message: 'Unmanaged healthcheck: exit code 0 (Success).' },
   { type: 'warning', label: 'RATE', message: 'Inbound requests near threshold. 88% cap utilized for IP 192.168.1.10.' },
   { type: 'info', label: 'CACHE', message: 'In-memory Redis cache warmed. Hits: 12,431 / Misses: 219.' },
   { type: 'info', label: 'FASTAPI', message: 'WebSocket tunnel ping-pong completed in 4.2ms.' },
@@ -29,9 +28,9 @@ export function ConsoleDock() {
 
   // Maintain actual high-frequency logs in useRef
   const allLogsRef = useRef<ConsoleLog[]>([
-    { id: 'initial-1', type: 'info', label: 'INFO', message: 'Edge Gateway Sync: Connection established with Heroku dyno runtime.', time: new Date().toLocaleTimeString() },
-    { id: 'initial-2', type: 'warning', label: 'WARN', message: 'Telemetry Cluster: Rolling 15-minute pipeline analysis initialized.', time: new Date().toLocaleTimeString() },
-    { id: 'initial-3', type: 'slate', label: 'SYSTEM', message: 'Toolchain Context: Running active execution checks via TypeScript 7.0 engine.', time: new Date().toLocaleTimeString() }
+    { id: 'initial-1', type: 'info', label: 'BOOT', message: 'Control Tower initialized. Neon Postgres pool (max 10), Upstash Redis connected.', time: new Date().toLocaleTimeString() },
+    { id: 'initial-2', type: 'info', label: 'BOOT', message: 'SSE event stream online. HERMES auditor worker standing by.', time: new Date().toLocaleTimeString() },
+    { id: 'initial-3', type: 'slate', label: 'SYSTEM', message: 'Agent Context Factory + Token Forge RAG ready. Node 22 ESM strict mode active.', time: new Date().toLocaleTimeString() }
   ]);
 
   const processedExternalIds = useRef<Set<string>>(new Set());
@@ -101,6 +100,43 @@ export function ConsoleDock() {
     };
     void pullHermes();
     const id = setInterval(() => void pullHermes(), 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isPaused]);
+
+  // Pull real infrastructure health status every 15s and inject live
+  // diagnostics into the console stream so operators see accurate dependency
+  // states instead of relying on static templates.
+  const lastHealthRef = useRef<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const pullHealth = async () => {
+      if (isPaused) return;
+      try {
+        const health = await apiGet<{ status: string; dependencies: Record<string, string> }>('/health');
+        if (cancelled || !health?.dependencies) return;
+        const depEntries = Object.entries(health.dependencies)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ');
+        const healthLine = `Infra Health: ${depEntries}`;
+        if (healthLine === lastHealthRef.current) return;
+        lastHealthRef.current = healthLine;
+        const newLog: ConsoleLog = {
+          id: `health-${Date.now()}`,
+          type: 'info',
+          label: 'HEALTH',
+          message: healthLine,
+          time: new Date().toLocaleTimeString()
+        };
+        allLogsRef.current = [newLog, ...allLogsRef.current].slice(0, 100);
+      } catch {
+        /* backend offline — skip silently */
+      }
+    };
+    void pullHealth();
+    const id = setInterval(() => void pullHealth(), 15_000);
     return () => {
       cancelled = true;
       clearInterval(id);
