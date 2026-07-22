@@ -79,6 +79,11 @@ export function getDbPool() {
     max: 10,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
+    // Neon cloud Postgres strictly requires TLS. The connection string's
+    // ?sslmode=require parameter is handled by pg-connection-string, but
+    // explicit ssl configuration ensures the driver never downgrades to
+    // cleartext even when the URL fragment is missing or mis-parsed.
+    ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
     // Neon closes idle connections; allow the pool to transparently reconnect.
     keepAlive: true
   });

@@ -2202,21 +2202,26 @@ app.get('/api/system/health-deep', async (_req, res) => {
     const services = { postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null }, redis: { status: 'OFFLINE', latencyMs: null, lastPing: null } };
 
     let dbOk = false;
+    let dbError = null;
     try {
       const t0 = Date.now();
-      const rows = await runQuery('SELECT 1 as ok');
+      // Run an active probe directly against the pool (NOT through runQuery,
+      // which falls back to in-memory) so the status reflects the REAL Neon
+      // connection, not a cached health flag that may be transiently stale.
+      const pool = getDbPool();
+      if (pool) {
+        const result = await pool.query('SELECT 1 as ok');
+        dbOk = Array.isArray(result.rows) && result.rows[0]?.ok === 1;
+      }
       const latencyMs = Date.now() - t0;
-      // `runQuery` transparently falls back to an in-memory store when the pool
-      // is unhealthy, and that fallback hardcodes `SELECT 1 as ok` -> [{ok:1}].
-      // Gate on isDbHealthy() so a fully-degraded server reports OFFLINE
-      // instead of a false-positive OK (which masked missing Control Tower data).
-      dbOk = isDbHealthy() && Array.isArray(rows) && rows[0]?.ok === 1;
       services.postgres = {
         status: dbOk ? 'OK' : 'OFFLINE',
         latencyMs: dbOk ? latencyMs : null,
         lastPing: new Date().toISOString()
       };
-    } catch {
+    } catch (err) {
+      dbError = err instanceof Error ? err.message : String(err);
+      console.error('[HealthDeep] Neon Postgres probe failed:', dbError);
       services.postgres = { status: 'OFFLINE', latencyMs: null, lastPing: null };
     }
 
