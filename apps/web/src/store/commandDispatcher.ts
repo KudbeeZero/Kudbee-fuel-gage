@@ -12,7 +12,10 @@ export type CommandKind =
   | 'CRUCIBLE_DISPATCH'
   | 'PLAYGROUND_RUN'
   | 'TELEMETRY_PURGE'
-  | 'PROPOSE_GOVERNANCE';
+  | 'PROPOSE_GOVERNANCE'
+  | 'MEMORY_RECALL'
+  | 'SYSTEM_PROBE'
+  | 'GOVERNANCE_BULK_APPROVE';
 
 export interface DispatchedCommand {
   id: string;
@@ -235,6 +238,69 @@ export const commandRunners = {
         return {
           success: !!res?.ok,
           detail: `${res?.count ?? 0} traces removed`
+        };
+      }
+    }),
+  memoryRecall: (query?: string) =>
+    runWithDispatcher({
+      kind: 'MEMORY_RECALL',
+      label: `Recall Memory${query ? `: "${query}"` : ''}`,
+      description: 'Semantic search over the vector memory store',
+      run: async (setState) => {
+        setState('PROCESSING', 'Querying vector memory…');
+        const q = query || 'telemetry dashboard latency';
+        const res = await apiPost<{ results?: Array<{ id: string; chunk: string; score: number }>; memories?: Array<{ id: string; chunk: string; score: number }> }>(
+          '/api/memory/recall',
+          { query: q, limit: 5 }
+        );
+        const hits = res?.results ?? res?.memories ?? [];
+        return {
+          success: true,
+          detail: `${hits.length} memory chunks recalled for "${q}"`
+        };
+      }
+    }),
+  systemProbe: () =>
+    runWithDispatcher({
+      kind: 'SYSTEM_PROBE',
+      label: 'Trigger System Probe',
+      description: 'Run deep health check on Postgres, Redis, and agents',
+      run: async (setState) => {
+        setState('PROCESSING', 'Probing system health…');
+        const res = await apiPost<{ status?: string; services?: Record<string, { status: string; latencyMs: number }>; agent?: { status: string } }>(
+          '/api/system/health-deep',
+          {}
+        );
+        const svc = res?.services ?? {};
+        const parts: string[] = [];
+        if (svc.postgres) parts.push(`PG ${svc.postgres.latencyMs}ms`);
+        if (svc.redis) parts.push(`Redis ${svc.redis.latencyMs}ms`);
+        if (res?.agent) parts.push(`Agent ${res.agent.status}`);
+        return {
+          success: res?.status === 'HEALTHY' || !!res?.services,
+          detail: parts.length > 0 ? parts.join(', ') : 'Probe completed'
+        };
+      }
+    }),
+  governanceBulkApprove: () =>
+    runWithDispatcher({
+      kind: 'GOVERNANCE_BULK_APPROVE',
+      label: 'Bulk Approve Pending Governance',
+      description: 'Approve all pending HITL governance actions',
+      run: async (setState) => {
+        setState('PROCESSING', 'Fetching pending actions…');
+        const pending = await apiPost<Array<{ id: string }>>('/api/governance/pending', {});
+        const items = Array.isArray(pending) ? pending : [];
+        let approved = 0;
+        for (const item of items.slice(0, 10)) {
+          try {
+            await apiPost('/api/governance/approve', { id: item.id });
+            approved++;
+          } catch { /* skip failures */ }
+        }
+        return {
+          success: true,
+          detail: `${approved}/${items.length} actions approved`
         };
       }
     })
