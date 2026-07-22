@@ -61,6 +61,8 @@
     "POST:/api/agents/evaluate",
     "GET:/api/agents/evaluate",
     "GET:/api/memory/think-tokens",
-    "USE:/api/"
+    "USE:/api/",
+    "USE:/api/telemetry/ingest",
+    "USE:/api/interceptor"
   ]
 }
