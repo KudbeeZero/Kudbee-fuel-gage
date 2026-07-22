@@ -54,6 +54,7 @@ import { DiagnosticTicker } from './components/dashboard/DiagnosticTicker';
 import { LatencyHistogram } from './components/LatencyHistogram';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
+import { useLiveTaskStream } from './hooks/useLiveTaskStream';
 import { OSControlBar, CommandPalette } from './components/OSControlBar';
 import { GatewayView } from './components/gateway/GatewayView';
 import { lazy, Suspense } from 'react';
@@ -4431,9 +4432,15 @@ export default function App() {
       />
 
       {/* 2. THE PERSISTENT CONSOLE DOCK (Collapsible Terminal) */}
+      <ConsoleDockBridge />
       <ConsoleDock />
     </div>
   );
+}
+
+function ConsoleDockBridge() {
+  useLiveTaskStream();
+  return null;
 }
 
 function RouteFallback({ label }: { label: string }) {

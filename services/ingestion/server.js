@@ -3515,6 +3515,17 @@ if (process.env.CRUCIBLE_ENABLED === 'true') {
   }
 }
 
+// --- Phase 26: Background worker (Crucible task queue) -----------------------
+// The worker is fire-and-forget; it never blocks the API event loop. If
+// Redis is offline the worker logs a warning and remains dormant until
+// the next process restart.
+try {
+  const { startWorker } = await import('../agents/worker.ts');
+  void startWorker();
+} catch (err) {
+  console.error('[Worker] Failed to start background loop:', err instanceof Error ? err.message : String(err));
+}
+
 // Populate the shared state holder so the modular sub-routers can read the
 // policy / feedback / auto-tune / evaluate state lazily.
 if (globalThis.__KUBEE_STATE__) {

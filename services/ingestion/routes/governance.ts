@@ -232,5 +232,68 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
+  // --- Phase 26: Background task queue & DLQ endpoints ---------------------
+
+  router.post('/tasks/enqueue', async (req, res) => {
+    try {
+      const { enqueueTask, isAvailable: workerAvailable } = await import('../../agents/worker.ts');
+      if (!workerAvailable()) {
+        return res.status(503).json({ error: 'background worker unavailable (Redis offline)' });
+      }
+      const result = await enqueueTask(req.body || {});
+      if (!result.success) {
+        return res.status(503).json({ error: result.error || 'enqueue failed' });
+      }
+      res.status(201).json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/failed', async (_req, res) => {
+    try {
+      const { listFailed, getDlqName, isRunning } = await import('../../agents/worker.ts');
+      const items = await listFailed();
+      res.json({
+        dlq: getDlqName(),
+        workerRunning: isRunning(),
+        count: items.length,
+        items
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/failed/retry', async (req, res) => {
+    try {
+      const ctx = requireRole(req, res, 'OPERATOR');
+      if (!ctx) return;
+      const { retryFailed } = await import('../../agents/worker.ts');
+      const id = String(req.body?.id || '');
+      if (!id) return res.status(400).json({ error: 'id required' });
+      const result = await retryFailed(id);
+      if (!result.success) return res.status(404).json(result);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/failed/discard', async (req, res) => {
+    try {
+      const ctx = requireRole(req, res, 'ADMIN');
+      if (!ctx) return;
+      const { discardFailed } = await import('../../agents/worker.ts');
+      const id = String(req.body?.id || '');
+      if (!id) return res.status(400).json({ error: 'id required' });
+      const result = await discardFailed(id);
+      if (!result.success) return res.status(404).json(result);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   return router;
 }
