@@ -286,9 +286,7 @@ export async function processTask(task: any) {
 export async function _tick() {
   const redis = getRedisClient();
   if (!redis) return false;
-  const raw = await redis.rpop(TASK_QUEUE).catch(() => { console.error("[_tick] POP FAIL"); return null; });
-  if (raw) console.error("[_tick] GOT TASK from queue");
-  else return false;
+  const raw = await redis.rpop(TASK_QUEUE).catch(() => null);
   if (!raw) return false;
   const task = parse(raw);
   if (!task) {
@@ -328,16 +326,12 @@ export async function startWorker() {
   _running = true;
   _stopRequested = false;
   console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
-  let _tickCount = 0;
   (async function loop() {
     while (!_stopRequested) {
       try {
         const processed = await _tick();
-        _tickCount++;
         if (!processed) {
           await sleep(IDLE_POLL_MS);
-        } else {
-          console.error(`[Worker] Processed task at tick ${_tickCount}`);
         }
       } catch (err) {
         console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));

@@ -129,11 +129,19 @@ function nextBackoffMs(): number {
   return Math.min(backoff, BACKOFF_MAX_MS);
 }
 
+// --- Real exponential backoff loop (replaces fixed setInterval) ---
+// When egress fails we schedule the next poll after `nextBackoffMs()`
+// instead of polling at a fixed 2s cadence. A circuit breaker pauses
+// for 60s after 10 consecutive failures to avoid saturating a dead target.
+const CIRCUIT_BREAKER_THRESHOLD = 10;
+const CIRCUIT_BREAKER_PAUSE_MS = 60_000;
+let _pollerTimeout: ReturnType<typeof setTimeout> | null = null;
+
 async function pollOnce(): Promise<void> {
   const raw = sampleRawTelemetry();
   const signal = extractSignal(raw);
   if (!signal) {
-    // Silence is default: normal telemetry is dropped (no logging spam).
+    scheduleNext(0);
     return;
   }
   try {
@@ -141,8 +149,6 @@ async function pollOnce(): Promise<void> {
     const result = await egressIngest(payload);
     if (!result.ok) {
       consecutiveFailures += 1;
-      // Log only on first failure, or every Nth, to avoid flooding the logs
-      // during a sustained degradation window. Otherwise stay quiet.
       if (consecutiveFailures === 1 || consecutiveFailures % MAX_QUIET_RETRIES === 0) {
         console.warn(
           `[Sentinel] egress degraded (attempt ${consecutiveFailures}, next retry in ~${nextBackoffMs()}ms):`,
@@ -150,25 +156,35 @@ async function pollOnce(): Promise<void> {
           result.detail
         );
       }
+      if (consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+        console.warn(`[Sentinel] circuit breaker engaged — pausing for ${CIRCUIT_BREAKER_PAUSE_MS / 1000}s`);
+        scheduleNext(CIRCUIT_BREAKER_PAUSE_MS);
+      } else {
+        scheduleNext(nextBackoffMs());
+      }
     } else {
       if (consecutiveFailures > 0) {
         console.log(`[Sentinel] egress recovered after ${consecutiveFailures} failures`);
       }
       consecutiveFailures = 0;
       console.log(`[Sentinel] ingested ${payload.trace_id} (latency ${signal.latency_ms}ms)`);
+      scheduleNext(0);
     }
   } catch (err) {
     const message = toErrorMessage(err);
     console.warn('[Sentinel] ingest validation failed (dropped):', message);
+    scheduleNext(0);
   }
 }
 
+function scheduleNext(delayMs: number): void {
+  if (_pollerTimeout) clearTimeout(_pollerTimeout);
+  _pollerTimeout = setTimeout(() => void pollOnce(), Math.max(delayMs, POLL_INTERVAL_MS));
+}
+
 function startPoller(): void {
-  console.log(`[Sentinel] heartbeat started — polling ${INGEST_URL}${INGEST_PATH} every ${POLL_INTERVAL_MS}ms`);
+  console.log(`[Sentinel] heartbeat started — polling ${INGEST_URL}${INGEST_PATH} (backoff up to ${BACKOFF_MAX_MS}ms, circuit breaker at ${CIRCUIT_BREAKER_THRESHOLD} failures)`);
   void pollOnce();
-  setInterval(() => {
-    void pollOnce();
-  }, POLL_INTERVAL_MS);
 }
 
 export { startPoller };

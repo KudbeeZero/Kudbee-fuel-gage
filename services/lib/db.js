@@ -76,7 +76,7 @@ export function getDbPool() {
 
   const pool = new Pool({
     connectionString: DATABASE_URL,
-    max: 10,
+    max: 20,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
     // Neon cloud Postgres strictly requires TLS. The connection string's
@@ -84,8 +84,12 @@ export function getDbPool() {
     // explicit ssl configuration ensures the driver never downgrades to
     // cleartext even when the URL fragment is missing or mis-parsed.
     ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
-    // Neon closes idle connections; allow the pool to transparently reconnect.
-    keepAlive: true
+    // Neon closes idle connections after ~5 min. Our idleTimeout of 30s
+    // cycles idle connections before Neon kills them. keepAlive: true
+    // probes the connection periodically to detect and discard dead
+    // connections before issuing queries to them.
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000
   });
 
   // Optimistically mark healthy so the first queries actually reach Neon

@@ -2605,9 +2605,11 @@ app.get('/api/events', async (req, res) => {
     'X-Accel-Buffering': 'no'
   });
   res.write('retry: 3000\n\n');
+  // Flush headers immediately so the Heroku router marks the response as
+  // started and does not trigger an H27 timeout during the snapshot query.
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
   sseClients.add(res);
 
-  // Snapshot of current governance state so a fresh client renders instantly.
   try {
     const proposed = redis ? await listProposed() : [];
     res.write(`event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [] })}\n\n`);
@@ -2615,13 +2617,15 @@ app.get('/api/events', async (req, res) => {
     /* ignore */
   }
 
+  // 10s keepalive ping keeps the Heroku router from killing the SSE stream
+  // (Heroku's default 55s idle timeout requires periodic data frames).
   const keepAlive = setInterval(() => {
     try {
       res.write(`: ping\n\n`);
     } catch {
       /* ignore */
     }
-  }, 15000);
+  }, 10_000);
 
   req.on('close', () => {
     clearInterval(keepAlive);
@@ -2639,9 +2643,9 @@ app.get('/api/telemetry/stream', async (req, res) => {
     'X-Accel-Buffering': 'no'
   });
   res.write('retry: 3000\n\n');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
   sseClients.add(res);
-  // Send a recent snapshot of the telemetry pipeline so the History view can
-  // render the latest aggregated metrics without waiting for the next event.
+
   try {
     const summary = await runQuery(
       `SELECT COALESCE(SUM(input_tokens), 0) AS in_tok,
@@ -2660,7 +2664,7 @@ app.get('/api/telemetry/stream', async (req, res) => {
     } catch {
       /* ignore */
     }
-  }, 15000);
+  }, 10_000);
   req.on('close', () => {
     clearInterval(keepAlive);
     sseClients.delete(res);
