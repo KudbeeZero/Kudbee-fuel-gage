@@ -12,6 +12,7 @@
 
 import { getDbPool, isDbHealthy, runInsert } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
+import { publishEvent as publishUnifiedEvent } from '../lib/unifiedEvents.ts';
 import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 import type { ThinkToken } from '@kudbee/types';
 
@@ -150,6 +151,11 @@ export async function mintThinkToken(
           }
         })
       );
+      void publishUnifiedEvent('system', 'think_token_minted', {
+        id: tokenId, agentId, originalTraceId, status, cost, latencyMs,
+        embedding_dim: embedding.length, kd, efficacy, locked_by,
+        timestamp: new Date().toISOString()
+      }, REDIS_THINK_TOKENS_CHANNEL);
     } catch {
       // best-effort telemetry; never block minting on Redis
     }
