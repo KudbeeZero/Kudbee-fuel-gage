@@ -485,12 +485,12 @@ function formatBytes(bytes: number | null): string {
 }
 
 function StorageGaugeCard({ bytes, label, icon: Icon, thresholdBytes }: { bytes: number | null; label: string; icon: typeof Database; thresholdBytes: number }) {
+  const loading = bytes === null;
   const displayBytes = bytes ?? 0;
   const pct = Math.max(0, Math.min(100, Math.round((displayBytes / thresholdBytes) * 100)));
-  const hue = pct > 80 ? 'text-rose-400' : pct > 50 ? 'text-amber-400' : 'text-emerald-400';
   const bar = pct > 80 ? 'bg-rose-500' : pct > 50 ? 'bg-amber-500' : 'bg-emerald-500';
-  const status = pct > 80 ? 'CRITICAL' : pct > 50 ? 'DEGRADED' : 'HEALTHY';
-  const statusColor = pct > 80 ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' : pct > 50 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+  const status = loading ? 'PENDING' : pct > 80 ? 'CRITICAL' : pct > 50 ? 'DEGRADED' : 'HEALTHY';
+  const statusColor = loading ? 'border-slate-600/30 bg-slate-600/10 text-slate-500' : pct > 80 ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' : pct > 50 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -504,10 +504,11 @@ function StorageGaugeCard({ bytes, label, icon: Icon, thresholdBytes }: { bytes:
         </span>
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="font-mono text-3xl font-bold text-slate-100">{formatBytes(displayBytes)}</span>
+        <span className="font-mono text-3xl font-bold text-slate-100">{loading ? '\u2014' : formatBytes(displayBytes)}</span>
+        {loading && <span className="text-[11px] font-mono text-slate-500 animate-pulse">loading...</span>}
       </div>
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-800">
-        <div className={`h-full ${bar} transition-all duration-500`} style={{ width: `${pct}%` }} />
+        <div className={`h-full ${loading ? 'bg-slate-700 animate-pulse' : bar} transition-all duration-500`} style={{ width: `${loading ? 100 : pct}%` }} />
       </div>
       <p className="mt-2 text-[10px] font-mono text-slate-500">Threshold: {formatBytes(thresholdBytes)}</p>
     </div>
@@ -2414,12 +2415,19 @@ export function DashboardPage() {
       }
     });
 
+    // Storage metrics — real-time Postgres + Redis byte sizes pushed via SSE.
+    const offStorage = stream.on('storage_metrics', (data: any) => {
+      if (data?.postgres_size_bytes !== undefined) setPostgresSize(data.postgres_size_bytes ?? null);
+      if (data?.redis_size_bytes !== undefined) setRedisSize(data.redis_size_bytes ?? null);
+    });
+
     return () => {
       offSlow();
       offSuggest();
       offGov();
       offTriage();
       offSnapshot();
+      offStorage();
     };
   }, [stream.on, loadGovernance, loadTriage, pushTerminalEvent]);
 
@@ -2584,7 +2592,7 @@ export function DashboardPage() {
 
   useInterval(() => {
     void syncAll();
-  }, 30_000);
+  }, 10_000);
 
   useEffect(() => {
     void loadThinkMetrics();
@@ -2803,7 +2811,7 @@ export function DashboardPage() {
         )}
 
         <footer className="mt-8 flex items-center justify-between border-t border-slate-800/60 pt-5 text-[10px] font-mono text-slate-600">
-          <span>Kudbee Control Tower · live SSE {stream.connected ? 'connected' : 'connecting…'} · 30s safety poll</span>
+          <span>Kudbee Control Tower · live SSE {stream.connected ? 'connected' : 'connecting…'} · 10s safety poll</span>
           <span>{apiUrl('/health')}</span>
         </footer>
         <QuickCommandPanel

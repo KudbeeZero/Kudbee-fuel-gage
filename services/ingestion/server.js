@@ -1240,10 +1240,26 @@ app.get('/api/telemetry/stats', async (_req, res) => {
       }
     }
 
+    let postgresSizeBytes = null;
+    let redisSizeBytes = null;
+    try {
+      const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
+      if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
+    } catch { /* ignore */ }
+    try {
+      if (redis) {
+        const info = await redis.info('memory');
+        const match = info.match(/used_memory:(\d+)/);
+        if (match && match[1]) redisSizeBytes = Number(match[1]);
+      }
+    } catch { /* ignore */ }
+
     return res.json({
       vector_memory_count: Number(vectorRows[0]?.count || 0),
       think_tokens_minted: Number(tokenRows[0]?.count || 0),
       crucible,
+      postgres_size_bytes: postgresSizeBytes,
+      redis_size_bytes: redisSizeBytes,
       timestamp: new Date().toISOString()
     });
   } catch (err) {
@@ -1251,6 +1267,30 @@ app.get('/api/telemetry/stats', async (_req, res) => {
     return res.status(500).json({ error: 'Failed to fetch telemetry stats' });
   }
 });
+
+// --- Live Storage Metrics SSE Heartbeat (every 10s) ----------------------------
+// Broadcasts real-time Postgres + Redis storage sizes to all connected SSE
+// clients so the Control Tower dashboard updates without polling.
+setInterval(async () => {
+  try {
+    let postgresSizeBytes = null;
+    let redisSizeBytes = null;
+    try {
+      const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
+      if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
+    } catch { /* ignore */ }
+    try {
+      if (redis) {
+        const info = await redis.info('memory');
+        const match = info.match(/used_memory:(\d+)/);
+        if (match && match[1]) redisSizeBytes = Number(match[1]);
+      }
+    } catch { /* ignore */ }
+    if (sseClients.size > 0) {
+      broadcast({ type: 'storage_metrics', data: { postgres_size_bytes: postgresSizeBytes, redis_size_bytes: redisSizeBytes, timestamp: new Date().toISOString() } });
+    }
+  } catch { /* never crash the heartbeat */ }
+}, 10_000);
 
 // --- Phase 32: Live Think Metrics Aggregation ----------------------------------
 app.get('/api/think/metrics', async (_req, res) => {
