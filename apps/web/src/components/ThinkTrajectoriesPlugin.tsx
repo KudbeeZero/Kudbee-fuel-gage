@@ -42,6 +42,7 @@ interface TrajectoryDrawerProps {
 }
 
 function TrajectoryDrawer({ trajectory, onClose }: TrajectoryDrawerProps) {
+  if (!trajectory) return null;
   const coords = trajectory.spatial_coordinates;
   const dims = coords?.length ?? 0;
 
