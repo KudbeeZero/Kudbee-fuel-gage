@@ -17,6 +17,7 @@ import express from 'express';
 
 type Deps = {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
+  isDbHealthy: () => boolean;
   publishEvent: (type: string, data: unknown) => void;
   listProposed: () => Promise<any[]>;
   getBootTime: () => number;
@@ -26,7 +27,7 @@ type Deps = {
   getAlertsState: () => { alerts: any[] };
 };
 
-export function createSystemRouter({ runQuery, publishEvent, listProposed, getBootTime, getRedis, getPool, getProviderConfig, getAlertsState }: Deps) {
+export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listProposed, getBootTime, getRedis, getPool, getProviderConfig, getAlertsState }: Deps) {
   const router = express.Router();
 
   router.get('/health-deep', async (_req, res) => {
@@ -45,7 +46,11 @@ export function createSystemRouter({ runQuery, publishEvent, listProposed, getBo
         const t0 = Date.now();
         const rows = await runQuery('SELECT 1 as ok');
         const latencyMs = Date.now() - t0;
-        dbOk = Array.isArray(rows) && rows[0]?.ok === 1;
+        // `runQuery` transparently falls back to an in-memory store when the pool
+        // is unhealthy, and that fallback hardcodes `SELECT 1 as ok` -> [{ok:1}].
+        // Gate on isDbHealthy() so a fully-degraded server reports OFFLINE
+        // instead of a false-positive OK (which masked missing Control Tower data).
+        dbOk = isDbHealthy() && Array.isArray(rows) && rows[0]?.ok === 1;
         services.postgres = {
           status: dbOk ? 'OK' : 'OFFLINE',
           latencyMs: dbOk ? latencyMs : null,

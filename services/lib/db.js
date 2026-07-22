@@ -99,7 +99,44 @@ export function getDbPool() {
   console.log('[DB] Neon Postgres Pool initialized from DATABASE_URL');
   _pool = pool;
   primeConnection(pool);
+  startHealthReprobe();
   return _pool;
+}
+
+/**
+ * Periodically re-attempt a real Neon connection when the pool has been marked
+ * unhealthy. This makes degradation TRANSIENT: once Neon recovers, the next
+ * probe re-arms `_healthy` so runQuery/runInsert route back to the real
+ * database instead of the empty in-memory store. Without this, a single
+ * transient connection failure permanently degrades the process for its
+ * entire lifetime (the pool's `connect` event can't fire because runQuery
+ * short-circuits to memory when unhealthy — a Catch-22).
+ *
+ * The probe is a cheap no-op while healthy; it only does connect work when the
+ * pool is currently unhealthy. It runs in the background and does not block
+ * request handling (unhealthy requests still get the fast memory fallback).
+ */
+let _reprobeTimer = null;
+const REPROBE_INTERVAL_MS = 30_000;
+
+function startHealthReprobe() {
+  if (_reprobeTimer) return;
+  _reprobeTimer = setInterval(async () => {
+    // Nothing to do when disabled, uninitialized, or already healthy.
+    if (_disabled || !_pool || _healthy) return;
+    try {
+      const client = await _pool.connect();
+      client.release();
+      _healthy = true;
+      console.log('[DB] Neon Postgres connection restored (healthy).');
+    } catch {
+      // Still down — stay unhealthy. The initial failure was already logged;
+      // suppress per-interval spam. The next interval will retry automatically.
+      _healthy = false;
+    }
+  }, REPROBE_INTERVAL_MS);
+  // Don't keep the process alive solely for this timer (allows graceful exit).
+  if (typeof _reprobeTimer.unref === 'function') _reprobeTimer.unref();
 }
 
 /** True when the Neon pool is configured AND has not reported an error. */
@@ -109,6 +146,10 @@ export function isDbHealthy() {
 
 /** Release the pool (used on graceful shutdown). Safe to call when disabled. */
 export async function closeDbPool() {
+  if (_reprobeTimer) {
+    clearInterval(_reprobeTimer);
+    _reprobeTimer = null;
+  }
   if (_pool) {
     try {
       await _pool.end();
