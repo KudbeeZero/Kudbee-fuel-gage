@@ -49,6 +49,20 @@ async function waitForServer(url, timeoutMs = 15000) {
 }
 
 async function startServer() {
+  // Clean stale locks from previous test runs so each verification starts fresh.
+  try {
+    const Redis = (await import('ioredis')).default;
+    const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+    const isUpstash = url.startsWith('rediss://') || url.includes('upstash.io');
+    const config = { lazyConnect: false, enableOfflineQueue: true };
+    if (isUpstash) config.tls = { rejectUnauthorized: false };
+    const redis = new Redis(url, config);
+    await new Promise(r => setTimeout(r, 1000));
+    await redis.del('kudbee:receptor:locks');
+    await redis.quit();
+    console.log('[ReceptorE2E] Cleared stale receptor locks from Redis.');
+  } catch { /* degrade gracefully — Redis may be unavailable */ }
+
   console.log('[ReceptorE2E] Starting ingestion server...');
   const tsxPath = require.resolve('tsx/cli');
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
