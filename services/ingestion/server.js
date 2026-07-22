@@ -4141,6 +4141,16 @@ if (globalThis.__KUBEE_STATE__) {
   globalThis.__KUBEE_STATE__.evaluatePolicies = evaluatePolicies;
 }
 
+// --- Global error boundary: degrade gracefully, never crash the process ---
+app.use((err, req, res, next) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[Resilience] Unhandled error on ${req.method} ${req.path}: ${message}`);
+  if (!res.headersSent) {
+    return res.status(500).json({ status: 'degraded', fallback: true, error: process.env.NODE_ENV === 'production' ? 'Internal error' : message });
+  }
+  next(err);
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
