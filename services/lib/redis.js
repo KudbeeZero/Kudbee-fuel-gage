@@ -9,10 +9,10 @@
  * created and reused; callers should not instantiate their own `new Redis(...)`
  * anymore.
  *
- * Connection is lazy: the client connects on first command. We wire `connect`
- * / `error` / `reconnecting` listeners so the process logs state transitions
- * without crashing on transient outages (the backend is expected to survive
- * Redis blips — "self-healing").
+ * Connection is immediate: the client connects synchronously on creation.
+ * We wire `connect` / `error` / `reconnecting` listeners so the process logs
+ * state transitions without crashing on transient outages (the backend is
+ * expected to survive Redis blips — "self-healing").
  * ---------------------------------------------------------------------------
  */
 
@@ -39,7 +39,7 @@ export function getRedisClient(opts = {}) {
   if (!opts.forceNew && _client) return _client;
 
   const baseConfig = {
-    lazyConnect: opts.lazyConnect ?? true,
+    lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? false,
