@@ -38,6 +38,7 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
+import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
@@ -2168,6 +2169,19 @@ app.patch('/api/settings/tenant/:id', async (req, res) => {
 
 app.get('/api/settings/tenant/:id', async (req, res) => {
   return res.status(200).json({ settings: tenantSettings[req.params.id] || {} });
+});
+
+// --- Settings persistence via settingsStore.ts ---
+app.put('/api/settings/preferences', async (req, res) => {
+  try {
+    const { tenantId, ...settings } = req.body || {};
+    const saved = await saveSettings(tenantId || 'default', settings);
+    return res.status(200).json({ success: true, settings: saved });
+  } catch { return res.status(500).json({ error: 'Settings save failed' }); }
+});
+app.get('/api/settings/preferences', async (req, res) => {
+  try { const settings = await getSettings(req.query.tenantId || 'default'); return res.status(200).json({ settings }); }
+  catch { return res.status(200).json({ settings: {} }); }
 });
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
