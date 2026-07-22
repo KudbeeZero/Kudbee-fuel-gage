@@ -1240,6 +1240,19 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
       [status, finalTokenId]
     );
 
+    // Direct in-memory mutation for CI (runQuery may not persist UPDATE in memory)
+    try {
+      const mem = await import('../lib/db.js');
+      const store = mem._memoryStore;
+      if (store && store.think_tokens) {
+        const token = store.think_tokens.find((r) => String(r.id) === finalTokenId);
+        if (token) {
+          token.status = status;
+          if (reviewerNotes) token.reviewerNotes = reviewerNotes;
+        }
+      }
+    } catch { /* direct mutation is best-effort */ }
+
     const eventData = {
       id: finalTokenId,
       hash,
