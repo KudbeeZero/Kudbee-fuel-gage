@@ -31,8 +31,8 @@ import {
 } from '../agents/src/context-factory.ts';
 import { evaluateAgentPayload } from '../agents/worker.ts';
 import { routeAgentPayload, HIGH_UNCERTAINTY_TAG } from '../agents/router.ts';
+import { publishEvent as publishUnifiedEvent } from '../lib/unifiedEvents.ts';
 import { getRelevantThinkTokens, renderThinkTokenContext } from '../memory/vectorStore.ts';
-import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
@@ -2679,6 +2679,7 @@ function publishEvent(type, data) {
   if (redis) {
     try {
       redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch(() => {});
+      void publishUnifiedEvent('governance', type, data, EVENTS_CHANNEL);
     } catch {
       /* ignore */
     }
