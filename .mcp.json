@@ -2,10 +2,15 @@
   "mcpServers": {
     "neon": {
       "command": "npx",
-      "args": ["-y", "@neondatabase/mcp-server@latest"],
+      "args": [
+        "-y",
+        "@neondatabase/mcp-server@latest"
+      ],
       "env": {
         "DATABASE_URL": "${DATABASE_URL}"
-      }
+      },
+      "type": "http",
+      "url": "https://mcp.neon.tech/mcp"
     }
   }
 }
