@@ -12,6 +12,7 @@ import {
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
+import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
 import { listProposed, approveAction, rejectAction, matchLogic } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
@@ -162,6 +163,7 @@ app.use('/api/governance', governanceRouter);
 
 const telemetryRouter = createTelemetryRouter({ runQuery });
 app.use('/api/telemetry', telemetryRouter);
+app.use('/api/telemetry', createDegradationRouter());
 
 const systemRouter = createSystemRouter({
   runQuery,

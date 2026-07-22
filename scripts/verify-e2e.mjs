@@ -2,8 +2,12 @@ import http from 'http';
 import { spawn } from 'child_process';
 import { setTimeout as delay } from 'timers/promises';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import { createRequire } from 'module';
+import { spawnSync } from 'child_process';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const require = createRequire(import.meta.url);
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -37,7 +41,8 @@ async function waitForServer(url, timeoutMs = 10000) {
 
 async function startServer() {
   console.log('[E2E] Starting ingestion server...');
-  serverProcess = spawn(process.execPath, ['server.js'], {
+  const tsxPath = require.resolve('tsx/cli');
+  serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
     stdio: ['pipe', 'pipe', 'pipe']
@@ -495,6 +500,7 @@ async function check27_TaskEnqueueAndConsumption() {
 }
 
 async function check28_DLQRetryPolicy() {
+  const es = await import('child_process');
   const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
@@ -530,6 +536,81 @@ async function check28_DLQRetryPolicy() {
   return true;
 }
 
+async function check29_DriftSentinel() {
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'verify-drift.mjs')], {
+    cwd: __dirname,
+    encoding: 'utf-8'
+  });
+  if (result.error) {
+    return false;
+  }
+  const passed = result.status === 0;
+  return passed;
+}
+
+async function check30_DegradationMonitorTracking() {
+  let before;
+  try {
+    const beforeRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!beforeRes.ok) {
+      console.error(`[Check30] degradation-status before: HTTP ${beforeRes.status}`);
+      return false;
+    }
+    before = await beforeRes.json();
+  } catch (e) {
+    console.error(`[Check30] degradation-status before read failed: ${e.message}`);
+    return false;
+  }
+
+  const ingestPayload = {
+    trace_id: `tr-e2e-deg-${Date.now()}`,
+    model: 'gemini-1.5-pro',
+    tokens_in: 100,
+    tokens_out: 50,
+    cost: 0.001,
+    status: 'OK',
+    provider: 'Google',
+    project_name: 'degradation-monitor-test'
+  };
+  const ingestRes = await fetch(`${BASE}/api/telemetry/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ingestPayload)
+  });
+  if (!ingestRes.ok) {
+    const txt = await ingestRes.text().catch(() => 'no body');
+    console.error(`[Check30] ingest failed: ${ingestRes.status} ${txt}`);
+    return false;
+  }
+
+  let after;
+  try {
+    const afterRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!afterRes.ok) {
+      console.error(`[Check30] degradation-status after: HTTP ${afterRes.status}`);
+      return false;
+    }
+    after = await afterRes.json();
+  } catch (e) {
+    console.error(`[Check30] degradation-status after read failed: ${e.message}`);
+    return false;
+  }
+
+  console.error(`[Check30] before: ${JSON.stringify(before.counters)}`);
+  console.error(`[Check30] after: ${JSON.stringify(after.counters)}`);
+
+  const hasCounters = typeof after.counters === 'object' &&
+    typeof after.counters.primaryQueryCount === 'number' &&
+    typeof after.counters.fallbackQueryCount === 'number' &&
+    typeof after.counters.redisPrimaryCount === 'number' &&
+    typeof after.counters.redisFallbackCount === 'number';
+
+  const countersAdvanced = (after.counters.primaryQueryCount + after.counters.fallbackQueryCount) >
+    (before.counters.primaryQueryCount + before.counters.fallbackQueryCount);
+
+  return hasCounters && countersAdvanced;
+}
+
 async function run() {
   try {
     await startServer();
@@ -561,6 +642,8 @@ async function run() {
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
     await runCheck('Check 27: Task enqueue and worker consumption', check27_TaskEnqueueAndConsumption);
     await runCheck('Check 28: DLQ retry policy (3-strike → dead letter)', check28_DLQRetryPolicy);
+    await runCheck('Check 29: Dual-source drift sentinel', check29_DriftSentinel);
+    await runCheck('Check 30: Degradation monitor tracking', check30_DegradationMonitorTracking);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -569,7 +652,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 28`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 30`);
   console.log('========================================');
 
   if (failed > 0) {
