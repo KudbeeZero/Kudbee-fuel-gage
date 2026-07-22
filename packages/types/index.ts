@@ -322,7 +322,10 @@ export const ThinkTokenSchema = z.object({
   correction_delta: z.string().default(''),
   embedding: z.array(z.number()).min(1),
   status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']).default('PENDING_APPROVAL'),
-  created_at: z.string().optional()
+  created_at: z.string().optional(),
+  kd: z.number().min(0).default(0).describe('Gating affinity threshold (Kd → 0 = near-perfect binding similarity)'),
+  efficacy: z.number().min(0).max(1).default(0).describe('Intrinsic activity/mutation weight (0.0–1.0)'),
+  locked_by: z.string().nullable().default(null).describe('ID/hash of the high-affinity Guard Token occupying the coordinate slot')
 });
 export type ThinkToken = z.infer<typeof ThinkTokenSchema>;
 
@@ -336,7 +339,10 @@ export const ThinkTrajectorySchema = z.object({
   task_context: z.record(z.unknown()).optional(),
   failed_state: z.record(z.unknown()).optional(),
   correction_delta: z.string().default(''),
-  created_at: z.string().optional()
+  created_at: z.string().optional(),
+  kd: z.number().min(0).default(0).describe('Gating affinity threshold'),
+  efficacy: z.number().min(0).max(1).default(0).describe('Intrinsic activity weight (0.0–1.0)'),
+  locked_by: z.string().nullable().default(null).describe('Guard Token hash occupying the coordinate slot')
 });
 export type ThinkTrajectory = z.infer<typeof ThinkTrajectorySchema>;
 

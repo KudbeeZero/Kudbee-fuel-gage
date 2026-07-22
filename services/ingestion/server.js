@@ -32,6 +32,7 @@ import {
 import { evaluateAgentPayload } from '../agents/worker.ts';
 import { routeAgentPayload, HIGH_UNCERTAINTY_TAG } from '../agents/router.ts';
 import { getRelevantThinkTokens, renderThinkTokenContext } from '../memory/vectorStore.ts';
+import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
@@ -1737,10 +1738,13 @@ app.post('/api/governance/resolve', async (req, res) => {
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
   try {
-    const { traceId, taskContext, failedState, correctionDelta, status } = req.body || {};
+    const { traceId, taskContext, failedState, correctionDelta, status,
+            kd, efficacy, tokenType, spatial_coordinates } = req.body || {};
+
     if (!traceId || !correctionDelta) {
       return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
     }
+
     const result = await mintThinkToken({
       traceId: String(traceId),
       taskContext: taskContext || {},
@@ -1748,9 +1752,53 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
       correctionDelta: String(correctionDelta),
       status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status) ? status : 'PENDING_APPROVAL'
     });
+
     if (!result.ok) {
       return res.status(500).json({ error: result.error });
     }
+
+    const kdValue = typeof kd === 'number' ? kd : 0;
+    const efficacyValue = typeof efficacy === 'number' ? efficacy : 0;
+    const hasGatingParams = typeof kd === 'number' || typeof efficacy === 'number' || tokenType === 'CHALLENGE_TOKEN';
+
+    if (hasGatingParams && (kdValue > 0 || efficacyValue === 0)) {
+      const slot = {
+        x: Array.isArray(spatial_coordinates) ? (spatial_coordinates[0] ?? 0) : 0,
+        y: Array.isArray(spatial_coordinates) ? (spatial_coordinates[1] ?? 0) : 0,
+        z: Array.isArray(spatial_coordinates) ? (spatial_coordinates[2] ?? 0) : 0
+      };
+
+      const admission = await receptorGate.evaluateAdmission({
+        tokenId: result.id,
+        tokenHash: result.id,
+        embedding: result.embedding,
+        kd: kdValue,
+        efficacy: efficacyValue,
+        slot,
+        tokenType: tokenType === 'CHALLENGE_TOKEN' ? 'CHALLENGE_TOKEN' : 'ORDINARY'
+      });
+
+      if (!admission.admitted) {
+        return res.status(423).json({
+          error: 'Receptor slot locked',
+          reason: admission.reason,
+          currentOccupant: admission.currentOccupant,
+          auditHash: admission.auditHash
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        tokenId: result.id,
+        embedding_dim: result.embedding.length,
+        receptor: {
+          admitted: true,
+          reason: admission.reason,
+          auditHash: admission.auditHash
+        }
+      });
+    }
+
     return res.status(201).json({ success: true, tokenId: result.id, embedding_dim: result.embedding.length });
   } catch (err) {
     console.error('[ThinkToken] Mint error:', err?.message);
