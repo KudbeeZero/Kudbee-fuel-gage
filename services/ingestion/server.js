@@ -45,6 +45,18 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.set('trust proxy', true);
 
+// --- Phase 45: Request duration tracking and structured logging ---
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const durationMs = Date.now() - start;
+    if (durationMs > 1000 || res.statusCode >= 400) {
+      console.log(`[http] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
+    }
+  });
+  next();
+});
+
 // Shared state holder — referenced lazily by the modular sub-routers so
 // they can be mounted near the top of the file without tripping
 // "Cannot access X before initialization" for state that is declared
@@ -1904,6 +1916,30 @@ app.post('/api/system/lifecycle', async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: 'Lifecycle check failed', detail: err?.message });
   }
+});
+
+// --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
+app.get('/metrics', async (req, res) => {
+  const uptime = Math.floor(process.uptime());
+  const mem = process.memoryUsage();
+  let pgHealthy = false, redisHealthy = false;
+  if (pool) try { await pool.query('SELECT 1'); pgHealthy = true; } catch {}
+  if (redis) try { await redis.ping(); redisHealthy = true; } catch {}
+  const body = [
+    '# HELP kudbee_uptime_seconds Process uptime',
+    '# TYPE kudbee_uptime_seconds gauge',
+    `kudbee_uptime_seconds ${uptime}`,
+    '# HELP kudbee_memory_bytes Memory usage',
+    '# TYPE kudbee_memory_bytes gauge',
+    `kudbee_memory_bytes{rss="rss"} ${mem.rss}`,
+    '# HELP kudbee_pg_healthy Postgres health',
+    `kudbee_pg_healthy ${pgHealthy ? 1 : 0}`,
+    '# HELP kudbee_redis_healthy Redis health',
+    `kudbee_redis_healthy ${redisHealthy ? 1 : 0}`,
+    ''
+  ].join('\n');
+  res.setHeader('Content-Type', 'text/plain');
+  return res.status(200).send(body);
 });
 
 // --- Phase 42: Alert System — Configuration & History ---
