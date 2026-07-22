@@ -243,15 +243,20 @@ async function check17_GovernancePromotionEndpoint() {
   });
   const mintData = await mintRes.json();
   if (!(mintRes.status === 201 && mintData.success === true && typeof mintData.tokenId === 'string')) {
+    console.error('[C17DBG] Mint failed:', mintRes.status, JSON.stringify(mintData).slice(0, 200));
     return false;
   }
+  console.error('[C17DBG] Minted tokenId:', mintData.tokenId);
 
   const trajRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);
   const trajData = await trajRes.json();
+  const trajCount = (trajData.trajectories || []).length;
+  console.error('[C17DBG] Trajectories count:', trajCount);
   const token = trajData.trajectories?.find((t) => t.id === mintData.tokenId);
   if (!token || token.status !== 'PENDING_APPROVAL') {
-    const trajIds = (trajData.trajectories || []).map((t) => t.id).join(',');
-    if (!trajData.trajectories || trajData.trajectories.length === 0) return true; // graceful degrade in-memory
+    const trajIds = (trajData.trajectories || []).slice(0, 5).map((t) => t.id).join(',');
+    console.error('[C17DBG] Token not found. First 5 IDs:', trajIds, 'Looking for:', mintData.tokenId);
+    if (!trajData.trajectories || trajData.trajectories.length === 0) return true;
     return false;
   }
 
@@ -261,7 +266,8 @@ async function check17_GovernancePromotionEndpoint() {
     body: JSON.stringify({ status: 'VERIFIED', reviewerNotes: 'E2E governance promotion', tokenId: token.id })
   });
   const patchData = await patchRes.json();
-  if (patchRes.status === 404 || patchRes.status === 503 || patchRes.status === 500) return true; // graceful degrade in-memory
+  console.error('[C17DBG] PATCH status:', patchRes.status, JSON.stringify(patchData).slice(0, 200));
+  if (patchRes.status === 404 || patchRes.status === 503 || patchRes.status === 500) return true;
   if (!(patchRes.status === 200 && patchData.success === true && patchData.status === 'VERIFIED')) return false;
 
   const confirmRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);
