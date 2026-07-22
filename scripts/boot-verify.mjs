@@ -34,7 +34,7 @@ async function bootVerify() {
     killSignal: 'SIGTERM'
   });
 
-  const stdout: string[] = [];
+  const stdout = [];
   proc.stdout.on('data', (d) => stdout.push(d.toString()));
   proc.stderr.on('data', (d) => { /* suppress */ });
 
@@ -61,7 +61,7 @@ async function bootVerify() {
   // Run lifecycle probe
   const healthDeadline = Date.now() + HEALTH_CHECK_MS;
   let healthy = false;
-  let report: Record<string, unknown> = {};
+  let report = {};
   while (Date.now() < healthDeadline) {
     try {
       const res = await fetch(`${BASE}/api/system/lifecycle`, {
@@ -69,7 +69,7 @@ async function bootVerify() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'status' })
       });
-      report = await res.json() as Record<string, unknown>;
+      report = await res.json();
       if (report.status === 'HEALTHY') { healthy = true; break; }
     } catch {}
     await delay(1000);
