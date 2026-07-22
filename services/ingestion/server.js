@@ -1935,7 +1935,29 @@ app.get('/api/alerts/history', async (req, res) => {
   }
 });
 
-// --- Governance health + HERMES auditor status ---------------------------
+// --- Phase 43: Tenant Settings Configuration ---
+const tenantSettings = {};
+
+app.patch('/api/settings/tenant/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rateLimitWindow, rateLimitMax, receptorLockThreshold, groqModel, notificationsEnabled } = req.body || {};
+    if (!tenantSettings[id]) tenantSettings[id] = {};
+    if (typeof rateLimitWindow === 'number') tenantSettings[id].rateLimitWindow = rateLimitWindow;
+    if (typeof rateLimitMax === 'number') tenantSettings[id].rateLimitMax = rateLimitMax;
+    if (typeof receptorLockThreshold === 'number') tenantSettings[id].receptorLockThreshold = receptorLockThreshold;
+    if (typeof groqModel === 'string') tenantSettings[id].groqModel = groqModel;
+    if (typeof notificationsEnabled === 'boolean') tenantSettings[id].notificationsEnabled = notificationsEnabled;
+    tenantSettings[id].updatedAt = new Date().toISOString();
+    return res.status(200).json({ success: true, settings: tenantSettings[id] });
+  } catch (err) {
+    return res.status(500).json({ error: 'Settings update failed' });
+  }
+});
+
+app.get('/api/settings/tenant/:id', async (req, res) => {
+  return res.status(200).json({ settings: tenantSettings[req.params.id] || {} });
+});
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
 const HERMES_HEARTBEAT_MAX_AGE_MS = 45_000; // treat stale heartbeats as Offline
