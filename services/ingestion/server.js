@@ -1906,6 +1906,35 @@ app.post('/api/system/lifecycle', async (req, res) => {
   }
 });
 
+// --- Phase 42: Alert System — Configuration & History ---
+const alertConfig = { costThreshold: 5, tokenThreshold: 100000, latencyThresholdMs: 5000, webhookUrl: '' };
+
+app.post('/api/alerts/configure', async (req, res) => {
+  try {
+    const cfg = req.body || {};
+    if (typeof cfg.costThreshold === 'number') alertConfig.costThreshold = cfg.costThreshold;
+    if (typeof cfg.tokenThreshold === 'number') alertConfig.tokenThreshold = cfg.tokenThreshold;
+    if (typeof cfg.latencyThresholdMs === 'number') alertConfig.latencyThresholdMs = cfg.latencyThresholdMs;
+    if (typeof cfg.webhookUrl === 'string') alertConfig.webhookUrl = cfg.webhookUrl;
+    return res.status(200).json({ success: true, config: alertConfig });
+  } catch (err) {
+    return res.status(500).json({ error: 'Alert config failed' });
+  }
+});
+
+app.get('/api/alerts/history', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const rows = await (pool
+      ? pool.query('SELECT * FROM telemetry_traces WHERE status != $1 AND cost > $2 ORDER BY timestamp DESC LIMIT $3', ['OK', alertConfig.costThreshold, limit])
+      : { rows: [] });
+    const alerts = (rows.rows || []).map((r) => ({ id: r.id, trace_id: r.trace_id, model: r.model, cost: r.cost, status: r.status, timestamp: r.timestamp || r.created_at }));
+    return res.status(200).json({ alerts, config: alertConfig });
+  } catch {
+    return res.status(200).json({ alerts: [], config: alertConfig });
+  }
+});
+
 // --- Governance health + HERMES auditor status ---------------------------
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
