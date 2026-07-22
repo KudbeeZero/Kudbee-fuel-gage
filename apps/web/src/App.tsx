@@ -3093,7 +3093,7 @@ export default function App() {
     }
   }, []);
 
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activeTab, setActiveTab] = useState('Control Tower');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
