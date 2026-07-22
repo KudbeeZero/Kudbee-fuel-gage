@@ -39,6 +39,7 @@ import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
+import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1960,6 +1961,29 @@ app.post('/api/system/lifecycle', async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ error: 'Lifecycle check failed', detail: err?.message });
+  }
+});
+
+// --- Phase 49: Groq Auto-Diagnostic Engine ---
+app.post('/api/system/diagnose-breadcrumb', async (req, res) => {
+  try {
+    const { traceId } = req.body || {};
+    const crumbs = await getBreadcrumbs(traceId || '', 20);
+    let analysis = 'No breadcrumbs found for this trace.';
+    if (crumbs.length > 0 && groqConfigured) {
+      try {
+        const { synthesizeThinkToken } = await import('../lib/groqClient.ts');
+        const result = await synthesizeThinkToken({
+          taskContext: `Diagnostic breadcrumbs for trace ${traceId}`,
+          correctionDelta: JSON.stringify(crumbs.map(c => ({ source: c.source, error: c.errorDelta, ts: c.timestamp }))),
+          confidenceScore: 0.5
+        });
+        analysis = result.ok ? (result.reasoning || 'Analysis completed') : 'Groq analysis unavailable';
+      } catch { analysis = 'Diagnostic engine degraded — raw breadcrumbs available.'; }
+    }
+    return res.status(200).json({ analysis, breadcrumbs: crumbs, count: crumbs.length });
+  } catch (err) {
+    return res.status(500).json({ error: 'Diagnose failed' });
   }
 });
 
