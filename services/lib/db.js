@@ -273,6 +273,20 @@ function runQueryMemory(sql, params = []) {
     );
     return [{ total }];
   }
+  if (/SUM\(tokens_in\)/.test(s) && !/tokens_out/.test(s)) {
+    const since = params[0] ? Date.parse(params[0]) : 0;
+    const total = memory.telemetry_traces
+      .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
+      .reduce((a, r) => a + (Number(r.tokens_in) || 0), 0);
+    return [{ total }];
+  }
+  if (/SUM\(tokens_out\)/.test(s) && !/tokens_in/.test(s)) {
+    const since = params[0] ? Date.parse(params[0]) : 0;
+    const total = memory.telemetry_traces
+      .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
+      .reduce((a, r) => a + (Number(r.tokens_out) || 0), 0);
+    return [{ total }];
+  }
   if (/SUM\(cost\) as total FROM telemetry_traces/.test(s)) {
     const now = Date.now();
     const since = params[0] ? Date.parse(params[0]) : 0;
@@ -280,6 +294,12 @@ function runQueryMemory(sql, params = []) {
       .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
       .reduce((a, r) => a + (Number(r.cost) || 0), 0);
     return [{ total }];
+  }
+  if (/COUNT\(\*\) as count FROM telemetry_traces/.test(s)) {
+    if (/status\s*!=/.test(s) || /status\s*<>/.test(s)) {
+      return [{ count: memory.telemetry_traces.filter((r) => r.status && r.status !== 'OK').length }];
+    }
+    return [{ count: memory.telemetry_traces.length }];
   }
   if (/COUNT\(DISTINCT model\)/.test(s)) {
     return [{ count: new Set(memory.telemetry_traces.map((r) => r.model)).size }];

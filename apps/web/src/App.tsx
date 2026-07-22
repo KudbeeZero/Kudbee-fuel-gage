@@ -67,6 +67,8 @@ const GovernanceView = lazy(() => import('./components/GovernanceView').then((m)
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
+import { normalizeTelemetryLogs } from './lib/normalizeTelemetry';
+import { apiGet } from './lib/apiClient';
 import {
   AreaChart,
   Area,
@@ -112,6 +114,10 @@ export interface TelemetryLog {
   timestamp: string;
   model?: string;
   cost?: number;
+  tokens_in?: number;
+  tokens_out?: number;
+  status?: string;
+  trace_id?: string;
 }
 
 /** Derived log shape used by the History / Dashboard views. */
@@ -658,10 +664,10 @@ function HistoryView({ currency, dbLogs, terminalOpState, historyError, onNewLog
        ? dbLogs.map((l: TelemetryLog) => ({
            timestamp: l.timestamp,
            project: l.project_name || "kilo-fuel-gauge",
-           model: l.model_name,
-           tokens_in: l.input_tokens,
-           tokens_out: l.output_tokens,
-           cost: l.calculated_cost,
+           model: l.model_name || l.model || "unknown",
+           tokens_in: Number(l.input_tokens ?? l.tokens_in) || 0,
+           tokens_out: Number(l.output_tokens ?? l.tokens_out) || 0,
+           cost: Number(l.calculated_cost ?? l.cost) || 0,
            timeframe: "24h" as const
          }))
        : [];
@@ -3232,20 +3238,12 @@ export default function App() {
     if (!isAuthenticated) return;
     setHistoryError(null);
     try {
-      const summaryRes = await fetch('/api/dashboard/summary');
-      if (summaryRes.ok) {
-        const sData = (await summaryRes.json()) as DashboardSummary;
-        setDbSummary(sData);
-      }
-      
-      const logsRes = await fetch('/api/telemetry/logs?limit=50');
-      if (logsRes.ok) {
-        const raw = await logsRes.json();
-        const lData = Array.isArray(raw) ? raw : [];
-        setDbLogs(lData);
-      } else {
-        setHistoryError(`Logs endpoint returned ${logsRes.status}`);
-      }
+      const [sData, rawLogs] = await Promise.all([
+        apiGet<DashboardSummary>('/api/dashboard/summary'),
+        apiGet<unknown[]>('/api/telemetry/logs?limit=50')
+      ]);
+      setDbSummary(sData);
+      setDbLogs(normalizeTelemetryLogs(rawLogs) as TelemetryLog[]);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("Failed to fetch dashboard metrics:", message);
@@ -3275,7 +3273,7 @@ export default function App() {
     // Real cost: prefer the database's authoritative daily rollup when
     // present, otherwise sum the cost of the loaded trace window.
     const liveWindowCost = (dbLogs || []).reduce(
-      (sum, log) => sum + (Number(log.calculated_cost) || 0),
+      (sum, log) => sum + (Number(log.calculated_cost ?? log.cost) || 0),
       0
     );
     const calculatedCost = dbSummary?.total_24h_cost ?? Number(liveWindowCost.toFixed(6));
@@ -3333,8 +3331,8 @@ export default function App() {
       const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       return {
         name: timeStr,
-        tokens: (l.input_tokens || 0) + (l.output_tokens || 0),
-        cost: Number(l.calculated_cost) || Number(l.cost) || 0
+        tokens: (Number(l.input_tokens ?? l.tokens_in) || 0) + (Number(l.output_tokens ?? l.tokens_out) || 0),
+        cost: Number(l.calculated_cost ?? l.cost) || 0
       };
     });
   }, [dbLogs]);
@@ -3372,7 +3370,8 @@ export default function App() {
           }
           
           // Determine success vs failure deterministically
-          const isFailure = (log.id % 9 === 0) || (log.provider === 'Anthropic' && log.id % 13 === 0);
+          const logId = Number(log.id) || 0;
+          const isFailure = (logId % 9 === 0) || (log.provider === 'Anthropic' && logId % 13 === 0);
           if (isFailure) {
             closestBin.failure += 1;
           } else {

@@ -20,6 +20,7 @@ import {
   Filter
 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
+import { normalizeTelemetryLogs, type TelemetryLogRow } from '../lib/normalizeTelemetry';
 import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
 import { useAuditExport } from '../hooks/useAuditExport';
 import { useHistoryStream } from '../hooks/useHistoryStream';
@@ -38,20 +39,7 @@ interface SessionHistoryItem {
   diff_summary?: string;
 }
 
-interface TelemetryLog {
-  id: number;
-  user_id: number;
-  provider: string;
-  model_name: string;
-  input_tokens: number;
-  output_tokens: number;
-  calculated_cost: number;
-  project_name?: string;
-  timestamp: string;
-  model?: string;
-  cost?: number;
-  status?: string;
-}
+type TelemetryLog = TelemetryLogRow;
 
 export function HistoryPage() {
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
@@ -59,7 +47,7 @@ export function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSession, setExpandedSession] = useState<number | null>(null);
-  const [expandedLog, setExpandedLog] = useState<number | null>(null);
+  const [expandedLog, setExpandedLog] = useState<string | number | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
 
   const { mode: streamMode, throughput, error: streamError, paused: streamPaused, togglePause, reconnect } = useHistoryStream();
@@ -73,11 +61,11 @@ export function HistoryPage() {
       try {
         const [sessionData, logData] = await Promise.all([
           apiGet<SessionHistoryItem[]>('/api/session-history'),
-          apiGet<TelemetryLog[]>('/api/telemetry/logs?limit=50')
+          apiGet<unknown[]>('/api/telemetry/logs?limit=50')
         ]);
         if (cancelled) return;
         setSessions(Array.isArray(sessionData) ? sessionData : []);
-        setLogs(Array.isArray(logData) ? logData : []);
+        setLogs(normalizeTelemetryLogs(logData));
         setError(null);
       } catch (e) {
         if (cancelled) return;
@@ -116,9 +104,9 @@ export function HistoryPage() {
   };
 
   const totals = useMemo(() => {
-    const inTok = logs.reduce((acc, l) => acc + (l.input_tokens || 0), 0);
-    const outTok = logs.reduce((acc, l) => acc + (l.output_tokens || 0), 0);
-    const cost = logs.reduce((acc, l) => acc + (Number(l.calculated_cost) || Number(l.cost) || 0), 0);
+    const inTok = logs.reduce((acc, l) => acc + (Number(l.input_tokens ?? l.tokens_in) || 0), 0);
+    const outTok = logs.reduce((acc, l) => acc + (Number(l.output_tokens ?? l.tokens_out) || 0), 0);
+    const cost = logs.reduce((acc, l) => acc + (Number(l.calculated_cost ?? l.cost) || 0), 0);
     return { inTok, outTok, cost };
   }, [logs]);
 
