@@ -1268,13 +1268,17 @@ app.get('/api/telemetry/stats', async (_req, res) => {
   }
 });
 
-// --- Live Storage Metrics SSE Heartbeat (every 10s) ----------------------------
-// Broadcasts real-time Postgres + Redis storage sizes to all connected SSE
-// clients so the Control Tower dashboard updates without polling.
+// --- Live Storage + OS Telemetry SSE Heartbeat (every 10s) --------------------
+// Broadcasts real-time Postgres/Redis storage sizes AND OS telemetry
+// (vector memory count, think tokens minted, crucible health) to all
+// connected SSE clients so the Control Tower dashboard updates without polling.
 setInterval(async () => {
   try {
     let postgresSizeBytes = null;
     let redisSizeBytes = null;
+    let vectorMemoryCount = 0;
+    let thinkTokensMinted = 0;
+
     try {
       const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
       if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
@@ -1286,8 +1290,18 @@ setInterval(async () => {
         if (match && match[1]) redisSizeBytes = Number(match[1]);
       }
     } catch { /* ignore */ }
+    try {
+      const vecRows = await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [{ count: 0 }]);
+      vectorMemoryCount = Number(vecRows[0]?.count || 0);
+    } catch { /* ignore */ }
+    try {
+      const tokRows = await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [{ count: 0 }]);
+      thinkTokensMinted = Number(tokRows[0]?.count || 0);
+    } catch { /* ignore */ }
+
     if (sseClients.size > 0) {
       broadcast({ type: 'storage_metrics', data: { postgres_size_bytes: postgresSizeBytes, redis_size_bytes: redisSizeBytes, timestamp: new Date().toISOString() } });
+      broadcast({ type: 'os_telemetry', data: { vector_memory_count: vectorMemoryCount, think_tokens_minted: thinkTokensMinted, timestamp: new Date().toISOString() } });
     }
   } catch { /* never crash the heartbeat */ }
 }, 10_000);

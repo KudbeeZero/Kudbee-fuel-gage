@@ -2421,6 +2421,18 @@ export function DashboardPage() {
       if (data?.redis_size_bytes !== undefined) setRedisSize(data.redis_size_bytes ?? null);
     });
 
+    // Live OS Telemetry — Vector Memory count + Think Tokens minted via SSE.
+    const offOsTelemetry = stream.on('os_telemetry', (data: any) => {
+      setTelemetryStats({
+        vector_memory_count: typeof data?.vector_memory_count === 'number' ? data.vector_memory_count : 0,
+        think_tokens_minted: typeof data?.think_tokens_minted === 'number' ? data.think_tokens_minted : 0,
+        crucible: data?.crucible ?? { cycleCount: 0, maxCycles: 5, status: 'READY' },
+        timestamp: data?.timestamp ?? new Date().toISOString()
+      });
+      setTelemetryStatsError(null);
+      setTelemetryStatsLoading(false);
+    });
+
     return () => {
       offSlow();
       offSuggest();
@@ -2428,6 +2440,7 @@ export function DashboardPage() {
       offTriage();
       offSnapshot();
       offStorage();
+      offOsTelemetry();
     };
   }, [stream.on, loadGovernance, loadTriage, pushTerminalEvent]);
 
@@ -2576,19 +2589,20 @@ export function DashboardPage() {
       loadMemory(),
       loadGovernance(),
       loadSinkTokenBalance(),
-      loadTelemetryStats(),
       loadTrajectories()
     ]);
     setLastSync(new Date());
     setPulse((p) => p + 1);
-  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance, loadTelemetryStats, loadTrajectories]);
+  }, [probeHealth, loadSystemStatus, loadDeepHealth, loadLastEvent, loadSessionHistory, loadTriage, loadMemory, loadGovernance, loadSinkTokenBalance, loadTrajectories]);
 
   // Initial load on mount. Subsequent updates arrive via the SSE stream, so
-  // the 5s poll is reduced to a slow safety net (every 30s) instead of the
-  // primary update path.
+  // the poll is reduced to a slow safety net (every 10s) instead of the
+  // primary update path. Live OS telemetry is exclusively SSE-driven after the
+  // initial mount fetch.
   useEffect(() => {
     void syncAll();
-  }, [syncAll]);
+    void loadTelemetryStats();
+  }, [syncAll, loadTelemetryStats]);
 
   useInterval(() => {
     void syncAll();
