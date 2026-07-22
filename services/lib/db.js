@@ -267,7 +267,10 @@ function runQueryMemory(sql, params = []) {
     return [...memory.think].reverse();
   }
   if (/FROM think_tokens/.test(s)) {
-    return [...memory.think_tokens].reverse();
+    const rows = [...memory.think_tokens].reverse();
+    const statuses = rows.map((r) => `${r.id}:${r.status}`).join(',');
+    console.error('[DBG-DB] SELECT think_tokens — ', rows.length, 'rows. statuses:', statuses);
+    return rows;
   }
   if (/FROM governance_actions/.test(s)) {
     return [...memory.governance_actions].reverse();
@@ -421,7 +424,8 @@ function runInsertMemory(sql, params = []) {
   if (/UPDATE think_tokens SET status/.test(s)) {
     const [status, id] = params;
     const row = memory.think_tokens.find((r) => String(r.id) === String(id));
-    if (row) row.status = status;
+    console.error('[DBG-DB] UPDATE think_tokens id=', id, 'found=', !!row, 'before=', row?.status, 'after=', status, 'totalRows=', memory.think_tokens.length);
+    if (row) { row.status = status; console.error('[DBG-DB] After mutation:', memory.think_tokens.find(r => String(r.id) === String(id))?.status); }
     return { id: null, changes: row ? 1 : 0 };
   }
   return { id: null, changes: 0 };
