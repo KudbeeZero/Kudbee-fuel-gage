@@ -47,7 +47,7 @@ export interface TokenAdmissionRequest {
   kd: number;
   efficacy: number;
   slot: CellSlot;
-  tokenType?: 'ORDINARY' | 'CHALLENGE_TOKEN';
+  tokenType?: 'ORDINARY' | 'CHALLENGE_TOKEN' | 'ADMIN';
 }
 
 export interface AdmissionDecision {
@@ -239,6 +239,28 @@ export class ReceptorGatingEngine {
     guardEmbedding?: number[]
   ): Promise<AdmissionDecision> {
     const key = slotKey(token.slot);
+
+    if (token.tokenType === 'ADMIN') {
+      const existingLock = this.lockStore.get(key);
+      if (existingLock) {
+        this.lockStore.delete(key);
+        void removeLock(key);
+      }
+      const auditEvent: Record<string, unknown> = {
+        tokenId: token.tokenId, tokenHash: token.tokenHash, slot: key,
+        action: existingLock ? 'ADMIN_BYPASS_RELEASE' : 'ADMIN_BYPASS',
+        bypass: true, tokenType: 'ADMIN', auditHash: ''
+      };
+      auditEvent.auditHash = computeAuditHash(auditEvent);
+      await publishAuditEvent(auditEvent);
+      return {
+        admitted: true,
+        reason: existingLock ? `ADMIN bypass — lock released and token admitted.` : `ADMIN bypass — token admitted without gating.`,
+        currentOccupant: null,
+        auditHash: auditEvent.auditHash as string
+      };
+    }
+
     const existing = this.lockStore.get(key);
 
     const baseAudit = {

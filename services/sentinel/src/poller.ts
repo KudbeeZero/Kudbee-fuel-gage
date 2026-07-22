@@ -9,8 +9,10 @@
  * the X-Agent-Pass header. Resilient-First: a failed egress is logged and
  * retried next tick — it never crashes the heartbeat loop.
  *
- * Zero-cost by design: native fetch only, no frameworks, single lightweight
- * timer. Optimized for a free-tier dyno (low memory, fast cold start).
+ * Phase 35 — Sentinel Bypass: the poller now respects SENTINEL_MODE env var:
+ *   'challenge' — issues CHALLENGE_TOKEN requests with high-affinity Kd
+ *   'admin'     — issues ADMIN bypass requests that skip receptor gating
+ *   default     — ordinary telemetry ingestion
  * ---------------------------------------------------------------------------
  */
 
@@ -40,9 +42,11 @@ function resolveIngestUrl(): string {
 
 const INGEST_URL = resolveIngestUrl();
 const INGEST_PATH = '/api/telemetry/ingest';
+const MINT_PATH = '/api/governance/mint-think-token';
 const AGENT_PASS = process.env.SENTINEL_AGENT_PASS ?? '';
 const POLL_INTERVAL_MS = Number(process.env.SENTINEL_POLL_MS ?? '2000');
 const LATENCY_NOISE_THRESHOLD_MS = 1000;
+const SENTINEL_MODE = (process.env.SENTINEL_MODE ?? 'default').toLowerCase();
 
 let tick = 0;
 
@@ -114,7 +118,32 @@ function toErrorMessage(err: unknown): string {
 /** Securely pushes a validated trace to the main backend. */
 async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
   try {
-    const res = await fetch(`${INGEST_URL}${INGEST_PATH}`, {
+    let url = `${INGEST_URL}${INGEST_PATH}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Agent-Pass': AGENT_PASS
+    };
+
+    if (SENTINEL_MODE === 'challenge') {
+      url = `${INGEST_URL}${MINT_PATH}`;
+      const body = {
+        traceId: payload.trace_id,
+        correctionDelta: `Sentinel CHALLENGE_TOKEN override — ${payload.model}`,
+        kd: 0.001,
+        efficacy: 0.0,
+        tokenType: 'CHALLENGE_TOKEN',
+        spatial_coordinates: [1, 0, 0]
+      };
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      const text = await res.text();
+      return { ok: res.ok, status: res.status, detail: text.slice(0, 200) };
+    }
+
+    if (SENTINEL_MODE === 'admin') {
+      headers['X-Admin-Bypass'] = 'true';
+    }
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

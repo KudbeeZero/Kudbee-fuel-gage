@@ -1770,9 +1770,11 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
       return res.status(500).json({ error: result.error });
     }
 
-    const hasGatingParams = typeof kd === 'number' || typeof efficacy === 'number' || tokenType === 'CHALLENGE_TOKEN';
+    const hasGatingParams = typeof kd === 'number' || typeof efficacy === 'number'
+      || tokenType === 'CHALLENGE_TOKEN' || tokenType === 'ADMIN'
+      || req.headers['x-admin-bypass'] === 'true';
 
-    if (hasGatingParams && (kdValue > 0 || efficacyValue === 0)) {
+    if (hasGatingParams && (kdValue > 0 || efficacyValue === 0 || tokenType === 'ADMIN' || req.headers['x-admin-bypass'] === 'true')) {
       const slot = {
         x: Array.isArray(spatial_coordinates) ? (spatial_coordinates[0] ?? 0) : 0,
         y: Array.isArray(spatial_coordinates) ? (spatial_coordinates[1] ?? 0) : 0,
@@ -1786,7 +1788,9 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
         kd: kdValue,
         efficacy: efficacyValue,
         slot,
-        tokenType: tokenType === 'CHALLENGE_TOKEN' ? 'CHALLENGE_TOKEN' : 'ORDINARY'
+        tokenType: tokenType === 'CHALLENGE_TOKEN' ? 'CHALLENGE_TOKEN'
+          : tokenType === 'ADMIN' || req.headers['x-admin-bypass'] === 'true' ? 'ADMIN'
+          : 'ORDINARY'
       });
 
       if (!admission.admitted) {
