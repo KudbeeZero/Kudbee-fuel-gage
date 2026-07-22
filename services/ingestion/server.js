@@ -942,6 +942,38 @@ app.get('/api/memory/recall', async (req, res) => {
   }
 });
 
+// --- Phase 46: Victory Memory Dictionary — pgvector similarity lookup ---
+app.post('/api/memory/dictionary/lookup', async (req, res) => {
+  try {
+    const { query } = req.body || {};
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({ error: 'Missing required field: query (non-empty string)' });
+    }
+    const text = query.trim();
+    let embedding;
+    try { const { embedText } = await import('../memory/embedText.ts'); embedding = await embedText(text); } catch { const { embedTextLocal } = await import('../memory/embedText.ts'); embedding = embedTextLocal(text); }
+    const start = Date.now();
+    let snapshot = null, similarity = 0;
+    if (pool) {
+      try {
+        const rows = await pool.query(
+          `SELECT text, metadata, 1 - (embedding <=> $1::vector) AS similarity FROM vector_memory WHERE 1 - (embedding <=> $1::vector) > 0.90 ORDER BY embedding <=> $1::vector LIMIT 1`,
+          [JSON.stringify(embedding)]
+        );
+        if (rows.rows?.length > 0) {
+          const r = rows.rows[0];
+          snapshot = { text: r.text, metadata: r.metadata || {}, similarity: Number(r.similarity) };
+          similarity = Number(r.similarity);
+        }
+      } catch { /* degrade */ }
+    }
+    const latencyMs = Date.now() - start;
+    return res.status(200).json({ found: snapshot !== null, snapshot, similarity, latencyMs, query: text });
+  } catch (err) {
+    return res.status(500).json({ error: 'Dictionary lookup failed' });
+  }
+});
+
 // --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
 // GET /api/memory/think-tokens?prompt=...&limit=3 — queries the pgvector
 // `think_tokens` store for the `limit` most semantically similar past SUCCESSES
