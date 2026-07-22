@@ -50,7 +50,7 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-app.set('trust proxy', true);
+if (process.env.NODE_ENV !== 'test') app.set('trust proxy', true);
 
 // --- Phase 45: Request duration tracking and structured logging ---
 app.use((req, res, next) => {
