@@ -17,7 +17,7 @@ import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } 
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
-import { getRedisClient } from '../lib/redis.js';
+import { getRedisClient, getSubscriberClient } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
@@ -384,7 +384,7 @@ await ensureLedgerSchema();
 
 let redis;
 try {
-  redis = getRedisClient({ label: 'ingestion' });
+  redis = getRedisClient({ label: 'ingestion', enableOfflineQueue: true });
 } catch (err) {
   console.warn('[Redis] Failed to initialize client (degrading):', err.message);
   redis = null;
@@ -2574,9 +2574,11 @@ function publishEvent(type, data) {
 }
 
 // Dedicated subscriber connection (ioredis requires subscriber mode).
+// Uses getSubscriberClient() which includes retries, offline queueing, and
+// TLS settings so the SSE event bus survives transient Redis outages.
 if (redis) {
   try {
-    const subClient = redis.duplicate();
+    const subClient = getSubscriberClient();
     subClient.subscribe(EVENTS_CHANNEL, (err) => {
       if (err) console.error('[SSE] Failed to subscribe to events channel:', err.message);
       else console.log('[SSE] Subscribed to', EVENTS_CHANNEL);

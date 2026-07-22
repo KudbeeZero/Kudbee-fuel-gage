@@ -47,6 +47,9 @@
     "GET:/api/think/archive",
     "GET:/api/think/trajectories",
     "PATCH:/api/think/trajectories/:hash/status",
-    "GET:/api/telemetry/degradation-status"
+    "GET:/api/telemetry/degradation-status",
+    "POST:/api/agents/evaluate",
+    "GET:/api/agents/evaluate",
+    "GET:/api/memory/think-tokens"
   ]
 }

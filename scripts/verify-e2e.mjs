@@ -515,15 +515,29 @@ async function check28_DLQRetryPolicy() {
   const taskId = enqData.id;
   if (!taskId) return false;
 
-  await new Promise((r) => setTimeout(r, 4000));
+  await new Promise((r) => setTimeout(r, 2000));
 
-  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
-  if (dlqRes.status !== 200) return false;
-  const dlqData = await dlqRes.json();
-  if (!Array.isArray(dlqData.items)) return false;
+  // Poll the DLQ until the task appears with attempts >= 3, up to 10s.
+  let dlqRes, dlqData, found;
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
+    dlqRes = await fetch(`${BASE}/api/governance/failed`);
+    if (dlqRes.status !== 200) { await new Promise((r) => setTimeout(r, 500)); continue; }
+    dlqData = await dlqRes.json();
+    if (!Array.isArray(dlqData.items)) { await new Promise((r) => setTimeout(r, 500)); continue; }
 
-  const found = dlqData.items.find((t) => t.id === taskId);
-  if (!found) return false;
+    found = dlqData.items.find((t) => t.id === taskId);
+    if (found && found.attempts >= 3 && found.lastError && String(found.lastError).includes('synthetic E2E failure')) {
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  if (!found) {
+    console.error(`[Check28] Task ${taskId} not found in DLQ among ${dlqData?.items?.length || 0} items after ${Math.round((Date.now() - deadline + 10000) / 1000)}s`);
+    return false;
+  }
+  console.error(`[Check28] Task found: id=${found.id}, attempts=${found.attempts}, lastError=${found.lastError}`);
   if (found.attempts < 3) return false;
   if (!found.lastError || !String(found.lastError).includes('synthetic E2E failure')) return false;
 
