@@ -150,6 +150,28 @@ export function buildAgentContext(requestText: string, activeSkills: SkillTag[])
 }
 
 /**
+ * Phase 28 — The Token Forge injection point.
+ *
+ * Appends a pre-rendered "Past Successful Execution Context" section (produced
+ * by `renderThinkTokenContext` in the memory layer) to an already-assembled
+ * agent system prompt. This is the few-shot RAG loop: retrieved Think Tokens
+ * are injected into the active agent's system prompt BEFORE it routes to the
+ * LLM, grounding its reasoning in verified prior successes.
+ *
+ * Pure + synchronous + decoupled: this helper takes the rendered section as a
+ * string so the context factory never imports the memory package directly (the
+ * async pgvector recall is performed by the caller — the server middleware —
+ * which already depends on both layers). An empty/blank `forgeSection` is a
+ * no-op so the base hierarchy is returned unchanged (graceful fallback).
+ */
+export function appendForgeContext(baseContext: string, forgeSection: string): string {
+  const base = typeof baseContext === 'string' && baseContext.length > 0 ? baseContext : '';
+  const forge = typeof forgeSection === 'string' ? forgeSection.trim() : '';
+  if (forge.length === 0) return base;
+  return `${base}\n\n${forge}`;
+}
+
+/**
  * Lightweight, dependency-free keyword heuristic that maps a free-text user
  * request to the set of SkillTags it likely needs. This is the pre-vector-DB
  * routing layer: once the Vector Memory pipeline (Phase 4/5) is fully wired,

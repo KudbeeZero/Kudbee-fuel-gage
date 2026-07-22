@@ -244,6 +244,152 @@ export async function searchSimilar(
   return { ok: true, results: ranked };
 }
 
+// --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
+// Retrieves the most semantically similar past "Think Tokens" (successful
+// correction deltas) for an incoming prompt, so they can be injected into the
+// active agent's system prompt as "Past Successful Execution Context" BEFORE
+// it routes to the LLM. This is the few-shot RAG loop that grounds the agent in
+// verified prior successes instead of reasoning from a cold start.
+
+export interface RelevantThinkToken {
+  id: string;
+  correction_delta: string;
+  task_context: Record<string, unknown> | null;
+  failed_state: Record<string, unknown> | null;
+  similarity: number;
+  status: string;
+  created_at: string | null;
+}
+
+export type RelevantThinkTokenResult =
+  | { ok: true; results: RelevantThinkToken[] }
+  | { ok: false; error: string };
+
+interface ThinkTokenRow {
+  id: unknown;
+  correction_delta: unknown;
+  task_context: unknown;
+  failed_state: unknown;
+  embedding: unknown;
+  status: unknown;
+  created_at: unknown;
+  similarity?: unknown;
+}
+
+function parseRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object') return value as Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Query the `think_tokens` pgvector store for the `limit` most semantically
+ * similar past successes to `prompt`. Only VERIFIED tokens (proven successes)
+ * are returned when available; if none are verified, the best-effort top-k is
+ * returned so the forge never starves the agent of context.
+ *
+ * Resilient-First: when Neon/pgvector is unavailable, or the query fails, this
+ * returns `{ ok: true, results: [] }` so the caller (context factory) can
+ * inject an empty "no past successes" note and keep routing. It NEVER throws.
+ */
+export async function getRelevantThinkTokens(
+  prompt: string,
+  limit = 3
+): Promise<RelevantThinkTokenResult> {
+  const safeLimit = Math.min(Math.max(Math.trunc(limit) || 3, 1), 25);
+  const text = typeof prompt === 'string' && prompt.length > 0 ? prompt : '';
+
+  let embedding: number[];
+  try {
+    const { embedText } = await import('./embedText.ts');
+    embedding = await embedText(text);
+  } catch {
+    embedding = embedTextLocal(text);
+  }
+  if (embedding.length !== EMBEDDING_DIM) {
+    return { ok: false, error: `Embedding dimension mismatch: expected ${EMBEDDING_DIM}, got ${embedding.length}` };
+  }
+
+  const pool = getDbPool();
+  if (pool && isDbHealthy()) {
+    try {
+      // Prefer VERIFIED successes (proven past executions). Fall back to the
+      // full top-k if the verified set is empty so the forge stays useful.
+      const verifiedRows = await pool.query(
+        `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                1 - (embedding <=> $1::vector) AS similarity
+         FROM think_tokens
+         WHERE status = 'VERIFIED'
+         ORDER BY embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(embedding), safeLimit]
+      );
+
+      const rows: ThinkTokenRow[] =
+        (verifiedRows.rows?.length ?? 0) > 0
+          ? verifiedRows.rows
+          : (await pool.query(
+              `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                      1 - (embedding <=> $1::vector) AS similarity
+               FROM think_tokens
+               ORDER BY embedding <=> $1::vector
+               LIMIT $2`,
+              [toVectorLiteral(embedding), safeLimit]
+            )).rows;
+
+      const results: RelevantThinkToken[] = rows.map((row) => ({
+        id: String(row.id),
+        correction_delta: String(row.correction_delta ?? ''),
+        task_context: parseRecord(row.task_context),
+        failed_state: parseRecord(row.failed_state),
+        similarity: Number(row.similarity ?? 0),
+        status: String(row.status ?? 'PENDING_APPROVAL'),
+        created_at: row.created_at ? String(row.created_at) : null
+      }));
+      return { ok: true, results };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[TokenForge] think_tokens query failed, degrading to empty:', message);
+    }
+  }
+
+  // No DB / query failed — return an empty success so the context factory can
+  // inject a graceful "no past successes retrieved" note. Never throws.
+  return { ok: true, results: [] };
+}
+
+/**
+ * Render the retrieved Think Tokens as a "Past Successful Execution Context"
+ * prompt fragment, ready to inject into the active agent's system prompt.
+ * Returns an empty string when no tokens were retrieved so callers can skip
+ * the section cleanly.
+ */
+export function renderThinkTokenContext(tokens: RelevantThinkToken[]): string {
+  if (!Array.isArray(tokens) || tokens.length === 0) return '';
+  const blocks = tokens.map((t, i) => {
+    const sim = Number.isFinite(t.similarity) ? t.similarity.toFixed(3) : '0.000';
+    const delta = t.correction_delta || '(no correction delta recorded)';
+    return `### Past Success #${i + 1} (similarity ${sim}, status ${t.status})
+${delta}`;
+  });
+  return `<PAST_SUCCESSFUL_EXECUTION_CONTEXT>
+The following are semantically similar past SUCCESSFUL agent executions,
+retrieved from the Think Token Forge (pgvector). Treat them as proven
+few-shot exemplars — ground your reasoning in their correction deltas and
+avoid repeating any failed approach they supersede. Do NOT copy them
+verbatim; use them only as structural guidance.
+
+${blocks.join('\n\n')}
+</PAST_SUCCESSFUL_EXECUTION_CONTEXT>`;
+}
+
 /**
  * Persists an arbitrary text+embedding pair into the `vector_memory` table.
  * Used by the Governance Router to index approved proven actions for Fast Brain
