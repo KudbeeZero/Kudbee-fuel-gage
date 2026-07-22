@@ -61,6 +61,8 @@
     "POST:/api/governance/union/form",
     "POST:/api/governance/union/negotiate",
     "GET:/api/governance/union/active",
+    "GET:/api/governance/probation/docket",
+    "GET:/api/interceptor/threat-heatmap",
     "POST:/api/governance/contract/sign",
     "POST:/api/governance/contract/verify/:id",
     "GET:/api/governance/contract/active",

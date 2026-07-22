@@ -995,6 +995,23 @@ app.get('/api/think/anomalies', async (req, res) => {
   }
 });
 
+// --- Resurrect dead endpoints: ProbationDocket + ThreatHeatmap ---
+app.get('/api/governance/probation/docket', async (req, res) => {
+  try {
+    const items = redis ? await redis.zrange('kudbee:probation:pending', 0, -1) : [];
+    const docket = items.map((i) => { try { return JSON.parse(i); } catch { return { raw: i }; } });
+    return res.status(200).json({ docket, count: docket.length });
+  } catch { return res.status(200).json({ docket: [], count: 0 }); }
+});
+
+app.get('/api/interceptor/threat-heatmap', async (req, res) => {
+  try {
+    const rows = await (pool ? pool.query('SELECT model, COUNT(*)::int AS threat_count FROM telemetry_traces WHERE status != $1 GROUP BY model ORDER BY threat_count DESC LIMIT 10', ['OK']) : { rows: [] });
+    const threats = (rows.rows || []).map((r) => ({ model: r.model, threatCount: r.threat_count || 0, totalTraces: 0, category: 'status_flagged' }));
+    return res.status(200).json({ threats, pressure: 0 });
+  } catch { return res.status(200).json({ threats: [], pressure: 0 }); }
+});
+
 // --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
 // GET /api/memory/think-tokens?prompt=...&limit=3 — queries the pgvector
 // `think_tokens` store for the `limit` most semantically similar past SUCCESSES
