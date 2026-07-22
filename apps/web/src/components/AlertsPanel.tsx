@@ -543,7 +543,7 @@ export function AlertsPanel() {
       </div>
 
       {/* System Diagnostic Report (Phase 22) */}
-      {diagnostics.diagnostics && (
+      {diagnostics?.diagnostics && (
         <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
           <div className="flex items-center gap-2 mb-4">

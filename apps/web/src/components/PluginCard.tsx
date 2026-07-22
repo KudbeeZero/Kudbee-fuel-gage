@@ -34,8 +34,8 @@ export function PluginCard({ plugin, accent, glow, children }: PluginCardProps) 
       </header>
       <div className="mt-4 flex-1 text-xs text-slate-400">{children}</div>
       <footer className="mt-4 border-t border-slate-800/60 pt-3 text-[10px] font-mono uppercase tracking-widest text-slate-500">
-        {plugin.category} · col-span {plugin.gridSpan.colSpan}
-        {plugin.gridSpan.rowSpan ? ` · row-span ${plugin.gridSpan.rowSpan}` : ''}
+        {plugin.category} · col-span {plugin.gridSpan?.colSpan ?? '—'}
+        {plugin.gridSpan?.rowSpan ? ` · row-span ${plugin.gridSpan.rowSpan}` : ''}
       </footer>
     </article>
   );

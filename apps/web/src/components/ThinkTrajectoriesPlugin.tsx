@@ -23,9 +23,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function MiniSpatial({ coords }: { coords: number[] }) {
-  const x = coords[0] ?? 0;
-  const y = coords[1] ?? 0;
-  const z = coords[2] ?? 0;
+  const x = coords?.[0] ?? 0;
+  const y = coords?.[1] ?? 0;
+  const z = coords?.[2] ?? 0;
   const hue = Math.abs(x) > 0.5 ? 'text-rose-300' : Math.abs(y) > 0.5 ? 'text-amber-300' : 'text-emerald-300';
   return (
     <div className={`font-mono text-[9px] ${hue}`}>
@@ -34,7 +34,7 @@ function MiniSpatial({ coords }: { coords: number[] }) {
   );
 }
 
-export function ThinkTrajectoriesPlugin({ plugin, trajectories, loading }: ThinkTrajectoriesPluginProps) {
+export function ThinkTrajectoriesPlugin({ plugin, trajectories = [], loading }: ThinkTrajectoriesPluginProps) {
   const items = trajectories.slice(0, 9);
   const grid = Array.from({ length: 9 }, (_, i) => items[i] ?? null);
 
@@ -64,7 +64,7 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories, loading }: Think
                 <MiniSpatial coords={trajectory.spatial_coordinates} />
                 <div className="mt-1 flex items-center justify-between">
                   <span className="font-mono text-[9px] text-slate-500">
-                    sim {trajectory.similarity_score.toFixed(3)}
+                    sim {trajectory.similarity_score?.toFixed(3) ?? '—'}
                   </span>
                   {trajectory.correction_delta ? (
                     <span className="rounded bg-violet-500/10 px-1 py-0.5 text-[8px] font-mono text-violet-300">

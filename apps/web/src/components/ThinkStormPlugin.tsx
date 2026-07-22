@@ -7,7 +7,7 @@ interface ThinkStormPluginProps {
   trajectories: ThinkTrajectory[];
 }
 
-export function ThinkStormPlugin({ plugin, trajectories }: ThinkStormPluginProps) {
+export function ThinkStormPlugin({ plugin, trajectories = [] }: ThinkStormPluginProps) {
   const pending = trajectories.filter((t) => t.status === 'PENDING_APPROVAL').length;
   const verified = trajectories.filter((t) => t.status === 'VERIFIED').length;
   const recycled = trajectories.filter((t) => t.status === 'RECYCLED').length;
@@ -34,7 +34,7 @@ export function ThinkStormPlugin({ plugin, trajectories }: ThinkStormPluginProps
       </div>
       {latest && (
         <div className="mt-2 truncate font-mono text-[9px] text-slate-500">
-          latest: {latest.token_hash} · sim {latest.similarity_score.toFixed(3)}
+          latest: {latest.token_hash} · sim {latest.similarity_score?.toFixed(3) ?? '0.000'}
         </div>
       )}
     </PluginCard>
