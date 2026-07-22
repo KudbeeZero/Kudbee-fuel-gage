@@ -370,6 +370,9 @@ async function ensureSchema() {
       )
     `);
     await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS token_cost NUMERIC DEFAULT 0`);
+    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS kd NUMERIC DEFAULT 0`);
+    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS efficacy NUMERIC DEFAULT 0`);
+    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS locked_by VARCHAR DEFAULT NULL`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vector_memory (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1001,7 +1004,8 @@ app.get('/api/think/trajectories', async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
     const rows = await runQuery(
-      `SELECT id, original_trace_id, task_context, failed_state, correction_delta, embedding, status, created_at
+      `SELECT id, original_trace_id, task_context, failed_state, correction_delta, embedding, status, created_at,
+              COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by
        FROM think_tokens
        ORDER BY created_at DESC
        LIMIT $1`,
@@ -1041,7 +1045,10 @@ app.get('/api/think/trajectories', async (req, res) => {
         task_context: taskContext,
         failed_state: safeParseJson(row.failed_state),
         correction_delta: row.correction_delta || '',
-        created_at: row.created_at
+        created_at: row.created_at,
+        kd: Number(row.kd ?? 0),
+        efficacy: Number(row.efficacy ?? 0),
+        locked_by: row.locked_by ?? null
       };
     });
     return res.json({ count: trajectories.length, trajectories });
@@ -1745,20 +1752,24 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
     }
 
+    const kdValue = typeof kd === 'number' ? kd : 0;
+    const efficacyValue = typeof efficacy === 'number' ? efficacy : 0;
+
     const result = await mintThinkToken({
       traceId: String(traceId),
       taskContext: taskContext || {},
       failedState: failedState || {},
       correctionDelta: String(correctionDelta),
-      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status) ? status : 'PENDING_APPROVAL'
+      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status) ? status : 'PENDING_APPROVAL',
+      kd: kdValue,
+      efficacy: efficacyValue,
+      locked_by: null
     });
 
     if (!result.ok) {
       return res.status(500).json({ error: result.error });
     }
 
-    const kdValue = typeof kd === 'number' ? kd : 0;
-    const efficacyValue = typeof efficacy === 'number' ? efficacy : 0;
     const hasGatingParams = typeof kd === 'number' || typeof efficacy === 'number' || tokenType === 'CHALLENGE_TOKEN';
 
     if (hasGatingParams && (kdValue > 0 || efficacyValue === 0)) {

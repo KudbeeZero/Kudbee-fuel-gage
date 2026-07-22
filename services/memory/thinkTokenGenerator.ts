@@ -25,6 +25,9 @@ export interface MintThinkTokenPayload {
   cost?: number;
   latencyMs?: number;
   status?: ThinkToken['status'];
+  kd?: number;
+  efficacy?: number;
+  locked_by?: string | null;
 }
 
 export type MintThinkTokenResult =
@@ -69,7 +72,10 @@ export async function mintThinkToken(
     reasoningSteps = [],
     cost = 0,
     latencyMs = 0,
-    status = 'PENDING_APPROVAL'
+    status = 'PENDING_APPROVAL',
+    kd = 0,
+    efficacy = 0,
+    locked_by = null
   } = payload;
 
   if (!correctionDelta) {
@@ -98,27 +104,27 @@ export async function mintThinkToken(
     if (pool && isDbHealthy()) {
       try {
         const res = await pool.query(
-          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
-           VALUES ($1, $2, $3, $4, $5::vector, $6, $7)
+          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd, efficacy, locked_by)
+           VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8, $9, $10)
            RETURNING id`,
-          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
+          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost, kd, efficacy, locked_by]
         );
         tokenId = String(res.rows[0]?.id ?? originalTraceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn('[ThinkToken] DB insert failed, degrading to runInsert:', message);
         const result = await runInsert(
-          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
+          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd, efficacy, locked_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost, kd, efficacy, locked_by]
         );
         tokenId = String(result.id ?? originalTraceId);
       }
     } else {
       const result = await runInsert(
-        `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost]
+        `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd, efficacy, locked_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost, kd, efficacy, locked_by]
       );
       tokenId = String(result.id ?? originalTraceId);
     }
@@ -137,6 +143,9 @@ export async function mintThinkToken(
             cost,
             latencyMs,
             embedding_dim: embedding.length,
+            kd,
+            efficacy,
+            locked_by,
             timestamp: new Date().toISOString()
           }
         })

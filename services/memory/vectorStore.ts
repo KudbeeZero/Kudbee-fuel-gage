@@ -259,6 +259,9 @@ export interface RelevantThinkToken {
   similarity: number;
   status: string;
   created_at: string | null;
+  kd: number;
+  efficacy: number;
+  locked_by: string | null;
 }
 
 export type RelevantThinkTokenResult =
@@ -274,6 +277,9 @@ interface ThinkTokenRow {
   status: unknown;
   created_at: unknown;
   similarity?: unknown;
+  kd?: unknown;
+  efficacy?: unknown;
+  locked_by?: unknown;
 }
 
 function parseRecord(value: unknown): Record<string, unknown> | null {
@@ -324,6 +330,7 @@ export async function getRelevantThinkTokens(
       // full top-k if the verified set is empty so the forge stays useful.
       const verifiedRows = await pool.query(
         `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
                 1 - (embedding <=> $1::vector) AS similarity
          FROM think_tokens
          WHERE status = 'VERIFIED'
@@ -337,6 +344,7 @@ export async function getRelevantThinkTokens(
           ? verifiedRows.rows
           : (await pool.query(
               `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                      COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
                       1 - (embedding <=> $1::vector) AS similarity
                FROM think_tokens
                ORDER BY embedding <=> $1::vector
@@ -351,7 +359,10 @@ export async function getRelevantThinkTokens(
         failed_state: parseRecord(row.failed_state),
         similarity: Number(row.similarity ?? 0),
         status: String(row.status ?? 'PENDING_APPROVAL'),
-        created_at: row.created_at ? String(row.created_at) : null
+        created_at: row.created_at ? String(row.created_at) : null,
+        kd: Number(row.kd ?? 0),
+        efficacy: Number(row.efficacy ?? 0),
+        locked_by: row.locked_by ? String(row.locked_by) : null
       }));
       return { ok: true, results };
     } catch (err) {
