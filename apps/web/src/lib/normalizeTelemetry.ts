@@ -1,3 +1,18 @@
+/**
+ * Normalize telemetry log rows from GET /api/telemetry/logs.
+ *
+ * The Neon schema / ingestion server emits:
+ *   model, tokens_in, tokens_out, cost, trace_id, project_name, …
+ *
+ * Older UI code expected a different shape:
+ *   model_name, input_tokens, output_tokens, calculated_cost, …
+ *
+ * Reading only the legacy names makes every token cell render blank (0 / —)
+ * even when the backend is healthy and returning real data. This helper
+ * accepts either shape (and either an array or a wrapped { logs|data|results }
+ * payload) and produces a single canonical client row.
+ */
+
 export interface TelemetryLogRow {
   id: number | string;
   user_id?: number;
@@ -49,6 +64,23 @@ function coerceId(value: unknown): number | string {
   return 0;
 }
 
+/**
+ * Unwrap telemetry log payloads. The API returns an array today, but the
+ * modular sub-routers could be configured to return { logs, data, results }
+ * wrappers. Accepting both keeps the UI resilient.
+ */
+export function unwrapTelemetryLogs(raw: unknown): unknown[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray(obj.logs)) return obj.logs;
+    if (Array.isArray(obj.data)) return obj.data;
+    if (Array.isArray(obj.results)) return obj.results;
+  }
+  return [];
+}
+
 export function normalizeTelemetryLog(raw: RawTelemetryLog | null | undefined): TelemetryLogRow {
   const r = raw && typeof raw === 'object' ? raw : {};
 
@@ -78,6 +110,21 @@ export function normalizeTelemetryLog(raw: RawTelemetryLog | null | undefined): 
 }
 
 export function normalizeTelemetryLogs(raw: unknown): TelemetryLogRow[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((row) => normalizeTelemetryLog(row as RawTelemetryLog));
+  return unwrapTelemetryLogs(raw).map((row) => normalizeTelemetryLog(row as RawTelemetryLog));
+}
+
+/**
+ * Normalize the dashboard summary payload. Accepts either the flat object
+ * shape from GET /api/dashboard/summary or a wrapped { data | summary } form.
+ */
+export function normalizeDashboardSummary(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) {
+    return obj.data as Record<string, unknown>;
+  }
+  if (obj.summary && typeof obj.summary === 'object' && !Array.isArray(obj.summary)) {
+    return obj.summary as Record<string, unknown>;
+  }
+  return obj;
 }

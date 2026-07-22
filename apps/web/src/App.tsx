@@ -66,7 +66,7 @@ const GovernanceView = lazy(() => import('./components/GovernanceView').then((m)
 import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
-import { normalizeTelemetryLogs } from './lib/normalizeTelemetry';
+import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
 import { apiGet } from './lib/apiClient';
 import {
   AreaChart,
@@ -3237,11 +3237,12 @@ export default function App() {
     if (!isAuthenticated) return;
     setHistoryError(null);
     try {
-      const [sData, rawLogs] = await Promise.all([
-        apiGet<DashboardSummary>('/api/dashboard/summary'),
-        apiGet<unknown[]>('/api/telemetry/logs?limit=50')
+      const [sRaw, rawLogs] = await Promise.all([
+        apiGet<unknown>('/api/dashboard/summary'),
+        apiGet<unknown>('/api/telemetry/logs?limit=50')
       ]);
-      setDbSummary(sData);
+      const sData = normalizeDashboardSummary(sRaw) as DashboardSummary | null;
+      if (sData) setDbSummary(sData);
       setDbLogs(normalizeTelemetryLogs(rawLogs) as TelemetryLog[]);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
