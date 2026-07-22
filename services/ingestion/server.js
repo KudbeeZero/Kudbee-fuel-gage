@@ -1197,9 +1197,8 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
         `SELECT id, original_trace_id FROM think_tokens WHERE id = $1`,
         [String(tokenId)]
       );
-      if (rows.length > 0) {
-        matched = rows[0];
-      }
+      const found = rows.find((r) => String(r.id) === String(tokenId));
+      if (found) matched = found;
     }
     if (!matched) {
       const reversed = reverseTokenHash(hash);
