@@ -18,10 +18,27 @@ import { IngestRequestSchema, type IngestRequest } from '@kudbee/types';
 
 // Egress topology: the Sentinel dyno is network-isolated on Heroku and CANNOT
 // reach the `web` dyno via `localhost`. Egress MUST route over the public
-// internet to our ingress. In production, set KUDBEE_API_URL to the public web
-// dyno URL (e.g. https://kudbee-web.herokuapp.com). The localhost fallback is
-// retained only for local development where both services share a host.
-const INGEST_URL = process.env.KUDBEE_API_URL || 'http://localhost:3000';
+// internet to our ingress. The URL is resolved from (in priority order):
+//   KUDBEE_API_URL  – explicit override (preferred)
+//   API_BASE_URL    – generic deploy-platform variable
+//   HEROKU_APP_NAME – auto-constructed as https://<app>.herokuapp.com
+//   http://localhost:3000 – local development fallback only
+function resolveIngestUrl(): string {
+  if (process.env.KUDBEE_API_URL) return process.env.KUDBEE_API_URL;
+  if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  if (process.env.HEROKU_APP_NAME) {
+    return `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Sentinel] FATAL: running in production but no ingress URL configured. ' +
+      'Set KUDBEE_API_URL, API_BASE_URL, or HEROKU_APP_NAME.'
+    );
+  }
+  return 'http://localhost:3000';
+}
+
+const INGEST_URL = resolveIngestUrl();
 const INGEST_PATH = '/api/telemetry/ingest';
 const AGENT_PASS = process.env.SENTINEL_AGENT_PASS ?? '';
 const POLL_INTERVAL_MS = Number(process.env.SENTINEL_POLL_MS ?? '2000');

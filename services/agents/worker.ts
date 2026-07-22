@@ -346,6 +346,14 @@ export async function startWorker() {
     console.warn('[Worker] Redis unavailable — worker loop not started');
     return;
   }
+
+  try {
+    await redis.ping();
+  } catch {
+    console.warn('[Worker] Redis not yet reachable — worker loop deferred');
+    return;
+  }
+
   _running = true;
   _stopRequested = false;
   console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
