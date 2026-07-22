@@ -331,10 +331,6 @@ export const ThinkTrajectorySchema = z.object({
   token_hash: z.string().min(1),
   spatial_coordinates: z.array(z.number()).min(1),
   similarity_score: z.number(),
-  // Phase 28 — Probabilistic Uncertainty Gating. The agent's self-reported
-  // confidence in the trajectory (0.0-1.0). Optional so older telemetry rows
-  // that predate the circuit degrade gracefully to a neutral `[N/A]` badge in
-  // the dashboard instead of failing the UI contract.
   confidence_score: z.number().min(0).max(1).optional(),
   status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']),
   task_context: z.record(z.unknown()).optional(),
@@ -351,12 +347,6 @@ export const ThinkTrajectoryResponseSchema = z.object({
 export type ThinkTrajectoryResponse = z.infer<typeof ThinkTrajectoryResponseSchema>;
 
 // --- Phase 28: Probabilistic Uncertainty Gating -------------------------------
-// The canonical JSON output schema every agent MUST emit before its payload is
-// allowed to execute. `confidence_score` is the agent's self-reported
-// probability (0.0-1.0) that its proposed action is correct and grounded.
-// `uncertainty_flag` is the hard boolean the router guard reads to decide
-// whether to intercept the payload and route it to the PENDING_APPROVAL
-// Governance queue (or DLQ) tagged `REASON: HIGH_UNCERTAINTY`.
 
 export const UNCERTAINTY_THRESHOLD = 0.8;
 
