@@ -37,6 +37,7 @@ import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
+import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1818,6 +1819,44 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
   } catch (err) {
     console.error('[ThinkToken] Mint error:', err?.message);
     return res.status(500).json({ error: 'Failed to mint think token' });
+  }
+});
+
+// --- Phase 38: Groq LPU Inference Accelerator — Think Token Synthesis ---------
+app.post('/api/think/synthesize', async (req, res) => {
+  try {
+    const { taskContext, correctionDelta, confidenceScore, temperature, maxTokens } = req.body || {};
+
+    if (!groqConfigured) {
+      return res.status(503).json({ error: 'Groq inference unavailable — GROQ_API_KEY not configured' });
+    }
+
+    if (!taskContext && !correctionDelta) {
+      return res.status(400).json({ error: 'At least one of taskContext or correctionDelta is required' });
+    }
+
+    const result = await synthesizeThinkToken({
+      taskContext: String(taskContext || ''),
+      correctionDelta: String(correctionDelta || ''),
+      confidenceScore: typeof confidenceScore === 'number' ? confidenceScore : undefined,
+      temperature: typeof temperature === 'number' ? temperature : 0.1,
+      maxTokens: typeof maxTokens === 'number' ? maxTokens : 512
+    });
+
+    if (!result.ok) {
+      return res.status(502).json({ error: result.error || 'Groq synthesis failed' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      reasoning: result.reasoning,
+      tokensUsed: result.tokensUsed,
+      latencyMs: result.latencyMs,
+      provider: 'groq-lpu'
+    });
+  } catch (err) {
+    console.error('[Groq] Synthesis error:', err?.message);
+    return res.status(500).json({ error: 'Groq synthesis failed' });
   }
 });
 
@@ -3834,6 +3873,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`);
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
+  console.log(`[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`);
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
