@@ -703,8 +703,8 @@ app.post('/api/telemetry/ingest', async (req, res) => {
     });
 
     const result = await runInsert(
-      `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)`,
       [
         String(trace_id ?? (agentId ? `agent-${agentId}` : 'unknown')),
         String(model || 'unknown'),
@@ -1368,7 +1368,7 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
     const inserted = [];
     for (const item of logs) {
       const result = await runInsert(
-        `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
+        `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           String(item.trace_id || `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
@@ -1458,8 +1458,8 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
 
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
     const result = await runInsert(
-      `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)`,
       [
         String(trace_id),
         String(model),
