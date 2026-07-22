@@ -3286,7 +3286,14 @@ export default function App() {
       totalRequests: dbSummary?.total_requests || 0,
       activeModels: dbSummary?.total_active_models || 0,
       errorRate: dbSummary?.error_rate || 0,
-      totalTokens: dbTokens
+      totalTokens: dbTokens,
+      sink_token_balance: dbSummary?.sink_token_balance ?? 0,
+      total_24h_cost: dbSummary?.total_24h_cost ?? 0,
+      total_active_models: dbSummary?.total_active_models ?? 0,
+      pgSizeBytes: dbSummary?.postgres_size_bytes ?? 0,
+      redisSizeBytes: dbSummary?.redis_size_bytes ?? 0,
+      pgHealthy: (dbSummary?.postgres_size_bytes ?? -1) >= 0,
+      redisHealthy: (dbSummary?.redis_size_bytes ?? -1) >= 0
     };
   }, [dbSummary, dbLogs]);
 
@@ -3546,11 +3553,11 @@ export default function App() {
             </div>
             <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest drop-shadow-[0_0_4px_rgba(52,211,153,0.25)]">System Status: Nominal</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-emerald-400">[NEON: OK]</span>
-            <span className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-cyan-400">[VECTOR: HNSW ACTIVE]</span>
-            <span className="rounded-full border border-violet-500/20 bg-violet-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-violet-400">[CRUCIBLE: READY]</span>
-          </div>
+           <div className="flex flex-wrap items-center gap-2">
+             <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.pgHealthy ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}>[NEON: {liveStats.pgHealthy ? 'OK' : 'DOWN'}]</span>
+             <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.redisHealthy ? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}>[REDIS: {liveStats.redisHealthy ? 'OK' : 'DOWN'}]</span>
+             <span className="rounded-full border border-violet-500/20 bg-violet-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-violet-400">[CRUCIBLE: ACTIVE]</span>
+           </div>
         </div>
       </aside>
 
@@ -3866,205 +3873,30 @@ export default function App() {
                      </div>
                   </div>
 
-                  {/* SUBSCRIPTION BUDGET LEDGER CARD (ROADMAP PHASE 3 GAP FIX) */}
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden" id="subscription-budget-ledger">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
-                    
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-orange-400" />
-                        <h3 className="font-display font-semibold text-slate-200 text-sm">Subscription Budget Ledger</h3>
-                      </div>
-                      <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase">
-                        Fixed Cap Ledger
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-500 mb-4 leading-normal">
-                      Establish monthly budget constraints. The ledger tracks cumulative costs and decrements caps in real-time.
-                    </p>
-
-                    <div className="space-y-4">
-                      {[
-                        {
-                          id: 'claude',
-                          name: 'Claude Pro Limit',
-                          cap: claudeProCap,
-                          setCap: (val: number) => {
-                            setClaudeProCap(val);
-                            localStorage.setItem('kudbee_cap_claude', val.toString());
-                          },
-                          spent: ledgerSpend.claude,
-                          color: 'from-orange-500 to-amber-500',
-                        },
-                        {
-                          id: 'cursor',
-                          name: 'Cursor Pro Limit',
-                          cap: cursorProCap,
-                          setCap: (val: number) => {
-                            setCursorProCap(val);
-                            localStorage.setItem('kudbee_cap_cursor', val.toString());
-                          },
-                          spent: ledgerSpend.cursor,
-                          color: 'from-blue-500 to-indigo-500',
-                        },
-                        {
-                          id: 'chatgpt',
-                          name: 'ChatGPT Plus Limit',
-                          cap: chatGptCap,
-                          setCap: (val: number) => {
-                            setChatGptCap(val);
-                            localStorage.setItem('kudbee_cap_chatgpt', val.toString());
-                          },
-                          spent: ledgerSpend.chatGpt,
-                          color: 'from-emerald-500 to-teal-500',
-                        },
-                        {
-                          id: 'api',
-                          name: 'API Gateway Limit',
-                          cap: apiGatewayCap,
-                          setCap: (val: number) => {
-                            setApiGatewayCap(val);
-                            localStorage.setItem('kudbee_cap_api', val.toString());
-                          },
-                          spent: ledgerSpend.api,
-                          color: 'from-purple-500 to-pink-500',
-                        }
-                      ].map((item) => {
-                        const pct = item.cap > 0 ? Math.min(100, (item.spent / item.cap) * 100) : 0;
-                        const remaining = Math.max(0, item.cap - item.spent);
-                        const isEditing = editingProvider === item.id;
-
-                        return (
-                          <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-850/70 rounded-lg space-y-2 group">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-mono font-bold text-slate-300">{item.name}</span>
-                              
-                              {isEditing ? (
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="number"
-                                    value={tempCapVal}
-                                    onChange={(e) => setTempCapVal(e.target.value)}
-                                    className="w-16 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 text-[10px] font-mono text-right text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                    placeholder="Cap"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      const numeric = parseFloat(tempCapVal);
-                                      if (!isNaN(numeric) && numeric >= 0) {
-                                        item.setCap(numeric);
-                                        showToast(`Monthly cap for ${item.name} set to ${getFormattedCost(numeric, currency, 2)}`, 'success');
-                                      }
-                                      setEditingProvider(null);
-                                    }}
-                                    className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono font-semibold rounded cursor-pointer"
-                                  >
-                                    SAVE
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingProvider(null)}
-                                    className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 text-[9px] font-mono font-semibold rounded cursor-pointer"
-                                  >
-                                    ESC
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    setEditingProvider(item.id);
-                                    setTempCapVal(item.cap.toString());
-                                  }}
-                                  className="text-[10px] font-mono text-slate-500 hover:text-orange-400 transition-colors flex items-center gap-1 cursor-pointer"
-                                >
-                                  <span>CAP: {getFormattedCost(item.cap, currency, 2)}</span>
-                                  <Sliders className="w-3 h-3 text-slate-700 group-hover:text-orange-400 transition-colors" />
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Progress bar */}
-                            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80 relative">
-                              <div 
-                                className={`absolute top-0 left-0 h-full bg-gradient-to-r ${item.color} transition-all duration-500`} 
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-
-                            <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                              <span>Spent: {getFormattedCost(item.spent, currency, 4)}</span>
-                              <span className="text-slate-400">Remaining: {getFormattedCost(remaining, currency, 4)}</span>
-                            </div>
-                          </div>
-                         );
-                       })}
+                  {/* LIVE SINK PRESSURE & COST CARD */}
+                   <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden" id="sink-cost-card">
+                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
+                     <div className="flex items-center justify-between mb-4">
+                       <div className="flex items-center gap-2">
+                         <DollarSign className="w-4 h-4 text-orange-400" />
+                         <h3 className="font-display font-semibold text-slate-200 text-sm">Sink Pressure &amp; Cost Ledger</h3>
+                       </div>
                      </div>
-                   </div>
-                 </div>
-               </div>
-
-               {/* BOTTOM ROW: DUAL TELEMETRY & GATEWAY CHARTS */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* 24-HOUR TELEMETRY CONTAINER */}
-                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-3">
-                    <span className="flex h-2 w-2 relative">
-                      <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
-                    </span>
+                     <div className="grid grid-cols-2 gap-3">
+                       <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-center">
+                         <div className="text-[9px] font-mono uppercase text-slate-500 mb-1">Sink Pressure</div>
+                         <div className="font-mono text-lg font-bold text-orange-300">{((liveStats?.sink_token_balance ?? 1000) > 500 ? 'LOW' : (liveStats?.sink_token_balance ?? 1000) > 200 ? 'MED' : 'HIGH')}</div>
+                         <div className="font-mono text-[9px] text-slate-500">{liveStats?.sink_token_balance ?? 1000} tokens</div>
+                       </div>
+                       <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-center">
+                         <div className="text-[9px] font-mono uppercase text-slate-500 mb-1">24h Cost</div>
+                         <div className="font-mono text-lg font-bold text-violet-300">${(liveStats?.total_24h_cost ?? 0).toFixed(2)}</div>
+                         <div className="font-mono text-[9px] text-slate-500">{liveStats?.total_active_models ?? 0} models active</div>
+                       </div>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mb-6 flex justify-between items-end">
-                    <span>24-Hour Telemetry & Ingestion Trajectory</span>
-                    <span className="text-emerald-500/70 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded">Live DB Sync</span>
-                  </div>
-                  
-                  <div className="h-44 w-full mt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                        <XAxis 
-                          dataKey="name" 
-                          stroke="#475569" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false}
-                          dy={10}
-                        />
-                        <YAxis 
-                          stroke="#475569" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false}
-                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '8px' }}
-                          labelStyle={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}
-                          itemStyle={{ color: '#34d399', fontFamily: 'monospace', fontSize: '11px' }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="tokens" 
-                          stroke="#10b981" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorTokens)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* API GATEWAY CIRCUIT BREAKER HEALTH LINE CHART */}
+                 {/* API GATEWAY CIRCUIT BREAKER HEALTH LINE CHART */}
                 <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden" id="circuit-breaker-health-chart">
                   <div className="absolute top-0 right-0 p-3">
                     <span className="flex h-2 w-2 relative">
