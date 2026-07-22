@@ -1012,6 +1012,42 @@ app.get('/api/interceptor/threat-heatmap', async (req, res) => {
   } catch { return res.status(200).json({ threats: [], pressure: 0 }); }
 });
 
+// --- DLQ Resurrection: Dead Letter Queue endpoints ---
+app.get('/api/governance/failed', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const key = 'kudbee-governance-tasks-failed';
+    let items = [];
+    if (redis) { const raw = await redis.lrange(key, 0, limit - 1); items = raw.map((r) => { try { return JSON.parse(r); } catch { return { raw: r }; } }); }
+    if (items.length === 0 && pool) { const rows = await pool.query('SELECT * FROM think_tokens WHERE status = $1 ORDER BY created_at DESC LIMIT $2', ['RECYCLED', limit]); items = rows.rows || []; }
+    return res.status(200).json({ items, count: items.length });
+  } catch { return res.status(200).json({ items: [], count: 0 }); }
+});
+app.post('/api/governance/failed/retry', async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'id required' });
+    if (redis) {
+      const items = await redis.lrange('kudbee-governance-tasks-failed', 0, -1);
+      for (const item of items) {
+        try { const p = JSON.parse(item); if (p.id === id) { await redis.lrem('kudbee-governance-tasks-failed', 1, item); delete p.retryCount; await redis.lpush('kudbee-governance-tasks', JSON.stringify(p)); return res.status(200).json({ success: true, action: 'retried' }); } } catch { /* skip */ }
+      }
+    }
+    return res.status(404).json({ error: 'Task not found in DLQ' });
+  } catch { return res.status(500).json({ error: 'Retry failed' }); }
+});
+app.post('/api/governance/failed/discard', async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'id required' });
+    if (redis) {
+      const items = await redis.lrange('kudbee-governance-tasks-failed', 0, -1);
+      for (const item of items) { try { const p = JSON.parse(item); if (p.id === id) { await redis.lrem('kudbee-governance-tasks-failed', 1, item); } } catch { /* skip */ } }
+    }
+    return res.status(200).json({ success: true, action: 'discarded' });
+  } catch { return res.status(500).json({ error: 'Discard failed' }); }
+});
+
 // --- Phase 28: The Token Forge — Dynamic Few-Shot RAG ------------------------
 // GET /api/memory/think-tokens?prompt=...&limit=3 — queries the pgvector
 // `think_tokens` store for the `limit` most semantically similar past SUCCESSES
