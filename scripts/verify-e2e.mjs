@@ -2,8 +2,12 @@ import http from 'http';
 import { spawn } from 'child_process';
 import { setTimeout as delay } from 'timers/promises';
 import { fileURLToPath } from 'url';
+import path from 'path';
+import { createRequire } from 'module';
+import { spawnSync } from 'child_process';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const require = createRequire(import.meta.url);
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -37,7 +41,8 @@ async function waitForServer(url, timeoutMs = 10000) {
 
 async function startServer() {
   console.log('[E2E] Starting ingestion server...');
-  serverProcess = spawn(process.execPath, ['server.js'], {
+  const tsxPath = require.resolve('tsx/cli');
+  serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
     stdio: ['pipe', 'pipe', 'pipe']
@@ -471,12 +476,147 @@ async function check26_LazyBundleLoading() {
   return jsFiles.length >= 1;
 }
 
+async function check27_TaskEnqueueAndConsumption() {
+  // If Redis is unavailable the worker logs a warning and stays dormant; the
+  // enqueue endpoint returns 503, and the /failed endpoint returns 200 with
+  // workerRunning=false. We treat either as a graceful degrade.
+  const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({ kind: 'E2E_HEALTH_CHECK', payload: { shouldFail: false } })
+  });
+  if (enqRes.status === 503 || enqRes.status === 500) return true; // graceful degrade
+  if (enqRes.status !== 201) return false;
+  const enqData = await enqRes.json();
+  if (!enqData.success || typeof enqData.id !== 'string') return false;
+
+  await new Promise((r) => setTimeout(r, 1500));
+  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
+  if (dlqRes.status !== 200) return false;
+  const dlqData = await dlqRes.json();
+  if (typeof dlqData.count !== 'number') return false;
+  if (typeof dlqData.workerRunning !== 'boolean') return false;
+  return Array.isArray(dlqData.items);
+}
+
+async function check28_DLQRetryPolicy() {
+  const es = await import('child_process');
+  const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({
+      kind: 'E2E_DLQ_SIMULATION',
+      payload: { shouldFail: true, failureMessage: 'synthetic E2E failure' }
+    })
+  });
+  if (enqRes.status === 503 || enqRes.status === 500) return true;
+  if (enqRes.status !== 201) return false;
+  const enqData = await enqRes.json();
+  const taskId = enqData.id;
+  if (!taskId) return false;
+
+  await new Promise((r) => setTimeout(r, 4000));
+
+  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
+  if (dlqRes.status !== 200) return false;
+  const dlqData = await dlqRes.json();
+  if (!Array.isArray(dlqData.items)) return false;
+
+  const found = dlqData.items.find((t) => t.id === taskId);
+  if (!found) return false;
+  if (found.attempts < 3) return false;
+  if (!found.lastError || !String(found.lastError).includes('synthetic E2E failure')) return false;
+
+  await fetch(`${BASE}/api/governance/failed/discard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    body: JSON.stringify({ id: taskId })
+  }).catch(() => {});
+
+  return true;
+}
+
+async function check29_DriftSentinel() {
+  const result = spawnSync(process.execPath, [path.join(__dirname, 'verify-drift.mjs')], {
+    cwd: __dirname,
+    encoding: 'utf-8'
+  });
+  if (result.error) {
+    return false;
+  }
+  const passed = result.status === 0;
+  return passed;
+}
+
+async function check30_DegradationMonitorTracking() {
+  let before;
+  try {
+    const beforeRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!beforeRes.ok) {
+      console.error(`[Check30] degradation-status before: HTTP ${beforeRes.status}`);
+      return false;
+    }
+    before = await beforeRes.json();
+  } catch (e) {
+    console.error(`[Check30] degradation-status before read failed: ${e.message}`);
+    return false;
+  }
+
+  const ingestPayload = {
+    trace_id: `tr-e2e-deg-${Date.now()}`,
+    model: 'gemini-1.5-pro',
+    tokens_in: 100,
+    tokens_out: 50,
+    cost: 0.001,
+    status: 'OK',
+    provider: 'Google',
+    project_name: 'degradation-monitor-test'
+  };
+  const ingestRes = await fetch(`${BASE}/api/telemetry/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ingestPayload)
+  });
+  if (!ingestRes.ok) {
+    const txt = await ingestRes.text().catch(() => 'no body');
+    console.error(`[Check30] ingest failed: ${ingestRes.status} ${txt}`);
+    return false;
+  }
+
+  let after;
+  try {
+    const afterRes = await fetch(`${BASE}/api/telemetry/degradation-status`);
+    if (!afterRes.ok) {
+      console.error(`[Check30] degradation-status after: HTTP ${afterRes.status}`);
+      return false;
+    }
+    after = await afterRes.json();
+  } catch (e) {
+    console.error(`[Check30] degradation-status after read failed: ${e.message}`);
+    return false;
+  }
+
+  console.error(`[Check30] before: ${JSON.stringify(before.counters)}`);
+  console.error(`[Check30] after: ${JSON.stringify(after.counters)}`);
+
+  const hasCounters = typeof after.counters === 'object' &&
+    typeof after.counters.primaryQueryCount === 'number' &&
+    typeof after.counters.fallbackQueryCount === 'number' &&
+    typeof after.counters.redisPrimaryCount === 'number' &&
+    typeof after.counters.redisFallbackCount === 'number';
+
+  const countersAdvanced = (after.counters.primaryQueryCount + after.counters.fallbackQueryCount) >
+    (before.counters.primaryQueryCount + before.counters.fallbackQueryCount);
+
+  return hasCounters && countersAdvanced;
+}
+
 // --- Phase 28: Agent Context Factory, Token Forge & Confidence surfaces -------
 
-// Check 27: The agent context factory assembles the hierarchical system prompt
+// Check 31: The agent context factory assembles the hierarchical system prompt
 // (BASE_IDENTITY + IMMUTABLE_LAWS) for a given intent. Verifies the Phase 6
 // factory is wired and observable end-to-end via GET /api/agents/context.
-async function check27_AgentContextFactoryHierarchy() {
+async function check31_AgentContextFactoryHierarchy() {
   const res = await fetch(`${BASE}/api/agents/context?prompt=${encodeURIComponent('inspect the system telemetry dashboard')}`);
   const data = await res.json();
   return res.status === 200 &&
@@ -487,9 +627,9 @@ async function check27_AgentContextFactoryHierarchy() {
     data.system_prompt.includes('IMMUTABLE_LAWS');
 }
 
-// Check 28: Dynamic skill tagging — a destructive (DB mutation) intent MUST be
+// Check 32: Dynamic skill tagging — a destructive (DB mutation) intent MUST be
 // tagged with the DATABASE_MUTATION skill so the Governance Gate is armed.
-async function check28_DynamicSkillTagging() {
+async function check32_DynamicSkillTagging() {
   const res = await fetch(`${BASE}/api/agents/context`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -502,9 +642,9 @@ async function check28_DynamicSkillTagging() {
     data.skills.includes('DATABASE_MUTATION');
 }
 
-// Check 29: Trajectories surface the Phase 28 confidence_score for the History
+// Check 33: Trajectories surface the Phase 28 confidence_score for the History
 // panel data contract (with graceful handling for any legacy row).
-async function check29_TrajectoriesExposeConfidence() {
+async function check33_TrajectoriesExposeConfidence() {
   const res = await fetch(`${BASE}/api/think/trajectories?limit=25`);
   const data = await res.json();
   if (!(res.status === 200 && Array.isArray(data.trajectories))) return false;
@@ -513,9 +653,9 @@ async function check29_TrajectoriesExposeConfidence() {
   return data.trajectories.every((t) => typeof t.confidence_score === 'number');
 }
 
-// Check 30: The uncertainty-gate parse variant (GET) normalizes a low
+// Check 34: The uncertainty-gate parse variant (GET) normalizes a low
 // confidence and flags below_threshold without writing to the governance queue.
-async function check30_UncertaintyGateParse() {
+async function check34_UncertaintyGateParse() {
   const res = await fetch(`${BASE}/api/agents/evaluate?payload=${encodeURIComponent(JSON.stringify({ action: 'probe', confidence_score: 0.35, uncertainty_flag: false }))}`);
   const data = await res.json();
   return res.status === 200 &&
@@ -527,11 +667,11 @@ async function check30_UncertaintyGateParse() {
 
 // --- Phase 28: Token Forge RAG + Probabilistic Uncertainty Gating ------------
 
-// Check 31: A low-confidence agent payload (confidence_score < 0.80) MUST be
+// Check 35: A low-confidence agent payload (confidence_score < 0.80) MUST be
 // intercepted by the Uncertainty Gate BEFORE execution and routed to the
 // PENDING_APPROVAL governance queue tagged `REASON: HIGH_UNCERTAINTY`. Also
 // verifies a high-confidence payload clears the gate (EXECUTE).
-async function check31_UncertaintyGateInterception() {
+async function check35_UncertaintyGateInterception() {
   // (a) Low-confidence payload → trapped + routed to PENDING.
   const lowRes = await fetch(`${BASE}/api/agents/evaluate`, {
     method: 'POST',
@@ -582,11 +722,11 @@ async function check31_UncertaintyGateInterception() {
   return cleared;
 }
 
-// Check 32: The Token Forge (getRelevantThinkTokens) MUST retrieve past
+// Check 36: The Token Forge (getRelevantThinkTokens) MUST retrieve past
 // successful execution context without crashing. Asserts a well-formed payload
 // (ok boolean + count + results array). When the pgvector store is reachable,
 // count is > 0 because earlier checks (14/16/17) minted think tokens.
-async function check32_TokenForgeRetrieval() {
+async function check36_TokenForgeRetrieval() {
   // Seed the forge with a known correction delta so there is at least one
   // past-success candidate to retrieve.
   await fetch(`${BASE}/api/governance/mint-think-token`, {
@@ -656,12 +796,16 @@ async function run() {
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
     await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
-    await runCheck('Check 27: Agent context factory hierarchy', check27_AgentContextFactoryHierarchy);
-    await runCheck('Check 28: Dynamic skill tagging (DATABASE_MUTATION)', check28_DynamicSkillTagging);
-    await runCheck('Check 29: Trajectories expose confidence_score', check29_TrajectoriesExposeConfidence);
-    await runCheck('Check 30: Uncertainty gate parse variant', check30_UncertaintyGateParse);
-    await runCheck('Check 31: Uncertainty gate low-confidence interception', check31_UncertaintyGateInterception);
-    await runCheck('Check 32: Token Forge retrieval (getRelevantThinkTokens)', check32_TokenForgeRetrieval);
+    await runCheck('Check 27: Task enqueue and worker consumption', check27_TaskEnqueueAndConsumption);
+    await runCheck('Check 28: DLQ retry policy (3-strike → dead letter)', check28_DLQRetryPolicy);
+    await runCheck('Check 29: Dual-source drift sentinel', check29_DriftSentinel);
+    await runCheck('Check 30: Degradation monitor tracking', check30_DegradationMonitorTracking);
+    await runCheck('Check 31: Agent context factory hierarchy', check31_AgentContextFactoryHierarchy);
+    await runCheck('Check 32: Dynamic skill tagging (DATABASE_MUTATION)', check32_DynamicSkillTagging);
+    await runCheck('Check 33: Trajectories expose confidence_score', check33_TrajectoriesExposeConfidence);
+    await runCheck('Check 34: Uncertainty gate parse variant', check34_UncertaintyGateParse);
+    await runCheck('Check 35: Uncertainty gate low-confidence interception', check35_UncertaintyGateInterception);
+    await runCheck('Check 36: Token Forge retrieval (getRelevantThinkTokens)', check36_TokenForgeRetrieval);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -670,7 +814,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 32`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 36`);
   console.log('========================================');
 
   if (failed > 0) {

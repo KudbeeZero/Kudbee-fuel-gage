@@ -34,6 +34,7 @@ import { CostLedgerCard } from '../components/dashboard/CostLedgerCard';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
+import { useDegradationStatus, type DegradationStatus } from '../hooks/useDegradationStatus';
 import { GovernanceToastStack, HermesSuggestion } from '../components/GovernanceToast';
 import { RackLayout } from '../components/RackLayout';
 import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
@@ -336,6 +337,85 @@ function DependencyBadge({ label, state }: { label: string; state: string }) {
       <CircleDot className="h-3 w-3" />
       {label}
       <span className="ml-auto opacity-70">{ok ? 'OK' : state}</span>
+    </div>
+  );
+}
+
+function DegradationBanner({ status, loading, error }: { status: DegradationStatus | null; loading: boolean; error: string | null }) {
+  if (loading && !status) {
+    return (
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2 text-[10px] font-mono text-slate-500">
+        Probing subsystem health…
+      </div>
+    );
+  }
+
+  if (error && !status) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[10px] font-mono text-amber-300">
+        {error}
+      </div>
+    );
+  }
+
+  if (!status) return null;
+
+  const overall = status.overall;
+  const isCritical = overall === 'CRITICAL';
+  const isDegraded = overall === 'DEGRADED';
+
+  const borderClass = isCritical
+    ? 'border-rose-500/40 bg-rose-500/10'
+    : isDegraded
+      ? 'border-amber-500/30 bg-amber-500/10'
+      : 'border-emerald-500/20 bg-emerald-500/5';
+
+  const textClass = isCritical
+    ? 'text-rose-300'
+    : isDegraded
+      ? 'text-amber-300'
+      : 'text-emerald-300';
+
+  const iconClass = isCritical
+    ? 'text-rose-400'
+    : isDegraded
+      ? 'text-amber-400'
+      : 'text-emerald-400';
+
+  const subsystems = status.subsystems;
+  const degradedItems = [
+    { key: 'neon', label: 'Neon', ...subsystems.neon },
+    { key: 'redis', label: 'Redis', ...subsystems.redis },
+    { key: 'pgvector', label: 'pgvector', ...subsystems.pgvector }
+  ].filter((s) => !s.primary);
+
+  return (
+    <div className={`rounded-xl border px-4 py-2.5 ${borderClass}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-widest ${textClass}`}>
+          <Activity className={`h-3.5 w-3.5 ${iconClass}`} />
+          {overall}
+        </span>
+        <span className="text-[10px] font-mono text-slate-500">
+          Last check: {new Date(status.timestamp).toLocaleTimeString()}
+        </span>
+        {degradedItems.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {degradedItems.map((item) => (
+              <span
+                key={item.key}
+                className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                  item.path === 'FALLBACK'
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                    : 'border-slate-700 bg-slate-800 text-slate-400'
+                }`}
+              >
+                {item.label}: {item.path}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -688,7 +768,7 @@ function ThinkTrajectoriesCard({ trajectories, loading, error }: { trajectories:
         <span className="font-mono text-[10px] text-slate-500">vector · 1536-dim</span>
       </div>
 
-      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+      <div className="max-h-[360px] space-y-2 overflow-y-auto overflow-x-hidden p-4">
         {trajectories.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-600">
             <Brain className="h-8 w-8 opacity-40" />
@@ -850,7 +930,7 @@ function TelemetryFeed({
         </span>
       </div>
 
-      <div className="max-h-[360px] overflow-y-auto">
+      <div className="max-h-[360px] overflow-y-auto overflow-x-hidden">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-14 text-slate-600">
             <ShieldX className="h-8 w-8 opacity-40" />
@@ -1072,7 +1152,7 @@ function GovernanceFeed({ actions }: { actions: GovernanceAction[] }) {
         <span className="font-mono text-[10px] text-slate-500">signed · on-chain</span>
       </div>
 
-      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+      <div className="max-h-[360px] space-y-2 overflow-y-auto overflow-x-hidden p-4">
         {actions.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-slate-600">
             <BadgeCheck className="h-8 w-8 opacity-40" />
@@ -1200,7 +1280,7 @@ function SystemStatusCard({ data, loading, error }: { data: HealthCheckResponse 
           <AlertTriangle className="h-3.5 w-3.5 text-amber-400/70" />
           <span className="text-[10px] font-semibold uppercase tracking-widest">Recent Alerts</span>
         </div>
-        <div className="mt-2 max-h-[140px] space-y-1.5 overflow-y-auto">
+        <div className="mt-2 max-h-[140px] space-y-1.5 overflow-y-auto overflow-x-hidden">
           {error && (
             <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] font-mono text-rose-300">
               {error}
@@ -1500,7 +1580,7 @@ function AgentTerminal({
         </div>
       </div>
 
-      <div ref={scrollRef} className="mt-4 max-h-[360px] space-y-3 overflow-y-auto font-mono text-[11px] pr-1">
+      <div ref={scrollRef} className="mt-4 max-h-[360px] space-y-3 overflow-y-auto overflow-x-hidden font-mono text-[11px] pr-1">
         {/* Think: Stream — live reasoning tokens surfaced from GET /api/think/archive. */}
         {thinkLatest ? (
           <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.06] p-3">
@@ -1850,7 +1930,7 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
         </div>
       </div>
 
-      <div className="max-h-[360px] space-y-2 overflow-y-auto p-4">
+      <div className="max-h-[360px] space-y-2 overflow-y-auto overflow-x-hidden p-4">
         {diagnostic && (
           <div className={`rounded-xl border p-3 ${
             diagnostic.status === 'OK'
@@ -2160,6 +2240,7 @@ export function DashboardPage() {
   const { pending: pendingApprovals, submitApproval } = useGovernanceStream();
   const { latest: latestThought } = useThinkStream();
   const { pending: pendingThinkTokens, promoteToken } = useThinkGovernanceStream();
+  const { status: degradation, loading: degradationLoading, error: degradationError } = useDegradationStatus();
 
   const wrappedSubmitApproval = useCallback(
     async (id: string, decision: ApprovalDecision): Promise<boolean> => {
@@ -2570,6 +2651,10 @@ export function DashboardPage() {
             </button>
           </div>
         </header>
+
+        <div className="mt-4">
+          <DegradationBanner status={degradation} loading={degradationLoading} error={degradationError} />
+        </div>
 
         {/* Main control grid — consistent 3-column responsive layout.
             Every top-level card sits in the same 3-col grid so heights align;

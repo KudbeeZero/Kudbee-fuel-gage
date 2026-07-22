@@ -375,6 +375,7 @@ async function startServer() {
           postgres_size_bytes = Number(firstRow.db_size);
         }
       } catch {
+        console.warn("[Degradation] Falling back to in-memory Neon store — primary DB path unavailable.");
         postgres_size_bytes = 0;
       }
       
@@ -386,6 +387,7 @@ async function startServer() {
           redis_size_bytes = Number(match[1]);
         }
       } catch {
+        console.warn("[Degradation] Redis unavailable — falling back to Resilient-First in-memory queue path.");
         redis_size_bytes = 0;
       }
       
@@ -975,6 +977,10 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
 
   // --- Phase 22: Universal Search, Audit Export, System Diagnostics -----------
   registerPhase22Routes(app);
+
+  // --- Phase 29: Degradation Telemetry ----------------------------------------
+  const { createDegradationRouter } = await import("../telemetry/degradation-monitor.js");
+  app.use("/api/telemetry", createDegradationRouter());
 
   // Bind server listener to port 3000
   app.listen(PORT, "0.0.0.0", () => {
@@ -1612,6 +1618,7 @@ function registerPhase22Routes(app: import("express").Express) {
         };
         checks.dbConnection = dbOk ? "PASS" : "FAIL";
       } catch {
+        console.warn("[Degradation] Neon probe failed — system diagnostics reporting DB as OFFLINE.");
         services.postgres = { status: "OFFLINE", latencyMs: null, lastPing: null, poolInfo: null };
         checks.dbConnection = "FAIL";
       }
@@ -1627,10 +1634,12 @@ function registerPhase22Routes(app: import("express").Express) {
           services.redis = { status: "OK", latencyMs, lastPing: new Date().toISOString(), info: memInfo };
           checks.redisConnection = "PASS";
         } catch {
+          console.warn("[Degradation] Redis probe failed — system diagnostics reporting Redis as OFFLINE.");
           services.redis = { status: "OFFLINE", latencyMs: null, lastPing: null, info: null };
           checks.redisConnection = "FAIL";
         }
       } else {
+        console.warn("[Degradation] Redis client unavailable — skipping Redis probe in diagnostics.");
         checks.redisConnection = "SKIP";
       }
 
@@ -1642,6 +1651,7 @@ function registerPhase22Routes(app: import("express").Express) {
         vectorIndexDetail = vectorIndexOk ? `${countRow[0]?.cnt || 0} trace rows indexed` : "count query failed";
         checks.vectorIndex = vectorIndexOk ? "PASS" : "FAIL";
       } catch {
+        console.warn("[Degradation] Vector index query failed — pgvector fallback path active.");
         checks.vectorIndex = "FAIL";
       }
 

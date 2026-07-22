@@ -23,6 +23,7 @@ import { apiGet, apiPost } from '../lib/apiClient';
 import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
 import { PolicyEnginePanel } from '../components/governance/PolicyEnginePanel';
 import { useAuditExport } from '../hooks/useAuditExport';
+import { DLQInspector } from '../components/audit/DLQInspector';
 
 interface DeepServiceStatus {
   status: 'OK' | 'OFFLINE';
@@ -322,6 +323,7 @@ export function FirewallPage() {
 
         <div className="space-y-6">
           <PolicyEnginePanel />
+          <DLQInspector />
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
             <div className="flex items-center gap-2 mb-4">

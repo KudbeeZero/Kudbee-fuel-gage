@@ -26,8 +26,8 @@ let _pool = null;
 // Defaulting to `false` would bypass `pool.query()` forever (the Catch-22 from
 // Phase 10), so we start `true` and let real connect/query failures flip it.
 let _healthy = false;
-// Tracks whether the pool was explicitly disabled (no DATABASE_URL).
 let _disabled = false;
+const dbTelemetry = { primaryQueryCount: 0, fallbackQueryCount: 0, primaryInsertCount: 0, fallbackInsertCount: 0 };
 
 /**
  * Proactively establish a Neon connection in the background. The Pool defers
@@ -99,7 +99,44 @@ export function getDbPool() {
   console.log('[DB] Neon Postgres Pool initialized from DATABASE_URL');
   _pool = pool;
   primeConnection(pool);
+  startHealthReprobe();
   return _pool;
+}
+
+/**
+ * Periodically re-attempt a real Neon connection when the pool has been marked
+ * unhealthy. This makes degradation TRANSIENT: once Neon recovers, the next
+ * probe re-arms `_healthy` so runQuery/runInsert route back to the real
+ * database instead of the empty in-memory store. Without this, a single
+ * transient connection failure permanently degrades the process for its
+ * entire lifetime (the pool's `connect` event can't fire because runQuery
+ * short-circuits to memory when unhealthy — a Catch-22).
+ *
+ * The probe is a cheap no-op while healthy; it only does connect work when the
+ * pool is currently unhealthy. It runs in the background and does not block
+ * request handling (unhealthy requests still get the fast memory fallback).
+ */
+let _reprobeTimer = null;
+const REPROBE_INTERVAL_MS = 30_000;
+
+function startHealthReprobe() {
+  if (_reprobeTimer) return;
+  _reprobeTimer = setInterval(async () => {
+    // Nothing to do when disabled, uninitialized, or already healthy.
+    if (_disabled || !_pool || _healthy) return;
+    try {
+      const client = await _pool.connect();
+      client.release();
+      _healthy = true;
+      console.log('[DB] Neon Postgres connection restored (healthy).');
+    } catch {
+      // Still down — stay unhealthy. The initial failure was already logged;
+      // suppress per-interval spam. The next interval will retry automatically.
+      _healthy = false;
+    }
+  }, REPROBE_INTERVAL_MS);
+  // Don't keep the process alive solely for this timer (allows graceful exit).
+  if (typeof _reprobeTimer.unref === 'function') _reprobeTimer.unref();
 }
 
 /** True when the Neon pool is configured AND has not reported an error. */
@@ -109,6 +146,10 @@ export function isDbHealthy() {
 
 /** Release the pool (used on graceful shutdown). Safe to call when disabled. */
 export async function closeDbPool() {
+  if (_reprobeTimer) {
+    clearInterval(_reprobeTimer);
+    _reprobeTimer = null;
+  }
   if (_pool) {
     try {
       await _pool.end();
@@ -155,15 +196,18 @@ export async function runQuery(sql, params = []) {
   if (pool && isDbHealthy()) {
     try {
       const res = await pool.query(sql, params);
+      dbTelemetry.primaryQueryCount += 1;
       return res.rows;
     } catch (err) {
       _healthy = false;
+      dbTelemetry.fallbackQueryCount += 1;
       console.warn(
         '[DB] Neon query failed (degrading to in-memory):',
         err instanceof Error ? err.message : String(err)
       );
     }
   }
+  dbTelemetry.fallbackQueryCount += 1;
   return runQueryMemory(sql, params);
 }
 
@@ -173,15 +217,18 @@ export async function runInsert(sql, params = []) {
   if (pool && isDbHealthy()) {
     try {
       const res = await pool.query(sql, params);
+      dbTelemetry.primaryInsertCount += 1;
       return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
     } catch (err) {
       _healthy = false;
+      dbTelemetry.fallbackInsertCount += 1;
       console.warn(
         '[DB] Neon insert failed (degrading to in-memory):',
         err instanceof Error ? err.message : String(err)
       );
     }
   }
+  dbTelemetry.fallbackInsertCount += 1;
   return runInsertMemory(sql, params);
 }
 
@@ -232,6 +279,20 @@ function runQueryMemory(sql, params = []) {
     );
     return [{ total }];
   }
+  if (/SUM\(tokens_in\)/.test(s) && !/tokens_out/.test(s)) {
+    const since = params[0] ? Date.parse(params[0]) : 0;
+    const total = memory.telemetry_traces
+      .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
+      .reduce((a, r) => a + (Number(r.tokens_in) || 0), 0);
+    return [{ total }];
+  }
+  if (/SUM\(tokens_out\)/.test(s) && !/tokens_in/.test(s)) {
+    const since = params[0] ? Date.parse(params[0]) : 0;
+    const total = memory.telemetry_traces
+      .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
+      .reduce((a, r) => a + (Number(r.tokens_out) || 0), 0);
+    return [{ total }];
+  }
   if (/SUM\(cost\) as total FROM telemetry_traces/.test(s)) {
     const now = Date.now();
     const since = params[0] ? Date.parse(params[0]) : 0;
@@ -239,6 +300,12 @@ function runQueryMemory(sql, params = []) {
       .filter((r) => !since || new Date(r.timestamp).getTime() >= since)
       .reduce((a, r) => a + (Number(r.cost) || 0), 0);
     return [{ total }];
+  }
+  if (/COUNT\(\*\) as count FROM telemetry_traces/.test(s)) {
+    if (/status\s*!=/.test(s) || /status\s*<>/.test(s)) {
+      return [{ count: memory.telemetry_traces.filter((r) => r.status && r.status !== 'OK').length }];
+    }
+    return [{ count: memory.telemetry_traces.length }];
   }
   if (/COUNT\(DISTINCT model\)/.test(s)) {
     return [{ count: new Set(memory.telemetry_traces.map((r) => r.model)).size }];
@@ -343,4 +410,5 @@ function runInsertMemory(sql, params = []) {
 }
 
 export { memory as _memoryStore };
+export { dbTelemetry };
 export default getDbPool;
