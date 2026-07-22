@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Cpu, ArrowRightLeft, DollarSign, BadgeCheck, XCircle } from 'lucide-react';
-import { apiPost } from '../lib/apiClient';
+import { apiPost, apiGet } from '../lib/apiClient';
 
 interface LiveInterceptorProps {
   onResolved?: () => void;
@@ -12,10 +12,16 @@ export function LiveInterceptor({ onResolved }: LiveInterceptorProps) {
   const [verifying, setVerifying] = useState<number | null>(null);
   
   useEffect(() => {
-    const interval = setInterval(() => {
-      setInputTokens(prev => prev + Math.floor(Math.random() * 45) + 5);
-      setOutputTokens(prev => prev + Math.floor(Math.random() * 120) + 15);
-    }, 1500);
+    const fetch = async () => {
+      try {
+        const res = await apiGet<{ inputTokens?: number; outputTokens?: number }>('/api/telemetry/throughput');
+        if (res) {
+          setInputTokens(Number(res.inputTokens) || 0);
+          setOutputTokens(Number(res.outputTokens) || 0);
+        }
+      } catch { /* keep existing values */ }
+    };
+    void fetch(); const interval = setInterval(() => void fetch(), 5000);
     return () => clearInterval(interval);
   }, []);
 
