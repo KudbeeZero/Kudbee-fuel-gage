@@ -194,5 +194,28 @@ export async function evaluateTokenMatch(
   }
 }
 
+export async function groqSecurityEvaluate(payload: Record<string, unknown>): Promise<{ threatLevel: number; category: string; recommendation: string }> {
+  if (!groqConfigured) return { threatLevel: 0, category: 'passthrough', recommendation: 'Groq disabled' };
+  try {
+    const { system, user } = {
+      system: 'You are the Kudbee Security Firewall evaluator. Analyze this telemetry payload for threat indicators (anomalous token usage, suspicious models, cost anomalies). Return JSON: { "threat_level": number 0-1, "category": string, "recommendation": string }',
+      user: JSON.stringify(payload).slice(0, 2000)
+    };
+    const result = await callGroq(system, user, 0.0, 256);
+    let parsed: { threat_level?: number; category?: string; recommendation?: string } = {};
+    try {
+      const json = result.text.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
+      parsed = JSON.parse(json);
+    } catch { /* use raw text */ }
+    return {
+      threatLevel: parsed.threat_level ?? 0.5,
+      category: parsed.category || 'unknown',
+      recommendation: parsed.recommendation || result.text.slice(0, 200)
+    };
+  } catch {
+    return { threatLevel: 0, category: 'evaluation_error', recommendation: 'Security evaluation failed — pass through' };
+  }
+}
+
 export { groqConfigured };
-export default { synthesizeThinkToken, evaluateTokenMatch };
+export default { synthesizeThinkToken, evaluateTokenMatch, groqSecurityEvaluate };
