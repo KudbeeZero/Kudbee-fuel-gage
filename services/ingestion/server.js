@@ -41,6 +41,7 @@ import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
+import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -2000,6 +2001,17 @@ app.get('/api/think/energy-mesh', async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: 'Energy mesh unavailable' });
   }
+});
+
+// --- Phase 55: Nash Token Unions ---
+app.post('/api/governance/union/form', async (req, res) => {
+  try { const { agentIds } = req.body || {}; if (!Array.isArray(agentIds)) return res.status(400).json({ error: 'agentIds array required' }); const state = await formUnion(agentIds); return res.status(201).json(state); } catch (err) { return res.status(500).json({ error: 'Union formation failed' }); }
+});
+app.post('/api/governance/union/negotiate', async (req, res) => {
+  try { const { unionId, requestedTokens } = req.body || {}; const result = await negotiateAllocation(unionId, Number(requestedTokens) || 100); return res.status(200).json(result); } catch { return res.status(500).json({ error: 'Negotiation failed' }); }
+});
+app.get('/api/governance/union/active', async (req, res) => {
+  try { return res.status(200).json({ unions: await getActiveUnions() }); } catch { return res.status(200).json({ unions: [] }); }
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
