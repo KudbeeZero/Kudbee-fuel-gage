@@ -57,6 +57,7 @@
     "POST:/api/memory/dictionary/lookup",
     "GET:/api/think/anomalies",
     "POST:/api/system/diagnose-breadcrumb",
+    "GET:/api/think/energy-mesh",
     "GET:/api/telemetry/degradation-status",
     "POST:/api/agents/evaluate",
     "GET:/api/agents/evaluate",
