@@ -43,6 +43,7 @@ import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+app.set('trust proxy', true);
 
 // Shared state holder — referenced lazily by the modular sub-routers so
 // they can be mounted near the top of the file without tripping
@@ -279,6 +280,8 @@ async function ensureSchema() {
     await pool.query(
       'CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)'
     );
+    await pool.query('ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS input_tokens INTEGER DEFAULT 0');
+    await pool.query('ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS output_tokens INTEGER DEFAULT 0');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS telemetry_logs (
         id BIGSERIAL PRIMARY KEY,
@@ -3218,7 +3221,7 @@ app.get('/api/telemetry/throughput', async (_req, res) => {
     const now = Date.now();
     const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
     const rows = await runQuery(
-      `SELECT input_tokens, output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
+      `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
       [sinceIso]
     ).catch(() => []);
     let inTok = 0;

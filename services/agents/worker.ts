@@ -172,7 +172,7 @@ let _stopRequested = false;
 let shuttingDown = false;
 let tickTimeout: ReturnType<typeof setTimeout> | null = null;
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   console.log('[Worker] SIGTERM received – draining current task...');
   shuttingDown = true;
   _stopRequested = true;
@@ -180,16 +180,28 @@ process.on('SIGTERM', async () => {
     clearTimeout(tickTimeout);
     tickTimeout = null;
   }
-  try {
-    const redis = getRedisClient();
-    if (redis) {
-      await redis.quit();
-      console.log('[Worker] Redis connection closed gracefully.');
+
+  const forceKillTimeout = setTimeout(() => {
+    console.warn('[Worker] Graceful shutdown deadline exceeded — force exiting.');
+    process.exit(0);
+  }, 25_000);
+
+  (async () => {
+    try {
+      const redis = getRedisClient();
+      if (redis) {
+        await redis.quit();
+        console.log('[Worker] Redis connection closed gracefully.');
+      }
+    } catch (err) {
+      console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
     }
-  } catch (err) {
-    console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
-  }
-  process.exit(0);
+    clearTimeout(forceKillTimeout);
+    process.exit(0);
+  })().catch(() => {
+    clearTimeout(forceKillTimeout);
+    process.exit(0);
+  });
 });
 
 function broadcast(type: string, data: any) {
