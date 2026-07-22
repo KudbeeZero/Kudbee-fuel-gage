@@ -44,13 +44,14 @@ function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
       if (!parsed.success) return;
       setLogs((prev) => [parsed.data, ...prev].slice(0, 40));
     });
+    return off;
+  }, [stream.on]);
+
+  useEffect(() => {
     const watch = setInterval(() => setConnected(stream.connected), 1000);
     setConnected(stream.connected);
-    return () => {
-      off();
-      clearInterval(watch);
-    };
-  }, [stream]);
+    return () => clearInterval(watch);
+  }, [stream.connected]);
 
   return { logs, connected };
 }
@@ -93,15 +94,18 @@ function useEdgeSignals(): {
       setSignals((prev) => [parsed, ...prev].slice(0, 12));
       setLastIngressAt(Date.now());
     });
-    const watch = setInterval(() => setConnected(stream.connected), 1000);
-    setConnected(stream.connected);
 
     return () => {
       cancelled = true;
       off();
-      clearInterval(watch);
     };
-  }, [stream]);
+  }, [stream.on]);
+
+  useEffect(() => {
+    const watch = setInterval(() => setConnected(stream.connected), 1000);
+    setConnected(stream.connected);
+    return () => clearInterval(watch);
+  }, [stream.connected]);
 
   return { signals, connected, lastIngressAt };
 }

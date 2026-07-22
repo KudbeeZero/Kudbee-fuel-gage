@@ -50,6 +50,7 @@
     "GET:/api/telemetry/degradation-status",
     "POST:/api/agents/evaluate",
     "GET:/api/agents/evaluate",
-    "GET:/api/memory/think-tokens"
+    "GET:/api/memory/think-tokens",
+    "USE:/api/"
   ]
 }

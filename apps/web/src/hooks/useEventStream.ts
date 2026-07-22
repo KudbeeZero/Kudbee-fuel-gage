@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { apiUrl } from '../lib/apiClient';
 
 export interface StreamEvent {
@@ -88,7 +88,7 @@ export function useEventStream(): UseEventStreamResult {
     };
   }, []);
 
-  return { connected, lastEvent, on };
+  return useMemo(() => ({ connected, lastEvent, on }), [connected, lastEvent, on]);
 }
 
 export default useEventStream;

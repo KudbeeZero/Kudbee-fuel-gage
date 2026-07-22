@@ -22,6 +22,7 @@ import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/prov
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
 import { mintThinkToken } from '../memory/thinkTokenGenerator.ts';
+import rateLimit from 'express-rate-limit';
 import {
   buildAgentContext,
   evaluateRequiredSkills,
@@ -143,6 +144,15 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 }
 
 app.use(express.json({ limit: '10mb' }));
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+app.use('/api/', apiLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
