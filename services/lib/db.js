@@ -418,6 +418,12 @@ function runInsertMemory(sql, params = []) {
     if (row) row.value_score = score;
     return { id: null, changes: row ? 1 : 0 };
   }
+  if (/UPDATE think_tokens SET status/.test(s)) {
+    const [status, id] = params;
+    const row = memory.think_tokens.find((r) => String(r.id) === String(id));
+    if (row) row.status = status;
+    return { id: null, changes: row ? 1 : 0 };
+  }
   return { id: null, changes: 0 };
 }
 
