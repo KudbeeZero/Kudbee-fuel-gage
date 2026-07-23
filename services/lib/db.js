@@ -189,7 +189,7 @@ const memory = {
 };
 
 let _seq = 1;
-const nextId = () => _seq++;
+const nextId = () => String(_seq++);
 
 function rowToObject(row) {
   return row;
@@ -263,11 +263,12 @@ function runQueryMemory(sql, params = []) {
   if (/FROM security_violations/.test(s)) {
     return [...memory.security_violations].reverse();
   }
+  if (/FROM think_tokens/.test(s)) {
+    const rows = [...memory.think_tokens].reverse();
+    return rows;
+  }
   if (/FROM think/.test(s)) {
     return [...memory.think].reverse();
-  }
-  if (/FROM think_tokens/.test(s)) {
-    return [...memory.think_tokens].reverse();
   }
   if (/FROM governance_actions/.test(s)) {
     return [...memory.governance_actions].reverse();
@@ -377,16 +378,6 @@ function runInsertMemory(sql, params = []) {
     memory.user_memories.push(row);
     return { id: row.id, changes: 1 };
   }
-  if (/INTO think/.test(s)) {
-    const [agent_id, task, phase, thought, tokens_in, tokens_out, model] = params;
-    const row = {
-      id: nextId(), agent_id, task, phase, thought,
-      tokens_in: Number(tokens_in) || 0, tokens_out: Number(tokens_out) || 0,
-      model: model || 'reasoning', created_at: new Date().toISOString()
-    };
-    memory.think.push(row);
-    return { id: row.id, changes: 1 };
-  }
   if (/INTO think_tokens/.test(s)) {
     const [original_trace_id, task_context, failed_state, correction_delta, status, embedding, token_cost, kd = 0, efficacy = 0, locked_by = null] = params;
     const row = {
@@ -400,6 +391,16 @@ function runInsertMemory(sql, params = []) {
       created_at: new Date().toISOString()
     };
     memory.think_tokens.push(row);
+    return { id: row.id, changes: 1 };
+  }
+  if (/INTO think/.test(s)) {
+    const [agent_id, task, phase, thought, tokens_in, tokens_out, model] = params;
+    const row = {
+      id: nextId(), agent_id, task, phase, thought,
+      tokens_in: Number(tokens_in) || 0, tokens_out: Number(tokens_out) || 0,
+      model: model || 'reasoning', created_at: new Date().toISOString()
+    };
+    memory.think.push(row);
     return { id: row.id, changes: 1 };
   }
   if (/DELETE FROM telemetry_traces/.test(s)) {
@@ -416,6 +417,12 @@ function runInsertMemory(sql, params = []) {
     const [score, trace_id] = params;
     const row = memory.telemetry_traces.find((r) => r.trace_id === trace_id);
     if (row) row.value_score = score;
+    return { id: null, changes: row ? 1 : 0 };
+  }
+  if (/UPDATE think_tokens SET status/.test(s)) {
+    const [status, id] = params;
+    const row = memory.think_tokens.find((r) => String(r.id) === String(id));
+    if (row) row.status = status;
     return { id: null, changes: row ? 1 : 0 };
   }
   return { id: null, changes: 0 };

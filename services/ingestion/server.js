@@ -40,6 +40,7 @@ import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
+import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
@@ -50,7 +51,7 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-app.set('trust proxy', true);
+if (process.env.NODE_ENV !== 'test') app.set('trust proxy', true);
 
 // --- Phase 45: Request duration tracking and structured logging ---
 app.use((req, res, next) => {
@@ -172,12 +173,11 @@ const apiLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.headers['x-tenant-id'] || req.ip || 'unknown',
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', apiLimiter);
 
-const ingestLimiter = rateLimit({ windowMs: 60 * 1000, max: process.env.NODE_ENV === 'test' ? 500 : 50, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => req.headers['x-tenant-id'] || req.ip || 'unknown', message: { error: 'Ingest rate limit exceeded' } });
+const ingestLimiter = rateLimit({ windowMs: 60 * 1000, max: process.env.NODE_ENV === 'test' ? 500 : 50, standardHeaders: true, legacyHeaders: false, message: { error: 'Ingest rate limit exceeded' } });
 app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
@@ -1197,9 +1197,8 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
         `SELECT id, original_trace_id FROM think_tokens WHERE id = $1`,
         [String(tokenId)]
       );
-      if (rows.length > 0) {
-        matched = rows[0];
-      }
+      const found = rows.find((r) => String(r.id) === String(tokenId));
+      if (found) matched = found;
     }
     if (!matched) {
       const reversed = reverseTokenHash(hash);
