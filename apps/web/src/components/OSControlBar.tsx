@@ -65,9 +65,7 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
         if (cancelled) return;
         setSystemHealth({
           fastDb: data?.services?.redis?.status === 'OK' ? 'online' : 'offline',
-          slowDb: typeof process !== 'undefined' && (process as unknown as Record<string, string>).env?.REDIS_SLOW_URL
-            ? (Math.random() > 0.1 ? 'online' : 'offline')
-            : (data?.services?.redis?.status === 'OK' ? 'online' : 'offline'),
+          slowDb: data?.services?.redis?.status === 'OK' ? 'online' : 'offline',
           groq: data?.status === 'HEALTHY' ? 'healthy' : 'degraded'
         });
       } catch {
@@ -630,6 +628,7 @@ function PaletteGroup({
             })}
           </div>
         </div>
+      ))}
     </div>
   );
 }
