@@ -18,10 +18,13 @@ import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 const VECTOR_OP_TIMEOUT_MS = 25_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  const timer = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
-  );
-  return Promise.race([promise, timer]);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err instanceof Error ? err : new Error(String(err))); }
+    );
+  });
 }
 
 export interface TopologyMetadata {
