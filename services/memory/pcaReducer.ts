@@ -140,8 +140,9 @@ function project(v: number[], components: number[][]): { x: number; y: number; z
 export function projectTo3D(vectors: number[][]): Point3D[] {
   if (!vectors || vectors.length === 0) return [];
 
-  const maxDim = Math.max(...vectors.map((v) => v.length));
-  if (maxDim === 0) return vectors.map(() => ({ x: 0, y: 0, z: 0 }));
+  const lengths = vectors.map((v) => v.length);
+  const maxDim = lengths.length > 0 ? Math.max(...lengths) : 0;
+  if (maxDim <= 0 || !Number.isFinite(maxDim)) return vectors.map(() => ({ x: 0, y: 0, z: 0 }));
 
   const normalized = vectors.map((v) => padOrSlice(v, maxDim));
 
