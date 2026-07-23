@@ -433,7 +433,7 @@ async function ensureSchema() {
         failed_state JSONB,
         correction_delta TEXT,
         embedding VECTOR(1536),
-        status VARCHAR NOT NULL DEFAULT 'PROVEN',
+        status VARCHAR NOT NULL DEFAULT 'PENDING_APPROVAL',
         token_cost NUMERIC DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )

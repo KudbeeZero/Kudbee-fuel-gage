@@ -234,6 +234,9 @@ export async function proposeAction({ action, tags = [], prompt = '', id }) {
 }
 
 export async function approveAction(id) {
+  const provenKey = `governance:proven:${id}`;
+  const alreadyProven = await kvGet(provenKey);
+  if (alreadyProven) return { ...alreadyProven, status: 'PROVEN', already_approved: true };
   const entry = await kvGet(`governance:proposed:${id}`);
   if (!entry) return null;
   const proven = { ...entry, status: 'PROVEN', proven_at: new Date().toISOString() };

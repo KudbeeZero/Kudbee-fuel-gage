@@ -23,7 +23,8 @@ jobs:
       - name: Initialize Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
+          cache: 'npm'
 
       - name: Install Workspace Dependencies
         run: npm ci
