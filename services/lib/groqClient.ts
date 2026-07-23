@@ -118,14 +118,14 @@ async function callGroq(
   const response: CompletionResponse = await provider.complete(request);
   const latencyMs = Date.now() - start;
 
-  const costUsd = estimateGroqCost(response.usage?.totalTokens ?? 0);
+  const costUsd = estimateGroqCost((response.usage?.promptTokens ?? 0) + (response.usage?.completionTokens ?? 0));
   if (costUsd > 0) {
     void trackSpend(costUsd);
   }
 
   return {
     text: response.text.trim(),
-    tokensUsed: response.usage?.totalTokens ?? 0,
+    tokensUsed: (response.usage?.promptTokens ?? 0) + (response.usage?.completionTokens ?? 0),
     latencyMs,
     costUsd
   };

@@ -133,7 +133,6 @@ export class CircuitBreaker {
       const redis = getRedisClient({ label: 'circuit-breaker' });
       await redis.set(CB_PREFIX + this.name + ':state', 'OPEN');
       await redis.set(CB_PREFIX + this.name + ':failures', String(this.failureThreshold + 1));
-      redisTelemetry?.errorCount !== undefined && (redisTelemetry.errorCount += 1);
     } catch { /* best-effort */ }
   }
 
@@ -144,7 +143,6 @@ export class CircuitBreaker {
       await redis.set(CB_PREFIX + this.name + ':failures', '0');
       await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
     } catch { /* best-effort */ }
-  }
   }
 }
 

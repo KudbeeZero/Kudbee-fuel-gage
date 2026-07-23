@@ -75,7 +75,7 @@ function estimateCost(tokensIn: number, tokensOut: number, model: string): numbe
     'llama-3.3-70b': { inCost: 0.00059, outCost: 0.00079 }
   };
   const modelKey = Object.keys(per1k).find((k) => model.toLowerCase().includes(k));
-  const rates = modelKey ? per1k[modelKey] : { inCost: 0.001, outCost: 0.002 };
+  const rates = modelKey && per1k[modelKey] ? per1k[modelKey] : { inCost: 0.001, outCost: 0.002 };
   return ((tokensIn * rates.inCost) + (tokensOut * rates.outCost)) / 1000;
 }
 
