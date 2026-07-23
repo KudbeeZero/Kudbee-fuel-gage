@@ -24,7 +24,9 @@ function flush() {
 
   const batch = _queue.splice(0, MAX_BATCH_SIZE);
 
-  apiPost<{ success: boolean; persisted: number; filtered: number }>('/api/telemetry/ingest/batch', { events: batch }).catch(() => {}).finally(() => {
+  apiPost<{ success: boolean; persisted: number; filtered: number }>('/api/telemetry/ingest/batch', { events: batch }).catch((err) => {
+    console.warn('[TelemetryBatcher] batch send failed:', err instanceof Error ? err.message : String(err));
+  }).finally(() => {
     _flushing = false;
     if (_queue.length > 0) scheduleFlush();
   });
