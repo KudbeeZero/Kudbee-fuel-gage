@@ -3908,6 +3908,17 @@ const PROVIDER_COSTS = {
 
 const BUDGET_USD = Number(process.env.MONTHLY_BUDGET_USD || 50);
 
+import { getBudgetStatus, BudgetExceededError, checkBudgetOrThrow } from '../lib/budgetGate.ts';
+
+app.get('/api/metrics/budget-status', async (_req, res) => {
+  try {
+    const status = await getBudgetStatus();
+    return res.status(200).json(status);
+  } catch {
+    return res.status(500).json({ error: 'Budget status unavailable' });
+  }
+});
+
 app.get('/api/metrics/cost-ledger', async (_req, res) => {
   try {
     const now = Date.now();
@@ -4554,6 +4565,18 @@ if (globalThis.__KUBEE_STATE__) {
 app.use((err, req, res, next) => {
   const message = err instanceof Error ? err.message : String(err);
   const isTimeout = message.includes('timed out') || message.includes('timeout');
+
+  if (err.statusCode === 402 || err.name === 'BudgetExceededError') {
+    console.warn(`[Budget] 402 Payment Required on ${req.method} ${req.path}: ${message}`);
+    if (!res.headersSent) {
+      return res.status(402).json({
+        error: 'payment_required',
+        message,
+        detail: 'Monthly spend limit reached. Upgrade your plan or wait for the next billing cycle.'
+      });
+    }
+  }
+
   const status = isTimeout ? 503 : 500;
   console.error(`[Resilience] Unhandled error on ${req.method} ${req.path} (${status}): ${message}`);
   if (!res.headersSent) {
