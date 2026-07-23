@@ -1,8 +1,8 @@
 import express from 'express';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
