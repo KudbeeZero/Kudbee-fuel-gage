@@ -95,7 +95,7 @@ export function ThinkPage() {
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
           <span className="h-2 w-2 rounded-full bg-violet-400" />
-          <span className="font-mono text-[10px] text-slate-400">{plugins.length} modules · {trajectories.length} tokens</span>
+          <span className="font-mono text-[10px] text-slate-400">{plugins.length} modules · {trajectories.length} tokens ({trajectories.filter(t => t.status === 'VERIFIED').length}✓, {trajectories.filter(t => t.status === 'PENDING_APPROVAL').length}⏳)</span>
         </div>
       </header>
 

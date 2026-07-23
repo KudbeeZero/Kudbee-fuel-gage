@@ -14,9 +14,11 @@ function StatusBadge({ status }: { status: string }) {
   const tone =
     status === 'VERIFIED'
       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-      : status === 'RECYCLED'
-        ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+      : status === 'PROVEN'
+        ? 'border-violet-500/30 bg-violet-500/10 text-violet-300'
+        : status === 'RECYCLED'
+          ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
   return (
     <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${tone}`}>
       {status}
@@ -175,6 +177,12 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories = [], loading }: 
           Spatial vector trajectories — 1536-dim token embeddings surfaced from the Neon pgvector store.
           Click a cell to inspect the reasoning chain.
         </p>
+        {trajectories.length === 0 && !loading && (
+          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
+            <span className="font-mono text-[10px] text-slate-500">No think tokens minted yet</span>
+            <div className="mt-1 font-mono text-[9px] text-slate-600">Submit a correction delta via Governance to create your first token</div>
+          </div>
+        )}
         <div className="mt-3 grid grid-cols-3 gap-1.5">
           {grid.map((trajectory, idx) => (
             <button

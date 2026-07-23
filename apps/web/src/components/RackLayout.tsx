@@ -184,7 +184,15 @@ function renderPlugin(
         </div>
       );
     default:
-      return null;
+      return (
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.id}>
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-center">
+              <span className="font-mono text-[11px] text-rose-400">Unknown plugin: {plugin.id}</span>
+            </div>
+          </PanelErrorBoundary>
+        </div>
+      );
   }
 }
 

@@ -131,7 +131,7 @@ export function DLQInspector() {
         >
           <ShieldCheck className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
           <span className="font-mono text-[10px] text-emerald-300">[QUEUE EMPTY - ALL SYSTEMS NOMINAL]</span>
-          <div className="mt-1 font-mono text-[9px] text-slate-600">Worker idle · no dead-lettered tasks</div>
+          <div className="mt-1 font-mono text-[9px] text-slate-600">{state?.workerRunning ? 'Worker active' : 'Worker idle'} · no dead-lettered tasks</div>
         </div>
       ) : (
         <div className="space-y-2 max-h-72 overflow-y-auto">
