@@ -24,14 +24,14 @@ export async function rateLimitCheck(
   key: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
-  const redis = getRateLimitClient({ label: 'rate-limiter' });
-  const redisKey = RL_PREFIX + key;
   const now = Date.now();
   const windowCeiling = Math.ceil(now / config.windowMs) * config.windowMs;
   const ttlSeconds = Math.ceil(config.windowMs / 1000);
 
   try {
-    // Atomic: incr, set TTL if new, return count + ttl in one roundtrip
+    const redis = getRateLimitClient({ label: 'rate-limiter' });
+    const redisKey = RL_PREFIX + key;
+
     const [count, ttl] = await redis.eval(
       `local c = redis.call('INCR', KEYS[1])
        local t = redis.call('PTTL', KEYS[1])
@@ -47,7 +47,6 @@ export async function rateLimitCheck(
 
     return { allowed, remaining, resetAtMs: windowCeiling, limit: config.maxRequests };
   } catch {
-    // Fail open — never block traffic on Redis blips
     return { allowed: true, remaining: config.maxRequests, resetAtMs: windowCeiling, limit: config.maxRequests };
   }
 }

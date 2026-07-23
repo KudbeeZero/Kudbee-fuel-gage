@@ -57,7 +57,14 @@ export function getRedisClient(opts = {}) {
     baseConfig.tls = {};
   }
 
-  const client = new Redis(REDIS_URL, baseConfig);
+  let client;
+  try {
+    client = new Redis(REDIS_URL, baseConfig);
+  } catch {
+    console.warn(`[${label}] Invalid REDIS_URL, skipping client creation`);
+    if (!opts.forceNew) return;
+    client = new Redis('redis://localhost:6379', baseConfig);
+  }
 
   client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis connected`); });
   client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
@@ -90,13 +97,19 @@ export function getSubscriberClient() {
     subConfig.tls = {};
   }
 
-  _subClient = new Redis(REDIS_URL, subConfig);
+  let client;
+  try {
+    client = new Redis(REDIS_URL, subConfig);
+  } catch {
+    console.warn('[SSE-sub] Invalid REDIS_URL, skipping subscriber client creation');
+    return;
+  }
 
-  _subClient.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
-  _subClient.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
-  _subClient.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
+  client.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
+  client.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
+  client.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
-  return _subClient;
+  return client;
 }
 
 /**
@@ -125,7 +138,13 @@ export function getRateLimitClient(opts = {}) {
     baseConfig.tls = {};
   }
 
-  const client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
+  let client;
+  try {
+    client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
+  } catch {
+    console.warn('[rate-limit] Invalid REDIS_RATE_LIMIT_URL, falling back to REDIS_URL');
+    client = new Redis(REDIS_URL, baseConfig);
+  }
 
   client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis connected'); });
   client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis ready'); });
@@ -161,7 +180,13 @@ export function getSlowRedisClient(opts = {}) {
     baseConfig.tls = {};
   }
 
-  const client = new Redis(REDIS_SLOW_URL, baseConfig);
+  let client;
+  try {
+    client = new Redis(REDIS_SLOW_URL, baseConfig);
+  } catch {
+    console.warn('[slow-redis] Invalid REDIS_SLOW_URL, falling back to REDIS_URL');
+    client = new Redis(REDIS_URL, baseConfig);
+  }
 
   client.on('connect', () => { console.log(`[slow-redis] Redis connected`); });
   client.on('ready', () => { console.log(`[slow-redis] Redis ready`); });
