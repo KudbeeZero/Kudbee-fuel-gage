@@ -189,7 +189,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   // Output token prediction: assume roughly 35% of input token count is returned
   const predictedOutputTokens = Math.ceil(tokenCount * 0.35);
 
-  // Real market rates (Cost per 1M tokens in USD)
+   // Market rates (Cost per 1K tokens in USD — aligned with server PROVIDER_COSTS)
   const rates = useMemo(() => ({
     'Anthropic': { in: 3.00, out: 15.00, name: 'Claude 3.5 Sonnet', platform: 'Anthropic API' },
     'DeepSeek': { in: 0.55, out: 2.19, name: 'DeepSeek-R1', platform: 'DeepSeek Cloud' },
@@ -200,7 +200,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
 
   const calculateCost = useCallback((prov: keyof typeof rates) => {
     const rate = rates[prov];
-    return ((tokenCount / 1000000) * rate.in) + ((predictedOutputTokens / 1000000) * rate.out);
+    return ((tokenCount / 1000) * rate.in) + ((predictedOutputTokens / 1000) * rate.out);
   }, [rates, tokenCount, predictedOutputTokens]);
 
   // Prepare full data list

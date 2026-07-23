@@ -820,7 +820,7 @@ export default function App() {
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
                 <span className="uppercase tracking-widest">24h Cost</span>
-                <span className="text-emerald-400">{getFormattedCost(liveStats.cost * 0.04, currency, 4)}</span>
+                <span className="text-emerald-400">{getFormattedCost(liveStats.cost, currency, 4)}</span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
                 <span className="uppercase tracking-widest">Req</span>
