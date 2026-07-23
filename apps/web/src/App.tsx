@@ -35,7 +35,6 @@ import {
   Wifi,
   WifiOff,
   Ban,
-  ArrowRight,
   Key,
   Trash2,
   Shield,
@@ -89,7 +88,7 @@ import {
 } from 'recharts';
 
 // --- CURRENCY UTILITY ENGINE ---
-import { getFormattedCost, CURRENCY_CONFIG } from './utils/currency';
+import { getFormattedCost } from './utils/currency';
 
 // --- STRICT TYPES (zero-any conformance, Phase 12) ---------------------------
 
@@ -164,15 +163,6 @@ export interface DashboardSummary {
   sink_token_balance: number;
   postgres_size_bytes: number;
   redis_size_bytes: number;
-}
-
-/** A single event-log line in the Console Dock ticker. */
-export interface EventLogEntry {
-  id: number;
-  type: 'info' | 'warning' | 'slate';
-  label: string;
-  message: string;
-  time: string;
 }
 
 export interface PendingApproval {
@@ -861,19 +851,6 @@ export default function App() {
   // Governance Router + HERMES auditor health (polled every 5s).
   const { health: govHealth } = useGovernanceHealth(5000);
   
-  const [eventLogs, setEventLogs] = useState<EventLogEntry[]>([]);
-
-  useEffect(() => {
-    setEventLogs([
-      { id: 1, type: 'info', label: 'INFO', message: 'Edge Gateway Gateway Sync: Active connection established with Heroku dyno runtime.', time: 'Just now' },
-      { id: 2, type: 'warning', label: 'WARN', message: 'Telemetry Cluster: Rolling 15-minute pipeline analysis initialized.', time: 'Just now' },
-      { id: 3, type: 'slate', label: 'SYSTEM', message: 'Toolchain Context: Running active execution checks via TypeScript 7.0 engine.', time: 'Just now' },
-      { id: 4, type: 'info', label: 'SYNC', message: 'API Gateway Context Synchronized', time: '2m ago' },
-      { id: 5, type: 'warning', label: 'WARN', message: 'Trace Diagnostic Log Committed', time: '5m ago' },
-      { id: 6, type: 'slate', label: 'SYS', message: 'Webhook Subscription Initialized', time: '12m ago' }
-    ]);
-  }, []);
-  
   const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
 
   // --- SUBSCRIPTION LEDGER BUDGET CAPS (GAP TRACKER) ---
@@ -894,15 +871,6 @@ export default function App() {
   // Real edge-gateway round-trip latency for the global footer indicator.
   // Measured from an actual fetch round-trip to the backend (Resilient-First:
   // degrades to "—" when the backend is unreachable instead of faking a value).
-  const [footerPing, setFooterPing] = useState<number | null>(null);
-  const [footerPinging, setFooterPinging] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    setFooterPing(os.services.postgres.latencyMs);
-    setFooterPinging(osConnected);
-  }, [isAuthenticated, os.services.postgres.latencyMs, osConnected]);
-
   const handleSetTheme = (newTheme: 'Deep Space' | 'Midnight') => {
     setTheme(newTheme);
     localStorage.setItem('kudbee_theme', newTheme);
@@ -1584,43 +1552,7 @@ export default function App() {
                   </div>
 
                   {/* SYSTEM INCIDENT & EVENT NOTIFICATION HUB */}
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col relative hidden" id="event-notification-hub">
-                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
-                     <div className="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
-                       <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-emerald-400" />
-                          <h3 className="font-display font-semibold text-slate-200 text-sm">Event Notification Hub</h3>
-                       </div>
-                       <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
-                          Live Sync
-                       </span>
-                     </div>
-                     <div className="p-3">
-                        <div className="max-h-60 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                           {eventLogs.map(event => (
-                             <div key={event.id} className="flex items-start gap-3 p-2.5 bg-slate-950/40 border border-slate-850/50 hover:bg-slate-800/40 hover:border-slate-700/50 rounded-lg transition-all group">
-                                <div className="mt-0.5 flex-shrink-0">
-                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-widest border ${
-                                     event.type === 'info' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(52,211,153,0.15)]' :
-                                     event.type === 'warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_8px_rgba(251,191,36,0.15)]' : 
-                                     'bg-slate-800/50 text-slate-400 border-slate-700'
-                                   }`}>
-                                     {event.label}
-                                   </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                   <p className="text-[11px] font-medium leading-relaxed text-slate-100 group-hover:text-white transition-colors">
-                                     {event.message}
-                                   </p>
-                                </div>
-                                <div className="flex-shrink-0 text-[9px] font-mono text-slate-500 group-hover:text-slate-400 transition-colors mt-0.5">
-                                   {event.time}
-                                </div>
-                             </div>
-                           ))}
-                        </div>
-                     </div>
-                  </div>
+                  {/* Event log hub trimmed — use OS stream status bar instead */}
 
                   {/* LIVE SINK PRESSURE & COST CARD */}
                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden" id="sink-cost-card">
@@ -1799,9 +1731,9 @@ export default function App() {
                 <span className="uppercase tracking-widest text-emerald-400 font-semibold">ENV: PRODUCTION</span>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Edge gateway round-trip latency (real fetch measurement)">
-                <Radio className={`w-3.5 h-3.5 ${footerPing !== null ? (footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${footerPinging ? 'animate-pulse' : ''}`} />
+                <Radio className={`w-3.5 h-3.5 ${(os.services.postgres.latencyMs ?? null) !== null ? ((os.services.postgres.latencyMs ?? null) < 60 ? 'text-emerald-400' : (os.services.postgres.latencyMs ?? null) < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${osConnected ? 'animate-pulse' : ''}`} />
                 <span className="uppercase tracking-widest text-slate-400">PING</span>
-                <span className={`${footerPing !== null ? (footerPing < 60 ? 'text-emerald-400' : footerPing < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{footerPing !== null ? `${footerPing}ms` : '—'}</span>
+                <span className={`${(os.services.postgres.latencyMs ?? null) !== null ? ((os.services.postgres.latencyMs ?? null) < 60 ? 'text-emerald-400' : (os.services.postgres.latencyMs ?? null) < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{(os.services.postgres.latencyMs ?? null) !== null ? `${(os.services.postgres.latencyMs ?? null)}ms` : '—'}</span>
               </div>
             </div>
 
