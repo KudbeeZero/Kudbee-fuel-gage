@@ -42,6 +42,7 @@ export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePl
     try {
       const data = await apiGet<{ memories?: MemoryRecallResult[]; results?: MemoryRecallResult[] }>(
         `/api/memory/recall?query=${encodeURIComponent(q)}&limit=5`
+      );
       const list = data?.memories ?? data?.results ?? [];
       if (!_mountedRef.current) return;
       setResults(Array.isArray(list) ? list : []);
