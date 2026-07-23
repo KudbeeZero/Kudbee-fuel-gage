@@ -265,7 +265,12 @@ async function check17_GovernancePromotionEndpoint() {
   const confirmRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);
   const confirmData = await confirmRes.json();
   const updated = confirmData.trajectories.find((t) => t.token_hash === token.token_hash);
-  return updated !== undefined && updated.status === 'VERIFIED';
+  if (!updated || updated.status !== 'VERIFIED') {
+    console.error('[C17DBG] Confirmation failed. Hash:', token.token_hash.slice(0,12), 'Found:', !!updated, 'Status:', updated?.status,
+      'All statuses:', (confirmData.trajectories || []).map(t => `${t.token_hash?.slice(0,8)}:${t.status}`).join(','));
+    return false;
+  }
+  return true;
 }
 
 async function check18_TelemetrySearchEndpoint() {
