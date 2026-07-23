@@ -171,7 +171,7 @@ export function OllamaChat(): ReactElement {
       setModelsLoading(true);
       setModelsError(null);
       try {
-        const res = await fetch("/ollama/api/tags");
+        const res = await fetch("ollama/api/tags");
         if (!res.ok) {
           throw new Error(`Server returned ${res.status}`);
         }
