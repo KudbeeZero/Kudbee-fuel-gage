@@ -253,10 +253,12 @@ async function init() {
   startHeartbeat();
   startAuditor();
 
-  const PRUNE_MS = 6 * 60 * 60 * 1000;
-  setTimeout(() => { void runSystemPruner().then((r) => { if (!r.locked) hermes.log.info('pruner skipped (lock held)'); }); }, 180_000);
-  setInterval(() => { void runSystemPruner(); }, PRUNE_MS);
+  // Periodic DLQ/pruner sweep every 6 hours (shared with ingestion server)
+  const PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => { void runSystemPruner(); }, 120_000);
+  setInterval(() => { void runSystemPruner(); }, PRUNE_INTERVAL_MS);
 
+  hermes.log.info('System pruner scheduled (every 6h)');
   await pollTasks();
 }
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TerminalHUDTicker } from '../components/TerminalHUDTicker';
 import { DiagnosticTicker } from '../components/dashboard/DiagnosticTicker';
+import { BatcherIndicator } from '../components/BatcherIndicator';
 import type { DashboardSummary, TelemetryLog } from '../App';
 import {
   LineChart,
@@ -131,6 +132,9 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
 
       <TerminalHUDTicker />
       <DiagnosticTicker />
+      <div className="flex items-center justify-end mb-2">
+        <BatcherIndicator />
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-8 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col overflow-hidden" id="dashboard-matrix">

@@ -19,13 +19,13 @@
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
+const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
-const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
+const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
 
 let _client = null;
 let _subClient = null;
-let _rateLimitClient = null;
+let _slowClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
 /**
@@ -100,15 +100,15 @@ export function getSubscriberClient() {
 }
 
 /**
- * Returns a dedicated Redis client wired exclusively to REDIS_RATE_LIMIT_URL
- * for Heroku-favored INCR/EXPIRE rate limiting. Offloaded to a separate
- * Redis instance so rate-limit bursts never compete with pub/sub or state ops.
- * Falls back to REDIS_URL if REDIS_RATE_LIMIT_URL is not set.
+ * Returns a shared Redis client wired to REDIS_SLOW_URL (falling back to
+ * REDIS_URL), for heavy/stateful workers (HERMES, Crucible, JobQueue) so they
+ * never compete for connection slots with the real-time Fast Brain client
+ * (UI telemetry, SSE streams, rate-limiters).
  * @param {object} [opts] Optional overrides.
  * @returns {import('ioredis').Redis}
  */
-export function getRateLimitClient(opts = {}) {
-  if (!opts.forceNew && _rateLimitClient) return _rateLimitClient;
+export function getSlowRedisClient(opts = {}) {
+  if (!opts.forceNew && _slowClient) return _slowClient;
 
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
@@ -116,24 +116,24 @@ export function getRateLimitClient(opts = {}) {
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? false,
     retryStrategy: opts.retryStrategy ?? (() => null),
-    connectTimeout: 3_000,
-    commandTimeout: 1_000,
-    keepAlive: 10_000
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    keepAlive: 15_000
   };
 
-  if (isRateLimitUpstash) {
+  if (isSlowUpstash) {
     baseConfig.tls = { rejectUnauthorized: false };
   }
 
-  const client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
+  const client = new Redis(REDIS_SLOW_URL, baseConfig);
 
-  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis connected'); });
-  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis ready'); });
+  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[slow-redis] Redis connected'); });
+  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[slow-redis] Redis ready'); });
   client.on('error', () => { redisTelemetry.errorCount += 1; });
-  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn('[rate-limit] Redis connection closed'); });
+  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn('[slow-redis] Redis connection closed'); });
 
-  if (!opts.forceNew) _rateLimitClient = client;
-  return _rateLimitClient;
+  if (!opts.forceNew) _slowClient = client;
+  return _slowClient;
 }
 
 export { redisTelemetry };

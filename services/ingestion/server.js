@@ -3336,6 +3336,31 @@ if (redis) {
   }
 }
 
+// --- SSE Stream Ticket (zero-trust handshake) ---
+const STREAM_TICKETS = new Map();
+const TICKET_TTL_MS = 30000;
+
+app.post('/api/auth/stream-ticket', (req, res) => {
+  const ticket = 'sse_ticket_' + crypto.randomUUID();
+  STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
+  const sig = crypto.createHmac('sha256', process.env.STREAM_SECRET || 'kudbee-stream-secret')
+    .update(ticket + ':' + Date.now()).digest('hex');
+  res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
+});
+
+function validateStreamTicket(ticket) {
+  if (!ticket) return false;
+  const exp = STREAM_TICKETS.get(ticket);
+  if (!exp || Date.now() > exp) { STREAM_TICKETS.delete(ticket); return false; }
+  STREAM_TICKETS.delete(ticket);
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [t, e] of STREAM_TICKETS) if (now > e) STREAM_TICKETS.delete(t);
+}, 60000);
+
 app.get('/api/events', async (req, res) => {
   if (sseClientCount() >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });

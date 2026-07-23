@@ -159,7 +159,7 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from '../lib/redis.js';
+import { getSlowRedisClient } from '../lib/redis.js';
 
 const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
@@ -188,7 +188,7 @@ process.on('SIGTERM', () => {
 
   (async () => {
     try {
-      const redis = getRedisClient();
+      const redis = getSlowRedisClient();
       if (redis) {
         await redis.quit();
         console.log('[Worker] Redis connection closed gracefully.');
@@ -205,12 +205,12 @@ process.on('SIGTERM', () => {
 });
 
 function broadcast(type: string, data: any) {
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) return;
   try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e: Error) => {
-      console.warn('[Worker] broadcast failed:', e.message);
-    });
+    redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e) => {
+    console.warn('[Worker] broadcast failed:', e.message);
+  });
   } catch {
     /* ignore */
   }
@@ -233,11 +233,11 @@ function parse(raw: any): any {
 }
 
 export function isAvailable() {
-  return Boolean(getRedisClient());
+  return Boolean(getSlowRedisClient());
 }
 
 export async function enqueueTask(task: any) {
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) {
     return { success: false, error: 'redis unavailable' };
   }
@@ -254,14 +254,14 @@ export async function enqueueTask(task: any) {
 }
 
 export async function listFailed() {
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) return [];
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
   return items.map((raw: string) => parse(raw)).filter(Boolean).reverse();
 }
 
 export async function discardFailed(taskId: string) {
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) return { success: false, error: 'redis unavailable' };
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
   for (const raw of items) {
@@ -276,7 +276,7 @@ export async function discardFailed(taskId: string) {
 }
 
 export async function retryFailed(taskId: string) {
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) return { success: false, error: 'redis unavailable' };
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
   for (const raw of items) {
@@ -321,9 +321,9 @@ export async function processTask(task: any) {
 
 export async function _tick() {
   if (shuttingDown) return false;
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) return false;
-  const raw = await redis.rpop(TASK_QUEUE).catch((e: Error) => {
+  const raw = await redis.rpop(TASK_QUEUE).catch((e) => {
     console.warn('[Worker] redis rpop failed:', e.message);
     return null;
   });
@@ -345,13 +345,13 @@ export async function _tick() {
     const message = err instanceof Error ? err.message : String(err);
     if (task.attempts >= MAX_ATTEMPTS) {
       const dead = { ...task, failedAt: new Date().toISOString(), lastError: message };
-      await redis.lpush(TASK_DLQ, envelope(dead)).catch((e: Error) => {
+      await redis.lpush(TASK_DLQ, envelope(dead)).catch((e) => {
         console.warn('[Worker] DLQ push failed:', e.message);
       });
       broadcast('task.dead_lettered', { id: task.id, kind: task.kind, attempts: task.attempts, error: message });
     } else {
       const requeued = { ...task, lastError: message };
-      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch((e: Error) => {
+      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch((e) => {
         console.warn('[Worker] requeue failed:', e.message);
       });
       broadcast('task.failed', { id: task.id, kind: task.kind, attempt: task.attempts, error: message });
@@ -362,7 +362,7 @@ export async function _tick() {
 
 export async function startWorker() {
   if (_running) return;
-  const redis = getRedisClient();
+  const redis = getSlowRedisClient();
   if (!redis) {
     console.warn('[Worker] Redis unavailable — worker loop not started');
     return;
