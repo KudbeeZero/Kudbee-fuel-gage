@@ -30,6 +30,9 @@ let _refCount = 0;
 let _connected = false;
 let _listeners: Array<{ type: string; fn: (ev: MessageEvent) => void }> = [];
 const _handlers = new Map<string, Set<(data: any) => void>>();
+let _retryCount = 0;
+const MAX_RETRIES = 8;
+const MAX_BACKOFF_MS = 60_000;
 
 function ensureConnection() {
   if (_es && _es.readyState !== EventSource.CLOSED) return;
@@ -43,8 +46,17 @@ function ensureConnection() {
     if (set) set.forEach((h) => { try { h(data); } catch {} });
   };
 
-  _es.onopen = () => { _connected = true; };
-  _es.onerror = () => { _connected = false; };
+  _es.onopen = () => { _connected = true; _retryCount = 0; };
+  _es.onerror = () => {
+    _connected = false;
+    _retryCount += 1;
+    if (_retryCount >= MAX_RETRIES) {
+      teardownConnection();
+      return;
+    }
+    const delay = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, _retryCount));
+    setTimeout(() => { if (_refCount > 0) { void ensureConnection(); } }, delay + Math.random() * 1000);
+  };
 
   _es.onmessage = (ev) => {
     try { const parsed = JSON.parse(ev.data); dispatch('message', parsed); } catch {}

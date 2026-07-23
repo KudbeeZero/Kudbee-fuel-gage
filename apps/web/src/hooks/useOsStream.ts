@@ -32,6 +32,8 @@ export function useOsStream() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
+  const MAX_RETRIES = 8;
+  const MAX_BACKOFF_MS = 60_000;
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
@@ -60,12 +62,20 @@ export function useOsStream() {
     es.addEventListener('error', () => {
       if (!mountedRef.current) return;
       setConnected(false);
+
+      if (retryCountRef.current >= MAX_RETRIES) {
+        setError('OS stream unavailable — max retries exceeded');
+        es.close();
+        esRef.current = null;
+        return;
+      }
+
       setError('OS stream disconnected — reconnecting...');
       es.close();
       esRef.current = null;
 
       retryCountRef.current += 1;
-      const base = Math.min(30000, 1000 * Math.pow(2, retryCountRef.current));
+      const base = Math.min(MAX_BACKOFF_MS, 1000 * Math.pow(2, retryCountRef.current));
       const jitter = base + Math.random() * 1000;
       reconnectTimerRef.current = setTimeout(() => connect(), jitter);
     });

@@ -26,6 +26,7 @@ import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/ag
 import { registerShutdown } from './services/lib/shutdown.js';
 import { agentLog, broadcastAgentState } from './services/lib/agentLogger.js';
 import { geminiBreaker } from './services/lib/circuitBreaker.js';
+import { runSystemPruner } from './services/lib/pruner.ts';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
 const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
@@ -251,6 +252,11 @@ async function init() {
 
   startHeartbeat();
   startAuditor();
+
+  const PRUNE_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => { void runSystemPruner().then((r) => { if (!r.locked) hermes.log.info('pruner skipped (lock held)'); }); }, 180_000);
+  setInterval(() => { void runSystemPruner(); }, PRUNE_MS);
+
   await pollTasks();
 }
 

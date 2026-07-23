@@ -19,10 +19,13 @@
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
+const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
 
 let _client = null;
 let _subClient = null;
+let _rateLimitClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
 /**
@@ -94,6 +97,43 @@ export function getSubscriberClient() {
   _subClient.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
   return _subClient;
+}
+
+/**
+ * Returns a dedicated Redis client wired exclusively to REDIS_RATE_LIMIT_URL
+ * for Heroku-favored INCR/EXPIRE rate limiting. Offloaded to a separate
+ * Redis instance so rate-limit bursts never compete with pub/sub or state ops.
+ * Falls back to REDIS_URL if REDIS_RATE_LIMIT_URL is not set.
+ * @param {object} [opts] Optional overrides.
+ * @returns {import('ioredis').Redis}
+ */
+export function getRateLimitClient(opts = {}) {
+  if (!opts.forceNew && _rateLimitClient) return _rateLimitClient;
+
+  const baseConfig = {
+    lazyConnect: opts.lazyConnect ?? false,
+    maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    retryStrategy: opts.retryStrategy ?? (() => null),
+    connectTimeout: 3_000,
+    commandTimeout: 1_000,
+    keepAlive: 10_000
+  };
+
+  if (isRateLimitUpstash) {
+    baseConfig.tls = { rejectUnauthorized: false };
+  }
+
+  const client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
+
+  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis connected'); });
+  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis ready'); });
+  client.on('error', () => { redisTelemetry.errorCount += 1; });
+  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn('[rate-limit] Redis connection closed'); });
+
+  if (!opts.forceNew) _rateLimitClient = client;
+  return _rateLimitClient;
 }
 
 export { redisTelemetry };
