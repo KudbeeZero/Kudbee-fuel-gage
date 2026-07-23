@@ -31,7 +31,7 @@ npm ci
 cp config/.env.example .env
 npm run typecheck
 node scripts/verify-e2e.mjs
-cd apps/web && npm run build
+cd apps/web && npm run lint && npm run build
 ```
 
 ## Documentation
@@ -41,5 +41,5 @@ See [`/docs/README.md`](docs/README.md) for the full architecture docs, API refe
 ## Status
 
 - **Phases 1–4** (Core Infrastructure): COMPLETE
-- **Phase 5** (Production Hardening): IN PROGRESS
+- **Phase 5** (Production Hardening): COMPLETE — memory leak fixes, error boundaries, eslint added, CI green
 - **Phase 6** (Multi-Agent Containerization): PLANNED

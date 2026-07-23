@@ -248,3 +248,35 @@ Server middleware returns standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
 | UI_POLL_RATE_LIMIT | 60s | 600 | UI polling endpoints |
 
 Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnostics`.
+
+## Frontend Production Hardening — Session Audit Fixes
+
+#### FIX-022: Stub Components Verification
+- **Date**: 2026-07-23
+- **Severity**: NONE (already resolved)
+- **Status**: All 16 components referenced in the audit (TerminalHUDTicker, TerminalStreamView, StreamModeBadge, BatcherIndicator, GovernanceGatePlugin, GovernanceView, HermesAuditorPlugin, DLQInspector, AuditVaultCard, ThinkStormPlugin, ThinkStreamPlugin, ThinkStoragePlugin, ThinkTrajectoriesPlugin, DiagnosticTicker, EdgeSentinelPlugin, FeedbackButton) are fully implemented. No stub components remain in the codebase. No code changes required.
+
+#### FIX-023: Unbounded Terminal Log Memory Leak
+- **Date**: 2026-07-23
+- **Severity**: HIGH
+- **Files**: apps/web/src/store/terminalStore.ts
+- **Problem**: `pushExternalLog` appended logs to `externalLogs` with no truncation. Coupled with `useLiveTaskStream.ts` SSE listener, this caused infinite array growth and browser memory bloat on long-running sessions.
+- **Fix**: Added `MAX_EXTERNAL_LOGS = 1000` constant and capped the array with `.slice(-MAX_EXTERNAL_LOGS)` on every push.
+- **PR**: session audit campaign
+
+#### FIX-024: AgentTerminal Missing Error Boundary
+- **Date**: 2026-07-23
+- **Severity**: HIGH
+- **Files**: apps/web/src/layouts/StudioLayout.tsx, apps/web/src/components/studio/AgentTerminal.tsx
+- **Problem**: `<AgentTerminal>` was rendered outside any `PanelErrorBoundary`, so live stream render errors would white-screen the entire layout.
+- **Fix**: Wrapped `<AgentTerminal>` with `<PanelErrorBoundary panel="Agent Terminal">`. Also fixed an eslint `no-unused-expressions` warning caused by a ternary side-effect in `toggleCollapse`.
+- **PR**: session audit campaign
+
+#### FIX-025: Broken Linting & Missing ESLint Configuration
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: apps/web/package.json, apps/web/eslint.config.mjs, apps/web/src/tools/workspace.ts, apps/web/src/hooks/useOllamaStream.ts
+- **Problem**: No eslint configuration existed; lint script relied solely on `tsc --noEmit`. `window as any` in workspace.ts bypassed strict type checking.
+- **Fix**: Installed eslint 9 with TypeScript, React, and react-hooks plugins. Created flat config `eslint.config.mjs`. Updated `lint` script to run `eslint` then `tsc --noEmit`. Replaced `window as any` with a global `Window` interface declaration. Removed stale `eslint-disable-next-line` directive.
+- **Additional**: Verified that `apps/web/package.json` dependencies (zustand, react-router-dom, motion, @noble/ed25519) were already correctly classified under `dependencies`. No misclassification found.
+- **PR**: session audit campaign
