@@ -1,4 +1,4 @@
-import { getRedisClient } from './redis.js';
+import { getSlowRedisClient } from './redis.js';
 import { agentLog } from './agentLogger.js';
 
 const JOB_PREFIX = 'kudbee:jobs:';
@@ -19,7 +19,7 @@ export async function enqueueJob(queue: string, type: string, payload: Record<st
   const job: Job = { id, type, payload, retries: 0, maxRetries: JOB_MAX_RETRIES, createdAt: new Date().toISOString() };
 
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
+    const redis = getSlowRedisClient({ label: 'job-queue' });
     await redis.lpush(JOB_PREFIX + queue, JSON.stringify(job));
     agentLog('job-queue', 'enqueued', 'INFO', { queue, type, jobId: id }, `Job ${id}: ${type}`);
   } catch {
@@ -30,7 +30,7 @@ export async function enqueueJob(queue: string, type: string, payload: Record<st
 
 export async function dequeueJob(queue: string): Promise<Job | null> {
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
+    const redis = getSlowRedisClient({ label: 'job-queue' });
     const raw = await redis.rpop(JOB_PREFIX + queue);
     if (!raw) return null;
     return JSON.parse(raw) as Job;
@@ -52,7 +52,7 @@ export async function retryJob(queue: string, job: Job): Promise<void> {
 
   job.retries += 1;
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
+    const redis = getSlowRedisClient({ label: 'job-queue' });
     await redis.lpush(JOB_PREFIX + queue, JSON.stringify(job));
   } catch {
     agentLog('job-queue', 'retry-failed', 'ERROR', { queue, jobId: job.id }, 'Redis unavailable');
@@ -61,7 +61,7 @@ export async function retryJob(queue: string, job: Job): Promise<void> {
 
 export async function getQueueLength(queue: string): Promise<number> {
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
+    const redis = getSlowRedisClient({ label: 'job-queue' });
     return await redis.llen(JOB_PREFIX + queue);
   } catch {
     return 0;
@@ -70,7 +70,7 @@ export async function getQueueLength(queue: string): Promise<number> {
 
 export async function getDeadQueueLength(queue: string): Promise<number> {
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
+    const redis = getSlowRedisClient({ label: 'job-queue' });
     return await redis.llen(JOB_PREFIX + queue + ':dead');
   } catch {
     return 0;
