@@ -3188,6 +3188,9 @@ export default function App() {
 
   // Global command palette (Cmd+K / Ctrl+K)
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const paletteOpenRef = useRef(paletteOpen);
+  useEffect(() => { paletteOpenRef.current = paletteOpen; }, [paletteOpen]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -3201,7 +3204,7 @@ export default function App() {
         setPaletteOpen((open) => !open);
         return;
       }
-      if (e.key === 'Escape' && paletteOpen) {
+      if (e.key === 'Escape' && paletteOpenRef.current) {
         setPaletteOpen(false);
         return;
       }
@@ -3212,7 +3215,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isAuthenticated, paletteOpen]);
+  }, [isAuthenticated]);
 
   const showToast = (message: string, type: 'warning' | 'info' | 'success' = 'warning') => {
     const id = Date.now();
