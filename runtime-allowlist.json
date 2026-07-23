@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Runtime routes intentionally present in server.js but not yet mirrored in server.ts. Do not add to this list without justification.",
+  "description": "Runtime route inventory for server.js. server.ts has been consolidated into server.js as the single canonical server.",
   "allowed": [
     "USE:/api/audit",
     "USE:/api/governance",
