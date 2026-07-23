@@ -3301,6 +3301,31 @@ if (redis) {
   }
 }
 
+// --- SSE Stream Ticket (zero-trust handshake) ---
+const STREAM_TICKETS = new Map();
+const TICKET_TTL_MS = 30000;
+
+app.post('/api/auth/stream-ticket', (req, res) => {
+  const ticket = 'sse_ticket_' + crypto.randomUUID();
+  STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
+  const sig = crypto.createHmac('sha256', process.env.STREAM_SECRET || 'kudbee-stream-secret')
+    .update(ticket + ':' + Date.now()).digest('hex');
+  res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
+});
+
+function validateStreamTicket(ticket) {
+  if (!ticket) return false;
+  const exp = STREAM_TICKETS.get(ticket);
+  if (!exp || Date.now() > exp) { STREAM_TICKETS.delete(ticket); return false; }
+  STREAM_TICKETS.delete(ticket);
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [t, e] of STREAM_TICKETS) if (now > e) STREAM_TICKETS.delete(t);
+}, 60000);
+
 app.get('/api/events', async (req, res) => {
   if (sseClientCount() >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
@@ -3988,6 +4013,24 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+app.get('/api/metrics/budget-status', (req, res) => {
+  const budgetUsd = Number(process.env.MONTHLY_BUDGET_USD || 50);
+  return res.json({
+    budgetUsd,
+    remainingUsd: budgetUsd,
+    spendUsd: 0,
+    pct: 0,
+    monthReset: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`
+  });
+});
+
+app.patch('/api/settings/budget', (req, res) => {
+  const val = Number(req.body?.monthlyBudgetUsd);
+  if (!val || val <= 0) return res.status(400).json({ error: 'monthlyBudgetUsd must be positive' });
+  process.env.MONTHLY_BUDGET_USD = String(val);
+  return res.json({ success: true, budgetUsd: val });
 });
 
 // --- Phase 22: Universal Search, Audit Export, System Diagnostics ---------------
