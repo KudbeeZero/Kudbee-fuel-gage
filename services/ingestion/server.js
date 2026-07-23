@@ -3920,6 +3920,20 @@ app.get('/api/metrics/budget-status', async (_req, res) => {
   }
 });
 
+app.patch('/api/settings/budget', async (req, res) => {
+  try {
+    const { monthlyBudgetUsd } = req.body || {};
+    if (typeof monthlyBudgetUsd === 'number' && monthlyBudgetUsd > 0) {
+      process.env.MONTHLY_BUDGET_USD = String(monthlyBudgetUsd);
+      const status = await getBudgetStatus();
+      return res.status(200).json({ success: true, ...status });
+    }
+    return res.status(400).json({ error: 'monthlyBudgetUsd must be a positive number' });
+  } catch {
+    return res.status(500).json({ error: 'Budget update failed' });
+  }
+});
+
 app.get('/api/metrics/cost-ledger', async (_req, res) => {
   try {
     const now = Date.now();

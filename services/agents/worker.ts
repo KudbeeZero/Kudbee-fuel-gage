@@ -160,6 +160,7 @@ export default evaluateAgentPayload;
  */
 
 import { getRedisClient } from '../lib/redis.js';
+import { pruneDeadLetterQueue, pruneStaleJobs } from '../lib/jobQueue.ts';
 
 const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
@@ -378,8 +379,17 @@ export async function startWorker() {
   _running = true;
   _stopRequested = false;
   console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
+
+  const PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => { void pruneStaleJobs('governance'); void pruneDeadLetterQueue('governance'); }, 180_000);
+  const pruneId = setInterval(() => {
+    void pruneStaleJobs('governance');
+    void pruneDeadLetterQueue('governance');
+  }, PRUNE_INTERVAL_MS);
+
   const loop = () => {
     if (_stopRequested) {
+      clearInterval(pruneId);
       _running = false;
       return;
     }
