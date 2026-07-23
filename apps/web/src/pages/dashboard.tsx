@@ -30,7 +30,6 @@ import { useInterval } from '../hooks/useInterval';
 import { useEventStream } from '../hooks/useEventStream';
 import { useCommandDispatcher, commandRunners } from '../store/commandDispatcher';
 import type { VectorSyncStatus } from '../hooks/useVectorSync';
-import { CostLedgerCard } from '../components/dashboard/CostLedgerCard';
 import { useGovernanceStream } from '../hooks/useGovernanceStream';
 import { useThinkStream } from '../hooks/useThinkStream';
 import { useThinkGovernanceStream } from '../hooks/useThinkGovernanceStream';
@@ -2723,7 +2722,6 @@ export function DashboardPage() {
           <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
           <ConfidenceGaugeCard score={latestConfidence} />
           <VectorStoreCard />
-          <CostLedgerCard />
           <ThinkTrajectoriesCard trajectories={trajectories} loading={trajectoriesLoading} error={trajectoriesError} />
           <TokenMetrics metrics={thinkMetrics} error={thinkMetricsError} />
           <DispatchPanel onDispatched={() => { void loadTelemetryStats(); void loadGovernance(); }} />
