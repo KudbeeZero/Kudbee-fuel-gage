@@ -36,7 +36,14 @@ export type CsvInjectRequest = z.infer<typeof CsvInjectRequestSchema>;
 export const DashboardSummarySchema = z.object({
   total_24h_cost: z.number(),
   total_historical_tokens: z.number(),
+  total_input_tokens: z.number().optional(),
+  total_output_tokens: z.number().optional(),
   total_active_models: z.number(),
+  total_requests: z.number().optional(),
+  error_rate: z.number().optional(),
+  sink_token_balance: z.number().optional(),
+  postgres_size_bytes: z.number().optional(),
+  redis_size_bytes: z.number().optional(),
   health_matrix: z.array(z.unknown())
 });
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>;
@@ -321,7 +328,8 @@ export const ThinkTokenSchema = z.object({
   failed_state: z.record(z.unknown()).optional(),
   correction_delta: z.string().default(''),
   embedding: z.array(z.number()).min(1),
-  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']).default('PENDING_APPROVAL'),
+  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED', 'PROVEN']).default('PROVEN'),
+  token_cost: z.number().min(0).default(0),
   created_at: z.string().optional(),
   kd: z.number().min(0).default(0).describe('Gating affinity threshold (Kd → 0 = near-perfect binding similarity)'),
   efficacy: z.number().min(0).max(1).default(0).describe('Intrinsic activity/mutation weight (0.0–1.0)'),
@@ -335,7 +343,8 @@ export const ThinkTrajectorySchema = z.object({
   spatial_coordinates: z.array(z.number()).min(1),
   similarity_score: z.number(),
   confidence_score: z.number().min(0).max(1).optional(),
-  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED']),
+  status: z.enum(['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED', 'PROVEN']),
+  reasoning: z.string().optional(),
   task_context: z.record(z.unknown()).optional(),
   failed_state: z.record(z.unknown()).optional(),
   correction_delta: z.string().default(''),
