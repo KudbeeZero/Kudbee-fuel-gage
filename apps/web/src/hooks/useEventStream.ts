@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { apiUrl } from '../lib/apiClient';
+import { apiUrl, apiPost } from '../lib/apiClient';
 
 export interface StreamEvent {
   type: string;
@@ -30,12 +30,37 @@ let _refCount = 0;
 let _connected = false;
 let _listeners: Array<{ type: string; fn: (ev: MessageEvent) => void }> = [];
 const _handlers = new Map<string, Set<(data: any) => void>>();
+let _ticketPromise: Promise<string | null> | null = null; // deduplicate concurrent ticket requests
 
-function ensureConnection() {
+async function obtainTicket(): Promise<string | null> {
+  try {
+    const data = await apiPost<{ ticket: string; signature: string; expiresIn: number }>('/api/auth/stream-ticket', {});
+    return data.ticket || null;
+  } catch {
+    return null;
+  }
+}
+
+function getTicket(): Promise<string | null> {
+  if (!_ticketPromise) {
+    _ticketPromise = obtainTicket().finally(() => { _ticketPromise = null; });
+  }
+  return _ticketPromise;
+}
+
+async function ensureConnection() {
   if (_es && _es.readyState !== EventSource.CLOSED) return;
   if (typeof EventSource === 'undefined') return;
 
-  _es = new EventSource(apiUrl('/api/events'));
+  // Obtain a fresh single-use ticket before opening the stream
+  const ticket = await getTicket();
+  if (!ticket) {
+    // Retry after a short delay if ticket fetch failed
+    setTimeout(() => { void ensureConnection(); }, 5000);
+    return;
+  }
+
+  _es = new EventSource(apiUrl(`/api/events?ticket=${encodeURIComponent(ticket)}`));
   _connected = true;
 
   const dispatch = (type: string, data: any) => {
@@ -44,7 +69,12 @@ function ensureConnection() {
   };
 
   _es.onopen = () => { _connected = true; };
-  _es.onerror = () => { _connected = false; };
+  _es.onerror = () => {
+    _connected = false;
+    // On error, tear down and reconnect with a new ticket
+    teardownConnection();
+    setTimeout(() => { void ensureConnection(); }, 3000);
+  };
 
   _es.onmessage = (ev) => {
     try { const parsed = JSON.parse(ev.data); dispatch('message', parsed); } catch {}
@@ -83,7 +113,7 @@ export function useEventStream(): UseEventStreamResult {
 
   useEffect(() => {
     _refCount += 1;
-    ensureConnection();
+    void ensureConnection();
     const check = setInterval(() => setConnected(_connected), 1000);
     return () => {
       clearInterval(check);
