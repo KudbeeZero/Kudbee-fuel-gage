@@ -10,6 +10,8 @@ import { recordReasoning, logSystemReset, ensureLedgerSchema } from "../governan
 import { createProvider, wrapPromptForOpenWeights, type ProviderKind } from "@kudbee/utils/llm/providers";
 import { runQuery } from "../lib/db.js";
 import { getRedisClient } from "../lib/redis.js";
+import { createTelemetryRouter } from "./routes/telemetry.js";
+import { createToolsRouter } from "./routes/tools.js";
 
 // --- 1. LOCAL TELEMETRY ENGINE TYPE DEFINITIONS ---
 
@@ -979,6 +981,12 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
 
   // --- Phase 22: Universal Search, Audit Export, System Diagnostics -----------
   registerPhase22Routes(app);
+
+  // --- Telemetry sub-router (reasoning traces, logs, search) ------------------
+  app.use("/api/telemetry", createTelemetryRouter({ runQuery }));
+
+  // --- Workspace tool endpoints (fs read/write/list, shell exec) --------------
+  app.use("/api/tools", createToolsRouter());
 
   // --- Phase 29: Degradation Telemetry ----------------------------------------
   const { createDegradationRouter } = await import("../telemetry/degradation-monitor.js");

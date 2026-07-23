@@ -65,6 +65,7 @@ const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({
 const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
 const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
 import { DashboardPage } from './pages/dashboard';
+import { OllamaChat } from './pages/OllamaChat';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
@@ -3406,6 +3407,7 @@ export default function App() {
     { icon: LayoutDashboard, label: 'Dashboard' },
     { icon: Calculator, label: 'Playground' },
     { icon: History, label: 'History' },
+    { icon: TerminalSquare, label: 'Terminal' },
     { icon: Globe, label: 'Gateway' }
   ];
 
@@ -3984,6 +3986,8 @@ export default function App() {
            {activeTab === 'Gateway' && (
              <GatewayView showToast={showToast} />
            )}
+
+           {activeTab === 'Terminal' && <OllamaChat />}
 
            {activeTab === 'Alerts' && (
              <Suspense fallback={<RouteFallback label="Loading Alerts" />}>

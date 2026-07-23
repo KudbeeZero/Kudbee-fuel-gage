@@ -19,11 +19,23 @@ export default defineConfig(() => {
       proxy: {
         '/api': 'http://127.0.0.1:3000',
         '/health': 'http://127.0.0.1:3000',
-        '/v1': 'http://127.0.0.1:3000'
+        '/v1': 'http://127.0.0.1:3000',
+        '/ollama': {
+          target: 'http://localhost:11434',
+          changeOrigin: true,
+          timeout: 120000,
+          rewrite: (path) => path.replace(/^\/ollama/, ''),
+        },
       }
     },
     build: {
       outDir: 'dist',
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          terminal: path.resolve(__dirname, 'terminal.html'),
+        },
+      },
     },
   };
 });
