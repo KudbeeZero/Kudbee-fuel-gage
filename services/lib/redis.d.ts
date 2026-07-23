@@ -13,6 +13,9 @@ declare module '../lib/redis.js' {
   export function getRedisClient(opts?: Record<string, unknown>): Redis;
   export function getSubscriberClient(): Redis;
   export function getRateLimitClient(opts?: Record<string, unknown>): Redis;
+  export function getSlowRedisClient(opts?: Record<string, unknown>): Redis;
+  export function getBlockingRedisClient(opts?: Record<string, unknown>): Redis;
+  export function isUsingUpstash(): boolean;
 
   export const redisTelemetry: {
     primaryCount: number;

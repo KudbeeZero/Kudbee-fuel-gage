@@ -196,5 +196,42 @@ export function getSlowRedisClient(opts = {}) {
   return client;
 }
 
+let _blockingClient = null;
+
+export function getBlockingRedisClient(opts = {}) {
+  if (!opts.forceNew && _blockingClient) return _blockingClient;
+
+  const baseConfig = {
+    lazyConnect: false,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    enableOfflineQueue: false,
+    retryStrategy: (times) => Math.min(times * 250, 5000),
+    connectTimeout: 5_000,
+    commandTimeout: 0,
+    keepAlive: 15_000
+  };
+
+  if (REDIS_URL.includes('upstash.io') || REDIS_URL.startsWith('rediss://')) {
+    baseConfig.tls = {};
+  }
+
+  let client;
+  try {
+    client = new Redis(REDIS_URL, baseConfig);
+  } catch {
+    console.warn('[blocking-redis] Invalid REDIS_URL, skipping blocking client creation');
+    return null;
+  }
+
+  client.on('connect', () => console.log('[blocking-redis] Redis connected'));
+  client.on('ready', () => console.log('[blocking-redis] Redis ready'));
+  client.on('error', (err) => console.error('[blocking-redis] Error:', err.message));
+  client.on('end', () => { console.warn('[blocking-redis] Redis connection closed'); _blockingClient = null; });
+
+  if (!opts.forceNew) _blockingClient = client;
+  return _blockingClient;
+}
+
 export { redisTelemetry };
 export default getRedisClient;

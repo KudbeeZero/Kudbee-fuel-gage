@@ -23,6 +23,7 @@ import {
   UNCERTAINTY_THRESHOLD,
   type AgentPayload
 } from '@kudbee/types';
+import { getRedisClient, getBlockingRedisClient } from '../lib/redis.js';
 
 /** A confidence reading that has been normalized but not yet routed. */
 export interface EvaluatedPayload {
@@ -159,13 +160,11 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from '../lib/redis.js';
-
 const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
 const MAX_ATTEMPTS = 3;
-const IDLE_POLL_MS = 200;
+const BRPOP_TIMEOUT_MS = 5_000;
 
 let _running = false;
 let _stopRequested = false;
@@ -305,13 +304,10 @@ export function isRunning() {
 }
 
 export async function processTask(task: any) {
-  // Inject an optional `shouldFail` hook for E2E testing — the caller can set
-  // task.payload.shouldFail = true (or to a count) to deterministically
-  // simulate failure paths.
   if (task.payload?.shouldFail) {
     throw new Error(task.payload.failureMessage || 'simulated failure for E2E');
   }
-  // For a generic task, mark the work as complete and return a small result.
+
   return {
     completedAt: new Date().toISOString(),
     result: 'ok',
@@ -321,13 +317,19 @@ export async function processTask(task: any) {
 
 export async function _tick() {
   if (shuttingDown) return false;
-  const redis = getRedisClient();
-  if (!redis) return false;
-  const raw = await redis.rpop(TASK_QUEUE).catch((e: Error) => {
-    console.warn('[Worker] redis rpop failed:', e.message);
+  const blockingRedis = getBlockingRedisClient();
+  if (!blockingRedis) return false;
+
+  const result = await blockingRedis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
+    console.warn('[Worker] redis brpop failed:', e.message);
     return null;
   });
+
+  if (!result) return false;
+  const raw = result[1];
   if (!raw) return false;
+
+  const redis = getRedisClient();
   const task = parse(raw);
   if (!task) {
     broadcast('task.malformed', { raw });
@@ -362,39 +364,36 @@ export async function _tick() {
 
 export async function startWorker() {
   if (_running) return;
+  const blockingRedis = getBlockingRedisClient();
   const redis = getRedisClient();
-  if (!redis) {
+  if (!blockingRedis || !redis) {
     console.warn('[Worker] Redis unavailable — worker loop not started');
     return;
   }
 
   try {
-    await redis.ping();
+    await blockingRedis.ping();
   } catch {
-    console.warn('[Worker] Redis not yet reachable — worker loop deferred');
+    console.warn('[Worker] Blocking Redis not yet reachable — worker loop deferred');
     return;
   }
 
   _running = true;
   _stopRequested = false;
-  console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
-  const loop = () => {
+  console.log(`[Worker] Starting background task loop on ${TASK_QUEUE} (BRPOP)`);
+  const loop = async () => {
     if (_stopRequested) {
       _running = false;
       return;
     }
-    _tick()
-      .then((processed) => {
-        if (!processed) {
-          tickTimeout = setTimeout(loop, IDLE_POLL_MS);
-        } else {
-          tickTimeout = setTimeout(loop, 0);
-        }
-      })
-      .catch((err) => {
-        console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
-        tickTimeout = setTimeout(loop, IDLE_POLL_MS);
-      });
+    try {
+      await _tick();
+    } catch (err) {
+      console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
+    }
+    if (!_stopRequested) {
+      tickTimeout = setTimeout(loop, 0);
+    }
   };
   loop();
 }
