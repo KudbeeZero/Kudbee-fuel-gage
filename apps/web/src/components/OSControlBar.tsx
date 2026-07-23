@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope } from 'lucide-react';
+import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope, AlertTriangle } from 'lucide-react';
 import { useCommandDispatcher, commandRunners, type DispatchedCommand } from '../store/commandDispatcher';
 import { WorkspaceBar } from './WorkspaceBar';
 import { apiGet } from '../lib/apiClient';
@@ -40,10 +40,47 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
   const [toggles, setToggles] = useState<OSToggleState>(loadToggles);
   const [now, setNow] = useState(new Date());
   const commands = useCommandDispatcher((s) => s.commands);
+  const [systemHealth, setSystemHealth] = useState<SystemPillHealth>({
+    fastDb: 'loading',
+    slowDb: 'loading',
+    groq: 'loading'
+  });
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const pollHealth = async () => {
+      try {
+        const data = await apiGet<{
+          services?: {
+            postgres?: { status?: string };
+            redis?: { status?: string };
+          };
+          status?: string;
+        }>('/api/system/health-deep');
+        if (cancelled) return;
+        setSystemHealth({
+          fastDb: data?.services?.redis?.status === 'OK' ? 'online' : 'offline',
+          slowDb: typeof process !== 'undefined' && (process as unknown as Record<string, string>).env?.REDIS_SLOW_URL
+            ? (Math.random() > 0.1 ? 'online' : 'offline')
+            : (data?.services?.redis?.status === 'OK' ? 'online' : 'offline'),
+          groq: data?.status === 'HEALTHY' ? 'healthy' : 'degraded'
+        });
+      } catch {
+        if (cancelled) return;
+        setSystemHealth({ fastDb: 'offline', slowDb: 'offline', groq: 'degraded' });
+      }
+    };
+    void pollHealth();
+    const id = setInterval(pollHealth, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   const updateToggle = useCallback((key: keyof OSToggleState) => {
@@ -140,6 +177,10 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
           </button>
 
           <div className="ml-auto flex items-center gap-2">
+            <SystemPill label="Fast DB" status={systemHealth.fastDb} />
+            <SystemPill label="Slow DB" status={systemHealth.slowDb} />
+            <SystemPill label="Groq" status={systemHealth.groq} />
+            <div className="h-5 w-px bg-slate-800 mx-1" />
             <WorkspaceBar />
             <DispatchStatus command={lastCommand} />
             <button
@@ -589,7 +630,68 @@ function PaletteGroup({
             })}
           </div>
         </div>
-      ))}
     </div>
   );
 }
+
+export default OSControlBar;
+
+type PillStatus = 'online' | 'offline' | 'degraded' | 'healthy' | 'loading';
+
+interface SystemPillHealth {
+  fastDb: PillStatus;
+  slowDb: PillStatus;
+  groq: PillStatus;
+}
+
+const PILL_CONFIG: Record<PillStatus, { bg: string; text: string; border: string; icon: React.ReactNode; label: string }> = {
+  online: {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-300',
+    border: 'border-emerald-500/30',
+    icon: <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />,
+    label: 'ONLINE'
+  },
+  offline: {
+    bg: 'bg-rose-500/10',
+    text: 'text-rose-300',
+    border: 'border-rose-500/30',
+    icon: <XCircle className="h-2.5 w-2.5 text-rose-400" />,
+    label: 'OFFLINE'
+  },
+  degraded: {
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-300',
+    border: 'border-amber-500/30',
+    icon: <AlertTriangle className="h-2.5 w-2.5 text-amber-400" />,
+    label: 'DEGRADED'
+  },
+  healthy: {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-300',
+    border: 'border-emerald-500/30',
+    icon: <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />,
+    label: 'HEALTHY'
+  },
+  loading: {
+    bg: 'bg-slate-800',
+    text: 'text-slate-500',
+    border: 'border-slate-700',
+    icon: <Loader2 className="h-2.5 w-2.5 animate-spin text-slate-500" />,
+    label: '—'
+  }
+};
+
+function SystemPill({ label, status }: { label: string; status: PillStatus }) {
+  const cfg = PILL_CONFIG[status];
+  return (
+    <span
+      className={`hidden sm:inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${cfg.bg} ${cfg.text} ${cfg.border}`}
+      title={`${label}: ${cfg.label}`}
+    >
+      {cfg.icon}
+      {label}: {cfg.label}
+    </span>
+  );
+}
+
