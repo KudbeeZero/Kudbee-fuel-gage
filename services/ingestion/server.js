@@ -58,10 +58,26 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const durationMs = Date.now() - start;
-    if (durationMs > 1000 || res.statusCode >= 400) {
+    if (durationMs > 3000) {
+      console.warn(`[PERF_WARN] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
+    } else if (durationMs > 1000 || res.statusCode >= 400) {
       console.log(`[http] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
     }
   });
+  next();
+});
+
+// --- Reject requests that run longer than 15s to prevent Heroku H27 ---
+app.use((req, res, next) => {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      console.warn(`[Timeout] ${req.method} ${req.path} exceeded 15s — returning 503`);
+      res.setHeader('Connection', 'close');
+      res.status(503).json({ error: 'Service Unavailable', reason: 'Request timeout' });
+    }
+  }, 15_000);
+  res.on('finish', () => clearTimeout(timer));
+  res.on('close', () => clearTimeout(timer));
   next();
 });
 
@@ -173,11 +189,25 @@ const apiLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' }
+  handler: (req, res) => {
+    console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${req.ip}`);
+    res.setHeader('Retry-After', Math.ceil(60));
+    res.status(429).json({ error: 'Too many requests, please try again later.' });
+  }
 });
 app.use('/api/', apiLimiter);
 
-const ingestLimiter = rateLimit({ windowMs: 60 * 1000, max: process.env.NODE_ENV === 'test' ? 500 : 50, standardHeaders: true, legacyHeaders: false, message: { error: 'Ingest rate limit exceeded' } });
+const ingestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: process.env.NODE_ENV === 'test' ? 500 : 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(`[RateLimit:Ingest] 429 on ${req.method} ${req.path} from ${req.ip}`);
+    res.setHeader('Retry-After', Math.ceil(60));
+    res.status(429).json({ error: 'Ingest rate limit exceeded' });
+  }
+});
 app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
@@ -4218,9 +4248,15 @@ if (globalThis.__KUBEE_STATE__) {
 // --- Global error boundary: degrade gracefully, never crash the process ---
 app.use((err, req, res, next) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error(`[Resilience] Unhandled error on ${req.method} ${req.path}: ${message}`);
+  const isTimeout = message.includes('timed out') || message.includes('timeout');
+  const status = isTimeout ? 503 : 500;
+  console.error(`[Resilience] Unhandled error on ${req.method} ${req.path} (${status}): ${message}`);
   if (!res.headersSent) {
-    return res.status(500).json({ status: 'degraded', fallback: true, error: process.env.NODE_ENV === 'production' ? 'Internal error' : message });
+    return res.status(status).json({
+      status: 'degraded',
+      fallback: true,
+      error: process.env.NODE_ENV === 'production' ? (status === 503 ? 'Service Unavailable' : 'Internal error') : message
+    });
   }
   next(err);
 });
