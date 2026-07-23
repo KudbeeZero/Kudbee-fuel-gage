@@ -1,0 +1,405 @@
+function AgentTerminal({
+  data,
+  loading,
+  error,
+  live,
+  thinking,
+  thinkLatest,
+  context,
+  externalCommands,
+  onDispatch
+}: {
+  data: SessionHistoryItem[];
+  loading: boolean;
+  error: string | null;
+  live?: boolean;
+  thinking?: boolean;
+  thinkLatest?: string | null;
+  context?: TerminalContext;
+  externalCommands?: { id: number; text: string; output?: string }[];
+  onDispatch?: () => void;
+}) {
+  const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
+  const [displayedData, setDisplayedData] = useState<SessionHistoryItem[]>([]);
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<number>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const latestDataRef = useRef(data);
+  const processedCmdIds = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!externalCommands || externalCommands.length === 0) return;
+    const newCmds = externalCommands.filter((cmd) => !processedCmdIds.current.has(cmd.id));
+    if (newCmds.length === 0) return;
+    newCmds.forEach((cmd) => processedCmdIds.current.add(cmd.id));
+    setCommands((prev) => [...prev, ...newCmds]);
+  }, [externalCommands]);
+
+  useEffect(() => {
+    latestDataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    if (!isPaused) {
+      setDisplayedData(data);
+    }
+  }, [data, isPaused]);
+
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => {
+      if (!prev) {
+        setDisplayedData(latestDataRef.current);
+      }
+      return !prev;
+    });
+  }, []);
+
+  const toggleCollapse = useCallback((prNumber: number) => {
+    setCollapsedSessions(prev => {
+      const next = new Set(prev);
+      if (next.has(prNumber)) {
+        next.delete(prNumber);
+      } else {
+        next.add(prNumber);
+      }
+      return next;
+    });
+  }, []);
+
+  // Auto-scroll to the newest content whenever data or local commands change.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && !isPaused) el.scrollTop = el.scrollHeight;
+  }, [displayedData, commands, error, isPaused]);
+
+  // Interactive command handling — queries live dashboard context and prints
+  // real values back into the terminal instead of a no-op echo.
+  const runCommand = (raw: string): string => {
+    const cmd = raw.trim();
+    const [name, ...rest] = cmd.toLowerCase().split(/\s+/);
+    const ctx = context;
+    switch (name) {
+      case 'help':
+        return [
+          'available commands:',
+          '  help            — show this help',
+          '  status          — system + HERMES health',
+          '  governance      — governance ledger summary',
+          '  hermes          — HERMES auditor status',
+          '  !recall         — show last 10 stored user memories',
+          '  !remember <data> — persist data to Postgres (TTL: forever)',
+          '  clear           — clear the terminal',
+          '  echo <text>     — print text'
+        ].join('\n');
+      case 'status':
+        return `system: ${ctx?.health ?? 'unknown'} · HERMES online: ${ctx?.live ? 'yes' : 'no'} · community value: ${ctx?.communityValue ?? 0} CV`;
+      case 'governance':
+        return `governance actions: ${ctx?.governance ?? 0} · pending HERMES suggestions: ${ctx?.hermes ?? 0}`;
+      case 'hermes':
+        return `HERMES auditor: ${ctx?.live ? 'ONLINE' : 'OFFLINE'} · active suggestions: ${ctx?.hermes ?? 0}`;
+      case 'clear':
+        setCommands([]);
+        return '';
+      case 'echo':
+        return rest.join(' ');
+      default:
+        return `command not found: ${cmd} (type "help")`;
+    }
+  };
+
+  // `!recall` — query the backend for the last 10 persisted user memories and
+  // render them inline. Async: we push a placeholder, then replace with results.
+  const runRecall = async (): Promise<void> => {
+    const placeholderId = Date.now();
+    setCommands((prev) => [
+      ...prev,
+      { id: placeholderId, text: '!recall', output: 'recalling last 10 user memories…' }
+    ]);
+    try {
+      const data = await apiGet<{ count: number; memories: UserMemory[] }>(
+        '/api/memory/recall?last=10'
+      );
+      const memories = data?.memories ?? [];
+      const rendered =
+        memories.length === 0
+          ? 'no user memories stored yet.'
+          : memories
+              .map((m, i) => {
+                const when = m.created_at ? new Date(m.created_at).toLocaleString() : '';
+                const body = m.thought_summary || m.reasoning || '(empty)';
+                return `#${i + 1} [${m.model}] ${when}\n    ${body}`;
+              })
+              .join('\n');
+      setCommands((prev) =>
+        prev.map((c) => (c.id === placeholderId ? { ...c, output: rendered } : c))
+      );
+    } catch (e) {
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.id === placeholderId
+            ? { ...c, output: `recall failed: ${e instanceof Error ? e.message : 'unknown error'}` }
+            : c
+        )
+      );
+    }
+  };
+
+  const runRemember = async (data: string): Promise<void> => {
+    const placeholderId = Date.now();
+    setCommands((prev) => [
+      ...prev,
+      { id: placeholderId, text: `!remember ${data}`, output: 'persisting…' }
+    ]);
+    try {
+      await apiPost('/api/memory/remember', { data });
+      setCommands((prev) =>
+        prev.map((c) => (c.id === placeholderId ? { ...c, output: `remembered: "${data}"` } : c))
+      );
+    } catch (e) {
+      setCommands((prev) =>
+        prev.map((c) =>
+          c.id === placeholderId
+            ? { ...c, output: `error: failed to persist memory (${e instanceof Error ? e.message : 'unknown'})` }
+            : c
+        )
+      );
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text) return;
+    if (text.toLowerCase() === '!recall') {
+      void runRecall();
+      setInput('');
+      return;
+    }
+    if (text.startsWith('!remember ')) {
+      const data = text.slice('!remember '.length).trim();
+      if (!data) {
+        setCommands((prev) => [...prev, { id: Date.now(), text, output: 'usage: !remember <data>' }]);
+        setInput('');
+        return;
+      }
+      void runRemember(data);
+      setInput('');
+      return;
+    }
+    const output = runCommand(text);
+    setCommands((prev) => [...prev, { id: Date.now(), text, output }]);
+    setInput('');
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/80 p-5 flex flex-col">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+
+      {/* Thinking Pulse overlay — activates when the system enters SLOW_BRAIN
+          (LLM reasoning). Pure CSS keyframe pulse simulates "AI processing". */}
+      {thinking && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
+          <div className="flex flex-col items-center gap-3">
+            <span className="relative flex h-16 w-16">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500/40" />
+              <span className="absolute inline-flex h-full w-full animate-pulse rounded-full bg-violet-500/30" style={{ animationDelay: '300ms' }} />
+              <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/40 bg-slate-900/80">
+                <Brain className="h-7 w-7 animate-pulse text-violet-300" />
+              </span>
+            </span>
+            <div className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1">
+              <Cpu className="h-3.5 w-3.5 text-violet-300" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-violet-200">
+                Slow Brain · Reasoning…
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Terminal className="h-4 w-4 text-emerald-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest">Live Agent Terminal</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {onDispatch && (
+            <button
+              onClick={onDispatch}
+              className="flex items-center gap-1 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono font-bold uppercase text-violet-300 transition-colors hover:bg-violet-500/20 active:scale-95"
+              title="Run Crucible Cycle"
+            >
+              <Zap className="h-3 w-3" />
+              Run Crucible Cycle
+            </button>
+          )}
+          <button
+            onClick={togglePause}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-mono font-bold uppercase transition-colors ${
+              isPaused
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-300'
+            }`}
+            title={isPaused ? 'Resume stream' : 'Pause stream'}
+          >
+            {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <span className={`relative flex h-2 w-2 ${live ? '' : 'opacity-60'}`}>
+            {live && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${live ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+          </span>
+          <span className="text-[10px] font-mono text-slate-500">{isPaused ? 'FROZEN' : thinking ? 'REASONING' : live ? 'ONLINE' : 'OFFLINE'}</span>
+          {loading && <span className="text-[10px] font-mono text-slate-500">Loading…</span>}
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="mt-4 max-h-[360px] space-y-3 overflow-y-auto overflow-x-hidden font-mono text-[11px] pr-1">
+        {/* Think: Stream — live reasoning tokens surfaced from GET /api/think/archive. */}
+        {thinkLatest ? (
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.06] p-3">
+            <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-violet-300">
+              <Cpu className="h-3 w-3" />
+              Think: Stream
+            </div>
+            <p className="mt-1 whitespace-pre-wrap leading-relaxed text-slate-400">
+              {thinkLatest}
+              <span className="ml-0.5 inline-block h-3 w-1.5 translate-y-0.5 animate-pulse bg-violet-400" />
+            </p>
+          </div>
+        ) : null}
+        {error && (
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-rose-300">
+            {error}
+          </div>
+        )}
+        {loading && !error && data.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">Loading session history…</div>
+        )}
+        {!loading && !error && data.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">No session history available. Type a command below to interact.</div>
+        )}
+        {loading && !error && displayedData.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">Loading session history…</div>
+        )}
+        {!loading && !error && displayedData.length === 0 && commands.length === 0 && (
+          <div className="text-slate-600">No session history available. Type a command below to interact.</div>
+        )}
+        {displayedData.map((session, index) => {
+          const sessionTimestamp = session.merged_at ? new Date(session.merged_at).toLocaleString() : new Date().toLocaleString();
+          const sessionSink = session.github_sha ? session.github_sha.slice(0, 8) : `sess-${session.pr_number}`;
+          const sessionStatus = session.merged_at ? 'MERGED' : 'PENDING';
+          const sessionBody = session.pr_body || session.pr_title || session.diff_summary || '(no payload)';
+          const tokenCost = session.diff_summary ? Math.max(1, Math.round(session.diff_summary.length / 4)) : 0;
+          const isCollapsed = collapsedSessions.has(session.pr_number);
+          const isLast = index === displayedData.length - 1;
+
+          return (
+            <div key={session.pr_number}>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-0 overflow-hidden">
+                {/* Header: [TIMESTAMP] | [AGENT_ID / SINK] | [STATUS] */}
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-950/40 border-b border-slate-800/60">
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                    <Clock className="h-3 w-3 text-slate-500" />
+                    <span>{sessionTimestamp}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded font-bold">
+                      SINK: {sessionSink}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      sessionStatus === 'MERGED'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    }`}>
+                      {sessionStatus}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body: Formatted reasoning/thought output or memory recall payload */}
+                <div className="p-3 space-y-2">
+                  <div className="text-sm font-medium text-slate-200 truncate">
+                    #{session.pr_number} {session.pr_title}
+                  </div>
+                  {!isCollapsed ? (
+                    <p className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                      {sessionBody}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => toggleCollapse(session.pr_number)}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      Show payload
+                    </button>
+                  )}
+                  {!isCollapsed && (
+                    <button
+                      onClick={() => toggleCollapse(session.pr_number)}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      Hide payload
+                    </button>
+                  )}
+
+                  {/* Badges: Skill tags or token cost if present */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-[9px] font-mono text-slate-500 bg-slate-950 border border-slate-800/60 px-2 py-0.5 rounded">
+                      SHA: {session.github_sha.slice(0, 12)}
+                    </span>
+                    {tokenCost > 0 && (
+                      <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+                        ~{tokenCost} tok
+                      </span>
+                    )}
+                    {session.struggles_encountered && session.struggles_encountered.length > 0 && (
+                      <span className="text-[9px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-bold">
+                        {session.struggles_encountered.length} STRUGGLES
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Checkpoint divider for completed sessions */}
+              {sessionStatus === 'MERGED' && !isLast && (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                    Checkpoint
+                  </span>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {commands.map((cmd) => (
+          <div key={cmd.id} className="text-slate-400">
+            <span className="text-emerald-400">kudbee@control-tower:~$ </span>
+            <span className="text-slate-200">{cmd.text}</span>
+            {cmd.output !== undefined && cmd.output !== '' && (
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] leading-relaxed text-slate-500">{cmd.output}</pre>
+            )}
+            {cmd.output === '' && cmd.text.trim().toLowerCase() === 'clear' && (
+              <div className="mt-0.5 text-slate-600">terminal cleared.</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
+        <span className="font-mono text-[11px] text-emerald-400 shrink-0">kudbee@control-tower:~$</span>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="type a command and press enter…"
+          className="flex-1 bg-transparent font-mono text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none"
+          aria-label="Agent terminal command input"
+        />
+      </form>
+    </div>
+  );
+}

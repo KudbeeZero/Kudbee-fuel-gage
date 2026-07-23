@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
+import { AgentTerminal } from '../components/studio/AgentTerminal';
 import {
   Activity, AlertTriangle, BadgeCheck, Brain, Clock, Cpu,
   Database, HeartPulse, History, MemoryStick, Radio, RefreshCw,
@@ -40,6 +41,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
   const { snapshot: os, connected: osConnected } = useOsSnapshot();
   const eventStream = useEventStream();
   const [terminalCommands, setTerminalCommands] = useState<string[]>([]);
+  const [terminalCollapsed, setTerminalCollapsed] = useState(true);
 
   const pushTerminalEvent = (text: string) => {
     setTerminalCommands((prev) => [...prev.slice(-49), text]);
@@ -169,6 +171,9 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
             {children}
           </motion.div>
         </main>
+
+        {/* AGENT TERMINAL — collapsible bottom console */}
+        <AgentTerminal collapsed={terminalCollapsed} onToggleCollapse={() => setTerminalCollapsed((v) => !v)} />
       </div>
     </div>
   );
