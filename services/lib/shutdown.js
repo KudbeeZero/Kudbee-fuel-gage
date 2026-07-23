@@ -4,15 +4,18 @@ import { getRedisClient } from './redis.js';
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 
 export function registerShutdown(label = 'worker', redisClient = null) {
-  const startTime = Date.now();
-
-  const forceExitTimer = setTimeout(() => {
-    console.error(JSON.stringify({ event: 'shutdown-force', label, reason: 'timeout', duration_ms: SHUTDOWN_TIMEOUT_MS }));
-    process.exit(1);
-  }, SHUTDOWN_TIMEOUT_MS);
-  if (typeof forceExitTimer.unref === 'function') forceExitTimer.unref();
+  let registered = false;
 
   async function handleShutdown(signal) {
+    if (registered) return;
+    registered = true;
+    const startTime = Date.now();
+
+    const forceExitTimer = setTimeout(() => {
+      console.error(JSON.stringify({ event: 'shutdown-force', label, reason: 'timeout', duration_ms: Date.now() - startTime }));
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
     console.log(JSON.stringify({ event: 'shutdown-start', label, signal, pid: process.pid }));
     try {
       const redis = redisClient || getRedisClient({ label: 'shutdown' });
@@ -25,6 +28,6 @@ export function registerShutdown(label = 'worker', redisClient = null) {
     process.exit(0);
   }
 
-  process.on('SIGTERM', () => void handleShutdown('SIGTERM'));
-  process.on('SIGINT', () => void handleShutdown('SIGINT'));
+  process.once('SIGTERM', () => void handleShutdown('SIGTERM'));
+  process.once('SIGINT', () => void handleShutdown('SIGINT'));
 }
