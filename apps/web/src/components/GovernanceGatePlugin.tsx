@@ -66,14 +66,17 @@ export function GovernanceGatePlugin({ plugin }: GovernanceGatePluginProps) {
         ? '/api/governance/approve'
         : '/api/governance/reject';
       await apiPost(endpoint, { id: actionId });
+      if (!_mountedRef.current) return;
       setPending((prev) => prev.filter((a) => a.id !== actionId));
       setToast({
         message: `Action ${actionId} ${decision === 'approve' ? 'approved' : 'rejected'}.`,
         type: decision === 'approve' ? 'success' : 'info'
       });
     } catch {
+      if (!_mountedRef.current) return;
       setToast({ message: `Failed to ${decision} action ${actionId}.`, type: 'error' });
     } finally {
+      if (!_mountedRef.current) return;
       setActingId(null);
       setTimeout(() => { if (!_mountedRef.current) return; setToast(null); }, 4000);
     }
@@ -107,6 +110,7 @@ export function GovernanceGatePlugin({ plugin }: GovernanceGatePluginProps) {
                   <div className="truncate font-mono text-[10px] font-semibold text-amber-200">
                     {action.task || action.agent_id || action.proposed_model}
                   </div>
+                  <span className="mt-0.5 shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-widest text-amber-300">PENDING</span>
                   <div className="mt-0.5 flex items-center gap-2 text-[9px] font-mono text-slate-500">
                     <span>{action.proposed_model}</span>
                     <span>est ${Number(action.estimated_cost).toFixed(4)}</span>

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "../..",
-    "types": ["node"]
+    "allowJs": true
   },
   "include": ["server.js", "embedder.js", "controllers/telemetry.ts", "routes/*.ts", "lib/tenants.ts", "../governance/router.d.ts", "../governance/ledger.d.ts", "../telemetry/degradation-monitor.ts", "../agents/worker.ts"]
 }

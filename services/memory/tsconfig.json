@@ -1,10 +1,13 @@
 {
-  "extends": "@kudbee/config/tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "noEmit": true,
-    "types": ["node"],
+    "strict": true,
     "allowImportingTsExtensions": true,
-    "allowJs": true
+    "allowJs": true,
+    "types": ["node"]
   },
   "include": ["vectorStore.ts", "embedText.ts", "topologyIngest.ts", "pcaReducer.ts", "../lib/db.d.ts"]
 }

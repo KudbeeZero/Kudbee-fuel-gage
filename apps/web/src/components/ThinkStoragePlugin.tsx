@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IKudbeePlugin } from '@kudbee/types';
 import { PluginCard } from './PluginCard';
 import type { ThinkTrajectory } from '@kudbee/types';
@@ -18,6 +18,11 @@ interface MemoryRecallResult {
 }
 
 export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePluginProps) {
+  const _mountedRef = useRef(true);
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
   const count = trajectories.length;
   const dims = count > 0 ? (trajectories[0]?.spatial_coordinates?.length ?? 0) : 0;
   const deltas = trajectories.filter((t) => t.correction_delta && t.correction_delta.length > 0).length;
@@ -38,10 +43,13 @@ export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePl
       const data = await apiGet<{ memories?: MemoryRecallResult[]; results?: MemoryRecallResult[] }>(
         `/api/memory/recall?query=${encodeURIComponent(q)}&limit=5`
       const list = data?.memories ?? data?.results ?? [];
+      if (!_mountedRef.current) return;
       setResults(Array.isArray(list) ? list : []);
     } catch {
+      if (!_mountedRef.current) return;
       setResults([]);
     } finally {
+      if (!_mountedRef.current) return;
       setSearching(false);
     }
   };

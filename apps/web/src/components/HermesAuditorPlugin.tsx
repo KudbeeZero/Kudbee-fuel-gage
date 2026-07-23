@@ -122,8 +122,10 @@ export function HermesAuditorPlugin({
     if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     try {
       const data = await apiPost<ProbeResult>('/api/system/health-deep', {});
+      if (!_mountedRef.current) return;
       setProbeResult(data);
     } catch {
+      if (!_mountedRef.current) return;
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
       setProbing(false);
