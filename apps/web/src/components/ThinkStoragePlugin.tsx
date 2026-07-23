@@ -19,9 +19,16 @@ interface MemoryRecallResult {
 
 export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePluginProps) {
   const _mountedRef = useRef(true);
+  const _abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     _mountedRef.current = true;
-    return () => { _mountedRef.current = false; };
+    return () => {
+      _mountedRef.current = false;
+      if (_abortRef.current) {
+        _abortRef.current.abort();
+        _abortRef.current = null;
+      }
+    };
   }, []);
   const count = trajectories.length;
   const dims = count > 0 ? (trajectories[0]?.spatial_coordinates?.length ?? 0) : 0;
@@ -37,11 +44,18 @@ export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePl
     const q = query.trim();
     if (!q) return;
 
+    if (_abortRef.current) {
+      _abortRef.current.abort();
+    }
+    _abortRef.current = new AbortController();
+
     setSearching(true);
     setSearched(true);
     try {
       const data = await apiGet<{ memories?: MemoryRecallResult[]; results?: MemoryRecallResult[] }>(
-        `/api/memory/recall?query=${encodeURIComponent(q)}&limit=5`
+        `/api/memory/recall?query=${encodeURIComponent(q)}&limit=5`,
+        { signal: _abortRef.current.signal }
+      );
       const list = data?.memories ?? data?.results ?? [];
       if (!_mountedRef.current) return;
       setResults(Array.isArray(list) ? list : []);
