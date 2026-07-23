@@ -24,7 +24,7 @@ async function readFileTool(call: ToolCall): Promise<ToolResult> {
   if (!filePath) return { success: false, output: "", error: "Missing 'path'" };
 
   try {
-    const res = await fetch("/api/tools/fs/read", {
+    const res = await fetch("api/tools/fs/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: filePath }),
@@ -44,7 +44,7 @@ async function writeFileTool(call: ToolCall): Promise<ToolResult> {
   if (content === undefined) return { success: false, output: "", error: "Missing 'content'" };
 
   try {
-    const res = await fetch("/api/tools/fs/write", {
+    const res = await fetch("api/tools/fs/write", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: filePath, content }),
@@ -60,7 +60,7 @@ async function writeFileTool(call: ToolCall): Promise<ToolResult> {
 async function listFilesTool(call: ToolCall): Promise<ToolResult> {
   const dirPath = (call.params.path as string) ?? ".";
   try {
-    const res = await fetch("/api/tools/fs/list", {
+    const res = await fetch("api/tools/fs/list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: dirPath }),
@@ -83,7 +83,7 @@ async function shellExecTool(call: ToolCall): Promise<ToolResult> {
   const cwd = (call.params.cwd as string) ?? WORKSPACE_ROOT;
 
   try {
-    const res = await fetch("/api/tools/shell/exec", {
+    const res = await fetch("api/tools/shell/exec", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ command, cwd }),

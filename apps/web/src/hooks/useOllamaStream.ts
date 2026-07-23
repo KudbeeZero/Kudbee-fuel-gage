@@ -59,7 +59,9 @@ export interface UseOllamaStreamResult {
   stop: () => void;
 }
 
-const DEFAULT_BASE_URL = "/ollama";
+// Relative path so fetch requests route through Studio proxy (cloudspaces)
+// when present, while still resolving correctly on localhost.
+const DEFAULT_BASE_URL = "ollama";
 
 const EMPTY_SESSION: StreamSessionState = {
   evalCount: 0,

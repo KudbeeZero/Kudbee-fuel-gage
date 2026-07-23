@@ -50,7 +50,7 @@ export function useThoughtTelemetry(model: string) {
       };
 
       try {
-        await fetch("/api/telemetry/thoughts", {
+        await fetch("api/telemetry/thoughts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
