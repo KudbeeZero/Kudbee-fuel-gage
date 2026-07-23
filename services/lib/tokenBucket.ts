@@ -61,6 +61,24 @@ return math.min(max_tokens, current + refilled)
 const CONSUME_SCRIPT_SHA = crypto.createHash('sha1').update(ATOMIC_CONSUME_SCRIPT).digest('hex');
 const AVAILABLE_SCRIPT_SHA = crypto.createHash('sha1').update(ATOMIC_AVAILABLE_SCRIPT).digest('hex');
 
+async function runAtomicScript(
+  redis: ReturnType<typeof getRedisClient>,
+  sha: string,
+  script: string,
+  keys: string[],
+  args: string[]
+): Promise<number> {
+  try {
+    return await redis.evalsha(sha, keys.length, ...keys, ...args) as number;
+  } catch (err: unknown) {
+    const msg = (err as Error)?.message ?? '';
+    if (msg.includes('NOSCRIPT')) {
+      return await redis.eval(script, keys.length, ...keys, ...args) as number;
+    }
+    throw err;
+  }
+}
+
 export class TokenBucket {
   name: string;
   maxTokens: number;
@@ -80,16 +98,13 @@ export class TokenBucket {
       const tokensKey = TB_PREFIX + this.name + ':tokens';
       const refillKey = TB_PREFIX + this.name + ':last_refill';
 
-      const result = await redis.eval(
+      const result = await runAtomicScript(
+        redis,
+        CONSUME_SCRIPT_SHA,
         ATOMIC_CONSUME_SCRIPT,
-        2,
-        tokensKey,
-        refillKey,
-        String(Date.now()),
-        String(this.maxTokens),
-        String(this.refillRatePerSecond),
-        String(tokens)
-      ) as number;
+        [tokensKey, refillKey],
+        [String(Date.now()), String(this.maxTokens), String(this.refillRatePerSecond), String(tokens)]
+      );
 
       if (result === -1) return true;
       return result === 1;
@@ -104,15 +119,13 @@ export class TokenBucket {
       const tokensKey = TB_PREFIX + this.name + ':tokens';
       const refillKey = TB_PREFIX + this.name + ':last_refill';
 
-      const result = await redis.eval(
+      const result = await runAtomicScript(
+        redis,
+        AVAILABLE_SCRIPT_SHA,
         ATOMIC_AVAILABLE_SCRIPT,
-        2,
-        tokensKey,
-        refillKey,
-        String(Date.now()),
-        String(this.maxTokens),
-        String(this.refillRatePerSecond)
-      ) as number;
+        [tokensKey, refillKey],
+        [String(Date.now()), String(this.maxTokens), String(this.refillRatePerSecond)]
+      );
 
       return Number.isFinite(result) ? result : this.maxTokens;
     } catch {
