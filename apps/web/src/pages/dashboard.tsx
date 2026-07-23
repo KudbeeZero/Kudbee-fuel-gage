@@ -1900,8 +1900,9 @@ function ReasoningLedgerTriage({ proposed, onSubmit, deepHealth }: {
         delete next[req.id];
         return next;
       });
-    } catch {
-      // keep item in list for retry
+    } catch (err) {
+      console.error('[MintThinkToken] Failed:', err instanceof Error ? err.message : String(err));
+      setLocalBusy(null);
     } finally {
       setLocalBusy(null);
     }
