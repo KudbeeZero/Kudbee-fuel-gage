@@ -2406,6 +2406,27 @@ app.get('/api/settings/preferences', async (req, res) => {
   catch { return res.status(200).json({ settings: {} }); }
 });
 
+// --- Firewall Policy Toggles (Phase 46) ---
+const firewallConfig = {
+  blockPromptInjection: true,
+  rateLimitByIp: false
+};
+
+app.get('/api/settings/firewall', async (_req, res) => {
+  return res.status(200).json({ ...firewallConfig });
+});
+
+app.patch('/api/settings/firewall', async (req, res) => {
+  try {
+    const { blockPromptInjection, rateLimitByIp } = req.body || {};
+    if (typeof blockPromptInjection === 'boolean') firewallConfig.blockPromptInjection = blockPromptInjection;
+    if (typeof rateLimitByIp === 'boolean') firewallConfig.rateLimitByIp = rateLimitByIp;
+    return res.status(200).json({ success: true, ...firewallConfig });
+  } catch {
+    return res.status(500).json({ error: 'Firewall config update failed' });
+  }
+});
+
 // --- Agent Audit Layer: history + connection tests ---
 app.get('/api/system/audit-history', async (req, res) => {
   try { const limit = Math.min(Number(req.query.limit) || 50, 200); return res.status(200).json({ history: await getAuditHistory(limit), count: (await getAuditHistory(limit)).length }); } catch { return res.status(200).json({ history: [], count: 0 }); }
