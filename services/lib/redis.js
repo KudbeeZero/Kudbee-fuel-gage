@@ -136,5 +136,40 @@ export function getRateLimitClient(opts = {}) {
   return _rateLimitClient;
 }
 
+/**
+ * Returns a dedicated Redis client wired exclusively to REDIS_SLOW_URL
+ * for HERMES, Crucible, and other heavy governance/worker loops.
+ * @param {object} [opts] Optional overrides.
+ * @returns {import('ioredis').Redis}
+ */
+export function getSlowRedisClient(opts = {}) {
+  const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
+  const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
+
+  const baseConfig = {
+    lazyConnect: opts.lazyConnect ?? false,
+    maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    retryStrategy: opts.retryStrategy ?? (() => null),
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    keepAlive: 15_000
+  };
+
+  if (isSlowUpstash) {
+    baseConfig.tls = {};
+  }
+
+  const client = new Redis(REDIS_SLOW_URL, baseConfig);
+
+  client.on('connect', () => { console.log(`[slow-redis] Redis connected`); });
+  client.on('ready', () => { console.log(`[slow-redis] Redis ready`); });
+  client.on('error', (err) => { console.error(`[slow-redis] Error:`, err.message); });
+  client.on('end', () => { console.warn(`[slow-redis] Redis connection closed`); });
+
+  return client;
+}
+
 export { redisTelemetry };
 export default getRedisClient;
