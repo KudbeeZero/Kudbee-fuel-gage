@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "./server.ts",
+  "main": "./server.js",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx server.js",
     "build": "tsc --noEmit",
-    "start": "PORT=3000 tsx server.ts",
+    "start": "PORT=3000 tsx server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
