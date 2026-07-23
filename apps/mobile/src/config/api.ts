@@ -1,4 +1,9 @@
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://kudbee-fuel-gage.herokuapp.com';
+import Constants from 'expo-constants';
+
+export const API_URL = Constants.expoConfig?.extra?.apiUrl
+  ?? process.env.EXPO_PUBLIC_API_URL
+  ?? process.env.API_URL
+  ?? 'http://localhost:9900';
 
 export const ENDPOINTS = {
   HEALTH_CHECK: '/api/health-check',

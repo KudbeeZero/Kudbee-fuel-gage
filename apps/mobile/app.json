@@ -25,6 +25,9 @@
     },
     "plugins": ["expo-router"],
     "scheme": "kudbee-mobile",
+    "extra": {
+      "apiUrl": "http://localhost:9900"
+    },
     "experiments": {
       "typedRoutes": true
     }
