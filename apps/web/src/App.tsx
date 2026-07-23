@@ -35,13 +35,15 @@ import {
   Globe,
   X,
   Maximize2,
-  Radio
+  Radio,
+  Monitor
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
 import { useLiveTaskStream } from './hooks/useLiveTaskStream';
 import { OSControlBar, CommandPalette } from './components/OSControlBar';
+import { StudioRouter } from './layouts/StudioRouter';
 import { GatewayView } from './components/gateway/GatewayView';
 import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -426,6 +428,7 @@ export default function App() {
   }, [dbLogs]);
 
   const primaryNavItems = [
+    { icon: Monitor, label: 'STUDIO' },
     { icon: Activity, label: 'TELEMETRY' },
     { icon: Zap, label: 'THINK' },
     { icon: Scale, label: 'GOVERNANCE' },
@@ -717,6 +720,8 @@ export default function App() {
           </div>
 
           {/* ACTIVE VIEW ROUTER */}
+          {activeTab === 'STUDIO' && <StudioRouter />}
+
           {activeTab === 'TELEMETRY' && (
             <TelemetryPage
               liveStats={liveStats}
