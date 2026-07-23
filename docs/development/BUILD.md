@@ -52,16 +52,28 @@ export GROQ_API_KEY=gsk_...         # optional
 ├── apps/web/              # React 19 + Vite frontend
 │   └── src/
 │       ├── components/    # 17+ dashboard plugins
-│       │   ├── PluginCard.tsx       # Rack-mount module base
-│       │   ├── HealthMatrixPlugin   # Live system health
-│       │   ├── ThreatHeatmapPlugin  # Firewall threats
-│       │   ├── AnomalyFeedPlugin    # Low-confidence alerts
-│       │   ├── EnergyDecayPlugin    # E(token) thermodynamics
-│       │   ├── UnionMonitorPlugin   # Nash unions
-│       │   ├── ContractMonitorPlugin # AGC contracts
-│       │   └── ... (13 more)
+│       │   ├── PluginCard.tsx          # Rack-mount module base
+│       │   ├── ThinkStormPlugin.tsx    # Distributed reasoning storm
+│       │   ├── ThinkStreamPlugin.tsx   # Live chain-of-thought stream
+│       │   ├── ThinkStoragePlugin.tsx  # Vector memory query & storage
+│       │   ├── ThinkTrajectoriesPlugin.tsx # Think token trajectory explorer
+│       │   ├── GovernanceGatePlugin.tsx # HITL approval gate
+│       │   ├── HermesAuditorPlugin.tsx  # Live audit sweep with probe/filter
+│       │   ├── EdgeSentinelPlugin.tsx   # Telemetry egress & blast radius
+│       │   ├── HealthMatrixPlugin      # Live system health
+│       │   ├── ThreatHeatmapPlugin     # Firewall threats
+│       │   ├── AnomalyFeedPlugin       # Low-confidence alerts
+│       │   ├── EnergyDecayPlugin       # E(token) thermodynamics
+│       │   ├── UnionMonitorPlugin      # Nash unions
+│       │   ├── ContractMonitorPlugin   # AGC contracts
+│       │   └── ... (more)
 │       └── pages/
-│           ├── dashboard.tsx  # Main Control Tower
+│           ├── telemetry.tsx    # TELEMETRY tab — live metrics, model matrix, Circuit Breaker
+│           ├── think.tsx        # THINK tab — Storm, Stream, Storage, Trajectories plugins
+│           ├── governance.tsx   # GOVERNANCE tab — HITL gate + GovernanceView
+│           ├── hermes.tsx       # HERMES tab — audit sweep, probe, filter
+│           ├── sentinel.tsx     # SENTINEL tab — egress monitor, blast radius
+│           ├── dashboard.tsx    # Legacy Control Tower (Control Tower page)
 │           ├── history.tsx
 │           └── firewall.tsx
 ├── services/
@@ -90,6 +102,43 @@ export GROQ_API_KEY=gsk_...         # optional
 │   └── verify-system-integrity.mjs
 └── .github/workflows/verify.yml  # CI pipeline
 ```
+
+## Tab Architecture
+
+The Control Tower sidebar uses a plugin-domain tab structure where each rack-mount module gets its own dedicated station — like a hardware lab bench with each piece of equipment at its own slot.
+
+### Navigation Layout
+
+**Primary tabs (sidebar):**
+| Tab | Component | Domain |
+|:---|:---|:---|
+| TELEMETRY | `pages/telemetry.tsx` | Live metrics cards, model matrix, DiagnosticTicker, Circuit Breaker chart |
+| THINK | `pages/think.tsx` | ThinkStorm + ThinkStream + ThinkStorage + ThinkTrajectories plugins |
+| GOVERNANCE | `pages/governance.tsx` | GovernanceGatePlugin (HITL) + GovernanceView |
+| HERMES | `pages/hermes.tsx` | HermesAuditorPlugin — live audit sweep, probe, filter |
+| SENTINEL | `pages/sentinel.tsx` | EdgeSentinelPlugin — egress monitor, blast radius gauge |
+| PLAYGROUND | `<PlaygroundView />` | Interactive agent testing sandbox |
+
+**Secondary tabs ("More" dropdown):**
+| Tab | Component | Domain |
+|:---|:---|:---|
+| FIREWALL | `pages/firewall.tsx` | Firewall rules and threat management |
+| GATEWAY | `<GatewayView />` | API gateway configuration |
+| INTERCEPTOR | `<InterceptorView />` | Payload interception and verification |
+| HISTORY | `pages/history.tsx` | Telemetry log history |
+| ALERTS | `<AlertsPanel />` | System alert notifications |
+| INTELLIGENCE | `<IntelligenceView />` | AI intelligence and insights |
+| SETTINGS | `<SettingsView />` | System engine settings, thresholds, theme |
+
+### Page-to-Plugin Mapping
+
+- **Think plugins** (Storm, Stream, Storage, Trajectories) get their own tab via `pages/think.tsx`
+- **Governance plugins** (GovernanceGate + GovernanceView) share `pages/governance.tsx`
+- **Standalone plugins** (HermesAuditor, EdgeSentinel) each get a dedicated page
+- **Legacy tabs** (Firewall, Gateway, Interceptor, History, Alerts, Intelligence, Settings) remain as before
+- The old **Control Tower** tab (`pages/dashboard.tsx`) is preserved but removed from navigation
+
+All of these pages are rendered in `apps/web/src/App.tsx` via the `<main>` content panel routed on `activeTab`.
 
 ## Key Commands
 

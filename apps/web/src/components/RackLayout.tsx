@@ -35,7 +35,7 @@ const COL_SPAN_CLASS: Record<number, string> = {
 // (type `hermes`) instead of the legacy 5s polling loop. Resilient-First —
 // a malformed payload is dropped and a dropped connection flips `connected`
 // so the plugin renders its clean "awaiting" state.
-function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
+export function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
   const stream = useEventStream();
   const [logs, setLogs] = useState<HermesAuditLog[]>([]);
   const [connected, setConnected] = useState(false);
@@ -63,7 +63,7 @@ function useHermesAuditLogs(): { logs: HermesAuditLog[]; connected: boolean } {
 // mocked) and append each live `telemetry` SSE event as it ingresses, so the
 // Status LED and Signal/Noise visualizer pulse on real traffic. Resilient-First:
 // a fetch/parse failure degrades to an empty signal set, never a crash.
-function useEdgeSignals(): {
+export function useEdgeSignals(): {
   signals: EdgeSignal[];
   connected: boolean;
   lastIngressAt: number | null;

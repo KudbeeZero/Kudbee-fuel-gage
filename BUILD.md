@@ -41,3 +41,23 @@ npm ci && npm run typecheck && node scripts/verify-e2e.mjs && cd apps/web && npm
 
 ### Redis
 - `connectTimeout: 5_000`, `commandTimeout: 3_000`, `keepAlive: 15_000`
+
+## Tab Architecture
+
+The Control Tower sidebar uses a dedicated-tab-per-domain architecture. 13 tabs separate concerns:
+
+| # | Tab | Component File | Domain |
+|:--|:---|:---|:---|
+| 1 | TELEMETRY | `pages/telemetry.tsx` | Live metrics, model matrix, circuit breaker chart |
+| 2 | THINK | `pages/think.tsx` | ThinkStorm, Stream, Storage, Trajectories plugins |
+| 3 | GOVERNANCE | `pages/governance.tsx` | HITL governance gate + policy engine |
+| 4 | HERMES | `pages/hermes.tsx` | Live audit sweep, probe, log filter |
+| 5 | SENTINEL | `pages/sentinel.tsx` | Edge egress monitor, blast radius gauge |
+| 6 | PLAYGROUND | `<PlaygroundView />` | Agent testing sandbox |
+| 7 | FIREWALL | `pages/firewall.tsx` | Firewall rules |
+| 8 | GATEWAY | `<GatewayView />` | API gateway config |
+| 9 | INTERCEPTOR | `<InterceptorView />` | Payload interception |
+| 10 | HISTORY | `pages/history.tsx` | Telemetry log history |
+| 11 | ALERTS | `<AlertsPanel />` | Alert notifications |
+| 12 | INTELLIGENCE | `<IntelligenceView />` | AI insights |
+| 13 | SETTINGS | `<SettingsView />` | System settings, theme |
