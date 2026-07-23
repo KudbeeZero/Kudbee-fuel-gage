@@ -193,7 +193,7 @@ process.on('SIGTERM', () => {
         await redis.quit();
         console.log('[Worker] Redis connection closed gracefully.');
       }
-    } catch (err) {
+    } catch (err: Error) {
       console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
     }
     clearTimeout(forceKillTimeout);
@@ -328,8 +328,11 @@ export async function _tick() {
     return null;
   });
   if (!raw) return false;
-  const task = parse(raw);
-  if (!task) {
+  let task = parse(raw);
+  if (typeof task === 'string') {
+    task = JSON.parse(task);
+  }
+  if (!task || typeof task !== 'object') {
     broadcast('task.malformed', { raw });
     return true;
   }
@@ -337,12 +340,12 @@ export async function _tick() {
   task.attempts = (task.attempts || 0) + 1;
   broadcast('task.processing', { id: task.id, kind: task.kind, attempt: task.attempts });
 
-  try {
-    const result = await processTask(task);
-    broadcast('task.success', { id: task.id, kind: task.kind, attempt: task.attempts, result });
-    return true;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+   try {
+     const result = await processTask(task);
+     broadcast('task.success', { id: task.id, kind: task.kind, attempt: task.attempts, result });
+     return true;
+   } catch (err: Error) {
+     const message = err instanceof Error ? err.message : String(err);
     if (task.attempts >= MAX_ATTEMPTS) {
       const dead = { ...task, failedAt: new Date().toISOString(), lastError: message };
       await redis.lpush(TASK_DLQ, envelope(dead)).catch((e: Error) => {
@@ -391,7 +394,7 @@ export async function startWorker() {
           tickTimeout = setTimeout(loop, 0);
         }
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
         tickTimeout = setTimeout(loop, IDLE_POLL_MS);
       });
