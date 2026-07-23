@@ -6,8 +6,8 @@
  * {@link TerminalStreamView}.
  *
  * Features:
- *  - Model selector (defaults to `qwen3:8b` — the thinking-capable model
- *    the stream processor was built for).
+ *  - **Dynamic model selector** — fetches installed models from the local
+ *    Ollama server at mount time so only actually-available models appear.
  *  - Chat history displayed as user bubbles + terminal stream blocks.
  *  - Auto-scroll to the latest assistant response.
  *  - Persistent model preference via `localStorage`.
@@ -19,6 +19,7 @@ import { useToolInterceptor } from "../hooks/useToolInterceptor";
 import { useThoughtTelemetry } from "../hooks/useThoughtTelemetry";
 import { registerWorkspaceTools } from "../tools/workspace";
 import { TerminalStreamView } from "../components/TerminalStreamView";
+import { getProxyBase } from "../lib/proxyBase";
 import type { OllamaMessage, StreamStatus } from "../types/ollama";
 import type { ReactElement, FormEvent, KeyboardEvent } from "react";
 
@@ -26,24 +27,46 @@ import type { ReactElement, FormEvent, KeyboardEvent } from "react";
 registerWorkspaceTools();
 
 /* ------------------------------------------------------------------ */
-/* Top models commonly used with Ollama (subset).                      */
+/* Runtime model discovery via Ollama /api/tags                        */
 /* ------------------------------------------------------------------ */
-const AVAILABLE_MODELS = [
-  { id: "qwen3:8b", label: "Qwen 3 (8B) — thinking" },
-  { id: "llama3.2:3b", label: "Llama 3.2 (3B)" },
-  { id: "llama3.2:1b", label: "Llama 3.2 (1B)" },
-  { id: "mistral:7b", label: "Mistral (7B)" },
-  { id: "codellama:7b", label: "Code Llama (7B)" },
-  { id: "phi3:mini", label: "Phi-3 Mini" },
-];
+
+/** Shape of a single model entry returned by `GET /api/tags`. */
+interface OllamaModelEntry {
+  name: string;
+  modified_at: string;
+  size: number;
+  digest: string;
+  details?: {
+    family?: string;
+    parameter_size?: string;
+    quantization_level?: string;
+  };
+}
+
+/** Top-level JSON returned by Ollama's `/api/tags`. */
+interface OllamaTagsResponse {
+  models: OllamaModelEntry[];
+}
+
+/**
+ * Human-friendly label derived from the model metadata.
+ * Falls back to the raw model name when details are unavailable.
+ */
+function modelLabel(entry: OllamaModelEntry): string {
+  const family = entry.details?.family ?? "";
+  const size = entry.details?.parameter_size ?? "";
+  const quant = entry.details?.quantization_level ?? "";
+  const parts = [family, size, quant].filter(Boolean);
+  return parts.length > 0 ? `${entry.name} (${parts.join(" ")})` : entry.name;
+}
 
 const LS_MODEL_KEY = "ollama_chat_model";
 
 function loadModelPref(): string {
   try {
-    return localStorage.getItem(LS_MODEL_KEY) ?? "qwen3:8b";
+    return localStorage.getItem(LS_MODEL_KEY) ?? "";
   } catch {
-    return "qwen3:8b";
+    return "";
   }
 }
 
@@ -116,7 +139,12 @@ function ChatBubble({
 /* Main page component                                                 */
 /* ------------------------------------------------------------------ */
 export function OllamaChat(): ReactElement {
-  const [model, setModel] = useState<string>(loadModelPref);
+  // ---- Dynamic model list from the local Ollama server --------------
+  const [availableModels, setAvailableModels] = useState<OllamaModelEntry[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+
+  const [model, setModel] = useState<string>(() => loadModelPref());
   const [history, setHistory] = useState<ChatEntry[]>([]);
   const [input, setInput] = useState("");
 
@@ -137,8 +165,45 @@ export function OllamaChat(): ReactElement {
     () => Number(localStorage.getItem("ollama_numpredict") ?? -1),
   );
 
+  // Fetch installed models from the local Ollama server on mount.
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchModels() {
+      setModelsLoading(true);
+      setModelsError(null);
+      try {
+        const res = await fetch(getProxyBase() + "ollama/api/tags");
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
+        }
+        const data = (await res.json()) as OllamaTagsResponse;
+        if (cancelled) return;
+        const models = data.models ?? [];
+        setAvailableModels(models);
+        // If the saved model preference isn't in the available list,
+        // default to the first available model.
+        setModel((prev) => {
+          const exists = models.some((m) => m.name === prev);
+          const saved = loadModelPref();
+          const savedExists = models.some((m) => m.name === saved);
+          if (savedExists) return saved;
+          if (exists) return prev;
+          return models.length > 0 ? models[0].name : prev;
+        });
+      } catch (err) {
+        if (!cancelled) {
+          setModelsError((err as Error).message);
+        }
+      } finally {
+        if (!cancelled) setModelsLoading(false);
+      }
+    }
+    fetchModels();
+    return () => { cancelled = true; };
+  }, []);
+
   const historyRef = useRef<HTMLDivElement | null>(null);
-  const stream = useOllamaStream({ model, enabled: true });
+  const stream = useOllamaStream({ model, enabled: model.length > 0 && !modelsLoading });
   const tools = useToolInterceptor();
   const telemetry = useThoughtTelemetry(model);
 
@@ -315,11 +380,27 @@ export function OllamaChat(): ReactElement {
             value={model}
             onChange={(e) => handleModelChange(e.target.value)}
             style={selectStyle}
+            disabled={modelsLoading || !!modelsError}
           >
-            {AVAILABLE_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
+            {modelsLoading ? (
+              <option value="">Loading models…</option>
+            ) : modelsError ? (
+              <option value="">⚠️ Ollama unreachable</option>
+            ) : availableModels.length === 0 ? (
+              <option value="">No models found</option>
+            ) : (
+              availableModels.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {modelLabel(m)}
+                </option>
+              ))
+            )}
           </select>
+          {modelsError && (
+            <span style={{ marginLeft: 8, fontSize: 10, color: "#ff6b6b" }}>
+              {modelsError}
+            </span>
+          )}
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {stream.session.evalCount > 0 && (

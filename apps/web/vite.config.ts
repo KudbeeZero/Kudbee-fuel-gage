@@ -16,6 +16,11 @@ export default defineConfig(() => {
       port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      allowedHosts: [
+        '.cloudspaces.litng.ai',
+        '.lightning.ai',
+        'localhost',
+      ],
       proxy: {
         '/api': 'http://127.0.0.1:3000',
         '/health': 'http://127.0.0.1:3000',

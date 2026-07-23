@@ -159,6 +159,15 @@ export default function App() {
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
   const { snapshot: os, connected: osConnected } = useOsSnapshot();
+  const [statusPinged, setStatusPinged] = useState(false);
+
+  useEffect(() => {
+    if (osConnected && os.services.postgres.ok && !statusPinged) {
+      setStatusPinged(true);
+      const timer = setTimeout(() => setStatusPinged(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [osConnected, os.services.postgres.ok]);
 
   // Governance Router + HERMES auditor health (polled every 5s).
   const { health: govHealth } = useGovernanceHealth(5000);
@@ -668,7 +677,7 @@ export default function App() {
           >
             <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
               <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className={`${osConnected && os.services.postgres.ok ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`} />
+                <span className={`${osConnected && os.services.postgres.ok && os.services.postgres.latencyMs !== null ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`} />
                 <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600'}`} />
               </span>
               <span className="font-mono text-xs text-slate-300">

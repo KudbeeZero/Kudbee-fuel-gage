@@ -12,6 +12,7 @@
 import { useCallback, useRef } from "react";
 import type { StreamSegment, StreamSessionState } from "../types/ollama";
 import { enqueueTelemetry } from "../lib/telemetryBatcher";
+import { getProxyBase } from "../lib/proxyBase";
 
 export interface ThoughtPayload {
   model: string;
@@ -53,7 +54,7 @@ export function useThoughtTelemetry(model: string) {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 10_000);
-        await fetch("/api/telemetry/thoughts", {
+        await fetch(getProxyBase() + "api/telemetry/thoughts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

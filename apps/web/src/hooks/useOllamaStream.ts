@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StreamChunkProcessor } from "../lib/streamProcessor";
+import { getProxyBase } from "../lib/proxyBase";
 import type {
   ChatRequestOptions,
   OllamaMessage,
@@ -59,7 +60,9 @@ export interface UseOllamaStreamResult {
   stop: () => void;
 }
 
-const DEFAULT_BASE_URL = "/ollama";
+// Relative path so fetch requests route through Studio proxy (cloudspaces)
+// when present, while still resolving correctly on localhost.
+const DEFAULT_BASE_URL = "ollama";
 
 const EMPTY_SESSION: StreamSessionState = {
   evalCount: 0,
@@ -128,7 +131,7 @@ export function useOllamaStream(
         if (opts?.numPredict !== undefined) ollamaOpts.num_predict = opts.numPredict;
         if (Object.keys(ollamaOpts).length > 0) body.options = ollamaOpts;
 
-        const response = await fetch(`${baseUrl}/api/chat`, {
+        const response = await fetch(`${getProxyBase()}${baseUrl}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
