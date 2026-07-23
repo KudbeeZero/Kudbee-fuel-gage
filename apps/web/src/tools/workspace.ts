@@ -13,8 +13,14 @@ import { getProxyBase } from "../lib/proxyBase";
 // Path validation happens server-side in services/ingestion/routes/tools.ts.
 // This client-side constant is a fallback; the actual workspace root is
 // resolved by the backend API for security.
-const WORKSPACE_ROOT = (typeof window !== "undefined" && (window as any).__WORKSPACE_ROOT__)
-  || "/teamspace/studios/this_studio";
+declare global {
+  interface Window {
+    __WORKSPACE_ROOT__?: string;
+  }
+}
+
+const WORKSPACE_ROOT =
+  (typeof window !== "undefined" && window.__WORKSPACE_ROOT__) || "/teamspace/studios/this_studio";
 
 /* ------------------------------------------------------------------ */
 /* FileSystemManager                                                   */
