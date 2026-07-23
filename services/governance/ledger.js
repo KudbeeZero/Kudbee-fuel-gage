@@ -25,7 +25,7 @@
  */
 
 import { getDbPool, isDbHealthy, runInsert } from '../lib/db.js';
-import { getRedisClient } from '../lib/redis.js';
+import { getSlowRedisClient } from '../lib/redis.js';
 
 const LEDGER_TABLE = 'reasoning_ledger';
 const REDIS_QUEUE_KEY = 'ledger:queue';
@@ -38,7 +38,7 @@ let _redis = null;
 function redisClient() {
   if (!_redis) {
     try {
-      _redis = getRedisClient({ label: 'ledger' });
+      _redis = getSlowRedisClient({ label: 'ledger' });
     } catch (err) {
       console.warn('[Ledger] Redis client init failed:', err.message);
       _redis = null;
