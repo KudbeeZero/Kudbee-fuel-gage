@@ -1668,7 +1668,9 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
       await runQuery(
         `UPDATE telemetry_traces SET value_score = $1 WHERE trace_id = $2`,
         [score, traceId]
-      ).catch(() => {});
+    ).catch((e) => {
+      console.warn('[Governance] Failed to insert gov action, continuing:', e.message);
+    });
     }
 
     console.log(`[Governance] Agent ${agentId} VERIFIED trace ${traceId} (value_score=${score})`);
