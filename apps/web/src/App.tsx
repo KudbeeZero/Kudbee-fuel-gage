@@ -69,6 +69,7 @@ import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
 import { apiGet, apiPost } from './lib/apiClient';
+import { useOsSnapshot } from './components/OsStreamProvider';
 import {
   AreaChart,
   Area,
@@ -3088,6 +3089,8 @@ export default function App() {
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
+  const { snapshot: os, connected: osConnected } = useOsSnapshot();
+
   // Governance Router + HERMES auditor health (polled every 5s).
   const { health: govHealth } = useGovernanceHealth(5000);
   
@@ -3129,26 +3132,9 @@ export default function App() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const measurePing = async () => {
-      setFooterPinging(true);
-      const start = performance.now();
-      try {
-        const res = await fetch('/api/dashboard/summary', { method: 'GET' });
-        if (res.ok) {
-          setFooterPing(Math.round(performance.now() - start));
-        } else {
-          setFooterPing(null);
-        }
-      } catch {
-        setFooterPing(null);
-      } finally {
-        setFooterPinging(false);
-      }
-    };
-    void measurePing();
-    const pingTimer = setInterval(() => void measurePing(), 4000);
-    return () => clearInterval(pingTimer);
-  }, [isAuthenticated]);
+    setFooterPing(os.services.postgres.latencyMs);
+    setFooterPinging(osConnected);
+  }, [isAuthenticated, os.services.postgres.latencyMs, osConnected]);
 
   const handleSetTheme = (newTheme: 'Deep Space' | 'Midnight') => {
     setTheme(newTheme);
@@ -3631,11 +3617,13 @@ export default function App() {
           >
             <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
               <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+                <span className={`${osConnected && os.services.postgres.ok ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`} />
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600'}`} />
               </span>
               <span className="font-mono text-xs text-slate-300">
-                Status: <span className="text-emerald-400 font-semibold">Online</span>
+                Status: <span className={osConnected && os.services.postgres.ok ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>{
+                  osConnected ? (os.services.postgres.ok ? 'Online' : 'Degraded') : 'Connecting...'
+                }</span>
               </span>
               <span className="hidden sm:inline text-slate-700">|</span>
 

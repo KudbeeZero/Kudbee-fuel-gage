@@ -3325,6 +3325,96 @@ app.get('/api/events', async (req, res) => {
   _setupSSEHealth(res, keepAlive);
 });
 
+// --- Unified OS Stream: single SSE connection replacing per-panel polling ---
+const OS_STREAM_CLIENTS = new Set();
+const OS_STREAM_INTERVAL_MS = 5_000;
+
+async function buildOsSnapshot() {
+  const dbHealthy = isDbHealthy();
+  const redisOk = !!redis;
+  const bootTime = _state.bootTimeRef.value;
+  const uptimeSec = bootTime ? Math.floor((Date.now() - bootTime) / 1000) : 0;
+
+  let pgLatency = null;
+  try {
+    const t0 = Date.now();
+    await runQuery('SELECT 1 as ok');
+    pgLatency = dbHealthy ? Date.now() - t0 : null;
+  } catch { /* ignore */ }
+
+  let redisLatency = null;
+  if (redisOk) {
+    try {
+      const t0 = Date.now();
+      await redis.ping();
+      redisLatency = Date.now() - t0;
+    } catch { /* ignore */ }
+  }
+
+  let pendingActions = [];
+  let thinkStats = { tokens: 0, verified: 0 };
+  let memoryStats = { vectors: 0, chunks: 0 };
+  let alertCount = 0;
+
+  try { pendingActions = redisOk ? await listProposed() : []; } catch {}
+  try { thinkStats = { tokens: (await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [{ count: 0 }]))[0]?.count ?? 0, verified: (await runQuery("SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'").catch(() => [{ count: 0 }]))[0]?.count ?? 0 }; } catch {}
+  try { memoryStats = { vectors: (await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [{ count: 0 }]))[0]?.count ?? 0, chunks: (await runQuery('SELECT COUNT(*) as count FROM system_topology_embeddings').catch(() => [{ count: 0 }]))[0]?.count ?? 0 }; } catch {}
+  try { const alerts = _state.alertsState?.alerts; alertCount = Array.isArray(alerts) ? alerts.length : 0; } catch {}
+
+  return {
+    ts: new Date().toISOString(),
+    uptime: uptimeSec,
+    services: {
+      postgres: { ok: dbHealthy, latencyMs: pgLatency },
+      redis: { ok: redisOk, latencyMs: redisLatency }
+    },
+    governance: { pending: pendingActions.length },
+    think: thinkStats,
+    memory: memoryStats,
+    alerts: alertCount
+  };
+}
+
+app.get('/api/os-stream', async (req, res) => {
+  if (OS_STREAM_CLIENTS.size >= MAX_SSE_CLIENTS) {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
+    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached' }));
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.write('retry: 5000\n\n');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+  OS_STREAM_CLIENTS.add(res);
+
+  try {
+    const snapshot = await buildOsSnapshot();
+    res.write(`event: os:snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
+  } catch { /* ignore */ }
+
+  const interval = setInterval(async () => {
+    try {
+      const snap = await buildOsSnapshot();
+      res.write(`event: os:snapshot\ndata: ${JSON.stringify(snap)}\n\n`);
+    } catch { /* ignore */ }
+  }, OS_STREAM_INTERVAL_MS);
+
+  const cleanup = () => {
+    clearInterval(interval);
+    OS_STREAM_CLIENTS.delete(res);
+  };
+  res.on('close', cleanup);
+  res.on('error', (err) => {
+    if (err && (err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNABORTED')) {
+      cleanup();
+    }
+  });
+});
+
 // Phase 21: dedicated telemetry stream alias. Identical contract to
 // /api/events but with a more discoverable URL for the History view.
 app.get('/api/telemetry/stream', async (req, res) => {
