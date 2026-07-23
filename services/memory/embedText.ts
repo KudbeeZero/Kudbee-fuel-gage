@@ -59,13 +59,18 @@ interface GeminiEmbedResponse {
 export async function embedTextRemote(text: string): Promise<number[] | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: { parts: [{ text }] } })
+        body: JSON.stringify({ content: { parts: [{ text }] } }),
+        signal: controller.signal
       }
     );
     if (!res.ok) return null;
@@ -74,6 +79,8 @@ export async function embedTextRemote(text: string): Promise<number[] | null> {
     return Array.isArray(values) && values.length > 0 ? values : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
