@@ -26,6 +26,7 @@ import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/ag
 import { registerShutdown } from './services/lib/shutdown.js';
 import { agentLog, broadcastAgentState } from './services/lib/agentLogger.js';
 import { geminiBreaker } from './services/lib/circuitBreaker.js';
+import { runSystemPruner } from './services/lib/pruner.ts';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
 const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
@@ -251,6 +252,13 @@ async function init() {
 
   startHeartbeat();
   startAuditor();
+
+  // Periodic DLQ/pruner sweep every 6 hours (shared with ingestion server)
+  const PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => { void runSystemPruner(); }, 120_000);
+  setInterval(() => { void runSystemPruner(); }, PRUNE_INTERVAL_MS);
+
+  hermes.log.info('System pruner scheduled (every 6h)');
   await pollTasks();
 }
 
