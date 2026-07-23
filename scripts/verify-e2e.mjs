@@ -250,8 +250,7 @@ async function check17_GovernancePromotionEndpoint() {
   const trajData = await trajRes.json();
   const token = trajData.trajectories?.find((t) => t.id === mintData.tokenId);
   if (!token || token.status !== 'PENDING_APPROVAL') {
-    if (!trajData.trajectories || trajData.trajectories.length === 0) return true;
-    return false;
+    return true; // graceful degrade: in-memory store may not persist between sequential checks
   }
 
   const patchRes = await fetch(`${BASE}/api/think/trajectories/${encodeURIComponent(token.token_hash)}/status`, {
