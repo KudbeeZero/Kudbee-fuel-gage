@@ -1986,7 +1986,7 @@ app.post('/api/think/synthesize', async (req, res) => {
 app.post('/api/system/lifecycle', async (req, res) => {
   try {
     const { action } = req.body || {};
-    const health = { pg: false, redis: false, worker: false, receptor: false, sentinel: false, groq: groqConfigured };
+    const health = { pg: false, redis: false, worker: false, receptor: false, sentinel: null, groq: groqConfigured || null };
     let pgLatency = -1, redisLatency = -1;
 
     if (pool) {

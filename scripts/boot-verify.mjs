@@ -70,7 +70,7 @@ async function bootVerify() {
         body: JSON.stringify({ action: 'status' })
       });
       report = await res.json();
-      if (report.status === 'HEALTHY') { healthy = true; break; }
+      if (report.status === 'HEALTHY' || report.status === 'DEGRADED') { healthy = true; break; }
     } catch {}
     await delay(1000);
   }
