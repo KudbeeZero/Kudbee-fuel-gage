@@ -16,6 +16,15 @@ import { publishEvent as publishUnifiedEvent } from '../lib/unifiedEvents.ts';
 import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 import type { ThinkToken } from '@kudbee/types';
 
+const VECTOR_INSERT_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  const timer = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timer]);
+}
+
 export interface MintThinkTokenPayload {
   agentId?: string;
   traceId?: string;
@@ -106,11 +115,15 @@ export async function mintThinkToken(
     const pool = getDbPool();
     if (pool && isDbHealthy()) {
       try {
-        const res = await pool.query(
-          `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd, efficacy, locked_by)
-           VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8, $9, $10)
-           RETURNING id`,
-          [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost, kd, efficacy, locked_by]
+        const res = await withTimeout(
+          pool.query(
+            `INSERT INTO think_tokens (original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd, efficacy, locked_by)
+             VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8, $9, $10)
+             RETURNING id`,
+            [originalTraceId, taskContextJson, failedStateJson, correctionDelta, embeddingJson, status, cost, kd, efficacy, locked_by]
+          ),
+          VECTOR_INSERT_TIMEOUT_MS,
+          'think_token insert'
         );
         tokenId = String(res.rows[0]?.id ?? originalTraceId);
       } catch (err) {

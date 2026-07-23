@@ -15,6 +15,15 @@ import { randomUUID } from 'node:crypto';
 import { getDbPool, isDbHealthy } from '../lib/db.js';
 import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 
+const VECTOR_OP_TIMEOUT_MS = 25_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  const timer = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timer]);
+}
+
 export interface TopologyMetadata {
   file_path: string;
   category: 'layout' | 'router' | 'schema' | 'config' | 'doc' | 'law' | 'prompt';
@@ -109,11 +118,15 @@ export async function storeSystemChunk(
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(
-        `INSERT INTO system_topology_embeddings (id, chunk_text, metadata, embedding)
-         VALUES ($1, $2, $3, $4::vector)
-         RETURNING id`,
-        [randomUUID(), text, JSON.stringify(metadata), toVectorLiteral(embedding)]
+      const res = await withTimeout(
+        pool.query(
+          `INSERT INTO system_topology_embeddings (id, chunk_text, metadata, embedding)
+           VALUES ($1, $2, $3, $4::vector)
+           RETURNING id`,
+          [randomUUID(), text, JSON.stringify(metadata), toVectorLiteral(embedding)]
+        ),
+        VECTOR_OP_TIMEOUT_MS,
+        'topology_embeddings insert'
       );
       return { ok: true, id: String(res.rows[0]?.id ?? randomUUID()) };
     } catch (err) {
@@ -138,12 +151,16 @@ export async function querySystemTopology(
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(
-        `SELECT id, chunk_text, metadata, embedding
-         FROM system_topology_embeddings
-         ORDER BY embedding <=> $1::vector
-         LIMIT $2`,
-        [toVectorLiteral(embedding), limit]
+      const res = await withTimeout(
+        pool.query(
+          `SELECT id, chunk_text, metadata, embedding
+           FROM system_topology_embeddings
+           ORDER BY embedding <=> $1::vector
+           LIMIT $2`,
+          [toVectorLiteral(embedding), limit]
+        ),
+        VECTOR_OP_TIMEOUT_MS,
+        'topology_embeddings search'
       );
       const results: SystemChunk[] = res.rows.map((row: TopologyRow) => ({
         id: String(row.id),
@@ -207,13 +224,17 @@ export async function searchSimilar(
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(
-        `SELECT id, text AS chunk_text, metadata, embedding,
-                1 - (embedding <=> $1::vector) AS similarity
-         FROM vector_memory
-         ORDER BY embedding <=> $1::vector
-         LIMIT $2`,
-        [toVectorLiteral(embedding), limit]
+      const res = await withTimeout(
+        pool.query(
+          `SELECT id, text AS chunk_text, metadata, embedding,
+                  1 - (embedding <=> $1::vector) AS similarity
+           FROM vector_memory
+           ORDER BY embedding <=> $1::vector
+           LIMIT $2`,
+          [toVectorLiteral(embedding), limit]
+        ),
+        VECTOR_OP_TIMEOUT_MS,
+        'vector_memory search'
       );
       const results: SystemChunk[] = res.rows
         .filter((row: TopologyRow) => (Number(row.similarity) || 0) >= minScore)
@@ -324,32 +345,39 @@ export async function getRelevantThinkTokens(
   }
 
   const pool = getDbPool();
+
   if (pool && isDbHealthy()) {
     try {
-      // Prefer VERIFIED successes (proven past executions). Fall back to the
-      // full top-k if the verified set is empty so the forge stays useful.
-      const verifiedRows = await pool.query(
-        `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
-                COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
-                1 - (embedding <=> $1::vector) AS similarity
-         FROM think_tokens
-         WHERE status = 'VERIFIED'
-         ORDER BY embedding <=> $1::vector
-         LIMIT $2`,
-        [toVectorLiteral(embedding), safeLimit]
+      const verifiedRows = await withTimeout(
+        pool.query(
+          `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                  COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
+                  1 - (embedding <=> $1::vector) AS similarity
+           FROM think_tokens
+           WHERE status = 'VERIFIED'
+           ORDER BY embedding <=> $1::vector
+           LIMIT $2`,
+          [toVectorLiteral(embedding), safeLimit]
+        ),
+        VECTOR_OP_TIMEOUT_MS,
+        'pgvector think_tokens similarity search'
       );
 
       const rows: ThinkTokenRow[] =
         (verifiedRows.rows?.length ?? 0) > 0
           ? verifiedRows.rows
-          : (await pool.query(
-              `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
-                      COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
-                      1 - (embedding <=> $1::vector) AS similarity
-               FROM think_tokens
-               ORDER BY embedding <=> $1::vector
-               LIMIT $2`,
-              [toVectorLiteral(embedding), safeLimit]
+          : (await withTimeout(
+              pool.query(
+                `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
+                        COALESCE(kd, 0) AS kd, COALESCE(efficacy, 0) AS efficacy, locked_by,
+                        1 - (embedding <=> $1::vector) AS similarity
+                 FROM think_tokens
+                 ORDER BY embedding <=> $1::vector
+                 LIMIT $2`,
+                [toVectorLiteral(embedding), safeLimit]
+              ),
+              VECTOR_OP_TIMEOUT_MS,
+              'pgvector think_tokens fallback search'
             )).rows;
 
       const results: RelevantThinkToken[] = rows.map((row) => ({
@@ -421,11 +449,15 @@ export async function storeMemory(
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(
-        `INSERT INTO vector_memory (id, text, embedding, metadata)
-         VALUES ($1, $2, $3::vector, $4)
-         RETURNING id`,
-        [randomUUID(), text, toVectorLiteral(embedding), JSON.stringify(metadata)]
+      const res = await withTimeout(
+        pool.query(
+          `INSERT INTO vector_memory (id, text, embedding, metadata)
+           VALUES ($1, $2, $3::vector, $4)
+           RETURNING id`,
+          [randomUUID(), text, toVectorLiteral(embedding), JSON.stringify(metadata)]
+        ),
+        VECTOR_OP_TIMEOUT_MS,
+        'vector_memory insert'
       );
       return { ok: true, id: String(res.rows[0]?.id ?? randomUUID()) };
     } catch (err) {

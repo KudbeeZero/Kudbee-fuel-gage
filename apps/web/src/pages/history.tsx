@@ -23,7 +23,7 @@ import { apiGet } from '../lib/apiClient';
 import { normalizeTelemetryLogs, type TelemetryLogRow } from '../lib/normalizeTelemetry';
 import { useTelemetrySearch, type SearchHit } from '../hooks/useTelemetrySearch';
 import { useAuditExport } from '../hooks/useAuditExport';
-import { useHistoryStream } from '../hooks/useHistoryStream';
+import { useTelemetryStream } from '../hooks/useTelemetryStream';
 import { StreamModeBadge } from '../components/StreamModeBadge';
 import { FeedbackButton } from '../components/FeedbackButton';
 import { AuditVaultCard } from '../components/audit/AuditVaultCard';
@@ -50,7 +50,7 @@ export function HistoryPage() {
   const [expandedLog, setExpandedLog] = useState<string | number | null>(null);
   const [copiedTraceId, setCopiedTraceId] = useState<string | null>(null);
 
-  const { mode: streamMode, throughput, error: streamError, paused: streamPaused, togglePause, reconnect } = useHistoryStream();
+  const { mode: streamMode, throughput, error: streamError, paused: streamPaused, togglePause, reconnect } = useTelemetryStream();
 
   const search = useTelemetrySearch();
   const auditExport = useAuditExport();

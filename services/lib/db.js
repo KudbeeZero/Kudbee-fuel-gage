@@ -77,17 +77,9 @@ export function getDbPool() {
   const pool = new Pool({
     connectionString: DATABASE_URL,
     max: 20,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
-    // Neon cloud Postgres strictly requires TLS. The connection string's
-    // ?sslmode=require parameter is handled by pg-connection-string, but
-    // explicit ssl configuration ensures the driver never downgrades to
-    // cleartext even when the URL fragment is missing or mis-parsed.
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
     ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
-    // Neon closes idle connections after ~5 min. Our idleTimeout of 30s
-    // cycles idle connections before Neon kills them. keepAlive: true
-    // probes the connection periodically to detect and discard dead
-    // connections before issuing queries to them.
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000
   });
@@ -98,7 +90,11 @@ export function getDbPool() {
 
   pool.on('error', (err) => {
     _healthy = false;
-    console.warn('[DB] Pool error (degrading to in-memory):', err.message);
+    console.error('[DB] Pool connection error — degrading to in-memory store:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack?.split('\n').slice(0, 3).join('\n')
+    });
   });
 
   pool.on('connect', () => {
@@ -171,6 +167,17 @@ export async function closeDbPool() {
   }
 }
 
+export async function teardownAll(redisClient) {
+  console.log('[DB] Tearing down database connections…');
+  const results = await Promise.allSettled([
+    closeDbPool(),
+    redisClient ? (async () => { try { await redisClient.quit(); } catch { /* ignore */ } })() : Promise.resolve()
+  ]);
+  const errors = results.filter((r) => r.status === 'rejected');
+  if (errors.length) console.warn('[DB] Teardown errors:', errors.map((e) => e.reason?.message).filter(Boolean));
+  else console.log('[DB] All database connections closed gracefully.');
+}
+
 // ---------------------------------------------------------------------------
 // In-memory fallback store (Resilient-First degrade path).
 // Mirrors the canonical tables so endpoints behave identically with/without
@@ -195,6 +202,19 @@ function rowToObject(row) {
   return row;
 }
 
+export const DB_TIMEOUT_MS = 10_000;
+export const VECTOR_QUERY_TIMEOUT_MS = 25_000;
+export const VECTOR_INSERT_TIMEOUT_MS = 30_000;
+
+function withTimeout(promise, ms, label) {
+  const timer = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`DB ${label} timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timer]);
+}
+
+export { withTimeout };
+
 /**
  * Run a SELECT against the healthy Neon pool, or the in-memory fallback.
  * Supports a minimal subset of the queries used by the ingestion server.
@@ -204,7 +224,7 @@ export async function runQuery(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(sql, params);
+      const res = await withTimeout(pool.query(sql, params), DB_TIMEOUT_MS, 'query');
       dbTelemetry.primaryQueryCount += 1;
       return res.rows;
     } catch (err) {
@@ -225,7 +245,7 @@ export async function runInsert(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(sql, params);
+      const res = await withTimeout(pool.query(sql, params), DB_TIMEOUT_MS, 'insert');
       dbTelemetry.primaryInsertCount += 1;
       return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
     } catch (err) {
@@ -332,6 +352,15 @@ function runInsertMemory(sql, params = []) {
 
   if (/INTO telemetry_traces/.test(s)) {
     const [trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name] = params;
+    const existing = memory.telemetry_traces.find((r) => r.trace_id === trace_id);
+    if (existing) {
+      existing.tokens_in = tokens_in;
+      existing.tokens_out = tokens_out;
+      existing.cost = cost;
+      existing.status = status;
+      existing.timestamp = new Date().toISOString();
+      return { id: existing.id, changes: 1 };
+    }
     const row = {
       id: nextId(),
       trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name,

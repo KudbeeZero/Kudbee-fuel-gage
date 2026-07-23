@@ -106,13 +106,13 @@ function TrajectoryDrawer({ trajectory, onClose }: TrajectoryDrawerProps) {
             )}
           </div>
 
-          {((trajectory as any).reasoning as string | undefined) ? (
+          {trajectory.reasoning ? (
             <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
               <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2">
                 Reasoning Chain
               </div>
               <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-slate-300">
-                {(trajectory as any).reasoning}
+                {trajectory.reasoning}
               </pre>
             </div>
           ) : trajectory.task_context ? (

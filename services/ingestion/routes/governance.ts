@@ -139,7 +139,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
       const traces = await runQuery(
         `SELECT status, model, tokens_in, tokens_out, cost FROM telemetry_traces WHERE timestamp >= $1`,
         [since]
-      ).catch(() => []);
+      ).catch((e) => { console.warn('[Governance] Failed to fetch traces for tuning:', e instanceof Error ? e.message : String(e)); return []; });
 
       const totalTraces = traces.length;
       const blocks = traces.filter((t: any) => t.status === 'BLOCK').length;

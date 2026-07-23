@@ -1,15 +1,7 @@
-/**
- * apps/web/src/hooks/useThinkGovernanceStream.ts
- * ---------------------------------------------------------------------------
- * Polls the Think Token governance queue (`GET /api/think/trajectories`)
- * and exposes pending tokens plus a `promoteToken` resolver.
- * Resilient-First: failures clear to an empty list (no throw).
- */
-import { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPatch } from '../lib/apiClient';
+import { useCallback, useState } from 'react';
+import { usePollingQueue } from './usePollingQueue';
+import { apiPatch } from '../lib/apiClient';
 import type { ThinkTrajectory } from '@kudbee/types';
-
-const EMPTY: ThinkTrajectory[] = [];
 
 export interface ThinkGovernanceStream {
   pending: ThinkTrajectory[];
@@ -20,30 +12,21 @@ export interface ThinkGovernanceStream {
 }
 
 export function useThinkGovernanceStream(pollMs = 4000): ThinkGovernanceStream {
-  const [pending, setPending] = useState<ThinkTrajectory[]>(EMPTY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    try {
-      const data = await apiGet<{ count: number; trajectories: ThinkTrajectory[] }>(
-        '/api/think/trajectories?limit=100'
-      );
-      const list = Array.isArray(data?.trajectories) ? data.trajectories : EMPTY;
-      const pendingTokens = list.filter((t) => t.status === 'PENDING_APPROVAL');
-      setPending(pendingTokens);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load think token queue');
-      setPending(EMPTY);
-    } finally {
-      setLoading(false);
+  const { items, loading, error, refresh, setItems } = usePollingQueue<ThinkTrajectory>(
+    '/api/think/trajectories?limit=100',
+    pollMs,
+    (t) => t.status === 'PENDING_APPROVAL',
+    undefined,
+    (data: unknown) => {
+      const d = data as { trajectories?: ThinkTrajectory[] } | null;
+      return Array.isArray(d?.trajectories) ? d.trajectories : [];
     }
-  }, []);
+  );
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const promoteToken = useCallback(
     async (hash: string, status: 'VERIFIED' | 'RECYCLED', reviewerNotes?: string, tokenId?: string): Promise<boolean> => {
-      setPending((prev) => prev.filter((p) => p.token_hash !== hash));
+      setItems((prev) => prev.filter((p) => p.token_hash !== hash));
       try {
         await apiPatch<{ success: boolean; tokenId: string; status: string }>(
           `/api/think/trajectories/${encodeURIComponent(hash)}/status`,
@@ -53,20 +36,14 @@ export function useThinkGovernanceStream(pollMs = 4000): ThinkGovernanceStream {
         return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to update token status';
-        setError(message);
+        setActionError(message);
         return false;
       }
     },
-    [refresh]
+    [refresh, setItems]
   );
 
-  useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), pollMs);
-    return () => clearInterval(id);
-  }, [refresh, pollMs]);
-
-  return { pending, loading, error, refresh, promoteToken };
+  return { pending: items, loading, error: error ?? actionError, refresh, promoteToken };
 }
 
 export default useThinkGovernanceStream;

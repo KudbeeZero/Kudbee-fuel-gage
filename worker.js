@@ -23,6 +23,9 @@
 import { getRedisClient } from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
+import { registerShutdown } from './services/lib/shutdown.js';
+import { agentLog, broadcastAgentState } from './services/lib/agentLogger.js';
+import { geminiBreaker } from './services/lib/circuitBreaker.js';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
 const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
@@ -61,30 +64,34 @@ async function slowBrainReason(prompt) {
     };
   }
 
+  const circuitOpen = await geminiBreaker.isOpen();
+  if (circuitOpen) {
+    agentLog('hermes', 'gemini-circuit-open', 'CIRCUIT_OPEN', { task: prompt.slice(0, 80) }, 'Gemini circuit breaker is OPEN — using heuristic fallback');
+    return { model: 'hermes-heuristic-circuit', trace: `Circuit breaker open — heuristic audit of task.`, provider: 'fallback' };
+  }
+
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `As the Kudbee Governance Slow Brain, analyze this task and return a concise reasoning trace plus a recommended action.\n\nTask: ${prompt}`
-                }
-              ]
-            }
-          ]
-        })
+          contents: [{ parts: [{ text: `As the Kudbee Governance Slow Brain, analyze this task and return a concise reasoning trace plus a recommended action.\n\nTask: ${prompt}` }] }]
+        }),
+        signal: controller.signal
       }
     );
+    clearTimeout(timer);
     if (!res.ok) throw new Error(`LLM ${res.status}`);
     const data = await res.json();
     const trace = data?.candidates?.[0]?.content?.parts?.[0]?.text || '(empty trace)';
+    await geminiBreaker.recordSuccess();
     return { model: 'gemini-1.5-flash', trace, provider: 'gemini' };
   } catch (err) {
+    await geminiBreaker.recordFailure();
     return { model: 'hermes-fallback', trace: `LLM call failed (${err.message}) — proposing for review.`, provider: 'fallback' };
   }
 }
@@ -231,6 +238,10 @@ function startAuditor() {
 
 async function init() {
   hermes.log.info(`HERMES worker booting (agentId=${hermes.agentId})`);
+  registerShutdown('hermes-worker', redis);
+
+  // Broadcast initial state to SSE stream so INTELLIGENCE tab can render vitals
+  broadcastAgentState('hermes', { status: 'booting', queue: 'kudbee:governance:tasks', pid: process.pid });
   // Wait briefly for the shared client to be ready before we start popping.
   try {
     await redis.ping();
@@ -242,17 +253,6 @@ async function init() {
   startAuditor();
   await pollTasks();
 }
-
-process.on('SIGINT', async () => {
-  hermes.log.warn('SIGINT received — reporting offline and exiting');
-  await reportOffline().catch(() => {});
-  process.exit(0);
-});
-process.on('SIGTERM', async () => {
-  hermes.log.warn('SIGTERM received — reporting offline and exiting');
-  await reportOffline().catch(() => {});
-  process.exit(0);
-});
 
 init().catch((err) => {
   hermes.log.error('fatal init error:', err.message);

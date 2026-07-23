@@ -24,7 +24,7 @@ export function PluginCard({ plugin, accent, glow, children }: PluginCardProps) 
     <article
       id={plugin.id}
       data-plugin={plugin.category}
-      className={`group relative flex min-h-[180px] flex-col overflow-hidden rounded-lg border-2 bg-slate-900/80 p-4 transition-all duration-300 hover:border-slate-600 ${accent} ${faultGlow}`}
+      className={`group relative flex min-h-[180px] min-w-0 flex-col overflow-hidden rounded-lg border-2 bg-slate-900/80 p-4 transition-all duration-300 hover:border-slate-600 ${accent} ${faultGlow}`}
       style={{ borderTopColor: '#334155', borderBottomColor: '#334155', boxShadow: isFault ? '0 0 20px rgba(244,63,94,0.12), inset 0 0 0 1px rgba(244,63,94,0.08)' : 'inset 0 0 0 1px rgba(148,163,184,0.04)' }}
     >
       {/* Rack-mount top rail with screw dots */}

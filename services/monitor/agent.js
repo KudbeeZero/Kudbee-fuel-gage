@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import crypto from 'node:crypto';
+import { registerShutdown } from '../lib/shutdown.js';
 
 let redis;
 try {
@@ -21,6 +22,8 @@ try {
   console.error('[Agent] Failed to initialize Redis client:', err.message);
   redis = null;
 }
+
+registerShutdown('monitor-agent', redis);
 
 const AGENT_ID = `monitor-agent-${process.pid}`;
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {

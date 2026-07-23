@@ -5,33 +5,17 @@ import { ChevronDown, Trash2 } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
 import type { ConsoleLog } from '../store/terminalStore';
 
-interface ConsoleDockProps {
-  externalLogs?: ConsoleLog[];
-}
-
-const LOG_TEMPLATES = [
-  { type: 'info', label: 'OTEL', message: 'Ingestion pipeline: parsed batch of 24 spans successfully.' },
-  { type: 'info', label: 'ROUTER', message: 'API Route match for GET /api/v1/telemetry/traces.' },
-  { type: 'slate', label: 'SYSTEM', message: 'CPU Core telemetry synced. Current temp: 42°C, utilization: 14%.' },
-  { type: 'warning', label: 'DB', message: 'Postgres single-container schema: cache miss on user query. Fetching from storage.' },
-  { type: 'info', label: 'METRIC', message: 'Ingestion rate: 423 spans/sec. Outbound buffer status: STABLE.' },
-  { type: 'error', label: 'SEC', message: 'DLP scrub: Detected credit card pattern in inbound trace. Scrubbed payload.' },
-  { type: 'warning', label: 'RATE', message: 'Inbound requests near threshold. 88% cap utilized for IP 192.168.1.10.' },
-  { type: 'info', label: 'CACHE', message: 'In-memory Redis cache warmed. Hits: 12,431 / Misses: 219.' },
-  { type: 'info', label: 'FASTAPI', message: 'WebSocket tunnel ping-pong completed in 4.2ms.' },
-];
-
 export function ConsoleDock() {
   const isConsoleExpanded = useUIStore((state) => state.isConsoleExpanded);
   const toggleConsole = useUIStore((state) => state.toggleConsole);
   const externalLogs = useTerminalStore((state) => state.externalLogs);
 
-  // Maintain actual high-frequency logs in useRef
-  const allLogsRef = useRef<ConsoleLog[]>([
+  const [renderedLogs, setRenderedLogs] = useState<ConsoleLog[]>([
     { id: 'initial-1', type: 'info', label: 'BOOT', message: 'Control Tower initialized. Neon Postgres pool (max 10), Upstash Redis connected.', time: new Date().toLocaleTimeString() },
     { id: 'initial-2', type: 'info', label: 'BOOT', message: 'SSE event stream online. HERMES auditor worker standing by.', time: new Date().toLocaleTimeString() },
     { id: 'initial-3', type: 'slate', label: 'SYSTEM', message: 'Agent Context Factory + Token Forge RAG ready. Node 22 ESM strict mode active.', time: new Date().toLocaleTimeString() }
   ]);
+  const [isPaused, setIsPaused] = useState(false);
 
   const processedExternalIds = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -43,37 +27,9 @@ export function ConsoleDock() {
       ...log,
       id: `external-${log.id}`
     }));
-    allLogsRef.current = [...mapped, ...allLogsRef.current].slice(0, 100);
+    setRenderedLogs((prev) => [...mapped, ...prev].slice(0, 100));
   }, [externalLogs]);
 
-  // Throttled rendered state updated at a lower interval (~150ms)
-  const [renderedLogs, setRenderedLogs] = useState<ConsoleLog[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
-
-  // Generate high-frequency logs (WebSocket stream proxy emulation)
-  useEffect(() => {
-    let logCounter = 1;
-    const intervalId = setInterval(() => {
-      if (isPaused) return;
-
-      const randomTemplate = LOG_TEMPLATES[Math.floor(Math.random() * LOG_TEMPLATES.length)]!;
-      const newLog: ConsoleLog = {
-        id: `log-${Date.now()}-${logCounter++}`,
-        type: randomTemplate.type as ConsoleLog['type'],
-        label: randomTemplate.label,
-        message: randomTemplate.message,
-        time: new Date().toLocaleTimeString(),
-      };
-
-      allLogsRef.current = [newLog, ...allLogsRef.current].slice(0, 100);
-    }, 120); // High frequency log feed (approx. 8 logs/sec)
-
-    return () => clearInterval(intervalId);
-  }, [isPaused]);
-
-  // Pull [HERMES:AUDITOR] log lines published by the background worker process
-  // and inject them into the live stream so operators can see auditor output
-  // in real time. Dedupe by the log's timestamp to avoid replaying history.
   const lastHermesTsRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -92,10 +48,10 @@ export function ConsoleDock() {
             message: entry.line,
             time: new Date(entry.ts).toLocaleTimeString()
           };
-          allLogsRef.current = [newLog, ...allLogsRef.current].slice(0, 100);
+          setRenderedLogs((prev) => [newLog, ...prev].slice(0, 100));
         }
       } catch {
-        /* backend offline / not deployed yet — skip silently */
+        /* backend offline — skip silently */
       }
     };
     void pullHermes();
@@ -106,9 +62,6 @@ export function ConsoleDock() {
     };
   }, [isPaused]);
 
-  // Pull real infrastructure health status every 15s and inject live
-  // diagnostics into the console stream so operators see accurate dependency
-  // states instead of relying on static templates.
   const lastHealthRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +83,7 @@ export function ConsoleDock() {
           message: healthLine,
           time: new Date().toLocaleTimeString()
         };
-        allLogsRef.current = [newLog, ...allLogsRef.current].slice(0, 100);
+        setRenderedLogs((prev) => [newLog, ...prev].slice(0, 100));
       } catch {
         /* backend offline — skip silently */
       }
@@ -143,19 +96,7 @@ export function ConsoleDock() {
     };
   }, [isPaused]);
 
-  // Throttle updates to local state to 150ms to keep React components happy and performant
-  useEffect(() => {
-    const renderInterval = setInterval(() => {
-      if (allLogsRef.current.length !== renderedLogs.length || (allLogsRef.current[0] && renderedLogs[0] && allLogsRef.current[0].id !== renderedLogs[0].id)) {
-        setRenderedLogs([...allLogsRef.current]);
-      }
-    }, 150);
-
-    return () => clearInterval(renderInterval);
-  }, [renderedLogs]);
-
   const clearLogs = () => {
-    allLogsRef.current = [];
     setRenderedLogs([]);
   };
 
@@ -166,7 +107,6 @@ export function ConsoleDock() {
       className="fixed bottom-0 inset-x-0 z-40 bg-slate-950 border-t border-slate-800 flex flex-col transition-all duration-300 ease-in-out pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.5)] font-mono text-xs text-slate-300"
       style={{ height: isConsoleExpanded ? '18rem' : 'calc(3rem + env(safe-area-inset-bottom))' }}
     >
-      {/* Top Handle / Click Target */}
       <div 
         onClick={toggleConsole}
         className="h-12 flex items-center justify-between px-6 border-b border-slate-900 bg-slate-950/40 cursor-pointer select-none shrink-0 active:scale-[0.99] transition-all duration-100"
@@ -196,7 +136,7 @@ export function ConsoleDock() {
               KUDBEE_LIVE_TELEMETRY_STREAM_MONITOR
             </span>
             <span className="hidden sm:inline text-[9px] text-slate-500 uppercase tracking-widest">
-              [pipeline online - throttling active]
+              [pipeline online - active]
             </span>
           </div>
         )}
@@ -211,7 +151,7 @@ export function ConsoleDock() {
                     ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' 
                     : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-300 hover:border-slate-700'
                 }`}
-                title={isPaused ? "Resume log stream" : "Pause log stream"}
+                title={isPaused ? "Resume pollers" : "Pause pollers"}
               >
                 {isPaused ? "RESUME" : "PAUSE"}
               </button>
@@ -233,7 +173,6 @@ export function ConsoleDock() {
         </div>
       </div>
 
-      {/* Scrollable Event Logs Container (Expanded Mode) */}
       <div 
         className={`flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-850 scrollbar-track-transparent select-text ${
           isConsoleExpanded ? 'opacity-100 block' : 'opacity-0 hidden'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import { TelemetryTraceSchema, ApprovalStatusSchema } from '@kudbee/types';
 import { Search, Activity } from 'lucide-react';
@@ -88,6 +88,13 @@ export function EdgeSentinelPlugin({
   const [query, setQuery] = useState('');
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
+  const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (lastIngressAt == null) return;
@@ -119,6 +126,7 @@ export function EdgeSentinelPlugin({
   const triggerProbe = async () => {
     setProbing(true);
     setProbeResult(null);
+    if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     try {
       const data = await apiPost<ProbeResult>('/api/system/health-deep', {});
       setProbeResult(data);
@@ -126,7 +134,7 @@ export function EdgeSentinelPlugin({
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
       setProbing(false);
-      setTimeout(() => setProbeResult(null), 8000);
+      probeTimerRef.current = setTimeout(() => setProbeResult(null), 8000);
     }
   };
 

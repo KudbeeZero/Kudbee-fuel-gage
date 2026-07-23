@@ -69,6 +69,13 @@ export function HermesAuditorPlugin({
   const [autoScroll, setAutoScroll] = useState(true);
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
+  const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
+    };
+  }, []);
 
   const allSweeps = useMemo(
     () => logs.map(parseSweep).filter((s): s is ParsedSweep => s !== null),
@@ -106,6 +113,7 @@ export function HermesAuditorPlugin({
   const triggerProbe = async () => {
     setProbing(true);
     setProbeResult(null);
+    if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     try {
       const data = await apiPost<ProbeResult>('/api/system/health-deep', {});
       setProbeResult(data);
@@ -113,7 +121,7 @@ export function HermesAuditorPlugin({
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
       setProbing(false);
-      setTimeout(() => setProbeResult(null), 8000);
+      probeTimerRef.current = setTimeout(() => setProbeResult(null), 8000);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet, apiPost } from '../lib/apiClient';
 
 export type VectorSyncState = 'IDLE' | 'INDEXING' | 'SYNCED' | 'FAILED';
@@ -33,6 +33,11 @@ export function useVectorSync() {
   const [recalling, setRecalling] = useState(false);
   const [chunks, setChunks] = useState<RetrievedChunk[]>([]);
   const [recallError, setRecallError] = useState<string | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    return () => timersRef.current.forEach(clearTimeout);
+  }, []);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -65,13 +70,15 @@ export function useVectorSync() {
     try {
       await apiPost('/api/vector/sync', {});
       // Poll for the SYNCED state a few times.
-      setTimeout(() => void loadStatus(), 800);
-      setTimeout(() => void loadStatus(), 1800);
+      const t1 = setTimeout(() => void loadStatus(), 800);
+      const t2 = setTimeout(() => void loadStatus(), 1800);
+      timersRef.current.push(t1, t2);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Vector sync failed');
       setStatus((prev) => ({ ...prev, state: 'FAILED' }));
     } finally {
-      setTimeout(() => setResyncing(false), 400);
+      const t3 = setTimeout(() => setResyncing(false), 400);
+      timersRef.current.push(t3);
     }
   }, [loadStatus]);
 

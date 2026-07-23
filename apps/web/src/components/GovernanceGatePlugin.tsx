@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IKudbeePlugin } from '@kudbee/types';
 import { PluginCard } from './PluginCard';
 import { apiGet, apiPost } from '../lib/apiClient';
@@ -25,23 +25,32 @@ export function GovernanceGatePlugin({ plugin }: GovernanceGatePluginProps) {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchPending = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       setLoading(true);
       const data = await apiGet<PendingAction[]>('/api/governance/pending');
+      if (controller.signal.aborted) return;
       setPending(Array.isArray(data) ? data : []);
     } catch {
+      if (controller.signal.aborted) return;
       setPending([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
     void fetchPending();
     const id = setInterval(() => void fetchPending(), 8000);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      abortRef.current?.abort();
+    };
   }, []);
 
   const decide = async (actionId: string, decision: 'approve' | 'reject') => {
