@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Network, Server, Database, Cpu, Brain, Shield, Radio, Zap } from 'lucide-react';
+import { Network, Server, Database, Cpu, Brain, Shield, Radio } from 'lucide-react';
 import { GatewayLog } from '../../hooks/useRoutingRules';
+import { useTopologyEvents } from '../../hooks/useTopologyEvents';
 
 interface RoutingVisualizerProps {
   activeRoute: 'IDLE' | 'PRIMARY' | 'FAILOVER';
@@ -87,15 +88,15 @@ export function RoutingVisualizer({ activeRoute, gatewayLogs, onTestRoute }: Rou
       const idx = Math.floor(Math.random() * edgeCount);
       const [from, to, color] = EDGES[idx];
       spawnPacket(from, to, color);
-
-      if (Math.random() < 0.15) {
-        const idx2 = Math.floor(Math.random() * edgeCount);
-        const [f2, t2, c2] = EDGES[idx2];
-        spawnPacket(f2, t2, c2);
-      }
     }, 600);
     return () => clearInterval(interval);
   }, [spawnPacket]);
+
+  useTopologyEvents({
+    onPacket: useCallback((p) => {
+      spawnPacket(p.from, p.to, p.color);
+    }, [spawnPacket])
+  });
 
   useEffect(() => {
     const agentInterval = setInterval(() => {
