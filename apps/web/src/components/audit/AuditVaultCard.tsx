@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock } from 'lucide-react';
 import { useTenantStore, type Tenant } from '../../store/tenantStore';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface VaultAnchor {
   anchorId: string;
@@ -41,9 +42,7 @@ export function AuditVaultCard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`vault fetch failed (${res.status})`);
-      const data = (await res.json()) as { anchors: VaultAnchor[]; count: number };
+      const data = await apiGet<{ anchors: VaultAnchor[]; count: number }>('/api/audit/vault');
       setAnchors(Array.isArray(data.anchors) ? data.anchors : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load vault');
@@ -61,15 +60,7 @@ export function AuditVaultCard() {
     setAnchoring(true);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault/anchor', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ limit: 50 })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Anchor failed (${res.status})`);
-      }
+      await apiPost('/api/audit/vault/anchor', { limit: 50 }, { headers: headers() });
       await fetchAnchors();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Anchor failed');
@@ -83,16 +74,7 @@ export function AuditVaultCard() {
     setVerifying(anchorId);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault/verify', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ anchorId })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Verify failed (${res.status})`);
-      }
-      const data = (await res.json()) as VerifyResult;
+      const data = await apiPost<VerifyResult>('/api/audit/vault/verify', { anchorId }, { headers: headers() });
       setVerifyResults((prev) => ({ ...prev, [anchorId]: data }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verify failed');

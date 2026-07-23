@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Activity, Shield, ShieldCheck, ShieldAlert, ShieldX, Terminal, Copy, Check } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
 
@@ -110,8 +110,13 @@ export function InterceptorView({ currency, onNewLogTriggered }: { currency: 'US
   const { requests, loading, error } = useInterceptedRequests();
   const [selectedId, setSelectedId] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const _mountedRef = useRef(true);
 
-  // Default the selection to the first real record once loaded.
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
+
   useEffect(() => {
     if (!selectedId && requests.length > 0) setSelectedId(requests[0]!.id);
   }, [requests, selectedId]);
@@ -125,7 +130,7 @@ export function InterceptorView({ currency, onNewLogTriggered }: { currency: 'US
     if (!selectedRequest) return;
     navigator.clipboard.writeText(selectedRequest.payload);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { if (!_mountedRef.current) return; setCopied(false); }, 2000);
   };
 
   const displayPayload = selectedRequest ? truncatePayload(selectedRequest.payload) : '';

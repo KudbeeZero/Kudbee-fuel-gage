@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { apiGet } from '../lib/apiClient';
 
 export interface AuditExportState {
   format: 'json' | 'csv';
@@ -35,14 +36,9 @@ export function useAuditExport() {
       if (state.from) params.set('from', state.from);
       if (state.to) params.set('to', state.to);
 
-      const res = await fetch(`/api/audit/export?${params.toString()}`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`Export failed (${res.status}): ${txt || res.statusText}`);
-      }
+      await apiGet(`/api/audit/export?${params.toString()}`);
 
-      const contentType = res.headers.get('content-type') || '';
-      const blob = await res.blob();
+      const blob = new Blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -52,8 +48,7 @@ export function useAuditExport() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      const hash = res.headers.get('X-Audit-Hash');
-      if (hash) setLastHash(hash);
+      setLastHash(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
     } finally {

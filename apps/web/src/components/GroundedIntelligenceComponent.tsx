@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   Activity
 } from 'lucide-react';
+import { apiGet } from '../lib/apiClient';
 
 interface Headline {
   title: string;
@@ -37,12 +38,11 @@ export function GroundedIntelligenceComponent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/news/headlines');
-      const data = (await res.json()) as {
+      const data = await apiGet<{
         headlines?: Headline[];
         sources?: Source[];
         offline?: boolean;
-      };
+      }>('/api/news/headlines');
       setHeadlines(data.headlines ?? []);
       setSources(data.sources ?? []);
       setOffline(!!data.offline);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -27,6 +27,7 @@ import { useTelemetryStream } from '../hooks/useTelemetryStream';
 import { StreamModeBadge } from '../components/StreamModeBadge';
 import { FeedbackButton } from '../components/FeedbackButton';
 import { AuditVaultCard } from '../components/audit/AuditVaultCard';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -42,6 +43,7 @@ interface SessionHistoryItem {
 type TelemetryLog = TelemetryLogRow;
 
 export function HistoryPage() {
+  const _mountedRef = useRef(true);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,11 @@ export function HistoryPage() {
 
   const search = useTelemetrySearch();
   const auditExport = useAuditExport();
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +118,7 @@ export function HistoryPage() {
   }, [logs]);
 
   return (
+    <PanelErrorBoundary panel="HISTORY">
     <div className="space-y-6" id="history-page-container">
       <div className="flex justify-end">
         <AuditVaultCard />
@@ -430,7 +438,7 @@ export function HistoryPage() {
                               onClick={() => {
                                 navigator.clipboard.writeText(traceId);
                                 setCopiedTraceId(traceId);
-                                setTimeout(() => setCopiedTraceId(null), 2000);
+                                setTimeout(() => { if (!_mountedRef.current) return; setCopiedTraceId(null); }, 2000);
                               }}
                               className="text-[9px] font-mono text-slate-500 hover:text-slate-300 mt-1 cursor-pointer"
                             >
@@ -470,6 +478,7 @@ export function HistoryPage() {
         </div>
       )}
     </div>
+    </PanelErrorBoundary>
   );
 }
 

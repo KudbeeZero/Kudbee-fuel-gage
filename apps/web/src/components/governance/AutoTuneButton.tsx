@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sliders, RefreshCw, Check, AlertTriangle, Zap } from 'lucide-react';
+import { apiPost } from '../../lib/apiClient';
 
 interface AutoTuneProps {
   onApplied?: () => void;
@@ -32,16 +33,7 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
     setError(null);
     setApplied(false);
     try {
-      const res = await fetch('/api/governance/tune', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lookbackHours: 24 })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Tune analysis failed (${res.status})`);
-      }
-      const data = await res.json();
+      const data = await apiPost('/api/governance/tune', { lookbackHours: 24 });
       setAnalysis(data.analysis);
       setRecommendations(data.recommendations);
     } catch (e) {
@@ -56,15 +48,7 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch('/api/governance/tune/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recommendations })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Apply failed (${res.status})`);
-      }
+      await apiPost('/api/governance/tune/apply', { recommendations });
       setApplied(true);
       onApplied?.();
     } catch (e) {

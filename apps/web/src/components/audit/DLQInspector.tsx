@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, Trash2, RefreshCw, Loader2, Inbox, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useTenantStore } from '../../store/tenantStore';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface FailedTask {
   id: string;
@@ -35,9 +36,7 @@ export function DLQInspector() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`dlq fetch failed (${res.status})`);
-      const data = (await res.json()) as DLQState;
+      const data = await apiGet<DLQState>('/api/governance/failed');
       setState(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load DLQ');
@@ -58,15 +57,7 @@ export function DLQInspector() {
     setBusyId(id);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed/retry', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ id })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `retry failed (${res.status})`);
-      }
+      await apiPost('/api/governance/failed/retry', { id }, { headers: headers() });
       await fetchDLQ();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Retry failed');
@@ -80,15 +71,7 @@ export function DLQInspector() {
     setBusyId(id);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed/discard', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ id })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `discard failed (${res.status})`);
-      }
+      await apiPost('/api/governance/failed/discard', { id }, { headers: headers() });
       await fetchDLQ();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Discard failed');

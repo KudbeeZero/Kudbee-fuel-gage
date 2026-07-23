@@ -62,12 +62,19 @@ export function AgentTerminal({
   const scrollRef = useRef<HTMLDivElement>(null);
   const latestDataRef = useRef(data);
   const processedCmdIds = useRef<Set<number>>(new Set());
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!externalCommands || externalCommands.length === 0) return;
     const newCmds = externalCommands.filter((cmd) => !processedCmdIds.current.has(cmd.id));
     if (newCmds.length === 0) return;
     newCmds.forEach((cmd) => processedCmdIds.current.add(cmd.id));
+    if (!mountedRef.current) return;
     setCommands((prev) => [...prev, ...newCmds]);
   }, [externalCommands]);
 

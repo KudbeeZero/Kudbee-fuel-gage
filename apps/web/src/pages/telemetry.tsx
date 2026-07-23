@@ -1,4 +1,5 @@
 import { useUIStore } from '../store/uiStore';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import { getFormattedCost } from '../utils/currency';
 import {
   Activity,
@@ -90,7 +91,8 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
   return (
-    <>
+    <PanelErrorBoundary panel="TELEMETRY">
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TelemetryCard
           title="Input Tokens"
@@ -308,6 +310,7 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
         </div>
       </div>
     </>
+    </PanelErrorBoundary>
   );
 }
 

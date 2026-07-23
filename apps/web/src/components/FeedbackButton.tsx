@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Check, X } from 'lucide-react';
+import { apiPost } from '../lib/apiClient';
 
 interface FeedbackButtonProps {
   traceId: string;
@@ -12,25 +13,23 @@ export function FeedbackButton({ traceId, onFeedbackSubmitted }: FeedbackButtonP
   const [error, setError] = useState<string | null>(null);
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   const submit = async (verdict: 'thumbs_up' | 'thumbs_down') => {
     setSubmitting(verdict);
     setError(null);
     try {
-      const res = await fetch('/api/governance/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ traceId, verdict, notes: note || undefined })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Feedback failed (${res.status})`);
-      }
+      await apiPost('/api/governance/feedback', { traceId, verdict, notes: note || undefined });
       setSubmitted(verdict);
       setShowNote(false);
       setNote('');
       onFeedbackSubmitted?.(verdict);
-      setTimeout(() => setSubmitted(null), 3000);
+      setTimeout(() => { if (!_mountedRef.current) return; setSubmitted(null); }, 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Feedback submission failed');
     } finally {
