@@ -4,6 +4,7 @@ import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
 import { AgentTerminal } from '../components/studio/AgentTerminal';
 import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
   Database, RefreshCw, Shield, Terminal
@@ -163,6 +164,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
 
         {/* SCROLLABLE CONTENT */}
         <main className="flex-1 overflow-y-auto p-6">
+          <PanelErrorBoundary panel="Studio Content">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 8 }}
@@ -171,6 +173,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
           >
             {children}
           </motion.div>
+          </PanelErrorBoundary>
         </main>
 
         {/* AGENT TERMINAL — collapsible bottom console */}
