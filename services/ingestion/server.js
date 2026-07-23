@@ -1040,6 +1040,55 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
   }
 });
 
+// --- Agent Verification / Handshake Endpoint --------------------------------
+// Allows existing workers to securely prove their identity before making
+// authenticated requests. The agent signs a challenge with its private key;
+// the server verifies it against the registered public key in config/agents.json.
+app.post('/api/agents/verify', express.json(), (req, res) => {
+  try {
+    const { agentId, publicKey, challenge, signature } = req.body || {};
+
+    if (!agentId || !publicKey || !challenge || !signature) {
+      return res.status(400).json({
+        verified: false,
+        error: 'Missing required fields: agentId, publicKey, challenge, signature'
+      });
+    }
+
+    const registryKey = AGENT_REGISTRY.get(agentId);
+    if (!registryKey) {
+      return res.status(401).json({
+        verified: false,
+        error: `Agent '${agentId}' is not registered`
+      });
+    }
+
+    if (registryKey !== publicKey) {
+      return res.status(401).json({
+        verified: false,
+        error: 'Public key does not match registered key for this agent'
+      });
+    }
+
+    const isValid = verifySignature(publicKey, challenge, signature);
+    if (!isValid) {
+      return res.status(401).json({
+        verified: false,
+        error: 'Invalid signature for challenge'
+      });
+    }
+
+    return res.status(200).json({
+      verified: true,
+      agentId,
+      serverTime: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[AgentVerify] Error:', err.message);
+    return res.status(500).json({ verified: false, error: 'Verification failed' });
+  }
+});
+
 // --- Agent Context Factory router --------------------------------------------
 // Every /api/agents request is routed through agentContextMiddleware (NO
 // ORPHANED LOGIC), so req.agentContext / req.agentSkills are always populated
