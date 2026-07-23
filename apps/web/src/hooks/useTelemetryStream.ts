@@ -31,6 +31,7 @@ export function useTelemetryStream(
   const [throughput, setThroughput] = useState<ThroughputMetrics | null>(null);
   const [lastEvent, setLastEvent] = useState<{ type: string; ts: string; payload: unknown } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -134,5 +135,11 @@ export function useTelemetryStream(
     void loadThroughput();
   }, [loadThroughput]);
 
-  return { mode, throughput, lastEvent, error, refresh, reconnect: connectSSE };
+  const togglePause = useCallback(() => {
+    setPaused((p) => !p);
+  }, []);
+
+  const isActive = !paused && mode !== 'DISCONNECTED';
+
+  return { mode, throughput, lastEvent, error, paused, togglePause, isActive, refresh, reconnect: connectSSE };
 }
