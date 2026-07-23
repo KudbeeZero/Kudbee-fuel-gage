@@ -214,16 +214,10 @@ async function check16_AutoThinkTokenEmbedding() {
     })
   });
   const data = await res.json();
-  // Graceful degrade: in-memory/CI may not have 1536-dim embeddings
-  if (res.status === 500 || res.status === 503) return true;
-  if (res.status === 201 && data.success && data.embedding_dim && data.embedding_dim < 1536) return true;
   const minted = res.status === 201 && data.success === true && typeof data.tokenId === 'string' && data.embedding_dim === 1536;
-  console.error('[C16DBG] Mint:', res.status, 'embedding_dim:', data.embedding_dim, 'success:', data.success);
 
   const trajRes = await fetch(`${BASE}/api/think/trajectories?limit=5`);
   const trajData = await trajRes.json();
-  const coordLens = (trajData.trajectories || []).map((t) => Array.isArray(t.spatial_coordinates) ? t.spatial_coordinates.length : 'not-array');
-  console.error('[C16DBG] Traj count:', (trajData.trajectories || []).length, 'Coord lens:', JSON.stringify(coordLens.slice(0, 5)));
   const hasValidTrajectory = trajRes.status === 200 &&
     Array.isArray(trajData.trajectories) &&
     trajData.trajectories.some((t) => {
@@ -266,7 +260,6 @@ async function check17_GovernancePromotionEndpoint() {
     body: JSON.stringify({ status: 'VERIFIED', reviewerNotes: 'E2E governance promotion', tokenId: token.id })
   });
   const patchData = await patchRes.json();
-  if (patchRes.status === 404 || patchRes.status === 503) return true;
   if (!(patchRes.status === 200 && patchData.success === true && patchData.status === 'VERIFIED')) return false;
 
   const confirmRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);

@@ -378,16 +378,6 @@ function runInsertMemory(sql, params = []) {
     memory.user_memories.push(row);
     return { id: row.id, changes: 1 };
   }
-  if (/INTO think/.test(s)) {
-    const [agent_id, task, phase, thought, tokens_in, tokens_out, model] = params;
-    const row = {
-      id: nextId(), agent_id, task, phase, thought,
-      tokens_in: Number(tokens_in) || 0, tokens_out: Number(tokens_out) || 0,
-      model: model || 'reasoning', created_at: new Date().toISOString()
-    };
-    memory.think.push(row);
-    return { id: row.id, changes: 1 };
-  }
   if (/INTO think_tokens/.test(s)) {
     const [original_trace_id, task_context, failed_state, correction_delta, status, embedding, token_cost, kd = 0, efficacy = 0, locked_by = null] = params;
     const row = {
@@ -401,6 +391,16 @@ function runInsertMemory(sql, params = []) {
       created_at: new Date().toISOString()
     };
     memory.think_tokens.push(row);
+    return { id: row.id, changes: 1 };
+  }
+  if (/INTO think/.test(s)) {
+    const [agent_id, task, phase, thought, tokens_in, tokens_out, model] = params;
+    const row = {
+      id: nextId(), agent_id, task, phase, thought,
+      tokens_in: Number(tokens_in) || 0, tokens_out: Number(tokens_out) || 0,
+      model: model || 'reasoning', created_at: new Date().toISOString()
+    };
+    memory.think.push(row);
     return { id: row.id, changes: 1 };
   }
   if (/DELETE FROM telemetry_traces/.test(s)) {
