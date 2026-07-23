@@ -135,11 +135,12 @@ export function AlertsView() {
 
   const handleSave = () => {
     setSaving(true);
+    try { localStorage.setItem('kudbee_alert_channels', JSON.stringify(channels)); } catch {}
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    }, 800);
+    }, 300);
   };
 
   const getLevelStyles = (level: string) => {
