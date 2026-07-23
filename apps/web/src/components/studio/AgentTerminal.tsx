@@ -38,6 +38,7 @@ interface AgentTerminalProps {
   onDispatch?: () => void;
   collapsed?: boolean;
   onToggleCollapse: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
 export function AgentTerminal({
@@ -50,7 +51,8 @@ export function AgentTerminal({
   externalCommands,
   onDispatch,
   collapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  onNavigate
 }: AgentTerminalProps) {
   const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
@@ -92,7 +94,10 @@ export function AgentTerminal({
     const ctx = context;
     switch (name) {
       case 'help':
-        return ['available commands:', '  help, status, governance, hermes', '  !recall, !remember <data>, clear, echo <text>'].join('\n');
+        return ['available commands:', '  help, status, governance, hermes', '  !recall, !remember <data>, !chat, clear, echo <text>'].join('\n');
+      case 'chat':
+      case 'llama':
+        return 'Ollama Terminal Chat is available in the TERMINAL tab (sidebar ⌘+T). Use ChatBubble streaming with local models (qwen3, llama3.2, mistral, etc).';
       case 'status':
         return `system: ${ctx?.health ?? 'unknown'} · HERMES online: ${ctx?.live ? 'yes' : 'no'} · community value: ${ctx?.communityValue ?? 0} CV`;
       case 'governance':
