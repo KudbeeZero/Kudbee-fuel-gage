@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { StudioLayout, type StudioTabId } from './StudioLayout';
 import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
 const GovernancePanel = lazy(() => import('../components/studio/GovernancePanel').then((m) => ({ default: m.GovernancePanel })));
@@ -47,11 +48,11 @@ function StudioShell() {
       <StudioLayout activeTab={activeTab} onTabChange={handleTabChange}>
         <Suspense fallback={<PanelFallback />}>
           <Routes>
-            <Route path="/" element={<GovernancePanel />} />
-            <Route path="/governance" element={<GovernancePanel />} />
-            <Route path="/tokens" element={<ThinkTokensPanel />} />
-            <Route path="/telemetry" element={<TelemetryPanel />} />
-            <Route path="/firewall" element={<FirewallPanel />} />
+            <Route path="/" element={<PanelErrorBoundary panel="GovernancePanel"><GovernancePanel /></PanelErrorBoundary>} />
+            <Route path="/governance" element={<PanelErrorBoundary panel="GovernancePanel"><GovernancePanel /></PanelErrorBoundary>} />
+            <Route path="/tokens" element={<PanelErrorBoundary panel="ThinkTokensPanel"><ThinkTokensPanel /></PanelErrorBoundary>} />
+            <Route path="/telemetry" element={<PanelErrorBoundary panel="TelemetryPanel"><TelemetryPanel /></PanelErrorBoundary>} />
+            <Route path="/firewall" element={<PanelErrorBoundary panel="FirewallPanel"><FirewallPanel /></PanelErrorBoundary>} />
           </Routes>
         </Suspense>
       </StudioLayout>
