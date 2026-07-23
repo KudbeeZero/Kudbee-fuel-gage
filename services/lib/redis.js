@@ -43,7 +43,10 @@ export function getRedisClient(opts = {}) {
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? false,
-    retryStrategy: opts.retryStrategy ?? (() => null)
+    retryStrategy: opts.retryStrategy ?? (() => null),
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    keepAlive: 15_000
   };
 
   if (isUpstash) {
