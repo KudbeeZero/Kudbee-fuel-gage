@@ -96,3 +96,13 @@ export function getBatcherState(): BatcherState {
     batchPending: _queue.length > 0 && !_flushing
   };
 }
+
+export function resetBatcher(): void {
+  _queue = [];
+  if (_flushTimer) {
+    clearTimeout(_flushTimer);
+    _flushTimer = null;
+  }
+  _flushing = false;
+  notify();
+}
