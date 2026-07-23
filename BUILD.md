@@ -27,11 +27,18 @@ npm ci && npm run typecheck && node scripts/verify-e2e.mjs && cd apps/web && npm
 - **Trust proxy**: 1 hop (`app.set('trust proxy', 1)`)
 
 ### Frontend Resilience
-- **apiClient**: 15s timeout, jittered exponential backoff on 429/503
-- **Telemetry Batcher**: `telemetryBatcher.ts` queues events for 1000ms
-- **Token Bucket**: `useRateThrottle(maxReqPerMin)` client-side throttling
-- **Adaptive Polling**: `useAdaptivePolling(callback, baseMs, healthLevel)`
-- **Visibility Polling**: `useVisibilityPolling(callback, ms)` auto-pauses hidden tabs
+- **apiClient**: 15s timeout, jittered exponential backoff on 429/503, X-RateLimit-Reset header support
+- **Telemetry Batcher**: `telemetryBatcher.ts` queues events for 1000ms, flushes to batch endpoint
+- **OsStreamProvider**: Wraps `<App />` in main.tsx — OS stream initializes on app load
+- **Studio AgentTerminal**: Collapsible live console with !recall, !remember, status commands
+
+### Backend Agents (new)
+- **shutdown.js**: `registerShutdown(redis)` with 30s force-exit timeout, structured JSON logging
+- **tokenBucket.ts**: Redis-backed rate limiter — Groq (30/5rps), Gemini (100/10rps), Neon (100/20rps)
+- **agentLogger.ts**: Structured JSON logging + `broadcastAgentState()` → SSE stream
+- **jobQueue.ts**: `enqueueJob()`, `dequeueJob()`, `retryJob()` with jittered exponential backoff, dead-letter queue
+- **geminiBreaker**: Circuit breaker on `services/lib/circuitBreaker.ts` — trips after 5 failures, 30s reset
+- **Procfile**: All workers use `--max-old-space-size` (256MB workers, 512MB web), fixed duplicate worker entries
 
 ### Connection Pool (Neon Postgres)
 - `max: 20`, `idleTimeoutMillis: 10_000`, `connectionTimeoutMillis: 5_000`
@@ -44,10 +51,11 @@ npm ci && npm run typecheck && node scripts/verify-e2e.mjs && cd apps/web && npm
 
 ## Tab Architecture
 
-The Control Tower sidebar uses a dedicated-tab-per-domain architecture. 13 tabs separate concerns:
+The Control Tower sidebar uses a dedicated-tab-per-domain architecture. 14 tabs separate concerns:
 
 | # | Tab | Component File | Domain |
 |:--|:---|:---|:---|
+| 0 | STUDIO | `layouts/StudioRouter.tsx` | Hardware lab: nested /tower/* routes with 4 domain panels |
 | 1 | TELEMETRY | `pages/telemetry.tsx` | Live metrics, model matrix, circuit breaker chart |
 | 2 | THINK | `pages/think.tsx` | ThinkStorm, Stream, Storage, Trajectories plugins |
 | 3 | GOVERNANCE | `pages/governance.tsx` | HITL governance gate + policy engine |
@@ -89,3 +97,24 @@ App.tsx reduced from **4,271 → 1,059 lines (75% reduction)**:
 | ThinkTrajectoriesPlugin | THINK | pages/think.tsx |
 | GovernanceGatePlugin | GOVERNANCE | pages/governance.tsx |
 | HermesAuditorPlugin | HERMES | pages/hermes.tsx |
+
+### Studio Layout (Hardware Lab)
+
+Nested routing at `/tower/*` with 4 domain-specific panels:
+
+| Panel | File | Hooks | Route |
+|:---|:---|:---|:---|
+| GovernancePanel | `components/studio/GovernancePanel.tsx` | useGovernanceStream, useEventStream | /tower/governance |
+| ThinkTokensPanel | `components/studio/ThinkTokensPanel.tsx` | useGovernanceStream, useCommandDispatcher | /tower/tokens |
+| TelemetryPanel | `components/studio/TelemetryPanel.tsx` | useDegradationStatus, useEventStream | /tower/telemetry |
+| FirewallPanel | `components/studio/FirewallPanel.tsx` | useEventStream, useCommandDispatcher | /tower/firewall |
+
+All panels use `React.lazy()` with `Suspense` + `Loader2` spinner fallback. Tab switching triggers `useEffect` cleanup — all `setInterval` and SSE subscriptions destroyed on unmount.
+
+Recovered **AgentTerminal** (225 lines) from deleted DashboardPage — mounted as collapsible bottom console in StudioLayout with commands: `help`, `status`, `governance`, `hermes`, `!recall`, `!remember <data>`.
+
+## Latest Fixes (July 2026)
+- **OsStreamProvider** now wraps `<App />` in `main.tsx` — OS stream `/api/os-stream` initializes on app load
+- **Unused lucide-icons** removed from StudioLayout (11 icons → 7)
+- **All imports verified** — zero broken references across the codebase
+- **DashboardPage.tsx** fully replaced by 4 studio panels + deleted (2,959 lines removed)

@@ -4,9 +4,8 @@ import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
 import { AgentTerminal } from '../components/studio/AgentTerminal';
 import {
-  Activity, AlertTriangle, BadgeCheck, Brain, Clock, Cpu,
-  Database, HeartPulse, History, MemoryStick, Radio, RefreshCw,
-  ScrollText, Server, Shield, Terminal, Wifi, WifiOff, Zap
+  Activity, AlertTriangle, Brain,
+  Database, RefreshCw, Shield, Terminal
 } from 'lucide-react';
 
 interface StudioContextValue {
