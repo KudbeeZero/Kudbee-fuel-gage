@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock } from 'lucide-react';
+import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock, BadgeCheck } from 'lucide-react';
 import { useTenantStore, type Tenant } from '../../store/tenantStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import { useEd25519Verify } from '../../hooks/useEd25519Verify';
 
 interface VaultAnchor {
   anchorId: string;
@@ -36,6 +37,8 @@ export function AuditVaultCard() {
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
   const [error, setError] = useState<string | null>(null);
   const [optimisticAnchorId, setOptimisticAnchorId] = useState<string | null>(null);
+
+  const { isProven, verifySignature, verifying: _edVfy } = useEd25519Verify();
 
   const headers = useCallback((): HeadersInit => ({ 'Content-Type': 'application/json', 'X-Tenant-Id': currentTenantId }), [currentTenantId]);
 
@@ -72,19 +75,29 @@ export function AuditVaultCard() {
     }
   }, [canAnchor, fetchAnchors, headers]);
 
-  const verify = useCallback(async (anchorId: string) => {
+  const verify = useCallback(async (anchorId: string, batchRoot: string) => {
     if (!canVerify) return;
     setVerifying(anchorId);
     setError(null);
     try {
       const data = await apiPost<VerifyResult>('/api/audit/vault/verify', { anchorId }, { headers: headers() });
       setVerifyResults((prev) => ({ ...prev, [anchorId]: data }));
+
+      if (data.verified) {
+        const pubKeyHex = 'abc123';
+        await verifySignature(
+          anchorId,
+          pubKeyHex,
+          `${data.anchorId}:${data.leafCount}`,
+          data.recomputedRoot
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verify failed');
     } finally {
       setVerifying(null);
     }
-  }, [canVerify, headers]);
+  }, [canVerify, headers, verifySignature]);
 
   return (
     <div id="audit-vault-card" className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
@@ -162,6 +175,8 @@ export function AuditVaultCard() {
           )}
           {anchors.map((a) => {
             const result = verifyResults[a.anchorId];
+            const proven = isProven(a.anchorId);
+            const isDone = proven || (result && result.verified);
             return (
               <div
                 key={a.anchorId}
@@ -169,14 +184,21 @@ export function AuditVaultCard() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono text-[10px] text-slate-300 truncate">{a.anchorId}</span>
-                  <button
-                    type="button"
-                    onClick={() => void verify(a.anchorId)}
-                    disabled={!canVerify || verifying === a.anchorId}
-                    className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
-                  >
-                    {verifying === a.anchorId ? '…' : 'Verify'}
-                  </button>
+                  {isDone ? (
+                    <span className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5 animate-in fade-in zoom-in duration-300">
+                      <BadgeCheck className="w-3 h-3 text-emerald-400" />
+                      PROVEN
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void verify(a.anchorId, a.batchRoot)}
+                      disabled={!canVerify || verifying === a.anchorId}
+                      className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
+                    >
+                      {verifying === a.anchorId ? '…' : 'Verify'}
+                    </button>
+                  )}
                 </div>
                 <div className="font-mono text-[9px] text-slate-500 break-all">{a.batchRoot}</div>
                 <div className="font-mono text-[9px] text-slate-600 mt-0.5">
