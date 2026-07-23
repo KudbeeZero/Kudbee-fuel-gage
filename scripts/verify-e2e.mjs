@@ -260,7 +260,10 @@ async function check17_GovernancePromotionEndpoint() {
     body: JSON.stringify({ status: 'VERIFIED', reviewerNotes: 'E2E governance promotion', tokenId: token.id })
   });
   const patchData = await patchRes.json();
-  if (!(patchRes.status === 200 && patchData.success === true && patchData.status === 'VERIFIED')) return false;
+  if (!(patchRes.status === 200 && patchData.success === true && patchData.status === 'VERIFIED')) {
+    console.error('[C17DBG] PATCH failed. Status:', patchRes.status, 'Data:', JSON.stringify(patchData).slice(0, 300));
+    return false;
+  }
 
   const confirmRes = await fetch(`${BASE}/api/think/trajectories?limit=50`);
   const confirmData = await confirmRes.json();
