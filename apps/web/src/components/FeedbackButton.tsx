@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Check, X } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Check, X, Loader2 } from 'lucide-react';
 import { apiPost } from '../lib/apiClient';
 
 interface FeedbackButtonProps {
@@ -55,6 +55,7 @@ export function FeedbackButton({ traceId, onFeedbackSubmitted }: FeedbackButtonP
         className="p-1 rounded border border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-500 hover:text-emerald-400 transition-all disabled:opacity-40"
       >
         <ThumbsUp className="w-3 h-3" />
+        {submitting === 'thumbs_up' && <Loader2 className="w-3 h-3 animate-spin" />}
       </button>
       <button
         type="button"
@@ -64,6 +65,7 @@ export function FeedbackButton({ traceId, onFeedbackSubmitted }: FeedbackButtonP
         className="p-1 rounded border border-slate-700 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-all disabled:opacity-40"
       >
         <ThumbsDown className="w-3 h-3" />
+        {submitting === 'thumbs_down' && <Loader2 className="w-3 h-3 animate-spin" />}
       </button>
       {showNote && (
         <span className="inline-flex items-center gap-1 ml-1">

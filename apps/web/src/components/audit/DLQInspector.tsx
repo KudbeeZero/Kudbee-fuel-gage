@@ -136,10 +136,10 @@ export function DLQInspector() {
       ) : (
         <div className="space-y-2 max-h-72 overflow-y-auto">
           {state.items.map((item) => (
-            <div
-              key={item.id}
-              className="p-2 rounded border border-slate-800 bg-slate-950/50"
-            >
+              <div
+                key={item.id}
+                className={`p-2 rounded border border-slate-800 bg-slate-950/50 transition-opacity ${busyId === item.id ? 'opacity-60' : ''}`}
+              >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-[10px] text-slate-200 truncate">{item.id}</span>
                 <span className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-rose-300">
@@ -169,6 +169,7 @@ export function DLQInspector() {
                   title={canDiscard ? 'Permanently discard' : 'ADMIN role required'}
                 >
                   <Trash2 className="w-3 h-3" />
+                  {busyId === item.id && <Loader2 className="w-3 h-3 animate-spin" />}
                   Discard
                 </button>
               </div>

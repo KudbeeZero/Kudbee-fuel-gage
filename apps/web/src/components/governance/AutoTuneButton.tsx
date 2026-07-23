@@ -92,6 +92,14 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
         </div>
       )}
 
+      {analyzing && !analysis && (
+        <div className="p-2 rounded border border-slate-800 bg-slate-950/50">
+          <span className="text-[10px] font-mono text-slate-500 animate-pulse">
+            Analyzing governance patterns...
+          </span>
+        </div>
+      )}
+
       {analysis && recommendations && (
         <div className="space-y-2 text-[10px] font-mono">
           <div className="p-2 rounded border border-slate-800 bg-slate-950/50">
