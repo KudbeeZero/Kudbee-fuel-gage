@@ -26,6 +26,7 @@
 
 import { getDbPool, isDbHealthy, runInsert } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
+import { trackSpend } from '../lib/budgetGate.ts';
 
 const LEDGER_TABLE = 'reasoning_ledger';
 const REDIS_QUEUE_KEY = 'ledger:queue';
@@ -227,6 +228,7 @@ export async function recordReasoning(input, output, resultStatus, provider = 'u
     if (res.ok) {
       // Opportunistically drain anything queued during the outage.
       drainQueue();
+      try { await trackSpend(0.0001); } catch { /* non-blocking */ }
       return { stored: 'neon', id: res.id };
     }
     // Neon write failed → fall through to queue.
@@ -234,6 +236,12 @@ export async function recordReasoning(input, output, resultStatus, provider = 'u
 
   // FALLBACK: queue for later sync (retry-on-reconnect).
   const queued = await queueToRedis(entry);
+
+  // Track governance overhead cost (~$0.0001 per reasoning event)
+  try {
+    await trackSpend(0.0001);
+  } catch { /* non-blocking */ }
+
   return { stored: queued.queued === 'local' ? 'local' : 'redis', queued: queued.queued };
 }
 
