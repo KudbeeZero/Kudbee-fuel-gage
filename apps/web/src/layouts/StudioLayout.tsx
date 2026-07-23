@@ -4,7 +4,6 @@ import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
 import { AgentTerminal } from '../components/studio/AgentTerminal';
 import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
-import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
   Database, RefreshCw, Shield, Terminal
