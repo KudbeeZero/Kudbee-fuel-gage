@@ -380,3 +380,8 @@ export const AgentPayloadSchema = z.object({
   model: z.string().optional()
 });
 export type AgentPayload = z.infer<typeof AgentPayloadSchema>;
+
+export interface FirewallConfig {
+  blockPromptInjection: boolean;
+  rateLimitByIp: boolean;
+}

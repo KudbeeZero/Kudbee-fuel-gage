@@ -3,10 +3,25 @@ import { motion } from 'motion/react';
 import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
 import { AgentTerminal } from '../components/studio/AgentTerminal';
+import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
   Database, RefreshCw, Shield, Terminal
 } from 'lucide-react';
+
+interface StudioContextValue {
+  eventStream: ReturnType<typeof useEventStream>;
+  osSnapshot: ReturnType<typeof useOsSnapshot>['snapshot'];
+  osConnected: boolean;
+  terminalCommands: string[];
+  pushTerminalEvent: (text: string) => void;
+  refreshAll: () => void;
+}
+
+export function createStudioContext(): StudioContextValue | null {
+  return null;
+}
 
 const STUDIO_TABS = [
   { id: 'governance', label: 'GOVERNANCE', icon: Shield, description: 'HITL approval gates & policy engine' },
@@ -38,6 +53,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
   };
 
   return (
+    <WorkspaceRecoveryBoundary panel="Studio Layout">
     <div className="flex h-full min-h-dvh bg-slate-950 text-slate-200">
       {/* VERTICAL SIDEBAR */}
       <nav className="w-56 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col">
@@ -148,6 +164,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
 
         {/* SCROLLABLE CONTENT */}
         <main className="flex-1 overflow-y-auto p-6">
+          <PanelErrorBoundary panel="Studio Content">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 8 }}
@@ -156,11 +173,13 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
           >
             {children}
           </motion.div>
+          </PanelErrorBoundary>
         </main>
 
         {/* AGENT TERMINAL — collapsible bottom console */}
         <AgentTerminal collapsed={terminalCollapsed} onToggleCollapse={() => setTerminalCollapsed((v) => !v)} />
       </div>
     </div>
+    </WorkspaceRecoveryBoundary>
   );
 }

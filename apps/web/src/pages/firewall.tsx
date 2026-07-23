@@ -17,7 +17,9 @@ import {
   KeyRound,
   EyeOff,
   FileWarning,
-  Download
+  Download,
+  Bug,
+  Zap
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
 import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
@@ -84,6 +86,8 @@ export function FirewallPage() {
   const [error, setError] = useState<string | null>(null);
   const [deepHealthError, setDeepHealthError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [chaosOn, setChaosOn] = useState(false);
+  const [chaosBusy, setChaosBusy] = useState(false);
 
   const auditExport = useAuditExport();
 
@@ -123,6 +127,19 @@ export function FirewallPage() {
     const timer = setInterval(loadDeepHealth, TRIAGE_POLL_MS);
     return () => clearInterval(timer);
   }, [loadDeepHealth]);
+
+  const toggleChaos = useCallback(async () => {
+    setChaosBusy(true);
+    const next = !chaosOn;
+    setChaosOn(next);
+    try {
+      await apiPost('/api/system/chaos', { chaosMode: next });
+    } catch {
+      setChaosOn(!next);
+    } finally {
+      setChaosBusy(false);
+    }
+  }, [chaosOn]);
 
   useEffect(() => {
     if (violations.length > 0 || deepHealth) {
@@ -319,6 +336,7 @@ export function FirewallPage() {
         <div className="space-y-6">
           <PolicyEnginePanel />
           <DLQInspector />
+          <ChaosMonkeyCard chaosOn={chaosOn} chaosBusy={chaosBusy} onToggle={toggleChaos} />
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
             <div className="flex items-center gap-2 mb-4">
@@ -436,5 +454,56 @@ export function FirewallPage() {
       </div>
     </div>
     </PanelErrorBoundary>
+  );
+}
+
+function ChaosMonkeyCard({ chaosOn, chaosBusy, onToggle }: { chaosOn: boolean; chaosBusy: boolean; onToggle: () => void }) {
+  return (
+    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
+      <div className="flex items-center gap-2 mb-3">
+        <Bug className={`w-4 h-4 ${chaosOn ? 'text-rose-400' : 'text-slate-500'}`} />
+        <h3 className="font-display text-sm font-semibold text-slate-200">Chaos Monkey</h3>
+      </div>
+      <p className="text-[10px] font-mono text-slate-500 mb-4">
+        Simulate provider outages to prove resilience. When active, Groq and Gemini circuit breakers trip OPEN.
+      </p>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/40">
+        <div className="flex-1 min-w-0">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-300">Simulate Provider Outage</span>
+          <p className="text-[9px] font-mono text-slate-500 mt-0.5">
+            {chaosOn ? 'Breakers forced OPEN — LLMs will fail gracefully' : 'Normal operation — breakers follow real health signals'}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={chaosOn}
+          disabled={chaosBusy}
+          onClick={onToggle}
+          className={`relative ml-3 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+            chaosOn ? 'bg-rose-500/40 border border-rose-500/60' : 'bg-slate-700 border border-slate-600'
+          }`}
+        >
+          <span className={`inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            chaosOn ? 'translate-x-4' : 'translate-x-1'
+          }`}>
+            {chaosBusy && <span className="h-2 w-2 rounded-full animate-ping bg-rose-400" />}
+          </span>
+        </button>
+      </div>
+
+      {chaosOn && (
+        <div className="mt-3 p-2 rounded border border-rose-500/20 bg-rose-500/5">
+          <div className="flex items-center gap-1.5 font-mono text-[9px]">
+            <Zap className="w-3 h-3 text-rose-400" />
+            <span className="text-rose-400 font-bold uppercase">GROQ: OPEN</span>
+            <span className="text-slate-600">|</span>
+            <span className="text-rose-400 font-bold uppercase">GEMINI: OPEN</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

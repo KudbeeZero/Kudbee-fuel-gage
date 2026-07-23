@@ -1,7 +1,8 @@
-import { lazy, Suspense, useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { StudioLayout, type StudioTabId } from './StudioLayout';
 import { Loader2 } from 'lucide-react';
+import { DeepLinkContext } from '../contexts/DeepLinkContext';
 
 const GovernancePanel = lazy(() => import('../components/studio/GovernancePanel').then((m) => ({ default: m.GovernancePanel })));
 const ThinkTokensPanel = lazy(() => import('../components/studio/ThinkTokensPanel').then((m) => ({ default: m.ThinkTokensPanel })));
@@ -34,14 +35,25 @@ function PanelFallback() {
 function StudioShell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const currentPath = location.pathname;
   const activeTab: StudioTabId = PATH_TO_TAB_ID[currentPath] ?? 'telemetry';
 
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && TAB_ID_TO_PATH[tabParam as StudioTabId] && PATH_TO_TAB_ID[currentPath] !== tabParam) {
+      navigate(TAB_ID_TO_PATH[tabParam as StudioTabId] + location.search, { replace: true });
+    }
+  }, [searchParams, currentPath, navigate, location.search]);
+
   const handleTabChange = (tab: StudioTabId) => {
-    navigate(TAB_ID_TO_PATH[tab]);
+    navigate(TAB_ID_TO_PATH[tab] + location.search);
   };
 
+  const deepLinkLogId = searchParams.get('logId') ?? undefined;
+
   return (
+    <DeepLinkContext.Provider value={{ logId: deepLinkLogId, tab: activeTab }}>
     <StudioLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <Suspense fallback={<PanelFallback />}>
         <Routes>
@@ -53,6 +65,7 @@ function StudioShell() {
         </Routes>
       </Suspense>
     </StudioLayout>
+    </DeepLinkContext.Provider>
   );
 }
 

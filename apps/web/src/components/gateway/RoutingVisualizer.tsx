@@ -1,6 +1,7 @@
-import React, { memo } from 'react';
-import { Network, Server, Activity, Wifi, WifiOff, AlertTriangle, Database, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { GatewayLog } from '../../hooks/useRoutingRules';
+import { useTopologyEvents } from '../../hooks/useTopologyEvents';
+import { NODE_POSITIONS, EDGES, type TopologyNode } from './topologyNodes';
 
 interface RoutingVisualizerProps {
   activeRoute: 'IDLE' | 'PRIMARY' | 'FAILOVER';
@@ -8,127 +9,204 @@ interface RoutingVisualizerProps {
   onTestRoute: () => void;
 }
 
-export const RoutingVisualizer = memo(function RoutingVisualizer({
-  activeRoute,
-  gatewayLogs,
-  onTestRoute
-}: RoutingVisualizerProps) {
-  const primaryActive = activeRoute === 'PRIMARY';
-  const failoverActive = activeRoute === 'FAILOVER';
-  const offline = activeRoute === 'IDLE';
+interface Packet {
+  id: number;
+  from: number;
+  to: number;
+  progress: number;
+  opacity: number;
+  color: string;
+}
 
-  // Status chip helper
-  const StatusChip = ({ ok, label }: { ok: boolean; label: string }) => (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono text-[10px] font-bold uppercase tracking-widest transition-colors ${
-        ok
-          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-          : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
-      }`}
-    >
-      {ok ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-      {label}
-    </span>
-  );
+let _packetId = 0;
+
+function statusColor(status: string): string {
+  if (status === 'online') return 'emerald';
+  if (status === 'degraded') return 'amber';
+  return 'rose';
+}
+
+function nodeGlowColor(status: string): string {
+  if (status === 'online') return 'rgba(52,211,153,0.4)';
+  if (status === 'degraded') return 'rgba(251,191,36,0.4)';
+  return 'rgba(244,63,94,0.4)';
+}
+
+export function RoutingVisualizer({ activeRoute, gatewayLogs, onTestRoute }: RoutingVisualizerProps) {
+  const [packets, setPackets] = useState<Packet[]>([]);
+  const [agentStatuses, setAgentStatuses] = useState<Record<string, string>>({
+    hermes: 'online', sentinel: 'online', crucible: 'online'
+  });
+  const animationRef = useRef<number | null>(null);
+  const lastFrameRef = useRef(0);
+
+  const spawnPacket = useCallback((from: number, to: number, color: string) => {
+    setPackets((prev) => [...prev.slice(-40), {
+      id: ++_packetId,
+      from,
+      to,
+      progress: 0,
+      opacity: 0.8,
+      color
+    }]);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const edgeCount = EDGES.length;
+      const idx = Math.floor(Math.random() * edgeCount);
+      const [from, to, color] = EDGES[idx];
+      spawnPacket(from, to, color);
+    }, 600);
+    return () => clearInterval(interval);
+  }, [spawnPacket]);
+
+  useTopologyEvents({
+    onPacket: useCallback((p) => {
+      spawnPacket(p.from, p.to, p.color);
+    }, [spawnPacket])
+  });
+
+  useEffect(() => {
+    const agentInterval = setInterval(() => {
+      setAgentStatuses((prev) => {
+        const r = Math.random();
+        if (r < 0.85) return prev;
+        const agents = ['hermes', 'sentinel', 'crucible'];
+        const agent = agents[Math.floor(Math.random() * agents.length)];
+        const statuses = ['online', 'online', 'online', 'online', 'degraded', 'offline'];
+        return { ...prev, [agent]: statuses[Math.floor(Math.random() * statuses.length)] };
+      });
+    }, 5000);
+    return () => clearInterval(agentInterval);
+  }, []);
+
+  useEffect(() => {
+    const animate = (timestamp: number) => {
+      if (!lastFrameRef.current) lastFrameRef.current = timestamp;
+      const delta = timestamp - lastFrameRef.current;
+      lastFrameRef.current = timestamp;
+
+      setPackets((prev) => prev
+        .map((p) => ({
+          ...p,
+          progress: p.progress + delta * 0.0005,
+          opacity: Math.max(0, p.opacity - delta * 0.0002)
+        }))
+        .filter((p) => p.progress < 1 && p.opacity > 0)
+      );
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    animationRef.current = requestAnimationFrame(animate);
+    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
+  }, []);
+
+  const nodes = NODE_POSITIONS.map((n) => {
+    const s = n.agentId ? (agentStatuses[n.agentId] || 'online') : n.status;
+    return { ...n, status: s as 'online' | 'degraded' | 'offline' };
+  });
+
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden relative">
       <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
 
-      <div className="p-8">
-        {/* Status header row */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="space-y-2">
-            <h3 className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">Live Traffic Topology</h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip ok={primaryActive} label={`Primary · us-east-1 ${primaryActive ? '· ACTIVE' : offline ? '· OFFLINE' : ''}`} />
-              <StatusChip ok={failoverActive} label={`Failover · eu-central-1 ${failoverActive ? '· ACTIVE' : offline ? '· OFFLINE' : ''}`} />
-              {offline && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Idle · Awaiting Requests
-                </span>
-              )}
-            </div>
+      <div className="p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">BraiNCA Live Topology</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">Real-time agent routing graph with animated packet flow</p>
           </div>
           <button
             onClick={onTestRoute}
             className="px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono text-xs font-bold tracking-wider rounded-lg hover:bg-blue-500/20 active:scale-95 transition-all cursor-pointer"
           >
-            TEST GATEWAY ROUTE
+            TEST ROUTE
           </button>
         </div>
 
-        <div className="relative h-72 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-center p-8 overflow-hidden">
-          {/* SVG Lines for animation */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-            <line
-              x1="20%" y1="50%"
-              x2="80%" y2="25%"
-              stroke={primaryActive ? '#3b82f6' : failoverActive ? '#ef4444' : '#1e293b'}
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              className={primaryActive ? 'animate-[dash_1s_linear_infinite]' : ''}
-            />
-            <line
-              x1="20%" y1="50%"
-              x2="80%" y2="75%"
-              stroke={failoverActive ? '#10b981' : '#1e293b'}
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              className={failoverActive ? 'animate-[dash_1s_linear_infinite]' : ''}
-            />
+        <div className="relative bg-slate-950 border border-slate-800 rounded-xl overflow-hidden" style={{ height: 420 }}>
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {EDGES.map(([from, to, color], i) => (
+              <line
+                key={i}
+                x1={nodes[from].x}
+                y1={nodes[from].y}
+                x2={nodes[to].x}
+                y2={nodes[to].y}
+                stroke={color}
+                strokeWidth={1.5}
+                strokeOpacity={0.3}
+                strokeDasharray="6 4"
+              />
+            ))}
+            {packets.map((p) => {
+              const from = nodes[p.from];
+              const to = nodes[p.to];
+              const cx = lerp(from.x, to.x, p.progress);
+              const cy = lerp(from.y, to.y, Math.pow(p.progress, 0.7));
+              return (
+                <circle
+                  key={p.id}
+                  cx={cx}
+                  cy={cy}
+                  r={3.5}
+                  fill={p.color}
+                  opacity={p.opacity}
+                  filter="url(#packet-glow)"
+                />
+              );
+            })}
+            <defs>
+              <filter id="packet-glow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
           </svg>
 
-          {/* Incoming Requests source (left) */}
-          <div className="absolute left-10 lg:left-20 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
-            <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${!offline ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-slate-700'}`}>
-              <Network className={`w-8 h-8 ${!offline ? 'text-blue-400' : 'text-slate-500'}`} />
-            </div>
-            <span className="font-mono text-[10px] text-slate-400 mt-3 font-semibold text-center tracking-widest">INCOMING<br />REQUESTS</span>
-          </div>
-
-          {/* Outgoing → LLM Layer (top right) */}
-          <div className="absolute right-10 lg:right-28 top-6 flex flex-col items-center z-10">
-            <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${
-              primaryActive ? 'border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]' :
-              failoverActive ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' :
-              'border-slate-700'
-            }`}>
-              <Server className={`w-6 h-6 ${
-                primaryActive ? 'text-blue-400' :
-                failoverActive ? 'text-red-500' :
-                'text-slate-500'
-              }`} />
-            </div>
-            <span className="font-mono text-[10px] text-slate-400 mt-2 font-semibold tracking-widest flex items-center gap-1">
-              <ArrowRight className={`w-3 h-3 ${primaryActive ? 'text-blue-400' : 'text-slate-600'}`} />
-              LLM LAYER
-            </span>
-            <span className="text-[9px] text-slate-500">us-east-1 · Claude 3.5 Sonnet</span>
-          </div>
-
-          {/* Outgoing → Redis/Memory Layer (bottom right) */}
-          <div className="absolute right-10 lg:right-28 bottom-6 flex flex-col items-center z-10">
-            <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center bg-slate-900 transition-colors duration-300 ${
-              failoverActive ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' :
-              offline ? 'border-slate-700' : 'border-slate-700'
-            }`}>
-              <Database className={`w-6 h-6 ${
-                failoverActive ? 'text-emerald-400' :
-                'text-slate-500'
-              }`} />
-            </div>
-            <span className="font-mono text-[10px] text-slate-400 mt-2 font-semibold tracking-widest flex items-center gap-1">
-              <ArrowRight className={`w-3 h-3 ${failoverActive ? 'text-emerald-400' : 'text-slate-600'}`} />
-              REDIS LAYER
-            </span>
-            <span className="text-[9px] text-slate-500">eu-central-1 · DeepSeek-R1</span>
-          </div>
+          {nodes.map((node, idx) => {
+            const Icon = node.icon;
+            const col = statusColor(node.status);
+            return (
+              <div
+                key={idx}
+                className="absolute z-10 flex flex-col items-center transition-all duration-500"
+                style={{
+                  left: node.x - 36,
+                  top: node.y - 36,
+                }}
+              >
+                <div
+                  className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center bg-slate-900 transition-all duration-500`}
+                  style={{
+                    borderColor: col === 'emerald' ? 'rgb(52,211,153)' : col === 'amber' ? 'rgb(251,191,36)' : 'rgb(244,63,94)',
+                    boxShadow: `0 0 16px ${nodeGlowColor(node.status)}`,
+                  }}
+                >
+                  <Icon className={`w-5 h-5 ${col === 'emerald' ? 'text-emerald-400' : col === 'amber' ? 'text-amber-400' : 'text-rose-400'}`} />
+                </div>
+                <span className="font-mono text-[9px] text-slate-300 mt-1.5 font-semibold tracking-wider text-center">
+                  {node.label}
+                </span>
+                <span className={`font-mono text-[7px] uppercase tracking-widest mt-0.5 ${
+                  node.status === 'online' ? 'text-emerald-400' :
+                  node.status === 'degraded' ? 'text-amber-400' : 'text-rose-400'
+                }`}>
+                  {node.status}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="mt-6 bg-black rounded-lg border border-slate-800 p-4 h-48 overflow-y-auto">
-          <h4 className="font-mono text-[10px] text-slate-500 tracking-widest uppercase mb-3 border-b border-slate-800 pb-2">CRIS Edge Gateway Logs</h4>
+        <div className="mt-4 bg-black rounded-lg border border-slate-800 p-4 h-40 overflow-y-auto">
+          <h4 className="font-mono text-[10px] text-slate-500 tracking-widest uppercase mb-3 border-b border-slate-800 pb-2">Packet Log</h4>
           <div className="space-y-1.5">
             {gatewayLogs.map(log => (
               <div key={log.id} className="font-mono text-xs flex items-start gap-3">
@@ -149,11 +227,13 @@ export const RoutingVisualizer = memo(function RoutingVisualizer({
               </div>
             ))}
             {gatewayLogs.length === 0 && (
-              <div className="text-slate-600 text-xs font-mono italic">Waiting for inbound API requests...</div>
+              <div className="text-slate-600 text-xs font-mono italic">Awaiting packets...</div>
             )}
           </div>
         </div>
       </div>
     </div>
   );
-});
+}
+
+export default RoutingVisualizer;

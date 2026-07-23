@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Cpu, Clock, Zap, Brain, Activity, CheckSquare, Square } from 'lucide-react';
+import { CheckCircle2, XCircle, Cpu, Clock, Zap, Brain, Activity, CheckSquare, Square, Edit3, Save } from 'lucide-react';
 import type { ThinkTrajectory } from '@kudbee/types';
 import { PanelErrorBoundary } from '../PanelErrorBoundary';
 
 interface GovernanceQueueTrayProps {
   pending: ThinkTrajectory[];
-  onPromote: (hash: string, status: 'VERIFIED' | 'RECYCLED', reviewerNotes?: string, tokenId?: string) => Promise<boolean>;
+  onPromote: (hash: string, status: 'VERIFIED' | 'RECYCLED', reviewerNotes?: string, tokenId?: string, modifiedPayload?: string) => Promise<boolean>;
 }
 
 function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayProps) {
@@ -14,11 +14,13 @@ function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayPro
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  const [deepEditTokens, setDeepEditTokens] = useState<Record<string, string>>({});
+  const [editErrors, setEditErrors] = useState<Record<string, string | null>>({});
 
   const handlePromote = async (hash: string, tokenId: string, status: 'VERIFIED' | 'RECYCLED') => {
     setBusyHash(hash);
     try {
-      await onPromote(hash, status, reviewerNotes[hash] || '', tokenId);
+      await onPromote(hash, status, reviewerNotes[hash] || '', tokenId, deepEditTokens[hash] || undefined);
       setReviewerNotes((prev) => {
         const next = { ...prev };
         delete next[hash];
@@ -27,6 +29,16 @@ function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayPro
       setSelected((prev) => {
         const next = new Set(prev);
         next.delete(hash);
+        return next;
+      });
+      setDeepEditTokens((prev) => {
+        const next = { ...prev };
+        delete next[hash];
+        return next;
+      });
+      setEditErrors((prev) => {
+        const next = { ...prev };
+        delete next[hash];
         return next;
       });
     } finally {
@@ -235,6 +247,26 @@ function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayPro
                       <button
                         type="button"
                         disabled={isBusy}
+                        onClick={() => {
+                          if (deepEditTokens[token.token_hash]) {
+                            setDeepEditTokens((prev) => { const n = { ...prev }; delete n[token.token_hash]; return n; });
+                          } else {
+                            setDeepEditTokens((prev) => ({ ...prev, [token.token_hash]: JSON.stringify(token, null, 2) }));
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${
+                          deepEditTokens[token.token_hash]
+                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                            : 'border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20'
+                        }`}
+                        title="Edit the raw agent payload before approving"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        {deepEditTokens[token.token_hash] ? 'Close' : 'Edit'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
                         onClick={() => void handlePromote(token.token_hash, token.id, 'VERIFIED')}
                         className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-300 transition-all hover:bg-emerald-500/20 active:scale-95 disabled:opacity-50"
                       >
@@ -251,6 +283,40 @@ function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayPro
                         {isBusy ? 'Recycling…' : 'Discard'}
                       </button>
                     </div>
+
+                    {deepEditTokens[token.token_hash] && (
+                      <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400">Deep Edit Mode</span>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              try {
+                                JSON.parse(deepEditTokens[token.token_hash]);
+                                setEditErrors((prev) => ({ ...prev, [token.token_hash]: null }));
+                                void handlePromote(token.token_hash, token.id, 'VERIFIED');
+                              } catch {
+                                setEditErrors((prev) => ({ ...prev, [token.token_hash]: 'Invalid JSON' }));
+                              }
+                            }}
+                            className="flex items-center gap-1.5 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+                          >
+                            <Save className="h-3 w-3" />
+                            Submit Modified
+                          </button>
+                        </div>
+                        <textarea
+                          value={deepEditTokens[token.token_hash]}
+                          onChange={(e) => setDeepEditTokens((prev) => ({ ...prev, [token.token_hash]: e.target.value }))}
+                          className="w-full h-48 rounded border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-[10px] text-slate-200 focus:border-amber-500/40 focus:outline-none resize-y"
+                          spellCheck={false}
+                        />
+                        {editErrors[token.token_hash] && (
+                          <p className="mt-1 font-mono text-[9px] text-rose-400">{editErrors[token.token_hash]}</p>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

@@ -28,6 +28,7 @@ import { StreamModeBadge } from '../components/StreamModeBadge';
 import { FeedbackButton } from '../components/FeedbackButton';
 import { AuditVaultCard } from '../components/audit/AuditVaultCard';
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
+import { useDeepLink } from '../contexts/DeepLinkContext';
 
 interface SessionHistoryItem {
   pr_number: number;
@@ -56,6 +57,7 @@ export function HistoryPage() {
 
   const search = useTelemetrySearch();
   const auditExport = useAuditExport();
+  const { logId: deepLinkLogId } = useDeepLink();
 
   useEffect(() => {
     _mountedRef.current = true;
@@ -88,6 +90,14 @@ export function HistoryPage() {
       clearInterval(id);
     };
   }, []);
+
+  // Deep-link: auto-expand a specific log by ID when data loads
+  useEffect(() => {
+    if (deepLinkLogId && logs.length > 0 && logs.some((l) => String(l.id) === deepLinkLogId)) {
+      const target = logs.find((l) => String(l.id) === deepLinkLogId);
+      if (target) setExpandedLog(target.id);
+    }
+  }, [deepLinkLogId, logs]);
 
   const formatCost = (cost: unknown): string => {
     if (cost === undefined || cost === null) return '—';

@@ -76,3 +76,90 @@ export async function getDeadQueueLength(queue: string): Promise<number> {
     return 0;
   }
 }
+
+const DLQ_TTL_DAYS = 7;
+const DLQ_TTL_MS = DLQ_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+export async function pruneDeadLetterQueue(queue: string): Promise<{ removed: number; kept: number }> {
+  const deadKey = JOB_PREFIX + queue + ':dead';
+  let removed = 0;
+  let kept = 0;
+
+  try {
+    const redis = getRedisClient({ label: 'job-queue' });
+    const length = await redis.llen(deadKey);
+    if (length === 0) return { removed: 0, kept: 0 };
+
+    const all = await redis.lrange(deadKey, 0, -1);
+    const cutoff = Date.now() - DLQ_TTL_MS;
+    const survivors: string[] = [];
+
+    for (const raw of all) {
+      try {
+        const job = JSON.parse(raw) as Job;
+        if (new Date(job.createdAt).getTime() < cutoff) {
+          removed++;
+        } else {
+          survivors.push(raw);
+          kept++;
+        }
+      } catch {
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      await redis.del(deadKey);
+      for (const survivor of survivors) {
+        await redis.lpush(deadKey, survivor);
+      }
+    }
+
+    if (removed > 0 || kept > 0) {
+      agentLog('job-queue', 'pruned', 'INFO', { queue, removed, kept }, `DLQ pruned: ${removed} removed, ${kept} kept`);
+    }
+  } catch {
+    agentLog('job-queue', 'prune-failed', 'ERROR', { queue }, 'DLQ prune failed');
+  }
+
+  return { removed, kept };
+}
+
+export async function pruneStaleJobs(queue: string): Promise<{ removed: number }> {
+  let removed = 0;
+  const queueKey = JOB_PREFIX + queue;
+
+  try {
+    const redis = getRedisClient({ label: 'job-queue' });
+    const length = await redis.llen(queueKey);
+    if (length === 0) return { removed: 0 };
+
+    const all = await redis.lrange(queueKey, 0, -1);
+    const cutoff = Date.now() - DLQ_TTL_MS;
+    const survivors: string[] = [];
+
+    for (const raw of all) {
+      try {
+        const job = JSON.parse(raw) as Job;
+        if (new Date(job.createdAt).getTime() < cutoff) {
+          removed++;
+        } else {
+          survivors.push(raw);
+        }
+      } catch {
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      await redis.del(queueKey);
+      for (const survivor of survivors) {
+        await redis.lpush(queueKey, survivor);
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
+
+  return { removed };
+}

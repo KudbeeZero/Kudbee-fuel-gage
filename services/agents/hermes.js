@@ -21,7 +21,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from '../lib/redis.js';
+import { getSlowRedisClient } from '../lib/redis.js';
 import { matchLogic, proposeAction, listProposed } from '../governance/router.js';
 import { runInsert } from '../lib/db.js';
 
@@ -50,7 +50,7 @@ function format(level, parts) {
 
 async function mirrorToStream(line) {
   try {
-    const redis = getRedisClient({ label: 'hermes' });
+    const redis = getSlowRedisClient({ label: 'hermes' });
     const ts = new Date().toISOString();
     await redis.lpush(LOG_STREAM_KEY, JSON.stringify({ ts, line }));
     await redis.ltrim(LOG_STREAM_KEY, 0, LOG_STREAM_MAX);
@@ -89,7 +89,7 @@ export const log = Object.freeze({
  * key as Offline. The worker also pushes this on a fixed interval.
  */
 export async function publishHeartbeat() {
-  const redis = getRedisClient({ label: 'hermes' });
+  const redis = getSlowRedisClient({ label: 'hermes' });
   const payload = {
     agent: 'HERMES',
     status: 'Online',
@@ -117,7 +117,7 @@ export async function publishHeartbeat() {
 }
 
 export async function reportOffline() {
-  const redis = getRedisClient({ label: 'hermes' });
+  const redis = getSlowRedisClient({ label: 'hermes' });
   try {
     await redis.set(
       HEARTBEAT_KEY,
@@ -215,7 +215,7 @@ async function auditUnoptimizedLogic() {
  * a human can approve them into the Proven index via the dashboard.
  */
 export async function runAudit() {
-  const redis = getRedisClient({ label: 'hermes' });
+  const redis = getSlowRedisClient({ label: 'hermes' });
   log.audit('audit pass started');
 
   const memoryFindings = await auditMemoryLayer(redis);
@@ -294,7 +294,7 @@ export async function runAudit() {
 // Publish an audit finding to the real-time event bus (best-effort).
 async function publishAuditEvent(type, data) {
   try {
-    const redis = getRedisClient({ label: 'hermes' });
+    const redis = getSlowRedisClient({ label: 'hermes' });
     await redis.publish('kudbee:events', JSON.stringify({ type, data, ts: new Date().toISOString() }));
   } catch {
     /* ignore */
@@ -324,7 +324,7 @@ export async function archive_thought(thought_block) {
 
   // Best-effort live mirror to the dashboard thought-stream (Resilient-First).
   try {
-    const redis = getRedisClient({ label: 'hermes' });
+    const redis = getSlowRedisClient({ label: 'hermes' });
     await redis.lpush(
       THINK_STREAM_KEY,
       JSON.stringify({ ts: block.created_at, agent: block.agent_id, thought: block.thought, task: block.task })

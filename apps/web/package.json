@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@kudbee/types": "*",
+    "@noble/ed25519": "^3.1.0",
     "d3": "^7.9.0",
     "dotenv": "^17.2.3",
     "http-proxy-middleware": "^4.2.0",

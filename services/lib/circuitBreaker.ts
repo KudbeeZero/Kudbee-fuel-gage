@@ -114,9 +114,10 @@ export class CircuitBreaker {
    */
   async allowRequest(): Promise<boolean> {
     const state = await this.getState();
-    if (state === 'CLOSED') return true;
     if (state === 'OPEN') return false;
+    if (state === 'CLOSED') return true;
 
+    // HALF_OPEN: permit exactly halfOpenMax probes
     try {
       const redis = getRedisClient({ label: 'circuit-breaker' });
       const permits = await redis.decr(CB_PREFIX + this.name + ':half_open_permits');
@@ -125,6 +126,23 @@ export class CircuitBreaker {
     } catch {
       return false;
     }
+  }
+
+  async forceOpen(): Promise<void> {
+    try {
+      const redis = getRedisClient({ label: 'circuit-breaker' });
+      await redis.set(CB_PREFIX + this.name + ':state', 'OPEN');
+      await redis.set(CB_PREFIX + this.name + ':failures', String(this.failureThreshold + 1));
+    } catch { /* best-effort */ }
+  }
+
+  async forceReset(): Promise<void> {
+    try {
+      const redis = getRedisClient({ label: 'circuit-breaker' });
+      await redis.set(CB_PREFIX + this.name + ':state', 'CLOSED');
+      await redis.set(CB_PREFIX + this.name + ':failures', '0');
+      await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
+    } catch { /* best-effort */ }
   }
 }
 

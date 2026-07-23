@@ -6,7 +6,7 @@
  * latest trajectory blocks for the spatial visualizer in the DAW motherboard.
  * Resilient-First: failures clear to an empty list instead of throwing.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiGet } from '../lib/apiClient';
 import type { ThinkTrajectory, ThinkTrajectoryResponse } from '@kudbee/types';
 
@@ -23,16 +23,24 @@ export function useThinkTrajectories(limit = 25, pollMs = 4000): ThinkTrajectory
   const [trajectories, setTrajectories] = useState<ThinkTrajectory[]>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const _abortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
+    if (_abortRef.current) {
+      _abortRef.current.abort();
+    }
+    _abortRef.current = new AbortController();
+
     try {
       const data = await apiGet<ThinkTrajectoryResponse>(
-        `/api/think/trajectories?limit=${Number(limit) || 25}`
+        `/api/think/trajectories?limit=${Number(limit) || 25}`,
+        { signal: _abortRef.current.signal }
       );
       const list = Array.isArray(data?.trajectories) ? data.trajectories : EMPTY;
       setTrajectories(list);
       setError(null);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Failed to load think trajectories');
       setTrajectories(EMPTY);
     } finally {
@@ -43,7 +51,13 @@ export function useThinkTrajectories(limit = 25, pollMs = 4000): ThinkTrajectory
   useEffect(() => {
     void refresh();
     const id = setInterval(() => void refresh(), pollMs);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      if (_abortRef.current) {
+        _abortRef.current.abort();
+        _abortRef.current = null;
+      }
+    };
   }, [refresh, pollMs]);
 
   return { trajectories, loading, error, refresh };

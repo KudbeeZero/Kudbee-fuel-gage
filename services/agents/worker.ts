@@ -208,9 +208,9 @@ function broadcast(type: string, data: any) {
   const redis = getRedisClient();
   if (!redis) return;
   try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e: Error) => {
-      console.warn('[Worker] broadcast failed:', e.message);
-    });
+    redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e: Error) => {
+    console.warn('[Worker] broadcast failed:', e.message);
+  });
   } catch {
     /* ignore */
   }

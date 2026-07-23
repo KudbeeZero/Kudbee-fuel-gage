@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock } from 'lucide-react';
+import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock, Download } from 'lucide-react';
 import { useTenantStore, type Tenant } from '../../store/tenantStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
 
@@ -36,6 +36,7 @@ export function AuditVaultCard() {
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
   const [error, setError] = useState<string | null>(null);
   const [optimisticAnchorId, setOptimisticAnchorId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const headers = useCallback((): HeadersInit => ({ 'Content-Type': 'application/json', 'X-Tenant-Id': currentTenantId }), [currentTenantId]);
 
@@ -86,6 +87,47 @@ export function AuditVaultCard() {
     }
   }, [canVerify, headers]);
 
+  const exportSignedLedger = useCallback(async () => {
+    setExporting(true);
+    try {
+      const verifiedList = Object.entries(verifyResults).filter(([, v]) => v.verified);
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        tenantId: currentTenantId,
+        anchors: anchors.map((a) => ({
+          anchorId: a.anchorId,
+          batchRoot: a.batchRoot,
+          leafCount: a.leafCount,
+          createdAt: a.createdAt,
+          verification: verifyResults[a.anchorId]
+            ? {
+                verified: verifyResults[a.anchorId].verified,
+                originalRoot: verifyResults[a.anchorId].originalRoot,
+                recomputedRoot: verifyResults[a.anchorId].recomputedRoot,
+                verifiedAt: verifyResults[a.anchorId].verifiedAt
+              }
+            : null
+        })),
+        verifiedCount: verifiedList.length,
+        totalAnchors: anchors.length
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-signed-ledger-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      /* best-effort */
+    } finally {
+      setExporting(false);
+    }
+  }, [anchors, verifyResults, currentTenantId]);
+
   return (
     <div id="audit-vault-card" className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
@@ -129,6 +171,17 @@ export function AuditVaultCard() {
           title="Refresh anchors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+        <button
+          id="audit-vault-export-btn"
+          type="button"
+          onClick={() => void exportSignedLedger()}
+          disabled={exporting || anchors.length === 0}
+          title="Export Ed25519-verified audit anchors as signed JSON"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:opacity-40"
+        >
+          {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+          Export Signed Ledger
         </button>
       </div>
 

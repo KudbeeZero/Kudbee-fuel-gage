@@ -37,7 +37,7 @@ function renderThinkPlugin(
         <div key={plugin.id} className={`${span} min-w-0`}>
           <PanelErrorBoundary panel={plugin.title}>
             <SkeletonPanel height="180px">
-              <ThinkStormPlugin plugin={plugin} trajectories={trajectories} />
+              <ThinkStormPlugin plugin={plugin} trajectories={trajectories} loading={trajectoryLoading} />
             </SkeletonPanel>
           </PanelErrorBoundary>
         </div>
@@ -47,7 +47,7 @@ function renderThinkPlugin(
         <div key={plugin.id} className={`${span} min-w-0`}>
           <PanelErrorBoundary panel={plugin.title}>
             <SkeletonPanel height="180px">
-              <ThinkStreamPlugin plugin={plugin} trajectories={trajectories} />
+              <ThinkStreamPlugin plugin={plugin} trajectories={trajectories} loading={trajectoryLoading} />
             </SkeletonPanel>
           </PanelErrorBoundary>
         </div>
