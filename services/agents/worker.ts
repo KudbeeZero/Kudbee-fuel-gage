@@ -193,7 +193,7 @@ process.on('SIGTERM', () => {
         await redis.quit();
         console.log('[Worker] Redis connection closed gracefully.');
       }
-    } catch (err: Error) {
+    } catch (err: unknown) {
       console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
     }
     clearTimeout(forceKillTimeout);
@@ -344,7 +344,7 @@ export async function _tick() {
      const result = await processTask(task);
      broadcast('task.success', { id: task.id, kind: task.kind, attempt: task.attempts, result });
      return true;
-   } catch (err: Error) {
+   } catch (err: unknown) {
      const message = err instanceof Error ? err.message : String(err);
     if (task.attempts >= MAX_ATTEMPTS) {
       const dead = { ...task, failedAt: new Date().toISOString(), lastError: message };
