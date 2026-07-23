@@ -69,7 +69,18 @@ app.use((req, res, next) => {
 });
 
 // --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
-const RATE_LIMIT_EXCLUDED = new Set(['/health', '/api/system/health-deep', '/api/system/diagnostics']);
+const RATE_LIMIT_EXCLUDED = new Set([
+  '/health',
+  '/api/health',
+  '/api/health-check',
+  '/api/system/health-deep',
+  '/api/system/diagnostics',
+  '/api/governance/health',
+  '/api/events',
+  '/api/os-stream',
+  '/api/governance/hermes-logs',
+  '/api/dashboard/summary'
+]);
 
 app.use(async (req, res, next) => {
   if (RATE_LIMIT_EXCLUDED.has(req.path)) return next();

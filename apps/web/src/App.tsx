@@ -608,7 +608,7 @@ export default function App() {
       <main className="flex-1 min-h-0 overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
         
-        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-24 sm:pb-32 ${
+        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-28 sm:pb-36 ${
           displayDensity === 'Compact' 
             ? 'p-4 space-y-4 text-xs' 
             : displayDensity === 'Comfortable' 
@@ -851,9 +851,9 @@ export default function App() {
             {/* Right: quick-links */}
             <nav className="flex items-center gap-1">
               {[
-                { label: 'Docs', href: '#' },
-                { label: 'Support', href: '#' },
-                { label: 'API', href: '#' }
+                { label: 'Docs', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage' },
+                { label: 'Support', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage/issues' },
+                { label: 'API', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage' }
               ].map((link) => (
                 <a
                   key={link.label}

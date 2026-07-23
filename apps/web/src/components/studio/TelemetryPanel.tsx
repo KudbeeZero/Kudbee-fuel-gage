@@ -361,12 +361,12 @@ function MetricCard({
   );
 }
 
-function SinkTokenCard({ balance }: { balance: number }) {
+function SinkTokenCard({ balance, loaded }: { balance: number; loaded: boolean }) {
   const pct = Math.max(0, Math.min(100, Math.round((balance / 1000) * 100)));
   const hue = pct > 60 ? 'text-emerald-400' : pct > 30 ? 'text-amber-400' : 'text-rose-400';
   const bar = pct > 60 ? 'bg-emerald-500' : pct > 30 ? 'bg-amber-500' : 'bg-rose-500';
-  const status = pct > 60 ? 'HEALTHY' : pct > 30 ? 'DEGRADED' : 'CRITICAL';
-  const statusColor = pct > 60 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : pct > 30 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400';
+  const status = loaded ? (pct > 60 ? 'HEALTHY' : pct > 30 ? 'DEGRADED' : 'CRITICAL') : 'UNKNOWN';
+  const statusColor = loaded ? (pct > 60 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : pct > 30 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : 'border-rose-500/30 bg-rose-500/10 text-rose-400') : 'border-slate-600/30 bg-slate-800/10 text-slate-500';
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -846,6 +846,7 @@ export function TelemetryPanel() {
   const [telemetryStatsLoading, setTelemetryStatsLoading] = useState(true);
 
   const [sinkTokenBalance, setSinkTokenBalance] = useState<number>(0);
+  const [sinkLoaded, setSinkLoaded] = useState(false);
   const [postgresSize, setPostgresSize] = useState<number | null>(null);
   const [redisSize, setRedisSize] = useState<number | null>(null);
 
@@ -926,6 +927,7 @@ export function TelemetryPanel() {
       const data = await apiGet<{ sink_token_balance: number; postgres_size_bytes: number; redis_size_bytes: number }>('/api/dashboard/summary');
       if (!_mountedRef.current) return;
       setSinkTokenBalance(data.sink_token_balance ?? 0);
+      setSinkLoaded(true);
       setPostgresSize(data.postgres_size_bytes ?? null);
       setRedisSize(data.redis_size_bytes ?? null);
     } catch {
@@ -1024,7 +1026,7 @@ export function TelemetryPanel() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard icon={BadgeCheck} label="Verified Traces" value={0} suffix="ok" />
-        <SinkTokenCard balance={sinkTokenBalance} />
+        <SinkTokenCard balance={sinkTokenBalance} loaded={sinkLoaded} />
         <StorageGaugeCard bytes={postgresSize} label="Postgres Storage" icon={Database} thresholdBytes={1073741824} />
         <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
       </div>

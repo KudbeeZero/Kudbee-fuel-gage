@@ -8,19 +8,6 @@ import {
   Database, RefreshCw, Shield, Terminal
 } from 'lucide-react';
 
-interface StudioContextValue {
-  eventStream: ReturnType<typeof useEventStream>;
-  osSnapshot: ReturnType<typeof useOsSnapshot>['snapshot'];
-  osConnected: boolean;
-  terminalCommands: string[];
-  pushTerminalEvent: (text: string) => void;
-  refreshAll: () => void;
-}
-
-export function createStudioContext(): StudioContextValue | null {
-  return null;
-}
-
 const STUDIO_TABS = [
   { id: 'governance', label: 'GOVERNANCE', icon: Shield, description: 'HITL approval gates & policy engine' },
   { id: 'tokens', label: 'TOKENS', icon: Brain, description: 'Think token lifecycle & vector trajectories' },

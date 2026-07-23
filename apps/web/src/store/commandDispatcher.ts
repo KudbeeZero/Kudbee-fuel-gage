@@ -60,6 +60,10 @@ function nextId(): string {
 export const useCommandDispatcher = create<CommandDispatcherState>((set) => ({
   commands: [],
   enqueue: (cmd) => {
+    const active = useCommandDispatcher.getState().commands.some(
+      (c) => c.kind === cmd.kind && (c.state === 'QUEUED' || c.state === 'PROCESSING')
+    );
+    if (active) return 'duplicate';
     const id = nextId();
     const entry: DispatchedCommand = {
       id,

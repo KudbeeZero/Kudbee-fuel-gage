@@ -57,7 +57,8 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
   const lastCommand = commands[0];
   const isMac = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
-    return /Mac|iPhone|iPad/i.test(navigator.platform);
+    const ua = navigator.userAgent || '';
+    return /Mac|iPhone|iPad/i.test(ua);
   }, []);
 
   return (
@@ -67,7 +68,7 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
     >
       <div className="pointer-events-auto mx-auto max-w-[1400px]">
         <div
-          className="flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md backdrop-saturate-150"
+          className="flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md backdrop-saturate-150 overflow-x-auto flex-nowrap"
         >
           <div className="flex items-center gap-1.5 pl-1 pr-2">
             <Radio className="h-3.5 w-3.5 text-emerald-400" />
@@ -207,7 +208,7 @@ function ToggleChip({ id, active, activeLabel, inactiveLabel, accent, icon, onCl
       id={id}
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-all ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
         active ? styles.active : styles.inactive
       }`}
       title={active ? 'Click to disable' : 'Click to enable'}
