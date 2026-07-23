@@ -1,99 +1,142 @@
 /**
  * services/lib/redis.js
  * ---------------------------------------------------------------------------
- * getRedisClient — the proven resilient Redis connection factory.
+ * Resilient Redis connection factory supporting both ioredis (TCP) and
+ * @upstash/redis (HTTP/REST).
  *
- * Centralizes the ioredis configuration (retry strategy, ready-check,
- * max retries, TLS for Upstash) once, so every worker and agent shell shares
- * an identical, hardened connection profile. A single process-wide client is
- * created and reused; callers should not instantiate their own `new Redis(...)`
- * anymore.
+ * Primary backend selection:
+ *   - If UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set, use
+ *     @upstash/redis (no TCP sockets, serverless-safe).
+ *   - Otherwise fall back to ioredis for local/dev and advanced features.
  *
- * Connection is immediate: the client connects synchronously on creation.
- * We wire `connect` / `error` / `reconnecting` listeners so the process logs
- * state transitions without crashing on transient outages (the backend is
- * expected to survive Redis blips — "self-healing").
+ * Upstash caveats:
+ *   - Pub/sub is not supported by REST; getSubscriberClient falls back to
+ *     ioredis when Upstash is active (only created on demand).
+ *   - Lua scripts (EVAL/EVALSHA) are also not supported; rateLimiter,
+ *     tokenBucket, and circuitBreaker should migrate to non-Lua logic.
  * ---------------------------------------------------------------------------
  */
 
 import Redis from 'ioredis';
+import { Redis as UpstashRedis } from '@upstash/redis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
-const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
-const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+function validateUpstashEnv() {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    throw new Error(
+      '[Redis] Upstash mode enabled but missing env vars: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set.'
+    );
+  }
+  if (!UPSTASH_URL.startsWith('https://')) {
+    throw new Error(
+      `[Redis] UPSTASH_REDIS_REST_URL must use https:// scheme, got: ${UPSTASH_URL}`
+    );
+  }
+}
+
+const useUpstash = !!UPSTASH_URL && !!UPSTASH_TOKEN;
 
 let _client = null;
+let _upstashClient = null;
 let _subClient = null;
 let _rateLimitClient = null;
+let _rateLimitIoredis = null;
+let _slowClient = null;
+let _slowIoredis = null;
+
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
-/**
- * Returns a shared, resilient ioredis client.
- * Upstash Redis (rediss://) receives permissive TLS settings to accommodate
- * cloud-native TLS termination. Callers that need persistent polling (workers,
- * subscriber connections) should pass { enableOfflineQueue: true } so their
- * first commands buffer until the lazy-connect handshake completes.
- * @param {object} [opts] Optional overrides.
- * @returns {import('ioredis').Redis}
- */
-export function getRedisClient(opts = {}) {
-  const label = opts.label || 'redis';
+function createUpstashClient() {
+  validateUpstashEnv();
+  _upstashClient = new UpstashRedis({
+    url: UPSTASH_URL,
+    token: UPSTASH_TOKEN,
+  });
+  return _upstashClient;
+}
 
-  if (!opts.forceNew && _client) return _client;
-
+function createIoredis(url, label, opts = {}) {
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? false,
     retryStrategy: opts.retryStrategy ?? (() => null),
-    connectTimeout: 5_000,
-    commandTimeout: 3_000,
-    keepAlive: 15_000
+    connectTimeout: opts.connectTimeout ?? 5_000,
+    commandTimeout: opts.commandTimeout ?? 3_000,
+    keepAlive: opts.keepAlive ?? 15_000,
   };
 
-  if (isUpstash) {
+  if (url.includes('upstash.io') || url.startsWith('rediss://')) {
     baseConfig.tls = {};
   }
 
   let client;
   try {
-    client = new Redis(REDIS_URL, baseConfig);
+    client = new Redis(url, baseConfig);
   } catch {
-    console.warn(`[${label}] Invalid REDIS_URL, skipping client creation`);
-    if (!opts.forceNew) return;
+    console.warn(`[${label}] Invalid Redis URL, skipping client creation`);
+    if (!opts.forceNew) return null;
     client = new Redis('redis://localhost:6379', baseConfig);
   }
 
-  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis connected`); });
-  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
-  client.on('error', () => { redisTelemetry.errorCount += 1; });
-  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn(`[${label}] Redis connection closed`); });
+  client.on('connect', () => {
+    redisTelemetry.primaryCount += 1;
+    console.log(`[${label}] Redis connected`);
+  });
+  client.on('ready', () => {
+    redisTelemetry.primaryCount += 1;
+    console.log(`[${label}] Redis ready`);
+  });
+  client.on('error', () => {
+    redisTelemetry.errorCount += 1;
+  });
+  client.on('end', () => {
+    redisTelemetry.fallbackCount += 1;
+    console.warn(`[${label}] Redis connection closed`);
+  });
 
+  return client;
+}
+
+export function getRedisClient(opts = {}) {
+  const label = opts.label || 'redis';
+
+  if (!opts.forceNew && useUpstash) {
+    if (!_client) {
+      _client = createUpstashClient();
+    }
+    return _client;
+  }
+
+  if (!opts.forceNew && _client) return _client;
+
+  const client = createIoredis(REDIS_URL, label, opts);
   if (!opts.forceNew) _client = client;
   return _client;
 }
 
-/**
- * Returns a pub/sub-safe Redis client suitable for dedicated subscriber
- * connections. Unlike the one-shot command client, this includes retries and
- * offline queuing so the SSE event bus survives transient Redis outages
- * without losing events that were published while the subscriber was offline.
- * @returns {import('ioredis').Redis}
- */
 export function getSubscriberClient() {
   if (_subClient) return _subClient;
+
+  if (useUpstash) {
+    console.warn('[SSE-sub] Upstash REST does not support pub/sub. Falling back to polling or disabling subscriber.');
+    return null;
+  }
 
   const subConfig = {
     lazyConnect: false,
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
     enableOfflineQueue: true,
-    retryStrategy: (times) => Math.min(times * 250, 5000)
+    retryStrategy: (times) => Math.min(times * 250, 5000),
   };
 
-  if (isUpstash) {
+  if (REDIS_URL.includes('upstash.io') || REDIS_URL.startsWith('rediss://')) {
     subConfig.tls = {};
   }
 
@@ -102,26 +145,33 @@ export function getSubscriberClient() {
     client = new Redis(REDIS_URL, subConfig);
   } catch {
     console.warn('[SSE-sub] Invalid REDIS_URL, skipping subscriber client creation');
-    return;
+    return null;
   }
 
   client.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
   client.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
   client.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
-  return client;
+  _subClient = client;
+  return _subClient;
 }
 
-/**
- * Returns a dedicated Redis client wired exclusively to REDIS_RATE_LIMIT_URL
- * for Heroku-favored INCR/EXPIRE rate limiting. Offloaded to a separate
- * Redis instance so rate-limit bursts never compete with pub/sub or state ops.
- * Falls back to REDIS_URL if REDIS_RATE_LIMIT_URL is not set.
- * @param {object} [opts] Optional overrides.
- * @returns {import('ioredis').Redis}
- */
 export function getRateLimitClient(opts = {}) {
-  if (!opts.forceNew && _rateLimitClient) return _rateLimitClient;
+  if (!opts.forceNew) {
+    if (useUpstash && _rateLimitClient) return _rateLimitClient;
+    if (!useUpstash && _rateLimitClient) return _rateLimitClient;
+  }
+
+  if (useUpstash) {
+    if (!_rateLimitIoredis) {
+      _rateLimitIoredis = createIoredis(REDIS_RATE_LIMIT_URL, 'rate-limit', {
+        connectTimeout: 3_000,
+        commandTimeout: 1_000,
+        keepAlive: 10_000,
+      });
+    }
+    return _rateLimitIoredis;
+  }
 
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
@@ -131,10 +181,10 @@ export function getRateLimitClient(opts = {}) {
     retryStrategy: opts.retryStrategy ?? (() => null),
     connectTimeout: 3_000,
     commandTimeout: 1_000,
-    keepAlive: 10_000
+    keepAlive: 10_000,
   };
 
-  if (isRateLimitUpstash) {
+  if (REDIS_RATE_LIMIT_URL.includes('upstash.io') || REDIS_RATE_LIMIT_URL.startsWith('rediss://')) {
     baseConfig.tls = {};
   }
 
@@ -146,24 +196,44 @@ export function getRateLimitClient(opts = {}) {
     client = new Redis(REDIS_URL, baseConfig);
   }
 
-  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis connected'); });
-  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis ready'); });
-  client.on('error', () => { redisTelemetry.errorCount += 1; });
-  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn('[rate-limit] Redis connection closed'); });
+  client.on('connect', () => {
+    redisTelemetry.primaryCount += 1;
+    console.log('[rate-limit] Redis connected');
+  });
+  client.on('ready', () => {
+    redisTelemetry.primaryCount += 1;
+    console.log('[rate-limit] Redis ready');
+  });
+  client.on('error', () => {
+    redisTelemetry.errorCount += 1;
+  });
+  client.on('end', () => {
+    redisTelemetry.fallbackCount += 1;
+    console.warn('[rate-limit] Redis connection closed');
+  });
 
   if (!opts.forceNew) _rateLimitClient = client;
   return _rateLimitClient;
 }
 
-/**
- * Returns a dedicated Redis client wired exclusively to REDIS_SLOW_URL
- * for HERMES, Crucible, and other heavy governance/worker loops.
- * @param {object} [opts] Optional overrides.
- * @returns {import('ioredis').Redis}
- */
 export function getSlowRedisClient(opts = {}) {
   const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
-  const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
+
+  if (!opts.forceNew) {
+    if (useUpstash && _slowClient) return _slowClient;
+    if (!useUpstash && _slowClient) return _slowClient;
+  }
+
+  if (useUpstash) {
+    if (!_slowIoredis) {
+      _slowIoredis = createIoredis(REDIS_SLOW_URL, 'slow-redis', {
+        connectTimeout: 5_000,
+        commandTimeout: 3_000,
+        keepAlive: 15_000,
+      });
+    }
+    return _slowIoredis;
+  }
 
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
@@ -173,10 +243,10 @@ export function getSlowRedisClient(opts = {}) {
     retryStrategy: opts.retryStrategy ?? (() => null),
     connectTimeout: 5_000,
     commandTimeout: 3_000,
-    keepAlive: 15_000
+    keepAlive: 15_000,
   };
 
-  if (isSlowUpstash) {
+  if (REDIS_SLOW_URL.includes('upstash.io') || REDIS_SLOW_URL.startsWith('rediss://')) {
     baseConfig.tls = {};
   }
 
@@ -188,12 +258,25 @@ export function getSlowRedisClient(opts = {}) {
     client = new Redis(REDIS_URL, baseConfig);
   }
 
-  client.on('connect', () => { console.log(`[slow-redis] Redis connected`); });
-  client.on('ready', () => { console.log(`[slow-redis] Redis ready`); });
-  client.on('error', (err) => { console.error(`[slow-redis] Error:`, err.message); });
-  client.on('end', () => { console.warn(`[slow-redis] Redis connection closed`); });
+  client.on('connect', () => {
+    console.log(`[slow-redis] Redis connected`);
+  });
+  client.on('ready', () => {
+    console.log(`[slow-redis] Redis ready`);
+  });
+  client.on('error', (err) => {
+    console.error(`[slow-redis] Error:`, err.message);
+  });
+  client.on('end', () => {
+    console.warn(`[slow-redis] Redis connection closed`);
+  });
 
-  return client;
+  if (!opts.forceNew) _slowClient = client;
+  return _slowClient;
+}
+
+export function isUsingUpstash() {
+  return useUpstash;
 }
 
 export { redisTelemetry };
