@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface GatewayLog {
   id: string;
@@ -10,6 +10,12 @@ export interface GatewayLog {
 export function useRoutingRules() {
   const [gatewayLogs, setGatewayLogs] = useState<GatewayLog[]>([]);
   const [activeRoute, setActiveRoute] = useState<'IDLE' | 'PRIMARY' | 'FAILOVER'>('IDLE');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
   
   const addLog = useCallback((level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS', message: string) => {
     setGatewayLogs(prev => [{ id: Math.random().toString(), timestamp: new Date(), level, message }, ...prev].slice(0, 50));
@@ -20,29 +26,34 @@ export function useRoutingRules() {
     addLog('INFO', `Routing request to Primary Region (us-east-1) for model: ${payload.model || 'unknown'}`);
     
     return new Promise((resolve, reject) => {
+      const checkMounted = () => mountedRef.current;
+
       setTimeout(() => {
+        if (!checkMounted()) return;
         const isRateLimited = Math.random() < 0.3;
-        
+
         if (isRateLimited) {
           addLog('WARN', `Rate limit 429 hit on Primary Region (us-east-1).`);
           addLog('INFO', `CRIS router engaging Circuit Breaker. Rewriting payload for failover...`);
-          
+
           setTimeout(() => {
+            if (!checkMounted()) return;
             setActiveRoute('FAILOVER');
             const fallbackModel = payload.model || 'unknown';
             addLog('INFO', `Rerouting request to Failover Region (eu-central-1) for fallback model (${fallbackModel})...`);
-            
+
             setTimeout(() => {
+              if (!checkMounted()) return;
               addLog('SUCCESS', `Failover request completed successfully via eu-central-1.`);
-              setTimeout(() => setActiveRoute('IDLE'), 2000);
+              setTimeout(() => { if (checkMounted()) setActiveRoute('IDLE'); }, 2000);
               resolve({ success: true, region: 'eu-central-1', model: fallbackModel });
             }, 1000);
-            
+
           }, 500);
-          
+
         } else {
           addLog('SUCCESS', `Request completed successfully via Primary Region (us-east-1).`);
-          setTimeout(() => setActiveRoute('IDLE'), 2000);
+          setTimeout(() => { if (checkMounted()) setActiveRoute('IDLE'); }, 2000);
           resolve({ success: true, region: 'us-east-1', model: payload.model || 'unknown' });
         }
       }, 1000);
