@@ -5,5 +5,6 @@
     "rootDir": "../..",
     "allowJs": true
   },
-  "include": ["server.js", "embedder.js", "controllers/telemetry.ts", "routes/*.ts", "lib/tenants.ts", "../governance/router.d.ts", "../governance/ledger.d.ts", "../telemetry/degradation-monitor.ts", "../agents/worker.ts"]
+  "include": ["server.js", "embedder.js", "controllers/telemetry.ts", "routes/*.ts", "lib/tenants.ts", "../governance/router.d.ts", "../governance/ledger.d.ts", "../telemetry/degradation-monitor.ts", "../agents/worker.ts", "../lib/*.ts"],
+  "exclude": ["**/node_modules", "../memory/**", "../../packages/**", "../github/**", "../sentinel/**"]
 }

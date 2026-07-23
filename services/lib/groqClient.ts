@@ -130,7 +130,7 @@ async function callGroq(
 
   return {
     text: resultText,
-    tokensUsed: response.usage?.totalTokens ?? 0,
+    tokensUsed: (response.usage?.promptTokens ?? 0) + (response.usage?.completionTokens ?? 0),
     latencyMs,
     cacheHit: false
   };

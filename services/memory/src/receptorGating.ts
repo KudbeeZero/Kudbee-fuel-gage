@@ -186,9 +186,9 @@ function cosineSimilarityLocal(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
   for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
+    dot += (a[i] ?? 0) * (b[i] ?? 0);
+    na += (a[i] ?? 0) * (a[i] ?? 0);
+    nb += (b[i] ?? 0) * (b[i] ?? 0);
   }
   const denom = Math.sqrt(na) * Math.sqrt(nb);
   return denom === 0 ? 0 : dot / denom;
@@ -279,11 +279,11 @@ export class ReceptorGatingEngine {
     // Atomic check-then-set to prevent TOCTOU — local Map ops are synchronous
     // so concurrent Node.js microtasks can't interleave between get and set.
     const existing = this.lockStore.get(key);
-    if (existing) return { admitted: false, reason: 'slot_already_locked', existingLock: existing };
+    if (existing) return { admitted: false, reason: 'slot_already_locked', currentOccupant: existing.tokenHash, auditHash: '' };
 
     const isGuard = this.isGuardToken(token);
     if (!isGuard || token.kd > LOCK_THRESHOLD) {
-      return { admitted: false, reason: isGuard ? 'kd_above_threshold' : 'not_guard_token' };
+      return { admitted: false, reason: isGuard ? 'kd_above_threshold' : 'not_guard_token', currentOccupant: null, auditHash: '' };
     }
 
     const lockRecord: LockRecord = {
@@ -294,78 +294,7 @@ export class ReceptorGatingEngine {
     };
     setLock(key, lockRecord);
     void persistLock(lockRecord);
-    return { admitted: true, reason: 'guard_token_locked', lockRecord };
-
-    const isChallenge = token.tokenType === 'CHALLENGE_TOKEN';
-    const isHigherAffinity = token.kd < existing.kd;
-
-    if (isChallenge && isHigherAffinity) {
-      const oldOccupant = existing.tokenHash;
-      this.lockStore.set(key, {
-        slotKey: key,
-        tokenHash: token.tokenHash,
-        kd: token.kd,
-        lockedAt: new Date().toISOString()
-      });
-      void persistLock({ slotKey: key, tokenHash: token.tokenHash, kd: token.kd, lockedAt: new Date().toISOString() });
-
-      const auditEvent = {
-        ...baseAudit,
-        action: 'LOCK_OVERRIDDEN',
-        lockApplied: true,
-        previousOccupant: oldOccupant,
-        currentOccupant: token.tokenHash,
-        reason: `CHALLENGE_TOKEN overrides lock on ${key} (new Kd=${token.kd} < old Kd=${existing.kd})`,
-        auditHash: ''
-      };
-      auditEvent.auditHash = computeAuditHash(auditEvent);
-      await publishAuditEvent(auditEvent);
-
-      return {
-        admitted: true,
-        reason: `CHALLENGE_TOKEN overrode lock with superior affinity.`,
-        currentOccupant: token.tokenHash,
-        auditHash: auditEvent.auditHash
-      };
-    }
-
-    if (isChallenge && !isHigherAffinity) {
-      const auditEvent = {
-        ...baseAudit,
-        action: 'CHALLENGE_REJECTED',
-        lockApplied: true,
-        currentOccupant: existing.tokenHash,
-        reason: `CHALLENGE_TOKEN Kd=${token.kd} not lower than occupant Kd=${existing.kd}`,
-        auditHash: ''
-      };
-      auditEvent.auditHash = computeAuditHash(auditEvent);
-      await publishAuditEvent(auditEvent);
-
-      return {
-        admitted: false,
-        reason: `CHALLENGE_TOKEN does not have higher affinity than the lock occupant.`,
-        currentOccupant: existing.tokenHash,
-        auditHash: auditEvent.auditHash
-      };
-    }
-
-    const auditEvent = {
-      ...baseAudit,
-      action: 'LOCK_REJECTED',
-      lockApplied: true,
-      currentOccupant: existing.tokenHash,
-      reason: `Slot ${key} is locked by Guard Token ${existing.tokenHash} (Kd=${existing.kd}). Suboxone Effect: rejection enforced.`,
-      auditHash: ''
-    };
-    auditEvent.auditHash = computeAuditHash(auditEvent);
-    await publishAuditEvent(auditEvent);
-
-    return {
-      admitted: false,
-      reason: `Slot ${key} is locked by Guard Token ${existing.tokenHash} (Kd=${existing.kd}).`,
-      currentOccupant: existing.tokenHash,
-      auditHash: auditEvent.auditHash
-    };
+    return { admitted: true, reason: 'guard_token_locked', currentOccupant: token.tokenHash, auditHash: '' };
   }
 
   async releaseLock(slot: CellSlot, tokenHash: string): Promise<void> {

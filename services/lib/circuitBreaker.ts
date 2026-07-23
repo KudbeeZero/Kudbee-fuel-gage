@@ -123,7 +123,7 @@ export class CircuitBreaker {
       if (permits >= 0) return true;
       return false;
     } catch {
-      return state !== 'OPEN';
+      return false;
     }
   }
 }

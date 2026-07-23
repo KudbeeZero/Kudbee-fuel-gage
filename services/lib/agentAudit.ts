@@ -32,7 +32,7 @@ export async function getAuditHistory(limit = 50): Promise<AuditEntry[]> {
   try {
     const redis = getRedisClient({ label: 'audit' });
     const raw = await redis.lrange(AUDIT_KEY, 0, limit - 1);
-    return raw.map((r) => { try { return JSON.parse(r) as AuditEntry; } catch { return null; } }).filter(Boolean) as AuditEntry[];
+    return raw.map((r: string) => { try { return JSON.parse(r) as AuditEntry; } catch { return null; } }).filter(Boolean) as AuditEntry[];
   } catch { return []; }
 }
 
