@@ -13,3 +13,17 @@ coverage/
 .turbo/
 .agent_private_key.pem
 kudbee_telemetry_db.json
+
+# IDE / editor tooling
+.cursor-server
+.idea/
+.vscode-server
+.windsurf-server
+.lightning_studio/
+
+# Claude (credentials, IDE locks, backups)
+.claude/
+.claude.json
+
+# Local Ollama (keys, history)
+.ollama/

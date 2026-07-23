@@ -56,6 +56,8 @@ import { SentinelPage } from './pages/sentinel';
 const FirewallPage = lazy(() => import('./pages/firewall').then((m) => ({ default: m.FirewallPage })));
 const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel })));
 const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
+const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
+import { OllamaChat } from './pages/OllamaChat';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
@@ -438,6 +440,7 @@ export default function App() {
   ];
 
   const secondaryNavItems = [
+    { icon: TerminalSquare, label: 'TERMINAL' },
     { icon: Shield, label: 'FIREWALL' },
     { icon: Globe, label: 'GATEWAY' },
     { icon: Network, label: 'INTERCEPTOR' },
@@ -747,6 +750,8 @@ export default function App() {
           {activeTab === 'SENTINEL' && (
             <SentinelPage />
           )}
+
+          {activeTab === 'TERMINAL' && <OllamaChat />}
 
           {activeTab === 'PLAYGROUND' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
 

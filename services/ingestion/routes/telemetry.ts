@@ -12,6 +12,8 @@
  */
 
 import express from 'express';
+import path from 'path';
+import fs from 'fs/promises';
 
 type Deps = {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
@@ -19,6 +21,36 @@ type Deps = {
 
 export function createTelemetryRouter({ runQuery }: Deps) {
   const router = express.Router();
+
+  // POST /thoughts — capture reasoning traces from the KUDBEE Terminal
+  router.post('/thoughts', async (req, res) => {
+    try {
+      const { model, thinkingText, visibleText, session, timestamp } = req.body ?? {};
+      if (!thinkingText) {
+        return res.status(400).json({ error: "Missing thinkingText" });
+      }
+
+      // Write to local NDJSON for future training pipelines.
+      const logPath = path.resolve(process.cwd(), 'data', 'thoughts.ndjson');
+      await fs.mkdir(path.dirname(logPath), { recursive: true });
+
+      const entry = JSON.stringify({
+        model,
+        thinking_len: thinkingText.length,
+        visible_len: visibleText?.length ?? 0,
+        eval_count: session?.evalCount ?? 0,
+        tokens_per_second: session?.tokensPerSecond ?? 0,
+        timestamp: timestamp ?? new Date().toISOString(),
+        thinking: thinkingText,
+        visible: visibleText,
+      }) + '\n';
+
+      await fs.appendFile(logPath, entry);
+      return res.json({ ok: true, written: entry.length });
+    } catch (err) {
+      return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
   router.get('/logs', async (req, res) => {
     try {
