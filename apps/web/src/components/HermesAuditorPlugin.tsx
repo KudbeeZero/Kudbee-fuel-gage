@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { z } from 'zod';
-import { TerminalSquare, Search, ToggleLeft, ToggleRight, Activity } from 'lucide-react';
+import { TerminalSquare, Search, ToggleLeft, ToggleRight, Activity, History, ChevronDown } from 'lucide-react';
 import type { IKudbeePlugin } from '@kudbee/types';
-import { apiPost } from '../lib/apiClient';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { apiPost, apiGet } from '../lib/apiClient';
 
 export const HermesAuditLogSchema = z.object({
   ts: z.string().min(1),
@@ -14,6 +15,13 @@ export interface HermesAuditorPluginProps {
   plugin: IKudbeePlugin;
   logs?: readonly HermesAuditLog[];
   connected?: boolean;
+}
+
+interface AuditEvent {
+  timestamp: string;
+  agentId: string;
+  eventType: string;
+  details: string;
 }
 
 interface ParsedSweep {
@@ -31,6 +39,7 @@ interface ProbeResult {
 
 const LEVEL_ORDER = ['AUDIT', 'WARN', 'ERROR', 'INFO'] as const;
 const ALL_LEVELS: string[] = ['ALL', ...LEVEL_ORDER];
+const TRAIL_PAGE_SIZE = 5;
 
 function parseSweep(raw: HermesAuditLog): ParsedSweep | null {
   if (!raw?.line) return null;
@@ -58,7 +67,13 @@ function formatTs(ts: string): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export function HermesAuditorPlugin({
+function formatFullTs(ts: string): string {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return ts;
+  return d.toLocaleString();
+}
+
+function HermesAuditorPluginInner({
   plugin,
   logs = [],
   connected = true
@@ -70,12 +85,53 @@ export function HermesAuditorPlugin({
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
   const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _mountedRef = useRef(true);
+
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [trailPage, setTrailPage] = useState(1);
+  const [trailLoading, setTrailLoading] = useState(false);
+  const [trailError, setTrailError] = useState<string | null>(null);
+  const [trailTotal, setTrailTotal] = useState(0);
 
   useEffect(() => {
+    _mountedRef.current = true;
     return () => {
+      _mountedRef.current = false;
       if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     };
   }, []);
+
+  const fetchAuditTrail = async (page: number) => {
+    setTrailLoading(true);
+    setTrailError(null);
+    try {
+      const data = await apiGet<{ events: AuditEvent[]; total: number }>(
+        `/api/governance/audit?page=${page}&limit=${TRAIL_PAGE_SIZE}`
+      );
+      if (!_mountedRef.current) return;
+      if (page === 1) {
+        setAuditEvents(data.events || []);
+      } else {
+        setAuditEvents((prev) => [...prev, ...(data.events || [])]);
+      }
+      setTrailTotal(data.total ?? 0);
+    } catch (e) {
+      if (!_mountedRef.current) return;
+      setTrailError(e instanceof Error ? e.message : 'Audit trail fetch failed');
+    } finally {
+      if (_mountedRef.current) setTrailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchAuditTrail(1);
+  }, []);
+
+  const loadMore = () => {
+    const nextPage = trailPage + 1;
+    setTrailPage(nextPage);
+    void fetchAuditTrail(nextPage);
+  };
 
   const allSweeps = useMemo(
     () => logs.map(parseSweep).filter((s): s is ParsedSweep => s !== null),
@@ -116,14 +172,18 @@ export function HermesAuditorPlugin({
     if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     try {
       const data = await apiPost<ProbeResult>('/api/system/health-deep', {});
+      if (!_mountedRef.current) return;
       setProbeResult(data);
     } catch {
+      if (!_mountedRef.current) return;
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
-      setProbing(false);
-      probeTimerRef.current = setTimeout(() => setProbeResult(null), 8000);
+      if (_mountedRef.current) setProbing(false);
+      probeTimerRef.current = setTimeout(() => { if (_mountedRef.current) setProbeResult(null); }, 8000);
     }
   };
+
+  const remainingTrail = trailTotal - auditEvents.length;
 
   return (
     <article
@@ -237,6 +297,58 @@ export function HermesAuditorPlugin({
         )}
       </div>
 
+      {/* Audit Trail Viewer */}
+      <div className="border-t border-slate-800/60 px-5 py-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <History className="h-3.5 w-3.5 text-slate-500" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+            Audit Trail · {trailTotal} events
+          </span>
+        </div>
+        {trailError && (
+          <div className="mb-2 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-mono text-[9px] text-rose-300">
+            {trailError}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          {auditEvents.length === 0 && !trailLoading ? (
+            <div className="font-mono text-[10px] text-slate-600">No audit events recorded.</div>
+          ) : (
+            auditEvents.slice(-5).map((evt, i) => (
+              <div key={`${evt.timestamp}-${i}`} className="flex items-center gap-2 rounded border border-slate-800 bg-slate-950/40 px-2 py-1.5">
+                <span className="shrink-0 font-mono text-[9px] text-slate-600">{formatFullTs(evt.timestamp)}</span>
+                <span className="shrink-0 rounded border border-slate-700 bg-slate-800/60 px-1 font-mono text-[9px] font-bold uppercase text-slate-400">
+                  {evt.eventType}
+                </span>
+                <span className="truncate font-mono text-[10px] text-slate-300">
+                  agent <span className="text-emerald-300">{evt.agentId}</span> · {evt.details}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+        {remainingTrail > 0 && (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={trailLoading}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-800/40 px-3 py-1.5 font-mono text-[10px] text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200 disabled:opacity-40"
+          >
+            {trailLoading ? (
+              <>
+                <Activity className="h-3 w-3 animate-spin" />
+                Loading…
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" />
+                Load More ({remainingTrail} remaining)
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
       {/* Footer */}
       <footer className="flex items-center justify-between border-t border-slate-800/60 px-5 py-3 text-[10px] font-mono uppercase tracking-widest text-slate-500">
         <span>
@@ -247,6 +359,14 @@ export function HermesAuditorPlugin({
         </span>
       </footer>
     </article>
+  );
+}
+
+export function HermesAuditorPlugin(props: HermesAuditorPluginProps) {
+  return (
+    <PanelErrorBoundary panel={props.plugin.title}>
+      <HermesAuditorPluginInner {...props} />
+    </PanelErrorBoundary>
   );
 }
 

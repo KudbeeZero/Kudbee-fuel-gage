@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import { TelemetryTraceSchema, ApprovalStatusSchema } from '@kudbee/types';
-import { Search, Activity } from 'lucide-react';
-import { apiPost } from '../lib/apiClient';
+import { Search, Activity, AlertTriangle } from 'lucide-react';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { apiPost, apiGet } from '../lib/apiClient';
 
 export const EdgeGovernanceSchema = z.object({
   id: z.string().min(1),
@@ -77,7 +78,7 @@ function riskLabel(score: number): string {
   return 'NOMINAL';
 }
 
-export function EdgeSentinelPlugin({
+function EdgeSentinelPluginInner({
   signals = [],
   connected = true,
   lastIngressAt = null,
@@ -89,9 +90,16 @@ export function EdgeSentinelPlugin({
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
   const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _mountedRef = useRef(true);
+
+  const [anomalyCount, setAnomalyCount] = useState(0);
+  const [totalIngress, setTotalIngress] = useState(0);
+  const [totalEgress, setTotalEgress] = useState(0);
 
   useEffect(() => {
+    _mountedRef.current = true;
     return () => {
+      _mountedRef.current = false;
       if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     };
   }, []);
@@ -102,9 +110,45 @@ export function EdgeSentinelPlugin({
     const last = signals[0];
     const tokens = last ? last.tokensIn + last.tokensOut : 0;
     setLiveRisk(Math.min(RISK_MAX, Math.round(tokens / 1000)));
-    const t = setTimeout(() => setPulse(false), INGRESS_PULSE_MS);
+    const t = setTimeout(() => { if (_mountedRef.current) setPulse(false); }, INGRESS_PULSE_MS);
     return () => clearTimeout(t);
   }, [lastIngressAt, signals]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAnomalies = async () => {
+      try {
+        const data = await apiGet<{ count: number }>('/api/edge/anomalies/count');
+        if (!cancelled && _mountedRef.current) setAnomalyCount(data.count ?? 0);
+      } catch {
+        if (!cancelled && _mountedRef.current) setAnomalyCount(0);
+      }
+    };
+    const fetchThroughput = async () => {
+      try {
+        const data = await apiGet<{ ingress: number; egress: number }>('/api/edge/throughput');
+        if (!cancelled && _mountedRef.current) {
+          setTotalIngress(data.ingress ?? 0);
+          setTotalEgress(data.egress ?? 0);
+        }
+      } catch {
+        if (!cancelled && _mountedRef.current) {
+          setTotalIngress(0);
+          setTotalEgress(0);
+        }
+      }
+    };
+    void fetchAnomalies();
+    void fetchThroughput();
+    const id = setInterval(() => {
+      void fetchAnomalies();
+      void fetchThroughput();
+    }, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return signals;
@@ -115,6 +159,7 @@ export function EdgeSentinelPlugin({
   }, [signals, query]);
 
   const ingested = filtered.length;
+  const throughputPct = totalIngress > 0 ? Math.round((totalEgress / totalIngress) * 100) : 0;
   const signalPct = ingested === 0 ? 0 : 100;
   const noisePct = 0;
 
@@ -129,12 +174,14 @@ export function EdgeSentinelPlugin({
     if (probeTimerRef.current !== null) clearTimeout(probeTimerRef.current);
     try {
       const data = await apiPost<ProbeResult>('/api/system/health-deep', {});
+      if (!_mountedRef.current) return;
       setProbeResult(data);
     } catch {
+      if (!_mountedRef.current) return;
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
-      setProbing(false);
-      probeTimerRef.current = setTimeout(() => setProbeResult(null), 8000);
+      if (_mountedRef.current) setProbing(false);
+      probeTimerRef.current = setTimeout(() => { if (_mountedRef.current) setProbeResult(null); }, 8000);
     }
   };
 
@@ -154,6 +201,13 @@ export function EdgeSentinelPlugin({
           </h3>
         </div>
         <div className="flex items-center gap-2">
+          {/* Anomaly Count Badge */}
+          {anomalyCount > 0 && (
+            <span className="flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 font-mono text-[9px] font-bold text-rose-400">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              {anomalyCount} anomalies
+            </span>
+          )}
           <button
             type="button"
             disabled={probing}
@@ -203,6 +257,18 @@ export function EdgeSentinelPlugin({
           placeholder="Filter by trace_id or model…"
           className="flex-1 bg-transparent font-mono text-[10px] text-slate-200 placeholder:text-slate-600 focus:outline-none"
         />
+      </div>
+
+      {/* Ingress / Egress Throughput */}
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-slate-500">
+          <span>Ingress / Egress</span>
+          <span>{totalIngress} in · {totalEgress} out · {throughputPct}% processed</span>
+        </div>
+        <div className="mt-2 flex h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-950">
+          <div className={`h-full bg-emerald-500/70 transition-all duration-500 ${widthClass(throughputPct)}`} />
+          <div className={`h-full bg-slate-700/60 transition-all duration-500 ${widthClass(100 - throughputPct)}`} />
+        </div>
       </div>
 
       {/* Signal-to-Noise Visualizer */}
@@ -256,9 +322,17 @@ export function EdgeSentinelPlugin({
       </div>
 
       <footer className="mt-4 border-t border-slate-800/60 pt-3 text-[10px] font-mono uppercase tracking-widest text-slate-500">
-        sentinel · {ingested} egressed · dyno bound
+        sentinel · {ingested} egressed · {anomalyCount > 0 ? `${anomalyCount} anomalies` : 'dyno bound'}
       </footer>
     </article>
+  );
+}
+
+export function EdgeSentinelPlugin(props: EdgeSentinelPluginProps) {
+  return (
+    <PanelErrorBoundary panel="EDGE: SENTINEL">
+      <EdgeSentinelPluginInner {...props} />
+    </PanelErrorBoundary>
   );
 }
 
