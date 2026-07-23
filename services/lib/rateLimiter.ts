@@ -17,8 +17,8 @@ export interface RateLimitResult {
 /**
  * Heroku-favored Fixed Window rate limiter.
  * Uses INCR + EXPIRE pipeline on the dedicated REDIS_RATE_LIMIT_URL client.
- * Atomic: a single round-trip per request. No TOCTOU — if the key doesn't
- * exist, INCR returns 1 and EXPIRE arms the TTL in one pipeline.
+ * Truly atomic: Lua script wraps INCR + EXPIRE + PTTL in one roundtrip,
+ * guaranteeing the key always has a TTL — no permanent-leak race.
  */
 export async function rateLimitCheck(
   key: string,
@@ -28,26 +28,24 @@ export async function rateLimitCheck(
   const redisKey = RL_PREFIX + key;
   const now = Date.now();
   const windowCeiling = Math.ceil(now / config.windowMs) * config.windowMs;
+  const ttlSeconds = Math.ceil(config.windowMs / 1000);
 
   try {
-    const pipeline = redis.pipeline();
-    pipeline.incr(redisKey);
-    pipeline.pttl(redisKey);
-    const results = await pipeline.exec();
-    if (!results) throw new Error('pipeline returned null');
-
-    const count = (results[0]?.[1] as number) ?? 0;
-    const ttlMs = (results[1]?.[1] as number) ?? -1;
-
-    if (ttlMs <= 0) {
-      await redis.expire(redisKey, Math.ceil(config.windowMs / 1000));
-    }
+    // Atomic: incr, set TTL if new, return count + ttl in one roundtrip
+    const [count, ttl] = await redis.eval(
+      `local c = redis.call('INCR', KEYS[1])
+       local t = redis.call('PTTL', KEYS[1])
+       if t <= 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]) t = tonumber(ARGV[1]) * 1000 end
+       return {c, t}`,
+      1,
+      redisKey,
+      String(ttlSeconds)
+    ) as [number, number];
 
     const remaining = Math.max(0, config.maxRequests - count);
     const allowed = count <= config.maxRequests;
-    const resetAtMs = windowCeiling;
 
-    return { allowed, remaining, resetAtMs, limit: config.maxRequests };
+    return { allowed, remaining, resetAtMs: windowCeiling, limit: config.maxRequests };
   } catch {
     // Fail open — never block traffic on Redis blips
     return { allowed: true, remaining: config.maxRequests, resetAtMs: windowCeiling, limit: config.maxRequests };
@@ -56,10 +54,15 @@ export async function rateLimitCheck(
 
 export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
   windowMs: 60_000,
-  maxRequests: 100
+  maxRequests: 300
+};
+
+export const PER_ENDPOINT_RATE_LIMIT: RateLimitConfig = {
+  windowMs: 60_000,
+  maxRequests: 60
 };
 
 export const UI_POLL_RATE_LIMIT: RateLimitConfig = {
   windowMs: 60_000,
-  maxRequests: 300
+  maxRequests: 600
 };
