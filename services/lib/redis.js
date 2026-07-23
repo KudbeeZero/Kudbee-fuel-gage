@@ -22,6 +22,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 
 let _client = null;
+let _subClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
 /**
@@ -72,6 +73,8 @@ export function getRedisClient(opts = {}) {
  * @returns {import('ioredis').Redis}
  */
 export function getSubscriberClient() {
+  if (_subClient) return _subClient;
+
   const subConfig = {
     lazyConnect: false,
     maxRetriesPerRequest: null,
@@ -84,13 +87,13 @@ export function getSubscriberClient() {
     subConfig.tls = { rejectUnauthorized: false };
   }
 
-  const client = new Redis(REDIS_URL, subConfig);
+  _subClient = new Redis(REDIS_URL, subConfig);
 
-  client.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
-  client.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
-  client.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
+  _subClient.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
+  _subClient.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
+  _subClient.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
-  return client;
+  return _subClient;
 }
 
 export { redisTelemetry };
