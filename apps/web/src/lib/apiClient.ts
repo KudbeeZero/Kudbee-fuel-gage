@@ -27,11 +27,16 @@ function formatError(path: string, method: string, status: number, detail?: stri
 }
 
 export async function apiGet<T = unknown>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+  const url = apiUrl(path);
+  const res = await fetch(url, {
     ...init,
     headers: { Accept: 'application/json', ...(init?.headers || {}) }
   });
-  if (!res.ok) throw formatError(path, 'GET', res.status);
+  if (!res.ok) {
+    const err = formatError(path, 'GET', res.status);
+    console.error(`[apiClient] GET ${url} → ${res.status}`, err.message);
+    throw err;
+  }
   return (await res.json()) as T;
 }
 
@@ -40,7 +45,8 @@ export async function apiPost<T = unknown>(
   body: unknown,
   init?: RequestInit
 ): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+  const url = apiUrl(path);
+  const res = await fetch(url, {
     ...init,
     method: 'POST',
     headers: {
@@ -52,10 +58,10 @@ export async function apiPost<T = unknown>(
   });
   if (!res.ok) {
     let detail = '';
-    try {
-      detail = JSON.stringify(await res.json());
-    } catch { /* ignore */ }
-    throw formatError(path, 'POST', res.status, detail);
+    try { detail = JSON.stringify(await res.json()); } catch {}
+    const err = formatError(path, 'POST', res.status, detail);
+    console.error(`[apiClient] POST ${url} → ${res.status}`, err.message);
+    throw err;
   }
   return (await res.json()) as T;
 }
@@ -65,7 +71,8 @@ export async function apiPatch<T = unknown>(
   body: unknown,
   init?: RequestInit
 ): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+  const url = apiUrl(path);
+  const res = await fetch(url, {
     ...init,
     method: 'PATCH',
     headers: {
@@ -77,10 +84,10 @@ export async function apiPatch<T = unknown>(
   });
   if (!res.ok) {
     let detail = '';
-    try {
-      detail = JSON.stringify(await res.json());
-    } catch { /* ignore */ }
-    throw formatError(path, 'PATCH', res.status, detail);
+    try { detail = JSON.stringify(await res.json()); } catch {}
+    const err = formatError(path, 'PATCH', res.status, detail);
+    console.error(`[apiClient] PATCH ${url} → ${res.status}`, err.message);
+    throw err;
   }
   return (await res.json()) as T;
 }
