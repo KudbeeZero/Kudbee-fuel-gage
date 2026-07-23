@@ -3,7 +3,7 @@ import { IKudbeePlugin } from '@kudbee/types';
 import { PluginCard } from './PluginCard';
 import type { ThinkTrajectory } from '@kudbee/types';
 import { Search, Loader2, ArrowRight } from 'lucide-react';
-import { apiPost } from '../lib/apiClient';
+import { apiGet } from '../lib/apiClient';
 
 interface ThinkStoragePluginProps {
   plugin: IKudbeePlugin;
@@ -40,10 +40,8 @@ export function ThinkStoragePlugin({ plugin, trajectories = [] }: ThinkStoragePl
     setSearching(true);
     setSearched(true);
     try {
-      const data = await apiPost<{ memories?: MemoryRecallResult[]; results?: MemoryRecallResult[] }>(
-        '/api/memory/recall',
-        { query: q, limit: 5 }
-      );
+      const data = await apiGet<{ memories?: MemoryRecallResult[]; results?: MemoryRecallResult[] }>(
+        `/api/memory/recall?query=${encodeURIComponent(q)}&limit=5`
       const list = data?.memories ?? data?.results ?? [];
       if (!_mountedRef.current) return;
       setResults(Array.isArray(list) ? list : []);

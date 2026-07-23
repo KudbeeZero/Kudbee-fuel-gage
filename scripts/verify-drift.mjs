@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const TS_SERVER = path.join(ROOT, 'services/ingestion/server.ts');
+const TS_SERVER = null; // server.ts deleted — server.js is canonical
 const JS_SERVER = path.join(ROOT, 'services/ingestion/server.js');
 const ALLOWLIST = path.join(ROOT, 'runtime-allowlist.json');
 

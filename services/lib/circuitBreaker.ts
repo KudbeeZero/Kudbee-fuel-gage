@@ -32,13 +32,22 @@ export class CircuitBreaker {
   resetTimeoutMs: number;
   halfOpenMax: number;
   private _halfOpenPermits: number;
+  private _halfOpenTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(name: string, config: BreakerConfig = {}) {
     this.name = name;
     this.failureThreshold = config.failureThreshold ?? 5;
-    this.resetTimeoutMs = config.resetTimeoutMs ?? 30000;
-    this.halfOpenMax = config.halfOpenMax ?? 2;
-    this._halfOpenPermits = 0;
+    this.resetTimeoutMs = config.resetTimeoutMs ?? 30_000;
+    this.halfOpenMax = config.halfOpenMax ?? 1;
+    this._halfOpenPermits = this.halfOpenMax;
+  }
+
+  /** Dispose of this breaker — cancel pending timers. */
+  dispose(): void {
+    if (this._halfOpenTimer) {
+      clearTimeout(this._halfOpenTimer);
+      this._halfOpenTimer = null;
+    }
   }
 
   async getState(): Promise<BreakerState> {
@@ -62,7 +71,9 @@ export class CircuitBreaker {
 
       if (state === 'HALF_OPEN' || count >= this.failureThreshold) {
         await redis.set(CB_PREFIX + this.name + ':state', 'OPEN', 'EX', Math.ceil(this.resetTimeoutMs / 1000));
-        await this._transferToHalfOpenAfterTimeout();
+        if (!this._halfOpenTimer) {
+          this._transitionToHalfOpenAfterTimeout();
+        }
       }
     } catch { /* best-effort */ }
   }
@@ -76,14 +87,16 @@ export class CircuitBreaker {
     } catch { /* best-effort */ }
   }
 
-  private async _transferToHalfOpenAfterTimeout(): Promise<void> {
-    setTimeout(async () => {
+  private _transitionToHalfOpenAfterTimeout(): void {
+    this._halfOpenTimer = setTimeout(async () => {
+      this._halfOpenTimer = null;
       try {
         const redis = getRedisClient({ label: 'circuit-breaker' });
         const state = await redis.get(CB_PREFIX + this.name + ':state');
         if (state === 'OPEN') {
           await redis.set(CB_PREFIX + this.name + ':state', 'HALF_OPEN');
           await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
+          this._halfOpenPermits = this.halfOpenMax;
         }
       } catch { /* best-effort */ }
     }, this.resetTimeoutMs).unref();

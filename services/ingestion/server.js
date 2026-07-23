@@ -1200,6 +1200,7 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
 
 // --- Phase 48: Anomaly Stream — low-confidence Groq-synthesized tokens ---
 app.get('/api/think/anomalies', async (req, res) => {
+  if (!authenticateAgentPass(req.header('X-Agent-Pass'))) return res.json({ count: 0, anomalies: [] });
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
     const members = redis ? (await redis.smembers('kudbee:anomalies')).slice(0, limit) : [];
@@ -1396,6 +1397,8 @@ app.get('/api/think/trajectories', async (req, res) => {
 });
 
 app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
+  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to modify token status' });
   try {
     const { hash } = req.params;
     const { status, reviewerNotes, tokenId } = req.body || {};
@@ -2084,6 +2087,8 @@ app.post('/api/governance/resolve', async (req, res) => {
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
+  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to mint think tokens' });
   try {
     const { traceId, taskContext, failedState, correctionDelta, status,
             kd, efficacy, tokenType, spatial_coordinates } = req.body || {};

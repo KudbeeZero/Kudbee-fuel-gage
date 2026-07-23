@@ -2,37 +2,56 @@ name: KUDBEE Enterprise CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-and-build:
-    name: Type Check, Lint, and Build (Monorepo)
+  typecheck:
+    name: TypeScript Validation (Monorepo)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Initialize Node.js Environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
-      - name: Install Workspace Dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Execute TypeScript Validation
-        run: npx turbo run lint
+      - name: TypeCheck All Workspaces
+        run: npm run typecheck
 
-      - name: Compile Production Bundle
-        run: npx turbo run build
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: typecheck
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build All Workspaces
+        run: npm run build
         env:
           CI: true
