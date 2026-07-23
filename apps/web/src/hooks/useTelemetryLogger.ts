@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { apiPost } from '../lib/apiClient';
+import { enqueueTelemetry } from '../lib/telemetryBatcher';
 
 export function useTelemetryLogger(onNewLogTriggered?: () => void) {
   const [isLogged, setIsLogged] = useState(false);
@@ -17,7 +17,7 @@ export function useTelemetryLogger(onNewLogTriggered?: () => void) {
     const mapped = modelMap[selectedModel] || { provider: 'Anthropic', model_name: selectedModel.toLowerCase().replace(/\s+/g, '-') };
 
     try {
-      await apiPost('/api/telemetry/ingest', {
+      enqueueTelemetry({
         trace_id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         model: mapped.model_name,
         tokens_in: tokenCount,

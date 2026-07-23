@@ -934,6 +934,76 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
   }
 });
 
+// --- Batch telemetry ingest: accepts an array of events in a single request ---
+app.post('/api/telemetry/ingest/batch', async (req, res) => {
+  try {
+    const events = req.body?.events;
+    if (!Array.isArray(events) || events.length === 0) {
+      return res.status(400).json({ error: 'events array is required' });
+    }
+    if (events.length > 100) {
+      return res.status(400).json({ error: 'batch limited to 100 events' });
+    }
+
+    const dbHealthy = isDbHealthy();
+    if (!dbHealthy && !redis) {
+      return res.status(503).json({ error: 'Service Unavailable', reason: 'DB and cache unreachable' });
+    }
+
+    const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+    let persisted = 0;
+    let filtered = 0;
+    let sampled = 0;
+    let deduped = 0;
+
+    for (const event of events) {
+      const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = event || {};
+      recordThroughput();
+
+      if (isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: status || 'OK' })) {
+        filtered++;
+        continue;
+      }
+      if (!agentId && isDuplicateTrace(trace_id)) {
+        deduped++;
+        continue;
+      }
+      if (!agentId && !shouldSample()) {
+        sampled++;
+        continue;
+      }
+
+      const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
+      const isHeartbeatPing = Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
+      const isHighValue = HIGH_VALUE_MODELS.has(model);
+      if (!isHeartbeatPing || isHighValue) {
+        await runInsert(
+          `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)
+           ON CONFLICT (trace_id) DO UPDATE SET tokens_in = EXCLUDED.tokens_in, tokens_out = EXCLUDED.tokens_out, cost = EXCLUDED.cost, status = EXCLUDED.status, timestamp = NOW()`,
+          [String(trace_id), String(model || 'unknown'), Number(tokens_in) || 0, Number(tokens_out) || 0, Number(cost) || 0, String(effectiveStatus), String(provider || 'unknown'), String(project_name || 'kilo-fuel-gauge')]
+        ).catch(() => { filtered++; });
+        persisted++;
+      } else {
+        filtered++;
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      received: events.length,
+      persisted,
+      filtered,
+      sampled,
+      deduped,
+      message: `Batch processed: ${persisted} persisted, ${filtered} filtered, ${sampled} sampled, ${deduped} deduped`
+    });
+  } catch (err) {
+    console.error('[Ingest:Batch] Error:', err.message);
+    return res.status(500).json({ error: 'Batch ingest failed', details: err.message });
+  }
+});
+
 // --- Agent Context Factory router --------------------------------------------
 // Every /api/agents request is routed through agentContextMiddleware (NO
 // ORPHANED LOGIC), so req.agentContext / req.agentSkills are always populated
