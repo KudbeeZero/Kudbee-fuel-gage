@@ -177,7 +177,17 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories = [], loading }: 
           Spatial vector trajectories — 1536-dim token embeddings surfaced from the Neon pgvector store.
           Click a cell to inspect the reasoning chain.
         </p>
-        {trajectories.length === 0 && !loading && (
+        {loading && trajectories.length === 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
+            {Array.from({ length: 9 }, (_, i) => (
+              <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/40 p-2 animate-pulse">
+                <div className="h-3 w-16 rounded bg-slate-800 mb-1" />
+                <div className="h-3 w-12 rounded bg-slate-800" />
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && trajectories.length === 0 && (
           <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-center">
             <span className="font-mono text-[10px] text-slate-500">No think tokens minted yet</span>
             <div className="mt-1 font-mono text-[9px] text-slate-600">Submit a correction delta via Governance to create your first token</div>
@@ -224,8 +234,11 @@ export function ThinkTrajectoriesPlugin({ plugin, trajectories = [], loading }: 
             </button>
           ))}
         </div>
-        {loading && (
-          <div className="mt-2 text-[10px] font-mono text-slate-500">probing trajectories…</div>
+        {loading && trajectories.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 font-mono text-[9px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <span className="text-violet-400">Syncing {trajectories.length} trajectories…</span>
+          </div>
         )}
       </PluginCard>
 
