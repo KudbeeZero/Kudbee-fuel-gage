@@ -2,7 +2,9 @@
   "extends": "@kudbee/config/tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "allowJs": true
   },
   "include": ["vectorStore.ts", "embedText.ts", "topologyIngest.ts", "pcaReducer.ts", "../lib/db.d.ts"]
 }

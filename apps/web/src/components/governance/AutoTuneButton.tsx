@@ -33,7 +33,7 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
     setError(null);
     setApplied(false);
     try {
-      const data = await apiPost('/api/governance/tune', { lookbackHours: 24 });
+      const data = await apiPost<{ analysis: string; recommendations: string[] }>('/api/governance/tune', { lookbackHours: 24 });
       setAnalysis(data.analysis);
       setRecommendations(data.recommendations);
     } catch (e) {

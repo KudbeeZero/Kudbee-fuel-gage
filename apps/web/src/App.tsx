@@ -161,6 +161,9 @@ export default function App() {
   const { snapshot: os, connected: osConnected } = useOsSnapshot();
   const [statusPinged, setStatusPinged] = useState(false);
 
+  const pgLatency: number | null = os?.services?.postgres?.latencyMs ?? null;
+  const pgOk: boolean = os?.services?.postgres?.ok ?? false;
+
   useEffect(() => {
     if (osConnected && os.services.postgres.ok && !statusPinged) {
       setStatusPinged(true);
@@ -839,9 +842,9 @@ export default function App() {
                 <span className="uppercase tracking-widest text-emerald-400 font-semibold">ENV: PRODUCTION</span>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Edge gateway round-trip latency (real fetch measurement)">
-                <Radio className={`w-3.5 h-3.5 ${(os.services.postgres.latencyMs ?? null) !== null ? ((os.services.postgres.latencyMs ?? null) < 60 ? 'text-emerald-400' : (os.services.postgres.latencyMs ?? null) < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${osConnected ? 'animate-pulse' : ''}`} />
+                <Radio className={`w-3.5 h-3.5 ${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${osConnected ? 'animate-pulse' : ''}`} />
                 <span className="uppercase tracking-widest text-slate-400">PING</span>
-                <span className={`${(os.services.postgres.latencyMs ?? null) !== null ? ((os.services.postgres.latencyMs ?? null) < 60 ? 'text-emerald-400' : (os.services.postgres.latencyMs ?? null) < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{(os.services.postgres.latencyMs ?? null) !== null ? `${(os.services.postgres.latencyMs ?? null)}ms` : '—'}</span>
+                <span className={`${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{pgLatency !== null ? `${pgLatency}ms` : '—'}</span>
               </div>
             </div>
 

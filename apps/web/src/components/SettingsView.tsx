@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { apiPost } from '../lib/apiClient';
 
-interface SettingsViewProps {
+export interface SettingsViewProps {
   currency: 'USD' | 'EUR' | 'GBP';
   setCurrency: (c: 'USD' | 'EUR' | 'GBP') => void;
   initialSubTab: 'System Engine Settings' | 'Threshold Alert Rules';
