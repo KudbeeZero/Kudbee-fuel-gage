@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { apiUrl } from '../lib/apiClient';
+import { apiUrl, apiPost } from '../lib/apiClient';
 
 interface OsSnapshot {
   ts: string;
@@ -33,11 +33,15 @@ export function useOsStream() {
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!mountedRef.current) return;
 
-    const es = new EventSource(apiUrl('/api/os-stream'));
-    esRef.current = es;
+    try {
+      const ticketData = await apiPost<{ ticket: string; signature: string }>('/api/auth/stream-ticket', {});
+      const ticketUrl = apiUrl(`/api/os-stream?ticket=${encodeURIComponent(ticketData.ticket)}`);
+
+      const es = new EventSource(ticketUrl);
+      esRef.current = es;
 
     es.addEventListener('os:snapshot', (evt) => {
       try {
@@ -67,13 +71,19 @@ export function useOsStream() {
       retryCountRef.current += 1;
       const base = Math.min(30000, 1000 * Math.pow(2, retryCountRef.current));
       const jitter = base + Math.random() * 1000;
-      reconnectTimerRef.current = setTimeout(() => connect(), jitter);
+      reconnectTimerRef.current = setTimeout(() => void connect(), jitter);
     });
+    } catch {
+      if (!mountedRef.current) return;
+      setError('Failed to obtain stream ticket — retrying...');
+      retryCountRef.current += 1;
+      reconnectTimerRef.current = setTimeout(() => void connect(), 5000);
+    }
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    connect();
+    void connect();
 
     return () => {
       mountedRef.current = false;

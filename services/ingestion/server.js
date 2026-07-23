@@ -3338,7 +3338,52 @@ if (redis) {
   }
 }
 
+// --- Phase 65: Zero-Trust SSE Stream Ticket ---
+const STREAM_TICKETS = new Map<string, number>();
+const TICKET_TTL_MS = 30000;
+const SSE_TICKET_PREFIX = 'sse_ticket_';
+
+app.post('/api/auth/stream-ticket', async (req, res) => {
+  try {
+    const ticket = SSE_TICKET_PREFIX + crypto.randomUUID();
+    STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
+
+    const signPayload = `${ticket}:${Date.now()}`;
+    const signature = crypto
+      .createHmac('sha256', process.env.STREAM_SECRET || 'kudbee-stream-secret')
+      .update(signPayload)
+      .digest('hex');
+
+    return res.status(200).json({ ticket, signature, expiresIn: TICKET_TTL_MS });
+  } catch (err) {
+    return res.status(500).json({ error: 'Ticket generation failed' });
+  }
+});
+
+function validateStreamTicket(ticket) {
+  if (!ticket) return false;
+  const expires = STREAM_TICKETS.get(ticket);
+  if (!expires || Date.now() > expires) {
+    STREAM_TICKETS.delete(ticket);
+    return false;
+  }
+  STREAM_TICKETS.delete(ticket);
+  return true;
+}
+
+// Periodic ticket cleanup
+setInterval(() => {
+  const now = Date.now();
+  for (const [ticket, expires] of STREAM_TICKETS) {
+    if (now > expires) STREAM_TICKETS.delete(ticket);
+  }
+}, 60000);
+
 app.get('/api/events', async (req, res) => {
+  const ticket = req.query.ticket;
+  if (!validateStreamTicket(ticket)) {
+    return res.status(401).json({ error: 'unauthorized', detail: 'Valid stream ticket required. POST /api/auth/stream-ticket first.' });
+  }
   if (sseClientCount() >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
     return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached (backpressure)' }));
@@ -3423,6 +3468,10 @@ async function buildOsSnapshot() {
 }
 
 app.get('/api/os-stream', async (req, res) => {
+  const ticket = req.query.ticket;
+  if (!validateStreamTicket(ticket)) {
+    return res.status(401).json({ error: 'unauthorized', detail: 'Valid stream ticket required. POST /api/auth/stream-ticket first.' });
+  }
   if (OS_STREAM_CLIENTS.size >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
     return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached' }));
