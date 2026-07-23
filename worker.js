@@ -20,7 +20,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from './services/lib/redis.js';
+import { getSlowRedisClient } from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
 import { registerShutdown } from './services/lib/shutdown.js';
@@ -32,7 +32,7 @@ const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
 const HEARTBEAT_INTERVAL_MS = 10_000; // Control Tower online-check cadence
 const POLL_BACKOFF_MS = 1000;
 
-const redis = getRedisClient({ label: 'worker' });
+const redis = getSlowRedisClient({ label: 'worker' });
 
 // --- Event bus (Redis pub/sub) -------------------------------------------
 // Publishes real-time events that the web server fans out to dashboard SSE
