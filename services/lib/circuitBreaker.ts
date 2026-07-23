@@ -116,4 +116,5 @@ export class CircuitBreaker {
 }
 
 export const groqBreaker = new CircuitBreaker('groq-ftwb', { failureThreshold: 5, resetTimeoutMs: 30000 });
+export const geminiBreaker = new CircuitBreaker('gemini', { failureThreshold: 5, resetTimeoutMs: 30000 });
 export const redisSinkBreaker = new CircuitBreaker('redis-sink', { failureThreshold: 3, resetTimeoutMs: 15000 });
