@@ -2013,7 +2013,7 @@ app.post('/api/governance/approve', async (req, res) => {
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const proven = await approveActionAndBroadcast(String(id));
     if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, action: proven });
+    return res.status(200).json({ success: true, id: proven.id, status: proven.status || 'approved', action: proven });
   } catch (err) {
     console.error('[Governance] Approve error:', err?.message);
     return res.status(500).json({ error: 'Failed to approve action' });
@@ -2026,7 +2026,7 @@ app.post('/api/governance/reject', async (req, res) => {
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const rejected = await rejectActionAndBroadcast(String(id));
     if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, action: rejected });
+    return res.status(200).json({ success: true, id: rejected.id, status: 'rejected', action: rejected });
   } catch (err) {
     console.error('[Governance] Reject error:', err?.message);
     return res.status(500).json({ error: 'Failed to reject action' });
