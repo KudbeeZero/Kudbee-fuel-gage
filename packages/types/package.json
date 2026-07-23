@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build": "echo \"@kudbee/types: source-only package, nothing to build\"",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.23.8"
