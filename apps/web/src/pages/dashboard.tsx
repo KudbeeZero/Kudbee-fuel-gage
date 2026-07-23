@@ -38,9 +38,9 @@ import { GovernanceToastStack, HermesSuggestion } from '../components/Governance
 import { RackLayout } from '../components/RackLayout';
 import { ApprovalQueueTray } from '../components/ApprovalQueueTray';
 import { GovernanceQueueTray } from '../components/governance/GovernanceQueueTray';
-import { apiGet, apiPost, apiPatch, apiUrl } from '../lib/apiClient';
+import { apiGet, apiPost, apiUrl } from '../lib/apiClient';
 import { useTerminalStore } from '../store/terminalStore';
-import type { ApprovalRequest, ApprovalDecision, ThinkThought, TelemetryStats, CrucibleDispatchResponse, ThinkTrajectory } from '@kudbee/types';
+import type { ApprovalRequest, ApprovalDecision, TelemetryStats, CrucibleDispatchResponse, ThinkTrajectory } from '@kudbee/types';
 
 interface HealthResponse {
   status: 'ok' | 'degraded' | 'error';
@@ -2159,7 +2159,6 @@ export function DashboardPage() {
   const [deepHealthLoading, setDeepHealthLoading] = useState(true);
 
   const [lastEvent, setLastEvent] = useState<{ time: string; reason: string; service: string } | null>(null);
-  const [lastEventLoading, setLastEventLoading] = useState(true);
 
   const [comparisonResult, setComparisonResult] = useState<{
     status: string;
@@ -2477,7 +2476,6 @@ export function DashboardPage() {
     } catch {
       setLastEvent(null);
     } finally {
-      setLastEventLoading(false);
     }
   }, []);
 
@@ -2601,8 +2599,7 @@ export function DashboardPage() {
   // initial mount fetch.
   useEffect(() => {
     void syncAll();
-    void loadTelemetryStats();
-  }, [syncAll, loadTelemetryStats]);
+  }, [syncAll]);
 
   useInterval(() => {
     void syncAll();

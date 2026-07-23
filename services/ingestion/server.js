@@ -11,7 +11,7 @@ import {
   verifySignature,
   AGENT_PASS_MAX_AGE_MS
 } from '@kudbee/utils';
-import { embedTrace, cosineSimilarity, EMBEDDING_DIM } from './embedder.js';
+import { embedTrace, cosineSimilarity } from './embedder.js';
 import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
 import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
@@ -43,7 +43,7 @@ import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAu
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
 import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
-import { getEnergyHeatmap, computeEnergy } from '../lib/energyMesh.ts';
+import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 
