@@ -46,6 +46,7 @@ import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
+import { groqBreaker, geminiBreaker, redisSinkBreaker } from '../lib/circuitBreaker.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -4309,6 +4310,44 @@ app.get('/api/system/diagnostics', async (_req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- Chaos Monkey Toggle: simulate provider outages to prove resilience ---
+let chaosMode = false;
+
+app.get('/api/system/chaos', async (_req, res) => {
+  try {
+    const groqState = await groqBreaker.getState();
+    const geminiState = await geminiBreaker.getState();
+    return res.status(200).json({
+      chaosMode,
+      groqBreaker: groqState,
+      geminiBreaker: geminiState
+    });
+  } catch {
+    return res.status(500).json({ error: 'Chaos status unavailable' });
+  }
+});
+
+app.post('/api/system/chaos', async (req, res) => {
+  try {
+    chaosMode = req.body?.chaosMode === true;
+    if (chaosMode) {
+      await groqBreaker.forceOpen();
+      await geminiBreaker.forceOpen();
+    } else {
+      await groqBreaker.forceReset();
+      await geminiBreaker.forceReset();
+    }
+    return res.status(200).json({
+      success: true,
+      chaosMode,
+      groqBreaker: await groqBreaker.getState(),
+      geminiBreaker: await geminiBreaker.getState()
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
