@@ -126,6 +126,23 @@ export class CircuitBreaker {
       return state !== 'OPEN';
     }
   }
+
+  async forceOpen(): Promise<void> {
+    try {
+      const redis = getRedisClient({ label: 'circuit-breaker' });
+      await redis.set(CB_PREFIX + this.name + ':state', 'OPEN');
+      await redis.set(CB_PREFIX + this.name + ':failures', String(this.failureThreshold + 1));
+    } catch { /* best-effort */ }
+  }
+
+  async forceReset(): Promise<void> {
+    try {
+      const redis = getRedisClient({ label: 'circuit-breaker' });
+      await redis.set(CB_PREFIX + this.name + ':state', 'CLOSED');
+      await redis.set(CB_PREFIX + this.name + ':failures', '0');
+      await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
+    } catch { /* best-effort */ }
+  }
 }
 
 export const groqBreaker = new CircuitBreaker('groq-ftwb', { failureThreshold: 5, resetTimeoutMs: 30000 });
