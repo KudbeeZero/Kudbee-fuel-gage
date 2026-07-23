@@ -118,3 +118,7 @@ Recovered **AgentTerminal** (225 lines) from deleted DashboardPage — mounted a
 - **Unused lucide-icons** removed from StudioLayout (11 icons → 7)
 - **All imports verified** — zero broken references across the codebase
 - **DashboardPage.tsx** fully replaced by 4 studio panels + deleted (2,959 lines removed)
+- **CI hardening**: Redundant `ci.yml` removed (superseded by `verify.yml`); `session-log.yml` YAML indent fixed
+- **Rate limiter**: Atomic Lua script replaces pipeline TOCTOU leak; per-endpoint 60/min cap added
+- **Import style**: `server.js` node imports normalized to `node:` prefix (matching 11 other files)
+- **SPA routing**: `_redirects` file added for `/tower/*` client-side route fallback
