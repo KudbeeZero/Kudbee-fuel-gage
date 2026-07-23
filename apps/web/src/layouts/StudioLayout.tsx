@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
 import { AgentTerminal } from '../components/studio/AgentTerminal';
+import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
   Database, RefreshCw, Shield, Terminal
@@ -51,6 +53,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
   };
 
   return (
+    <WorkspaceRecoveryBoundary panel="Studio Layout">
     <div className="flex h-full min-h-dvh bg-slate-950 text-slate-200">
       {/* VERTICAL SIDEBAR */}
       <nav className="w-56 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col">
@@ -175,5 +178,6 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
         <AgentTerminal collapsed={terminalCollapsed} onToggleCollapse={() => setTerminalCollapsed((v) => !v)} />
       </div>
     </div>
+    </WorkspaceRecoveryBoundary>
   );
 }
