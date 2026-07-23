@@ -191,6 +191,15 @@ function rowToObject(row) {
   return row;
 }
 
+const DB_TIMEOUT_MS = 10_000;
+
+function withTimeout(promise, ms, label) {
+  const timer = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`DB ${label} timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timer]);
+}
+
 /**
  * Run a SELECT against the healthy Neon pool, or the in-memory fallback.
  * Supports a minimal subset of the queries used by the ingestion server.
@@ -200,7 +209,7 @@ export async function runQuery(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(sql, params);
+      const res = await withTimeout(pool.query(sql, params), DB_TIMEOUT_MS, 'query');
       dbTelemetry.primaryQueryCount += 1;
       return res.rows;
     } catch (err) {
@@ -221,7 +230,7 @@ export async function runInsert(sql, params = []) {
   const pool = getDbPool();
   if (pool && isDbHealthy()) {
     try {
-      const res = await pool.query(sql, params);
+      const res = await withTimeout(pool.query(sql, params), DB_TIMEOUT_MS, 'insert');
       dbTelemetry.primaryInsertCount += 1;
       return { id: res.rows[0]?.id ?? null, changes: res.rowCount ?? 0 };
     } catch (err) {
