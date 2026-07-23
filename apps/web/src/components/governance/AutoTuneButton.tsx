@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Sliders, RefreshCw, Check, AlertTriangle, Zap } from 'lucide-react';
-import { apiPost } from '../../lib/apiClient';
+import { useState, useEffect, useRef } from 'react';
+import { Sliders, RefreshCw, Check, AlertTriangle, Zap, BarChart3 } from 'lucide-react';
+import { PanelErrorBoundary } from '../PanelErrorBoundary';
 
 interface AutoTuneProps {
   onApplied?: () => void;
@@ -20,55 +20,129 @@ interface TuneRecommendations {
   pii_redaction: { currentSeverity: string; recommendedSeverity: string; confidence: number; rationale: string };
 }
 
-export function AutoTuneButton({ onApplied }: AutoTuneProps) {
-  const [analyzing, setAnalyzing] = useState(false);
-  const [applying, setApplying] = useState(false);
+type TuneStage = 'idle' | 'analyzing' | 'tuning' | 'applying';
+
+const STAGES: { key: TuneStage; label: string }[] = [
+  { key: 'analyzing', label: 'Analyzing' },
+  { key: 'tuning', label: 'Tuning' },
+  { key: 'applying', label: 'Applying' }
+];
+
+function AutoTuneButtonInner({ onApplied }: AutoTuneProps) {
+  const [stage, setStage] = useState<TuneStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<TuneAnalysis | null>(null);
   const [recommendations, setRecommendations] = useState<TuneRecommendations | null>(null);
   const [applied, setApplied] = useState(false);
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   const runAnalysis = async () => {
-    setAnalyzing(true);
+    setStage('analyzing');
     setError(null);
     setApplied(false);
     try {
-      const data = await apiPost<{ analysis: string; recommendations: string[] }>('/api/governance/tune', { lookbackHours: 24 });
+      const res = await fetch('/api/governance/tune', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lookbackHours: 24 })
+      });
+      if (!_mountedRef.current) return;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Tune analysis failed (${res.status})`);
+      }
+      const data = await res.json();
+      if (!_mountedRef.current) return;
       setAnalysis(data.analysis);
-      setRecommendations(data.recommendations);
+      setStage('tuning');
+      setTimeout(() => {
+        if (_mountedRef.current && stage === 'tuning') {
+          setRecommendations(data.recommendations);
+          setStage('idle');
+        }
+      }, 800);
     } catch (e) {
+      if (!_mountedRef.current) return;
       setError(e instanceof Error ? e.message : 'Tune analysis failed');
-    } finally {
-      setAnalyzing(false);
+      setStage('idle');
     }
   };
 
   const applyRecommendations = async () => {
     if (!recommendations) return;
-    setApplying(true);
+    setStage('applying');
     setError(null);
     try {
-      await apiPost('/api/governance/tune/apply', { recommendations });
+      const res = await fetch('/api/governance/tune/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendations })
+      });
+      if (!_mountedRef.current) return;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Apply failed (${res.status})`);
+      }
+      if (!_mountedRef.current) return;
       setApplied(true);
+      setStage('idle');
       onApplied?.();
     } catch (e) {
+      if (!_mountedRef.current) return;
       setError(e instanceof Error ? e.message : 'Apply failed');
-    } finally {
-      setApplying(false);
+      setStage('idle');
     }
   };
 
+  const activeStageIdx = STAGES.findIndex((s) => s.key === stage);
+
   return (
     <div className="space-y-3">
+      {/* Progress Stages Indicator */}
+      {stage !== 'idle' && (
+        <div className="flex items-center gap-1.5">
+          {STAGES.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-1">
+              <span
+                className={`flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest transition-all ${
+                  i === activeStageIdx
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 scale-105'
+                    : i < activeStageIdx
+                      ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                      : 'border-slate-700 bg-slate-800/40 text-slate-500'
+                }`}
+              >
+                {i < activeStageIdx ? (
+                  <Check className="h-2.5 w-2.5" />
+                ) : i === activeStageIdx ? (
+                  <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <BarChart3 className="h-2.5 w-2.5" />
+                )}
+                {s.label}
+              </span>
+              {i < STAGES.length - 1 && (
+                <span className={`font-mono text-[8px] ${i < activeStageIdx ? 'text-emerald-500' : 'text-slate-600'}`}>→</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <button
           id="firewall-autotune-btn"
           type="button"
           onClick={runAnalysis}
-          disabled={analyzing}
+          disabled={stage === 'analyzing' || stage === 'applying'}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20 disabled:opacity-40"
         >
-          {analyzing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sliders className="w-3.5 h-3.5" />}
+          {stage === 'analyzing' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sliders className="w-3.5 h-3.5" />}
           Auto-Tune Thresholds
         </button>
         {analysis && (
@@ -76,11 +150,11 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
             id="firewall-autotune-apply-btn"
             type="button"
             onClick={applyRecommendations}
-            disabled={applying || applied}
+            disabled={stage === 'applying' || applied}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:opacity-40"
           >
             {applied ? <Check className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-            {applied ? 'Applied' : applying ? 'Applying…' : 'Apply Recommendations'}
+            {applied ? 'Applied' : stage === 'applying' ? 'Applying…' : 'Apply Recommendations'}
           </button>
         )}
       </div>
@@ -89,14 +163,6 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
         <div className="p-2 rounded border border-amber-500/30 bg-amber-500/10 flex items-center gap-1.5">
           <AlertTriangle className="w-3 h-3 text-amber-400" />
           <span className="text-[10px] font-mono text-amber-300">{error}</span>
-        </div>
-      )}
-
-      {analyzing && !analysis && (
-        <div className="p-2 rounded border border-slate-800 bg-slate-950/50">
-          <span className="text-[10px] font-mono text-slate-500 animate-pulse">
-            Analyzing governance patterns...
-          </span>
         </div>
       )}
 
@@ -132,5 +198,13 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
         </div>
       )}
     </div>
+  );
+}
+
+export function AutoTuneButton(props: AutoTuneProps) {
+  return (
+    <PanelErrorBoundary panel="AutoTune">
+      <AutoTuneButtonInner {...props} />
+    </PanelErrorBoundary>
   );
 }

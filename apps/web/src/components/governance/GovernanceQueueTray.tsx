@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Cpu, Clock, Zap, Brain, Activity } from 'lucide-react';
+import { CheckCircle2, XCircle, Cpu, Clock, Zap, Brain, Activity, CheckSquare, Square } from 'lucide-react';
 import type { ThinkTrajectory } from '@kudbee/types';
+import { PanelErrorBoundary } from '../PanelErrorBoundary';
 
 interface GovernanceQueueTrayProps {
   pending: ThinkTrajectory[];
   onPromote: (hash: string, status: 'VERIFIED' | 'RECYCLED', reviewerNotes?: string, tokenId?: string) => Promise<boolean>;
 }
 
-export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayProps) {
+function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayProps) {
   const [busyHash, setBusyHash] = useState<string | null>(null);
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   const handlePromote = async (hash: string, tokenId: string, status: 'VERIFIED' | 'RECYCLED') => {
     setBusyHash(hash);
@@ -21,8 +24,69 @@ export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayP
         delete next[hash];
         return next;
       });
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(hash);
+        return next;
+      });
     } finally {
       setBusyHash(null);
+    }
+  };
+
+  const toggleSelect = (hash: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(hash)) next.delete(hash); else next.add(hash);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === pending.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(pending.map((t) => t.token_hash)));
+    }
+  };
+
+  const approveAll = async () => {
+    const hashes = Array.from(selected);
+    if (hashes.length === 0) return;
+    setBatchBusy(true);
+    try {
+      for (const hash of hashes) {
+        const token = pending.find((t) => t.token_hash === hash);
+        await onPromote(hash, 'VERIFIED', reviewerNotes[hash] || '', token?.id);
+        setReviewerNotes((prev) => {
+          const next = { ...prev };
+          delete next[hash];
+          return next;
+        });
+      }
+      setSelected(new Set());
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const rejectAll = async () => {
+    const hashes = Array.from(selected);
+    if (hashes.length === 0) return;
+    setBatchBusy(true);
+    try {
+      for (const hash of hashes) {
+        const token = pending.find((t) => t.token_hash === hash);
+        await onPromote(hash, 'RECYCLED', reviewerNotes[hash] || '', token?.id);
+        setReviewerNotes((prev) => {
+          const next = { ...prev };
+          delete next[hash];
+          return next;
+        });
+      }
+      setSelected(new Set());
+    } finally {
+      setBatchBusy(false);
     }
   };
 
@@ -39,10 +103,55 @@ export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayP
             Think Token Governance Queue
           </h3>
         </div>
-        <span className="rounded bg-violet-500/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-violet-300">
-          {pending.length} pending
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-violet-500/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-violet-300">
+            {pending.length} pending
+          </span>
+        </div>
       </div>
+
+      {pending.length > 0 && (
+        <div className="flex items-center gap-2 border-b border-violet-500/20 px-5 py-2">
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            className="flex items-center gap-1 rounded border border-slate-700 bg-slate-800/40 px-2 py-1 font-mono text-[9px] font-bold uppercase text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+          >
+            {selected.size === pending.length ? (
+              <CheckSquare className="h-3 w-3 text-violet-400" />
+            ) : (
+              <Square className="h-3 w-3" />
+            )}
+            {selected.size === pending.length ? 'Deselect All' : 'Select All'}
+          </button>
+          {selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                disabled={batchBusy}
+                onClick={() => void approveAll()}
+                className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40"
+              >
+                {batchBusy ? (
+                  <Activity className="h-3 w-3 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3" />
+                )}
+                Approve All ({selected.size})
+              </button>
+              <button
+                type="button"
+                disabled={batchBusy}
+                onClick={() => void rejectAll()}
+                className="flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase text-rose-300 transition-colors hover:bg-rose-500/20 disabled:opacity-40"
+              >
+                <XCircle className="h-3 w-3" />
+                Reject All ({selected.size})
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="max-h-[420px] overflow-y-auto p-4">
         {pending.length === 0 ? (
@@ -61,6 +170,7 @@ export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayP
                 const z = coords[2] ?? 0;
                 const context = token.task_context || {};
                 const agentOrigin = context.agent as string || context.source as string || 'unknown';
+                const isSelected = selected.has(token.token_hash);
 
                 return (
                   <motion.div
@@ -72,7 +182,20 @@ export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayP
                     className="group rounded-xl border border-violet-500/15 bg-slate-950/60 p-4 hover:border-violet-500/30 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-mono text-xs text-violet-300">{token.token_hash}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleSelect(token.token_hash)}
+                          className="shrink-0"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-4 w-4 text-violet-400" />
+                          ) : (
+                            <Square className="h-4 w-4 text-slate-600" />
+                          )}
+                        </button>
+                        <span className="truncate font-mono text-xs text-violet-300">{token.token_hash}</span>
+                      </div>
                       <span className="shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-amber-400">
                         {token.status}
                       </span>
@@ -136,5 +259,13 @@ export function GovernanceQueueTray({ pending, onPromote }: GovernanceQueueTrayP
         )}
       </div>
     </div>
+  );
+}
+
+export function GovernanceQueueTray(props: GovernanceQueueTrayProps) {
+  return (
+    <PanelErrorBoundary panel="Governance Queue">
+      <GovernanceQueueTrayInner {...props} />
+    </PanelErrorBoundary>
   );
 }
