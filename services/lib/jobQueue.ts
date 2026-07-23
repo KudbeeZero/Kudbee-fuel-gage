@@ -1,4 +1,4 @@
-import { getRedisClient } from './redis.js';
+import { getRedisClient, getBlockingRedisClient } from './redis.js';
 import { agentLog } from './agentLogger.js';
 
 const JOB_PREFIX = 'kudbee:jobs:';
@@ -30,8 +30,11 @@ export async function enqueueJob(queue: string, type: string, payload: Record<st
 
 export async function dequeueJob(queue: string): Promise<Job | null> {
   try {
-    const redis = getRedisClient({ label: 'job-queue' });
-    const raw = await redis.rpop(JOB_PREFIX + queue);
+    const redis = getBlockingRedisClient({ label: 'job-queue' });
+    if (!redis) return null;
+    const result = await redis.brpop(JOB_PREFIX + queue, 5);
+    if (!result) return null;
+    const raw = result[1];
     if (!raw) return null;
     return JSON.parse(raw) as Job;
   } catch {
