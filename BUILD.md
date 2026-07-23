@@ -60,4 +60,32 @@ The Control Tower sidebar uses a dedicated-tab-per-domain architecture. 13 tabs 
 | 10 | HISTORY | `pages/history.tsx` | Telemetry log history |
 | 11 | ALERTS | `<AlertsPanel />` | Alert notifications |
 | 12 | INTELLIGENCE | `<IntelligenceView />` | AI insights |
-| 13 | SETTINGS | `<SettingsView />` | System settings, theme |
+| 13 | SETTINGS | `components/SettingsView.tsx` | System settings, theme |
+
+## Codebase Simplification (July 2026)
+
+App.tsx reduced from **4,271 → 1,059 lines (75% reduction)**:
+
+| What | Removed |
+|:---|:---|
+| Dead component files | 16 removed |
+| Dead hook files | 9 removed |
+| HistoryView inline component | 1,580 lines |
+| FirewallView inline component | 495 lines |
+| CostLedgerCard widget | All-zeros placeholder |
+| eventLogs static state | Hardcoded fake data |
+| footerPing duplicate state | Mirrored from OS stream |
+| ConsoleDock synthetic logs | 120ms fake log generator |
+| Duplicate hook pairs | useHistoryStream → useTelemetryStream, usePollingQueue extracted |
+
+### Plugin → Tab Mapping
+
+| Rack Plugin | Tab | Page File |
+|:---|:---|:---|
+| EdgeSentinelPlugin | SENTINEL | pages/sentinel.tsx |
+| ThinkStormPlugin | THINK | pages/think.tsx |
+| ThinkStreamPlugin | THINK | pages/think.tsx |
+| ThinkStoragePlugin | THINK | pages/think.tsx |
+| ThinkTrajectoriesPlugin | THINK | pages/think.tsx |
+| GovernanceGatePlugin | GOVERNANCE | pages/governance.tsx |
+| HermesAuditorPlugin | HERMES | pages/hermes.tsx |
