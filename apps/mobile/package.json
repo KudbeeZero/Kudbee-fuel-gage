@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "echo 'mobile typecheck skipped (Expo 52 — React 18 + TS 5.3)'",
+    "lint": "tsc --noEmit",
     "build": "echo 'mobile build skipped (Expo 52 standalone)'"
   },
   "dependencies": {
