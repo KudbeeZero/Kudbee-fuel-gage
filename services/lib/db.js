@@ -90,7 +90,11 @@ export function getDbPool() {
 
   pool.on('error', (err) => {
     _healthy = false;
-    console.warn('[DB] Pool error (degrading to in-memory):', err.message);
+    console.error('[DB] Pool connection error — degrading to in-memory store:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack?.split('\n').slice(0, 3).join('\n')
+    });
   });
 
   pool.on('connect', () => {
