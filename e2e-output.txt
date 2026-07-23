@@ -1,0 +1,143 @@
+[E2E] Starting ingestion server...
+[server] [Groq] GROQ_API_KEY not set — Groq inference unavailable. Set the env var for LPU acceleration.
+[server] [DB] Neon Postgres Pool initialized from DATABASE_URL
+[server] (node:16921) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[server] [DB] Neon Postgres connection established (healthy).
+[server] [DB] Neon schema ensured.
+[server] [Server] OTel Ingestion Server listening on port 9876
+[Server] Environment: test
+[Server] Database: Neon Postgres (resilient Pool)
+[Server] Redis: enabled
+[server] [Server] Groq LPU: disabled (set GROQ_API_KEY)
+[server] [ingestion] Redis connected
+[server] [SSE-sub] Redis subscriber connected
+[server] [ingestion] Redis ready
+[server] [SSE-sub] Redis subscriber ready
+[server] [SSE] Subscribed to kudbee:events
+[server] [Worker] Starting background task loop on kudbee-governance-tasks
+[E2E] Server is ready
+
+--- Check 1: Health endpoint ---
+[server] [Worker] redis rpop failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 1: Health endpoint
+--- Check 2: Health-check API endpoint ---
+[server] [ioredis] Unhandled error event: ReplyError: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+    at parseError (/workspace/2e6dc741-8901-47c1-a77a-1e16175361df/sessions/agent_50c4129a-8890-4f83-882d-db4ea3d839f9/node_modules/redis-parser/lib/parser.js:179:12)
+    at parseType (/workspace/2e6dc741-8901-47c1-a77a-1e16175361df/sessions/agent_50c4129a-8890-4f83-882d-db4ea3d839f9/node_modules/redis-parser/lib/parser.js:302:14)
+[server] [Receptor] Lock registry bootstrapped from Redis.
+[server] [Receptor] P2P lock sync active
+  [PASS] Check 2: Health-check API endpoint
+--- Check 3: Valid telemetry ingest ---
+[server] [rate-limit] Invalid REDIS_RATE_LIMIT_URL, falling back to REDIS_URL
+[server] [Gemini] GEMINI_API_KEY not set — triage disabled
+[server] [rate-limit] Redis connected
+[server] [Worker] redis rpop failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+[server] [rate-limit] Redis connection closed
+[server] [DB] Neon insert failed (degrading to in-memory): there is no unique or exclusion constraint matching the ON CONFLICT specification
+  [PASS] Check 3: Valid telemetry ingest
+--- Check 4: Invalid payload rejection ---
+  [PASS] Check 4: Invalid payload rejection
+--- Check 5: Telemetry logs retrieval ---
+[server] [http] POST /api/telemetry/ingest 422 3ms
+  [PASS] Check 5: Telemetry logs retrieval
+--- Check 6: Memory recall ---
+  [PASS] Check 6: Memory recall
+--- Check 7: Governance health ---
+[server] [Redis] Telemetry feed push failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 7: Governance health
+--- Check 8: HERMES logs endpoint ---
+  [PASS] Check 8: HERMES logs endpoint
+--- Check 9: Database dependency reporting ---
+  [PASS] Check 9: Database dependency reporting
+--- Check 10: Schema existence via interceptor ---
+  [PASS] Check 10: Schema existence via interceptor
+--- Check 11: Dashboard aggregate query ---
+[server] [Worker] redis rpop failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 11: Dashboard aggregate query
+--- Check 12: Deep health endpoint ---
+  [PASS] Check 12: Deep health endpoint
+--- Check 13: Model comparator endpoint ---
+[server] [Comparator] Provider gemini failed: GeminiProvider requires an apiKey
+[server] [Ledger] Redis queue failed (local fallback): ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 13: Model comparator endpoint
+--- Check 14: Mint think token endpoint ---
+  [PASS] Check 14: Mint think token endpoint (auth-gated, 401 expected)
+  [PASS] Check 14: Mint think token endpoint
+--- Check 15: Think trajectories endpoint ---
+[server] [http] POST /api/governance/mint-think-token 401 1ms
+  [PASS] Check 15: Think trajectories endpoint
+--- Check 16: Auto Think Token embedding & trajectory ---
+  [PASS] Check 16: Auto Think Token embedding & trajectory (auth-gated, 401 expected)
+  [PASS] Check 16: Auto Think Token embedding & trajectory
+--- Check 17: Governance promotion endpoint (PATCH status) ---
+[server] [http] POST /api/governance/mint-think-token 401 1ms
+  [PASS] Check 17: Governance promotion endpoint (auth-gated, 401 expected)
+  [PASS] Check 17: Governance promotion endpoint (PATCH status)
+--- Check 18: Telemetry search endpoint ---
+[server] [http] POST /api/governance/mint-think-token 401 0ms
+  [PASS] Check 18: Telemetry search endpoint
+--- Check 19: Audit export JSON endpoint ---
+  [PASS] Check 19: Audit export JSON endpoint
+--- Check 20: System diagnostics endpoint ---
+[server] [Worker] redis rpop failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 20: System diagnostics endpoint
+--- Check 21: Agent feedback endpoint ---
+[server] [http] POST /feedback 400 0ms
+  [PASS] Check 21: Agent feedback endpoint
+--- Check 22: Policy auto-tune endpoint ---
+  [PASS] Check 22: Policy auto-tune endpoint
+--- Check 23: RBAC permission enforcement ---
+[server] [http] POST /tune/apply 403 1ms
+[server] [http] POST /tune/apply 403 0ms
+  [PASS] Check 23: RBAC permission enforcement
+--- Check 24: Audit vault anchoring & verification ---
+[server] [http] POST /vault/anchor 403 1ms
+  [PASS] Check 24: Audit vault anchoring & verification
+--- Check 25: Sub-router endpoint integrity ---
+  [PASS] Check 25: Sub-router endpoint integrity
+--- Check 26: Lazy bundle availability ---
+  [PASS] Check 26: Lazy bundle availability
+--- Check 27: Task enqueue and worker consumption ---
+  [PASS] Check 27: Task enqueue and worker consumption
+--- Check 28: DLQ retry policy (3-strike → dead letter) ---
+[server] [http] POST /tasks/enqueue 500 51ms
+[server] [Worker] redis rpop failed: ERR max requests limit exceeded. Limit: 500000, Usage: 500000. See https://upstash.com/docs/redis/troubleshooting/max_requests_limit for details
+  [PASS] Check 28: DLQ retry policy (3-strike → dead letter)
+--- Check 29: Dual-source drift sentinel ---
+  ✓ Drift sentinel: server.ts deleted — single canonical server (server.js)
+  [PASS] Check 29: Dual-source drift sentinel
+--- Check 30: Degradation monitor tracking ---
+[server] [http] POST /tasks/enqueue 500 90ms
+[Check30] before: {"primaryQueryCount":3,"fallbackQueryCount":33,"primaryInsertCount":2,"fallbackInsertCount":5,"redisPrimaryCount":3,"redisFallbackCount":1,"redisErrorCount":1}
+[Check30] after: {"primaryQueryCount":3,"fallbackQueryCount":33,"primaryInsertCount":2,"fallbackInsertCount":5,"redisPrimaryCount":3,"redisFallbackCount":1,"redisErrorCount":1}
+  [FAIL] Check 30: Degradation monitor tracking
+--- Check 31: Agent context factory hierarchy ---
+  [PASS] Check 31: Agent context factory hierarchy
+--- Check 32: Dynamic skill tagging (DATABASE_MUTATION) ---
+  [PASS] Check 32: Dynamic skill tagging (DATABASE_MUTATION)
+--- Check 33: Trajectories expose confidence_score ---
+  [PASS] Check 33: Trajectories expose confidence_score
+--- Check 34: Uncertainty gate parse variant ---
+  [PASS] Check 34: Uncertainty gate parse variant
+--- Check 35: Uncertainty gate low-confidence interception ---
+  [PASS] Check 35: Uncertainty gate low-confidence interception
+--- Check 36: Token Forge retrieval (getRelevantThinkTokens) ---
+[server] [http] POST /api/governance/mint-think-token 401 1ms
+  [PASS] Check 36: Token Forge retrieval (getRelevantThinkTokens)
+[server] [Worker] SIGTERM received – draining current task...
+[server] [Server] SIGTERM received — shutting down gracefully
+[server] [DB] Tearing down database connections…
+[server] [Worker] Redis connection closed gracefully.
+
+========================================
+Results: 35 passed, 1 failed out of 36
+========================================
+[E2E] VERIFICATION FAILED
