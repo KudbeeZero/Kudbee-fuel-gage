@@ -4514,6 +4514,53 @@ app.post('/api/audit/vault/verify', async (req, res) => {
   }
 });
 
+// --- Phase 60: Signed Audit Ledger Export ---
+app.get('/api/audit/vault/export', async (req, res) => {
+  try {
+    const ctx = req.tenantCtx || requireRole(req, res, 'AUDITOR');
+    if (!ctx) return;
+
+    const exportedAt = new Date().toISOString();
+    const anchors = auditVaultState.anchors || [];
+    const signedPayload = {
+      exportedAt,
+      tenantId: ctx.tenantId,
+      anchors: await Promise.all(anchors.map(async (a) => {
+        let verified = false;
+        let recomputedRoot = '';
+        try {
+          const rows = await runQuery(
+            `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+             FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
+            [a.leafCount]
+          ).catch(() => []);
+          const leafHashes = (rows || []).map(hashTraceRow);
+          recomputedRoot = crypto.createHash('sha256').update(leafHashes.join('|')).digest('hex');
+          verified = recomputedRoot === a.batchRoot;
+        } catch { /* best-effort verification */ }
+        return {
+          anchorId: a.anchorId,
+          batchRoot: a.batchRoot,
+          leafCount: a.leafCount,
+          sampleLeafHashes: a.sampleLeafHashes || [],
+          createdAt: a.createdAt,
+          verification: { verified, originalRoot: a.batchRoot, recomputedRoot, verifiedAt: exportedAt }
+        };
+      })),
+      anchorCount: anchors.length,
+      verifiedCount: 0
+    };
+    signedPayload.verifiedCount = signedPayload.anchors.filter((a) => a.verification.verified).length;
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-signed-ledger-${Date.now()}.json"`);
+    res.setHeader('X-Audit-Hash', crypto.createHash('sha256').update(JSON.stringify(signedPayload)).digest('hex'));
+    res.json(signedPayload);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 const distPath = resolveDistPath();
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
