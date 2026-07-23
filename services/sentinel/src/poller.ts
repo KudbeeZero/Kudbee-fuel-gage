@@ -145,10 +145,7 @@ async function egressIngest(payload: IngestRequest): Promise<EgressResult> {
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Agent-Pass': AGENT_PASS
-      },
+      headers,
       body: JSON.stringify(payload)
     });
     const text = await res.text();

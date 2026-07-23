@@ -20,6 +20,27 @@ import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
+const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
+
+function sanitizeRedisUrl(url, fallback) {
+  if (!url) return fallback;
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    if (url.includes('redis://') || url.includes('rediss://')) {
+      const match = url.match(/(redis:\/\/[^\s]+)/);
+      if (match) return match[1];
+    }
+    if (url.includes('redis-cli')) {
+      const match = url.match(/(redis:\/\/[^\s]+)/);
+      if (match) return match[1];
+    }
+    return fallback;
+  }
+}
+
+const _rateLimitUrl = sanitizeRedisUrl(REDIS_RATE_LIMIT_URL, REDIS_URL);
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
 
@@ -125,7 +146,7 @@ export function getRateLimitClient(opts = {}) {
     baseConfig.tls = { rejectUnauthorized: false };
   }
 
-  const client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
+  const client = new Redis(_rateLimitUrl, baseConfig);
 
   client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis connected'); });
   client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[rate-limit] Redis ready'); });
@@ -134,6 +155,42 @@ export function getRateLimitClient(opts = {}) {
 
   if (!opts.forceNew) _rateLimitClient = client;
   return _rateLimitClient;
+}
+
+/**
+ * Returns a dedicated "slow brain" Redis client for HERMES, Crucible,
+ * governance, and heavy background workers. Uses REDIS_SLOW_URL when set
+ * so that slow-brain workload never competes with fast-brain pub/sub or
+ * rate-limit operations. Falls back to the primary REDIS_URL.
+ * @param {object} [opts] Optional overrides.
+ * @returns {import('ioredis').Redis}
+ */
+export function getSlowRedisClient(opts = {}) {
+  const label = opts.label || 'redis-slow';
+  const url = process.env.REDIS_SLOW_URL || REDIS_URL;
+
+  const baseConfig = {
+    lazyConnect: opts.lazyConnect ?? false,
+    maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    retryStrategy: opts.retryStrategy ?? (() => null),
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    keepAlive: 15_000
+  };
+
+  if (isUpstash || url.includes('upstash.io')) {
+    baseConfig.tls = { rejectUnauthorized: false };
+  }
+
+  const client = new Redis(url, baseConfig);
+  client.on('connect', () => console.log(`[${label}] Redis connected`));
+  client.on('ready', () => console.log(`[${label}] Redis ready`));
+  client.on('error', (err) => console.error(`[${label}] Redis error:`, err.message));
+  client.on('end', () => console.warn(`[${label}] Redis connection closed`));
+
+  return client;
 }
 
 export { redisTelemetry };

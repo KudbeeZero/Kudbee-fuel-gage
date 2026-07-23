@@ -156,9 +156,9 @@ export async function drainQueue() {
 async function persistToNeon(entry) {
   const { context, input, thoughtStream, output, resultStatus, provider, event_type, reason } = entry;
   try {
-    await runInsert(
+    const result = await runInsert(
       `INSERT INTO ${LEDGER_TABLE} (context, input, thought_stream, output, result_status, provider, event_type, reason)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [
         context,
         JSON.stringify(input ?? {}),
@@ -170,7 +170,7 @@ async function persistToNeon(entry) {
         reason || null
       ]
     );
-    return { ok: true };
+    return { ok: true, id: result.id };
   } catch (err) {
     console.warn('[Ledger] Neon persist failed:', err.message);
     return { ok: false, error: err.message };

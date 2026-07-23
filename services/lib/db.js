@@ -191,6 +191,7 @@ const memory = {
   user_memories: [],
   security_violations: [],
   governance_actions: [],
+  reasoning_ledger: [],
   think: [],
   think_tokens: []
 };
@@ -430,6 +431,21 @@ function runInsertMemory(sql, params = []) {
       model: model || 'reasoning', created_at: new Date().toISOString()
     };
     memory.think.push(row);
+    return { id: row.id, changes: 1 };
+  }
+  if (/INTO reasoning_ledger/.test(s)) {
+    const [context, input_json, thought_stream, output, result_status, provider, event_type, reason] = params;
+    const row = {
+      id: nextId(),
+      context, input: input_json, thought_stream, output,
+      result_status: result_status || 'SUCCESS',
+      provider: provider || 'unknown',
+      event_type: event_type || 'reasoning',
+      reason,
+      created_at: new Date().toISOString()
+    };
+    memory.reasoning_ledger = memory.reasoning_ledger || [];
+    memory.reasoning_ledger.push(row);
     return { id: row.id, changes: 1 };
   }
   if (/DELETE FROM telemetry_traces/.test(s)) {
