@@ -1,9 +1,18 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export function useStreamEngine() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamOutput, setStreamOutput] = useState('');
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const startStream = useCallback((prompt: string, model: string, onComplete?: () => void) => {
     setIsStreaming(true);
