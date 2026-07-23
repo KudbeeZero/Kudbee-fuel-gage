@@ -231,6 +231,20 @@ Always-mounted: `EdgeSentinelPlugin`
 |:---|:---|:---|
 | shutdown.js | services/lib/shutdown.js | Unified SIGTERM/SIGINT with 30s force-exit |
 | tokenBucket.ts | services/lib/tokenBucket.ts | Redis-backed rate limiter (Groq/Gemini/Neon) |
+| rateLimiter.ts | services/lib/rateLimiter.ts | Heroku Fixed-Window INCR+EXPIRE limiter on REDIS_RATE_LIMIT_URL |
 | agentLogger.ts | services/lib/agentLogger.ts | Structured JSON logging + SSE state broadcast |
 | jobQueue.ts | services/lib/jobQueue.ts | Redis-backed queue with retry + dead-letter |
 | circuitBreaker.ts | services/lib/circuitBreaker.ts | groqBreaker + geminiBreaker circuit breakers |
+
+## Rate Limiting Architecture (FIX-021)
+
+Uses Lua-eval atomic INCR+EXPIRE on a dedicated Redis instance (`REDIS_RATE_LIMIT_URL`).
+Server middleware returns standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers.
+
+| Config | Window | Max Requests | Scope |
+|:---|:---|:---|:---|
+| DEFAULT_RATE_LIMIT | 60s | 300 | Global per-IP ceiling |
+| PER_ENDPOINT_RATE_LIMIT | 60s | 60 | Per individual API route |
+| UI_POLL_RATE_LIMIT | 60s | 600 | UI polling endpoints |
+
+Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnostics`.

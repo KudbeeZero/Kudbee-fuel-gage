@@ -17,6 +17,7 @@
  */
 
 import { createProvider, type ProviderConfig, type CompletionRequest, type CompletionResponse } from '@kudbee/utils/llm/providers';
+import { searchSemanticCache, saveSemanticCache } from './semanticCache.ts';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
@@ -87,9 +88,16 @@ async function callGroq(
   userPrompt: string,
   temperature = 0.1,
   maxTokens = 1024
-): Promise<{ text: string; tokensUsed: number; latencyMs: number }> {
+): Promise<{ text: string; tokensUsed: number; latencyMs: number; cacheHit: boolean }> {
   if (!process.env.GROQ_API_KEY) {
     throw new Error('GROQ_API_KEY not configured');
+  }
+
+  // Check semantic cache before hitting Groq LPU
+  const cached = await searchSemanticCache(userPrompt);
+  if (cached) {
+    console.log('[Groq] LangCache HIT — returning cached response');
+    return { text: cached, tokensUsed: 0, latencyMs: 1, cacheHit: true };
   }
 
   const start = Date.now();
@@ -115,10 +123,16 @@ async function callGroq(
   const response: CompletionResponse = await provider.complete(request);
   const latencyMs = Date.now() - start;
 
+  const resultText = response.text.trim();
+
+  // Save to semantic cache asynchronously (non-blocking)
+  void saveSemanticCache(userPrompt, resultText);
+
   return {
-    text: response.text.trim(),
+    text: resultText,
     tokensUsed: response.usage?.totalTokens ?? 0,
-    latencyMs
+    latencyMs,
+    cacheHit: false
   };
 }
 

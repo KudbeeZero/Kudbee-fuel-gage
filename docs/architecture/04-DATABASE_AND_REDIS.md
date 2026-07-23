@@ -336,3 +336,18 @@ Four layers of defense applied on every `POST /api/telemetry/ingest`:
 ## Shutdown Procedure
 
 `teardownAll(redisClient)` in `services/lib/db.js` gracefully closes both DB pool and Redis connection via `Promise.allSettled`. Called on `SIGTERM`/`SIGINT` in `server.js`.
+
+---
+
+## Redis LangCache (Semantic Caching)
+
+**Service**: `services/lib/semanticCache.ts`
+
+Kudbee integrates with **Redis LangCache** (`b95111071db14e848cdbe9514138374d`) at the inference layer. Before any Groq/Gemini LLM call, the user prompt is checked against the semantic cache via `POST /entries/search`. On cache hit, the cached response is returned immediately — saving tokens, latency, and API costs. On cache miss, the LLM response is asynchronously saved back via `POST /entries`.
+
+| Env Var | Purpose | Default |
+|:---|:---|:---|
+| `LANGCACHE_API_KEY` | Bearer token for LangCache auth | (required — disables cache if unset) |
+| `LANGCACHE_ENDPOINT` | LangCache REST endpoint URL | `https://aws-us-east-1.langcache.redis.io/v1/caches/b95111071db14e848cdbe9514138374d` |
+
+**Resilience**: Cache operations have a 3-second timeout and are non-blocking. If LangCache is unreachable, the LLM call proceeds normally — the cache degrades gracefully without impacting inference throughput.

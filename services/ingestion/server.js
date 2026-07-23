@@ -1,8 +1,8 @@
 import express from 'express';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestRequestSchema } from '@kudbee/types';
 import {
@@ -46,6 +46,7 @@ import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
+import { rateLimitCheck, DEFAULT_RATE_LIMIT } from '../lib/rateLimiter.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +65,30 @@ app.use((req, res, next) => {
       console.log(`[http] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
     }
   });
+  next();
+});
+
+// --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
+const RATE_LIMIT_EXCLUDED = new Set(['/health', '/api/system/health-deep', '/api/system/diagnostics']);
+
+app.use(async (req, res, next) => {
+  if (RATE_LIMIT_EXCLUDED.has(req.path)) return next();
+
+  const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+  const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
+
+  res.setHeader('X-RateLimit-Limit', String(result.limit));
+  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
+  res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
+
+  if (!result.allowed) {
+    return res.status(429).json({
+      error: 'too_many_requests',
+      message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
+      retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
+    });
+  }
+
   next();
 });
 

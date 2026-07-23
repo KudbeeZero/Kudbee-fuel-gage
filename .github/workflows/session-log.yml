@@ -5,8 +5,8 @@ on:
     types: [closed]
 
 jobs:
-    timeout-minutes: 3
   log-session:
+    timeout-minutes: 3
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     steps:
