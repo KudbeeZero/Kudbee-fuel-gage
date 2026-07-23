@@ -2020,6 +2020,44 @@ app.post('/api/governance/approve', async (req, res) => {
   }
 });
 
+// --- Deep-Edit Payload: modify a proposed action's payload before approving ---
+app.post('/api/governance/approve-modified', async (req, res) => {
+  try {
+    const { id, modifiedPayload } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing "id"' });
+    if (!modifiedPayload || typeof modifiedPayload !== 'string') return res.status(400).json({ error: 'Missing "modifiedPayload"' });
+
+    // Validate modified payload is valid JSON
+    let parsed: unknown;
+    try { parsed = JSON.parse(modifiedPayload); } catch {
+      return res.status(400).json({ error: 'Modified payload is not valid JSON' });
+    }
+
+    // Override the proposed entry with the modified payload
+    if (redis) {
+      const proposedKey = `governance:proposed:${id}`;
+      const existing = await redis.get(proposedKey);
+      if (!existing) return res.status(404).json({ error: 'Proposed action not found' });
+
+      try {
+        const existingParsed = JSON.parse(existing);
+        existingParsed.payload = parsed;
+        existingParsed.modified_at = new Date().toISOString();
+        existingParsed.modified = true;
+        await redis.set(proposedKey, JSON.stringify(existingParsed));
+      } catch { /* preserve original JSON structure */ }
+    }
+
+    const proven = await approveActionAndBroadcast(String(id));
+    if (!proven) return res.status(404).json({ error: 'Proposed action not found after modifying' });
+
+    return res.status(200).json({ success: true, id: proven.id, status: proven.status || 'approved', modified: true, action: proven });
+  } catch (err) {
+    console.error('[Governance] Approve-modified error:', err?.message);
+    return res.status(500).json({ error: 'Failed to approve modified action' });
+  }
+});
+
 app.post('/api/governance/reject', async (req, res) => {
   try {
     const { id } = req.body || {};
