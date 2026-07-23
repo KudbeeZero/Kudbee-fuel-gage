@@ -22,69 +22,73 @@ export interface UseEventStreamResult {
  * Consumers register typed handlers with `on(type, handler)`. The latest
  * raw event is exposed via `lastEvent` for lightweight state effects.
  */
+// Module-level singleton: only ONE EventSource is ever created.
+// All useEventStream() calls share it via ref-counting.
+// When ref count hits 0, the connection is closed.
+let _es: EventSource | null = null;
+let _refCount = 0;
+let _connected = false;
+let _listeners: Array<{ type: string; fn: (ev: MessageEvent) => void }> = [];
+const _handlers = new Map<string, Set<(data: any) => void>>();
+
+function ensureConnection() {
+  if (_es && _es.readyState !== EventSource.CLOSED) return;
+  if (typeof EventSource === 'undefined') return;
+
+  _es = new EventSource(apiUrl('/api/events'));
+  _connected = true;
+
+  const dispatch = (type: string, data: any) => {
+    const set = _handlers.get(type);
+    if (set) set.forEach((h) => { try { h(data); } catch {} });
+  };
+
+  _es.onopen = () => { _connected = true; };
+  _es.onerror = () => { _connected = false; };
+
+  _es.onmessage = (ev) => {
+    try { const parsed = JSON.parse(ev.data); dispatch('message', parsed); } catch {}
+  };
+
+  const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes', 'ask', 'storage_metrics', 'os_telemetry'];
+  for (const type of namedTypes) {
+    const fn = (ev: MessageEvent) => {
+      let data: any = ev.data;
+      try { data = JSON.parse(ev.data); } catch {}
+      dispatch(type, data);
+    };
+    _es.addEventListener(type, fn as EventListener);
+    _listeners.push({ type, fn });
+  }
+}
+
+function teardownConnection() {
+  if (!_es) return;
+  _listeners.forEach(({ type, fn }) => _es!.removeEventListener(type, fn as EventListener));
+  _listeners = [];
+  _es.close();
+  _es = null;
+  _connected = false;
+}
+
 export function useEventStream(): UseEventStreamResult {
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(_connected);
   const [lastEvent, setLastEvent] = useState<StreamEvent | null>(null);
-  const handlersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
-  const esRef = useRef<EventSource | null>(null);
 
   const on = useCallback((type: string, handler: (data: any) => void) => {
-    const map = handlersRef.current;
-    if (!map.has(type)) map.set(type, new Set());
-    map.get(type)!.add(handler);
-    return () => {
-      map.get(type)?.delete(handler);
-    };
+    if (!_handlers.has(type)) _handlers.set(type, new Set());
+    _handlers.get(type)!.add(handler);
+    return () => { _handlers.get(type)?.delete(handler); };
   }, []);
 
   useEffect(() => {
-    if (typeof EventSource === 'undefined') return;
-    const url = apiUrl('/api/events');
-    const es = new EventSource(url);
-    esRef.current = es;
-
-    const dispatch = (type: string, data: any) => {
-      const set = handlersRef.current.get(type);
-      if (set) set.forEach((h) => {
-        try { h(data); } catch (e) { /* handler error must not kill the stream */ }
-      });
-    };
-
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-
-    // Generic handler for all named events.
-    es.onmessage = (ev) => {
-      try {
-        const parsed = JSON.parse(ev.data);
-        const event: StreamEvent = { type: 'message', data: parsed, ts: new Date().toISOString() };
-        setLastEvent(event);
-        dispatch('message', parsed);
-      } catch {
-        /* ignore malformed */
-      }
-    };
-
-    // Named event types (event: <type>).
-    const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes', 'ask', 'storage_metrics', 'os_telemetry'];
-    const listeners: Array<{ type: string; fn: (ev: MessageEvent) => void }> = [];
-    for (const type of namedTypes) {
-      const fn = (ev: MessageEvent) => {
-        let data: any = ev.data;
-        try { data = JSON.parse(ev.data); } catch { /* keep string */ }
-        const event: StreamEvent = { type, data, ts: new Date().toISOString() };
-        setLastEvent(event);
-        dispatch(type, data);
-      };
-      es.addEventListener(type, fn as EventListener);
-      listeners.push({ type, fn });
-    }
-
+    _refCount += 1;
+    ensureConnection();
+    const check = setInterval(() => setConnected(_connected), 1000);
     return () => {
-      listeners.forEach(({ type, fn }) => es.removeEventListener(type, fn as EventListener));
-      es.close();
-      esRef.current = null;
-      setConnected(false);
+      clearInterval(check);
+      _refCount -= 1;
+      if (_refCount <= 0) teardownConnection();
     };
   }, []);
 
