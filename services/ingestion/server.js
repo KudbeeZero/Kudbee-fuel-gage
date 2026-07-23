@@ -51,7 +51,7 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-if (process.env.NODE_ENV !== 'test') app.set('trust proxy', true);
+if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 
 // --- Phase 45: Request duration tracking and structured logging ---
 app.use((req, res, next) => {
@@ -184,13 +184,23 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 
 app.use(express.json({ limit: '10mb' }));
 
+const ipFromRequest = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = typeof forwarded === 'string'
+    ? forwarded.split(',')[0].trim()
+    : (req.ip || req.socket?.remoteAddress || 'unknown');
+  return ip;
+};
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: process.env.NODE_ENV === 'test' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => ipFromRequest(req),
   handler: (req, res) => {
-    console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${req.ip}`);
+    const ip = ipFromRequest(req);
+    console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${ip}`);
     res.setHeader('Retry-After', Math.ceil(60));
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   }
@@ -202,8 +212,10 @@ const ingestLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 500 : 25,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => ipFromRequest(req),
   handler: (req, res) => {
-    console.warn(`[RateLimit:Ingest] 429 on ${req.method} ${req.path} from ${req.ip}`);
+    const ip = ipFromRequest(req);
+    console.warn(`[RateLimit:Ingest] 429 on ${req.method} ${req.path} from ${ip}`);
     res.setHeader('Retry-After', Math.ceil(60));
     res.status(429).json({ error: 'Ingest rate limit exceeded' });
   }
