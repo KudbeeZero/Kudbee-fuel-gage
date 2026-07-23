@@ -62,7 +62,17 @@ async function fetchWithRetry(url: string, init: RequestInit, timeoutMs: number,
       const res = await fetchWithTimeout(url, init, timeoutMs);
       if ((res.status === 429 || res.status === 503) && attempt < retries) {
         const retryAfter = res.headers.get('Retry-After');
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.min(1000 * Math.pow(2, attempt), 30_000);
+        const xReset = res.headers.get('X-RateLimit-Reset');
+        let delay: number;
+        if (retryAfter) {
+          delay = parseInt(retryAfter, 10) * 1000;
+        } else if (xReset) {
+          delay = Math.max(0, parseInt(xReset, 10) * 1000 - Date.now());
+        } else {
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt), 30_000);
+          const jitter = Math.random() * 1000;
+          delay = baseDelay + jitter;
+        }
         console.warn(`[apiClient] ${res.status} on ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
         await sleep(delay);
         continue;
@@ -75,7 +85,9 @@ async function fetchWithRetry(url: string, init: RequestInit, timeoutMs: number,
       }
       if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message.includes('fetch'))) {
         if (attempt < retries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10_000);
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt), 10_000);
+          const jitter = Math.random() * 500;
+          const delay = baseDelay + jitter;
           console.warn(`[apiClient] Network error on ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
           await sleep(delay);
           continue;
