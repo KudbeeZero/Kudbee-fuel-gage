@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useTerminalStore } from './terminalStore';
-import { apiPost, apiPatch } from '../lib/apiClient';
+import { apiPost, apiPatch, apiGet } from '../lib/apiClient';
 
 export type CommandState = 'QUEUED' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
 
@@ -250,9 +250,8 @@ export const commandRunners = {
       run: async (setState) => {
         setState('PROCESSING', 'Querying vector memory…');
         const q = query || 'telemetry dashboard latency';
-        const res = await apiPost<{ results?: Array<{ id: string; chunk: string; score: number }>; memories?: Array<{ id: string; chunk: string; score: number }> }>(
-          '/api/memory/recall',
-          { query: q, limit: 5 }
+        const res = await apiGet<{ results?: Array<{ id: string; chunk: string; score: number }>; memories?: Array<{ id: string; chunk: string; score: number }> }>(
+          `/api/memory/recall?text=${encodeURIComponent(q)}&limit=5`
         );
         const hits = res?.results ?? res?.memories ?? [];
         return {
@@ -268,9 +267,8 @@ export const commandRunners = {
       description: 'Run deep health check on Postgres, Redis, and agents',
       run: async (setState) => {
         setState('PROCESSING', 'Probing system health…');
-        const res = await apiPost<{ status?: string; services?: Record<string, { status: string; latencyMs: number }>; agent?: { status: string } }>(
-          '/api/system/health-deep',
-          {}
+        const res = await apiGet<{ status?: string; services?: Record<string, { status: string; latencyMs: number }>; agent?: { status: string } }>(
+          '/api/system/health-deep'
         );
         const svc = res?.services ?? {};
         const parts: string[] = [];
@@ -290,7 +288,7 @@ export const commandRunners = {
       description: 'Approve all pending HITL governance actions',
       run: async (setState) => {
         setState('PROCESSING', 'Fetching pending actions…');
-        const pending = await apiPost<Array<{ id: string }>>('/api/governance/pending', {});
+        const pending = await apiGet<Array<{ id: string }>>('/api/governance/pending');
         const items = Array.isArray(pending) ? pending : [];
         let approved = 0;
         for (const item of items.slice(0, 10)) {
