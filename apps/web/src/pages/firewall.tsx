@@ -19,7 +19,7 @@ import {
   FileWarning,
   Download
 } from 'lucide-react';
-import { apiGet, apiPost } from '../lib/apiClient';
+import { apiGet, apiPost, apiPatch } from '../lib/apiClient';
 import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
 import { PolicyEnginePanel } from '../components/governance/PolicyEnginePanel';
 import { useAuditExport } from '../hooks/useAuditExport';
@@ -87,6 +87,11 @@ export function FirewallPage() {
 
   const auditExport = useAuditExport();
 
+  const [blockPromptInjection, setBlockPromptInjection] = useState(true);
+  const [rateLimitByIp, setRateLimitByIp] = useState(false);
+  const [fwTogglesLoading, setFwTogglesLoading] = useState(true);
+  const [fwToggleError, setFwToggleError] = useState<string | null>(null);
+
   const loadTriage = useCallback(async () => {
     try {
       const data = await apiGet<SecurityViolation[]>('/api/interceptor/triage');
@@ -129,6 +134,50 @@ export function FirewallPage() {
       setLastSync(new Date());
     }
   }, [violations, deepHealth]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFwConfig = async () => {
+      try {
+        const data = await apiGet<{ blockPromptInjection: boolean; rateLimitByIp: boolean }>('/api/settings/firewall');
+        if (cancelled) return;
+        setBlockPromptInjection(data.blockPromptInjection);
+        setRateLimitByIp(data.rateLimitByIp);
+        setFwToggleError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setFwToggleError(e instanceof Error ? e.message : 'Failed to load firewall config');
+      } finally {
+        if (!cancelled) setFwTogglesLoading(false);
+      }
+    };
+    void loadFwConfig();
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggleBlockPromptInjection = useCallback(async () => {
+    const optimistic = !blockPromptInjection;
+    setBlockPromptInjection(optimistic);
+    setFwToggleError(null);
+    try {
+      await apiPatch('/api/settings/firewall', { blockPromptInjection: optimistic });
+    } catch {
+      setBlockPromptInjection(!optimistic);
+      setFwToggleError('Failed to update block-prompt-injection');
+    }
+  }, [blockPromptInjection]);
+
+  const toggleRateLimitByIp = useCallback(async () => {
+    const optimistic = !rateLimitByIp;
+    setRateLimitByIp(optimistic);
+    setFwToggleError(null);
+    try {
+      await apiPatch('/api/settings/firewall', { rateLimitByIp: optimistic });
+    } catch {
+      setRateLimitByIp(!optimistic);
+      setFwToggleError('Failed to update rate-limit-by-ip');
+    }
+  }, [rateLimitByIp]);
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -319,6 +368,14 @@ export function FirewallPage() {
         <div className="space-y-6">
           <PolicyEnginePanel />
           <DLQInspector />
+          <FirewallPolicyToggles
+            blockPromptInjection={blockPromptInjection}
+            rateLimitByIp={rateLimitByIp}
+            loading={fwTogglesLoading}
+            error={fwToggleError}
+            onToggleBlockPromptInjection={toggleBlockPromptInjection}
+            onToggleRateLimitByIp={toggleRateLimitByIp}
+          />
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
             <div className="flex items-center gap-2 mb-4">
@@ -436,5 +493,97 @@ export function FirewallPage() {
       </div>
     </div>
     </PanelErrorBoundary>
+  );
+}
+
+interface FirewallPolicyTogglesProps {
+  blockPromptInjection: boolean;
+  rateLimitByIp: boolean;
+  loading: boolean;
+  error: string | null;
+  onToggleBlockPromptInjection: () => void;
+  onToggleRateLimitByIp: () => void;
+}
+
+function FirewallPolicyToggles({
+  blockPromptInjection,
+  rateLimitByIp,
+  loading,
+  error,
+  onToggleBlockPromptInjection,
+  onToggleRateLimitByIp
+}: FirewallPolicyTogglesProps) {
+  return (
+    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex items-center gap-2 mb-3">
+        <Lock className="w-4 h-4 text-amber-400" />
+        <h3 className="font-display text-sm font-semibold text-slate-200">Firewall Policies</h3>
+      </div>
+      <p className="text-[10px] font-mono text-slate-500 mb-4">
+        Interactive policy toggles with optimistic updates. Changes apply instantly.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-2 rounded border border-rose-500/30 bg-rose-500/10 flex items-center gap-1.5">
+          <AlertTriangle className="w-3 h-3 text-rose-400" />
+          <span className="font-mono text-[10px] text-rose-300">{error}</span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-12 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <label className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-950/60 transition-colors">
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-300">Block Prompt Injection</span>
+              <p className="text-[9px] font-mono text-slate-500 mt-0.5">Reject payloads containing injection patterns</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={blockPromptInjection}
+              onClick={(e) => { e.preventDefault(); onToggleBlockPromptInjection(); }}
+              className={`relative ml-3 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                blockPromptInjection ? 'bg-emerald-500/40 border border-emerald-500/60' : 'bg-slate-700 border border-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  blockPromptInjection ? 'translate-x-4' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/40 cursor-pointer hover:bg-slate-950/60 transition-colors">
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-300">Rate Limit by IP</span>
+              <p className="text-[9px] font-mono text-slate-500 mt-0.5">Throttle requests from a single IP address</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rateLimitByIp}
+              onClick={(e) => { e.preventDefault(); onToggleRateLimitByIp(); }}
+              className={`relative ml-3 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                rateLimitByIp ? 'bg-emerald-500/40 border border-emerald-500/60' : 'bg-slate-700 border border-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  rateLimitByIp ? 'translate-x-4' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+      )}
+    </div>
   );
 }
