@@ -76,3 +76,45 @@ export async function getDeadQueueLength(queue: string): Promise<number> {
     return 0;
   }
 }
+
+const DLQ_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export async function pruneDeadLetterQueue(queue: string): Promise<{ removed: number; kept: number }> {
+  const deadKey = JOB_PREFIX + queue + ':dead';
+  let removed = 0;
+  let kept = 0;
+
+  try {
+    const redis = getRedisClient({ label: 'job-queue' });
+    const len = await redis.llen(deadKey);
+    if (len === 0) return { removed: 0, kept: 0 };
+
+    const all = await redis.lrange(deadKey, 0, -1);
+    const cutoff = Date.now() - DLQ_TTL_MS;
+    const survivors: string[] = [];
+
+    for (const raw of all) {
+      try {
+        const job = JSON.parse(raw) as Job;
+        if (new Date(job.createdAt).getTime() < cutoff) {
+          removed++;
+        } else {
+          survivors.push(raw);
+          kept++;
+        }
+      } catch {
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      await redis.del(deadKey);
+      for (const s of survivors) await redis.lpush(deadKey, s);
+    }
+  } catch { /* best-effort */ }
+
+  if (removed > 0) {
+    agentLog('job-queue', 'pruned', 'INFO', { queue, removed, kept }, `DLQ pruned: ${removed} removed, ${kept} kept`);
+  }
+  return { removed, kept };
+}
