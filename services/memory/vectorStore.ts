@@ -66,7 +66,14 @@ interface TopologyRow {
 }
 
 // In-memory mock store (Resilient-First degrade path).
+// Capped at 10K entries with FIFO eviction to prevent OOM during extended DB outages.
+const MAX_MEMORY_STORE = 10_000;
 const memoryStore: MemoryEntry[] = [];
+
+function cappedPush(entry: MemoryEntry): void {
+  if (memoryStore.length >= MAX_MEMORY_STORE) memoryStore.shift();
+  cappedPush(entry);
+}
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -139,7 +146,7 @@ export async function storeSystemChunk(
   }
 
   const id = randomUUID();
-  memoryStore.push({ id, chunk_text: text, metadata, embedding });
+  cappedPush({ id, chunk_text: text, metadata, embedding });
   return { ok: true, id };
 }
 
@@ -471,7 +478,7 @@ export async function storeMemory(
   }
 
   const id = randomUUID();
-  memoryStore.push({ id, chunk_text: text, metadata, embedding });
+  cappedPush({ id, chunk_text: text, metadata, embedding });
   return { ok: true, id };
 }
 

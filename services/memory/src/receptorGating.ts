@@ -164,8 +164,23 @@ async function loadAllLocks(): Promise<Map<string, LockRecord>> {
   return map;
 }
 
-const lockStore: Map<string, LockRecord> = new Map();
+const LOCK_TTL_MS = 30 * 60 * 1000;
+const lockStore: Map<string, LockRecord & { _createdAt: number }> = new Map();
 let lockStoreLoaded = false;
+
+function pruneExpiredLocks(): void {
+  const cutoff = Date.now() - LOCK_TTL_MS;
+  for (const [key, record] of lockStore) {
+    if (record._createdAt < cutoff) lockStore.delete(key);
+  }
+}
+
+setInterval(pruneExpiredLocks, 60_000).unref();
+
+function setLock(key: string, record: LockRecord): void {
+  (record as LockRecord & { _createdAt: number })._createdAt = Date.now();
+  lockStore.set(key, record as LockRecord & { _createdAt: number });
+}
 
 function cosineSimilarityLocal(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
@@ -190,7 +205,7 @@ export class ReceptorGatingEngine {
     if (lockStoreLoaded) return;
     const remote = await loadAllLocks();
     for (const [key, record] of remote) {
-      this.lockStore.set(key, record);
+      setLock(key, record);
     }
     lockStoreLoaded = true;
 
@@ -261,67 +276,25 @@ export class ReceptorGatingEngine {
       };
     }
 
+    // Atomic check-then-set to prevent TOCTOU — local Map ops are synchronous
+    // so concurrent Node.js microtasks can't interleave between get and set.
     const existing = this.lockStore.get(key);
+    if (existing) return { admitted: false, reason: 'slot_already_locked', existingLock: existing };
 
-    const baseAudit = {
-      tokenId: token.tokenId,
-      tokenHash: token.tokenHash,
-      slot: key,
-      kd: token.kd,
-      efficacy: token.efficacy,
-      tokenType: token.tokenType ?? 'ORDINARY',
-      lockThreshold: LOCK_THRESHOLD,
-      guardAffinityMin: GUARD_TOKEN_AFFINITY_MIN
-    };
-
-    if (!existing) {
-      const isGuard = this.isGuardToken(token);
-      if (isGuard && token.kd <= LOCK_THRESHOLD) {
-        const lockRecord: LockRecord = {
-          slotKey: key,
-          tokenHash: token.tokenHash,
-          kd: token.kd,
-          lockedAt: new Date().toISOString()
-        };
-        this.lockStore.set(key, lockRecord);
-        void persistLock(lockRecord);
-        const auditEvent = {
-          ...baseAudit,
-          action: 'LOCK_ACQUIRED',
-          lockApplied: true,
-          currentOccupant: token.tokenHash,
-          reason: `Guard Token locked slot ${key} (Kd=${token.kd}, ε=0)`,
-          auditHash: ''
-        };
-        auditEvent.auditHash = computeAuditHash(auditEvent);
-        await publishAuditEvent(auditEvent);
-
-        return {
-          admitted: true,
-          reason: `Guard Token locked slot ${key} (Kd=${token.kd}, ε=0)`,
-          currentOccupant: token.tokenHash,
-          auditHash: auditEvent.auditHash
-        };
-      }
-
-      const auditEvent = {
-        ...baseAudit,
-        action: 'ADMITTED_UNLOCKED',
-        lockApplied: false,
-        currentOccupant: null,
-        reason: `Slot ${key} is unlocked — token admitted freely.`,
-        auditHash: ''
-      };
-      auditEvent.auditHash = computeAuditHash(auditEvent);
-      await publishAuditEvent(auditEvent);
-
-      return {
-        admitted: true,
-        reason: `Slot ${key} is unlocked.`,
-        currentOccupant: null,
-        auditHash: auditEvent.auditHash
-      };
+    const isGuard = this.isGuardToken(token);
+    if (!isGuard || token.kd > LOCK_THRESHOLD) {
+      return { admitted: false, reason: isGuard ? 'kd_above_threshold' : 'not_guard_token' };
     }
+
+    const lockRecord: LockRecord = {
+      slotKey: key,
+      tokenHash: token.tokenHash,
+      kd: token.kd,
+      lockedAt: new Date().toISOString()
+    };
+    setLock(key, lockRecord);
+    void persistLock(lockRecord);
+    return { admitted: true, reason: 'guard_token_locked', lockRecord };
 
     const isChallenge = token.tokenType === 'CHALLENGE_TOKEN';
     const isHigherAffinity = token.kd < existing.kd;
