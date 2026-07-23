@@ -88,7 +88,12 @@ export function AgentTerminal({
   }, []);
 
   const toggleCollapse = useCallback((prNumber: number) => {
-    setCollapsedSessions((prev) => { const next = new Set(prev); next.has(prNumber) ? next.delete(prNumber) : next.add(prNumber); return next; });
+    setCollapsedSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(prNumber)) next.delete(prNumber);
+      else next.add(prNumber);
+      return next;
+    });
   }, []);
 
   useEffect(() => {
