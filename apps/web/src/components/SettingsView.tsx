@@ -10,8 +10,9 @@ import {
   Trash2,
   Sparkles
 } from 'lucide-react';
+import { apiPost } from '../lib/apiClient';
 
-interface SettingsViewProps {
+export interface SettingsViewProps {
   currency: 'USD' | 'EUR' | 'GBP';
   setCurrency: (c: 'USD' | 'EUR' | 'GBP') => void;
   initialSubTab: 'System Engine Settings' | 'Threshold Alert Rules';
@@ -57,13 +58,9 @@ export function SettingsView({
 
   const handlePurgeCache = async () => {
     try {
-      const res = await fetch('/api/telemetry/purge', { method: 'POST' });
-      if (res.ok) {
-        showToast("\u26a0\ufe0f Local SQLite Telemetry Database Cache Purged Successfully.");
-        onPurgeCompleted();
-      } else {
-        showToast("Error communicating with ingestion server.");
-      }
+      await apiPost('/api/telemetry/purge', {});
+      showToast("\u26a0\ufe0f Local SQLite Telemetry Database Cache Purged Successfully.");
+      onPurgeCompleted();
     } catch (err) {
       console.error(err);
       showToast("Purge action failed. Check if local FastAPI backend is active.");

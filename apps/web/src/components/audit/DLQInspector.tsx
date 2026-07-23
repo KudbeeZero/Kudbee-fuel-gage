@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, Trash2, RefreshCw, Loader2, Inbox, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useTenantStore } from '../../store/tenantStore';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface FailedTask {
   id: string;
@@ -35,9 +36,7 @@ export function DLQInspector() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`dlq fetch failed (${res.status})`);
-      const data = (await res.json()) as DLQState;
+      const data = await apiGet<DLQState>('/api/governance/failed');
       setState(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load DLQ');
@@ -58,15 +57,7 @@ export function DLQInspector() {
     setBusyId(id);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed/retry', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ id })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `retry failed (${res.status})`);
-      }
+      await apiPost('/api/governance/failed/retry', { id }, { headers: headers() });
       await fetchDLQ();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Retry failed');
@@ -80,15 +71,7 @@ export function DLQInspector() {
     setBusyId(id);
     setError(null);
     try {
-      const res = await fetch('/api/governance/failed/discard', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ id })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `discard failed (${res.status})`);
-      }
+      await apiPost('/api/governance/failed/discard', { id }, { headers: headers() });
       await fetchDLQ();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Discard failed');
@@ -148,15 +131,15 @@ export function DLQInspector() {
         >
           <ShieldCheck className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
           <span className="font-mono text-[10px] text-emerald-300">[QUEUE EMPTY - ALL SYSTEMS NOMINAL]</span>
-          <div className="mt-1 font-mono text-[9px] text-slate-600">Worker idle · no dead-lettered tasks</div>
+          <div className="mt-1 font-mono text-[9px] text-slate-600">{state?.workerRunning ? 'Worker active' : 'Worker idle'} · no dead-lettered tasks</div>
         </div>
       ) : (
         <div className="space-y-2 max-h-72 overflow-y-auto">
           {state.items.map((item) => (
-            <div
-              key={item.id}
-              className="p-2 rounded border border-slate-800 bg-slate-950/50"
-            >
+              <div
+                key={item.id}
+                className={`p-2 rounded border border-slate-800 bg-slate-950/50 transition-opacity ${busyId === item.id ? 'opacity-60' : ''}`}
+              >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-[10px] text-slate-200 truncate">{item.id}</span>
                 <span className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-rose-300">
@@ -186,6 +169,7 @@ export function DLQInspector() {
                   title={canDiscard ? 'Permanently discard' : 'ADMIN role required'}
                 >
                   <Trash2 className="w-3 h-3" />
+                  {busyId === item.id && <Loader2 className="w-3 h-3 animate-spin" />}
                   Discard
                 </button>
               </div>

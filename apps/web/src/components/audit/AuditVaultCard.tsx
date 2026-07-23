@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Lock, RefreshCw, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, FileLock } from 'lucide-react';
 import { useTenantStore, type Tenant } from '../../store/tenantStore';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface VaultAnchor {
   anchorId: string;
@@ -34,6 +35,7 @@ export function AuditVaultCard() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
   const [error, setError] = useState<string | null>(null);
+  const [optimisticAnchorId, setOptimisticAnchorId] = useState<string | null>(null);
 
   const headers = useCallback((): HeadersInit => ({ 'Content-Type': 'application/json', 'X-Tenant-Id': currentTenantId }), [currentTenantId]);
 
@@ -41,9 +43,7 @@ export function AuditVaultCard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`vault fetch failed (${res.status})`);
-      const data = (await res.json()) as { anchors: VaultAnchor[]; count: number };
+      const data = await apiGet<{ anchors: VaultAnchor[]; count: number }>('/api/audit/vault');
       setAnchors(Array.isArray(data.anchors) ? data.anchors : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load vault');
@@ -61,16 +61,10 @@ export function AuditVaultCard() {
     setAnchoring(true);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault/anchor', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ limit: 50 })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Anchor failed (${res.status})`);
-      }
+      await apiPost('/api/audit/vault/anchor', { limit: 50 }, { headers: headers() });
+      setOptimisticAnchorId(`optimistic-${Date.now()}`);
       await fetchAnchors();
+      setOptimisticAnchorId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Anchor failed');
     } finally {
@@ -83,16 +77,7 @@ export function AuditVaultCard() {
     setVerifying(anchorId);
     setError(null);
     try {
-      const res = await fetch('/api/audit/vault/verify', {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ anchorId })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Verify failed (${res.status})`);
-      }
-      const data = (await res.json()) as VerifyResult;
+      const data = await apiPost<VerifyResult>('/api/audit/vault/verify', { anchorId }, { headers: headers() });
       setVerifyResults((prev) => ({ ...prev, [anchorId]: data }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verify failed');
@@ -147,13 +132,13 @@ export function AuditVaultCard() {
         </button>
       </div>
 
-      {loading && anchors.length === 0 ? (
+      {loading && anchors.length === 0 && !optimisticAnchorId ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-14 rounded-lg border border-slate-800 bg-slate-950/40 animate-pulse" />
           ))}
         </div>
-      ) : anchors.length === 0 ? (
+      ) : anchors.length === 0 && !optimisticAnchorId ? (
         <div
           id="audit-vault-empty"
           className="p-4 rounded-lg border border-slate-800 bg-slate-950/40 text-center"
@@ -163,6 +148,18 @@ export function AuditVaultCard() {
         </div>
       ) : (
         <div className="space-y-2 max-h-72 overflow-y-auto">
+          {optimisticAnchorId && (
+            <div className="p-2 rounded border border-violet-500/30 bg-violet-500/5 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono text-[10px] text-violet-300">Anchoring batch...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+              </div>
+              <div className="font-mono text-[9px] text-slate-500 break-all">Awaiting vault confirmation...</div>
+              <div className="font-mono text-[9px] text-slate-600 mt-0.5">
+                Creating new anchor · {new Date().toLocaleString()}
+              </div>
+            </div>
+          )}
           {anchors.map((a) => {
             const result = verifyResults[a.anchorId];
             return (

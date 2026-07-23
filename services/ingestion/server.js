@@ -433,7 +433,7 @@ async function ensureSchema() {
         failed_state JSONB,
         correction_delta TEXT,
         embedding VECTOR(1536),
-        status VARCHAR NOT NULL DEFAULT 'PROVEN',
+        status VARCHAR NOT NULL DEFAULT 'PENDING_APPROVAL',
         token_cost NUMERIC DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
@@ -1200,6 +1200,7 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
 
 // --- Phase 48: Anomaly Stream — low-confidence Groq-synthesized tokens ---
 app.get('/api/think/anomalies', async (req, res) => {
+  if (!authenticateAgentPass(req.header('X-Agent-Pass'))) return res.json({ count: 0, anomalies: [] });
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
     const members = redis ? (await redis.smembers('kudbee:anomalies')).slice(0, limit) : [];
@@ -1396,6 +1397,8 @@ app.get('/api/think/trajectories', async (req, res) => {
 });
 
 app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
+  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to modify token status' });
   try {
     const { hash } = req.params;
     const { status, reviewerNotes, tokenId } = req.body || {};
@@ -1875,7 +1878,9 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
         (trace_id, action, type, agent_id, signature, signed_payload, value_score, note, timestamp)
        VALUES ($1, 'VERIFY', 'GOVERNANCE_ACTION', $2, $3, $4, $5, $6, NOW())`,
       [traceId, agentId, providedSignature, providedPayload, score, note ? String(note) : null]
-    ).catch(() => {});
+    ).catch((e) => {
+      console.warn('[Governance] Failed to insert governance action, continuing:', e.message);
+    });
 
     if (score > 0) {
       await runQuery(
@@ -2082,6 +2087,8 @@ app.post('/api/governance/resolve', async (req, res) => {
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
+  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to mint think tokens' });
   try {
     const { traceId, taskContext, failedState, correctionDelta, status,
             kd, efficacy, tokenType, spatial_coordinates } = req.body || {};
@@ -3259,7 +3266,9 @@ function publishEvent(type, data) {
   // deliver server-originated events.)
   if (redis) {
     try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch(() => {});
+      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e) => {
+        console.warn('[publishEvent] Redis publish failed:', e.message);
+      });
       void publishUnifiedEvent('governance', type, data, EVENTS_CHANNEL);
     } catch {
       /* ignore */

@@ -1,43 +1,58 @@
-# Claude — Kudbee Architecture Context
+# Claude — Kudbee Architecture Context (July 2026)
 
-## Current Architecture State (July 2026)
+Complete fix encyclopedia: `STATE_OF_THE_OS.md` — 20 documented production fixes with root cause analysis.
 
-### Critical Paths
-- **Ingestion**: `POST /api/telemetry/ingest` (single) + `POST /api/telemetry/ingest/batch` (batch)
-- **OS Stream**: `GET /api/os-stream` — unified SSE replacing 8+ polling endpoints
-- **SSE Events**: `GET /api/events`, `GET /api/telemetry/stream`
-- **Rate Limiting**: 100 req/min general, 25 req/min ingest, with explicit `X-Forwarded-For` keyGenerator
+## Architecture
 
-### Database Architecture
-- **Neon Postgres** via `pg.Pool` with max 20 connections, 5s connection timeout, 10s idle timeout
-- **UPSERT** on `telemetry_traces` by `trace_id` (ON CONFLICT DO UPDATE)
-- **Prime-Lens Sampling**: `SAMPLE_RATE` env var (1=all, 5=20%, 10=10%)
-- **Dedup Window**: 5s in-memory LRU for duplicate trace_ids
-- **Vector writes**: Skipped for events with ≤10 total tokens + status=OK
-- **Query timeouts**: 10s normal, 25s vector queries, 30s vector inserts
+### Tab Architecture (14 tabs)
+STUDIO → TELEMETRY → THINK → GOVERNANCE → HERMES → SENTINEL → PLAYGROUND → TERMINAL → FIREWALL → GATEWAY → INTERCEPTOR → HISTORY → ALERTS → INTELLIGENCE → SETTINGS
 
-### Redis Architecture
-- **ioredis** with 5s connect timeout, 3s command timeout, 15s TCP keepalive
-- **Key namespace**: `kudbee:events`, `kudbee:events:v2`, `kudbee:think:tokens`, `kudbee:telemetry_feed`
-- **SSE subscribers**: Dedicated ioredis subscriber client with retry/backoff
+### Studio Layout (Hardware Lab)
+Nested routing at `/tower/*` with 4 domain panels: GovernancePanel, ThinkTokensPanel, TelemetryPanel, FirewallPanel. All use React.lazy() + Suspense + mountedRef cleanup on unmount.
 
-### Frontend Architecture
-- **apiClient**: AbortController timeouts (15s GET, 30s POST), exponential backoff with jitter on 429/503
-- **Telemetry Batcher**: 1000ms batching window, 50 max batch, queue-based fire-and-forget
-- **OS Stream Provider**: React Context providing single SSE snapshot to all components
-- **Token Bucket Throttler**: Client-side rate limiting via `useRateThrottle`
-- **Adaptive Polling**: Health-based interval scaling (1x/2x/4x)
-- **Visibility Polling**: Auto-pause when tab hidden
+### Database (Neon Postgres)
+- Pool: max:20, idleTimeout:10s, connectionTimeout:5s, keepAlive:10s
+- UPSERT on telemetry_traces (ON CONFLICT trace_id)
+- SAMPLE_RATE env var for statistical sampling
+- 5s dedup window for duplicate trace_ids
+- Query timeouts: 10s normal, 25s vector search, 30s vector insert
+- Vector writes skipped for ≤10-token events
 
-### Key Env Variables
-- `SAMPLE_RATE` — telemetry sampling (1=all, 5=20%)
-- `DATABASE_URL` — Neon PG connection
-- `REDIS_URL` — Redis connection
-- `GROQ_API_KEY` — Groq LPU inference
-- `GEMINI_API_KEY` — Gemini embedding + triage
+### Redis
+- connectTimeout:5s, commandTimeout:3s, keepAlive:15s
+- Key namespace: kudbee:events, kudbee:think:tokens, kudbee:telemetry_feed
+- SSE subscriber with jittered reconnection
 
-### Documentation
-- Full docs: `/docs/README.md` (master TOC)
-- Architecture: `/docs/architecture/01-06`
-- API reference: `/docs/reference/API_REFERENCE.md`
-- Schema reference: `/docs/reference/SCHEMA_REFERENCE.md`
+### Backend Agents
+- shutdown.js: Unified graceful shutdown (30s force-exit)
+- tokenBucket.ts: Rate limiters for Groq(30/5rps), Gemini(100/10rps), Neon(100/20rps)
+- agentLogger.ts: Structured JSON logging + SSE broadcast
+- jobQueue.ts: Redis-backed queue with retry + dead-letter
+- geminiBreaker: Circuit breaker (5 failures → open, 30s reset)
+
+### Frontend Resilience
+- apiClient: AbortController timeouts (15s/30s), jittered backoff on 429/503
+- OS Stream: Single SSE replacing 8+ polling endpoints
+- Telemetry Batcher: 1000ms batching window
+- All pages wrapped in PanelErrorBoundary
+- All setTimeout callbacks guarded with _mountedRef
+
+### Rate Limiting
+- General API: 100 req/min, Retry-After:60 header
+- Ingest: 25 req/min, X-Forwarded-For keyGenerator
+- Trust proxy: 1 hop
+
+### Key Env Vars
+SAMPLE_RATE, DATABASE_URL, REDIS_URL, GROQ_API_KEY, GEMINI_API_KEY, GITHUB_TOKEN, PORT, NODE_ENV
+
+### Critical Fixes Applied (See STATE_OF_THE_OS.md for all 20)
+- Procfile sentinel crash (node → tsx)
+- Governance approval race condition (idempotency)
+- Hardcoded API keys removed from source
+- All silent catch blocks now log errors
+- TypeScript ^7.0.0 → ^5.7.0
+- CI Node 22 standardization
+- Turbo typecheck task added
+- StatusBadge PROVEN color
+- OS stream exponential backoff
+- Empty states for telemetry/think

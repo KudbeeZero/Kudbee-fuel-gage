@@ -123,7 +123,7 @@ export function usePlaygroundBackend() {
 
         // Best-effort telemetry persistence. Ingestion may be firewall-filtered
         // (low-value/heartbeat) without causing a hard error in the playground.
-        apiPost('/api/telemetry/ingest', {
+        void apiPost('/api/telemetry/ingest', {
           trace_id: traceId,
           model: input.model,
           tokens_in: tokensIn,

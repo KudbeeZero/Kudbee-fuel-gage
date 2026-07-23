@@ -208,7 +208,9 @@ function broadcast(type: string, data: any) {
   const redis = getRedisClient();
   if (!redis) return;
   try {
-    redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch(() => {});
+    redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e) => {
+    console.warn('[Worker] broadcast failed:', e.message);
+  });
   } catch {
     /* ignore */
   }
@@ -321,7 +323,10 @@ export async function _tick() {
   if (shuttingDown) return false;
   const redis = getRedisClient();
   if (!redis) return false;
-  const raw = await redis.rpop(TASK_QUEUE).catch(() => null);
+  const raw = await redis.rpop(TASK_QUEUE).catch((e) => {
+    console.warn('[Worker] redis rpop failed:', e.message);
+    return null;
+  });
   if (!raw) return false;
   const task = parse(raw);
   if (!task) {
@@ -340,11 +345,15 @@ export async function _tick() {
     const message = err instanceof Error ? err.message : String(err);
     if (task.attempts >= MAX_ATTEMPTS) {
       const dead = { ...task, failedAt: new Date().toISOString(), lastError: message };
-      await redis.lpush(TASK_DLQ, envelope(dead)).catch(() => {});
+      await redis.lpush(TASK_DLQ, envelope(dead)).catch((e) => {
+        console.warn('[Worker] DLQ push failed:', e.message);
+      });
       broadcast('task.dead_lettered', { id: task.id, kind: task.kind, attempts: task.attempts, error: message });
     } else {
       const requeued = { ...task, lastError: message };
-      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch(() => {});
+      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch((e) => {
+        console.warn('[Worker] requeue failed:', e.message);
+      });
       broadcast('task.failed', { id: task.id, kind: task.kind, attempt: task.attempts, error: message });
     }
     return true;

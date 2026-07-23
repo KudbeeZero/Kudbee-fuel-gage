@@ -16,9 +16,12 @@ export function ConsoleDock() {
     { id: 'initial-3', type: 'slate', label: 'SYSTEM', message: 'Agent Context Factory + Token Forge RAG ready. Node 22 ESM strict mode active.', time: new Date().toLocaleTimeString() }
   ]);
   const [isPaused, setIsPaused] = useState(false);
+  const [hermesFetching, setHermesFetching] = useState(false);
+  const [healthFetching, setHealthFetching] = useState(false);
 
   const processedExternalIds = useRef<Set<string>>(new Set());
   useEffect(() => {
+    let cancelled = false;
     if (!externalLogs || externalLogs.length === 0) return;
     const newLogs = externalLogs.filter((log) => !processedExternalIds.current.has(log.id));
     if (newLogs.length === 0) return;
@@ -27,7 +30,9 @@ export function ConsoleDock() {
       ...log,
       id: `external-${log.id}`
     }));
+    if (cancelled) return;
     setRenderedLogs((prev) => [...mapped, ...prev].slice(0, 100));
+    return () => { cancelled = true; };
   }, [externalLogs]);
 
   const lastHermesTsRef = useRef<string | null>(null);
@@ -35,6 +40,7 @@ export function ConsoleDock() {
     let cancelled = false;
     const pullHermes = async () => {
       if (isPaused) return;
+      setHermesFetching(true);
       try {
         const logs = await apiGet<Array<{ ts: string; line: string }>>('/api/governance/hermes-logs');
         if (cancelled || !Array.isArray(logs)) return;
@@ -52,6 +58,8 @@ export function ConsoleDock() {
         }
       } catch {
         /* backend offline — skip silently */
+      } finally {
+        setHermesFetching(false);
       }
     };
     void pullHermes();
@@ -67,6 +75,7 @@ export function ConsoleDock() {
     let cancelled = false;
     const pullHealth = async () => {
       if (isPaused) return;
+      setHealthFetching(true);
       try {
         const health = await apiGet<{ status: string; dependencies: Record<string, string> }>('/health');
         if (cancelled || !health?.dependencies) return;
@@ -86,6 +95,8 @@ export function ConsoleDock() {
         setRenderedLogs((prev) => [newLog, ...prev].slice(0, 100));
       } catch {
         /* backend offline — skip silently */
+      } finally {
+        setHealthFetching(false);
       }
     };
     void pullHealth();
@@ -209,6 +220,12 @@ export function ConsoleDock() {
               </div>
             </div>
           ))
+        )}
+        {(hermesFetching || healthFetching) && (
+          <div className="flex items-center gap-2 px-1.5 py-1 font-mono text-[9px] text-slate-600 italic">
+            <span className="w-1 h-1 rounded-full bg-slate-600 animate-pulse" />
+            ...fetching...
+          </div>
         )}
       </div>
     </div>

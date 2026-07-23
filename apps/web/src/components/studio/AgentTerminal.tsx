@@ -57,17 +57,25 @@ export function AgentTerminal({
   const [commands, setCommands] = useState<{ id: number; text: string; output?: string }[]>([]);
   const [input, setInput] = useState('');
   const [isPaused, setIsPaused] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [displayedData, setDisplayedData] = useState<SessionHistoryItem[]>([]);
   const [collapsedSessions, setCollapsedSessions] = useState<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const latestDataRef = useRef(data);
   const processedCmdIds = useRef<Set<number>>(new Set());
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!externalCommands || externalCommands.length === 0) return;
     const newCmds = externalCommands.filter((cmd) => !processedCmdIds.current.has(cmd.id));
     if (newCmds.length === 0) return;
     newCmds.forEach((cmd) => processedCmdIds.current.add(cmd.id));
+    if (!mountedRef.current) return;
     setCommands((prev) => [...prev, ...newCmds]);
   }, [externalCommands]);
 
@@ -111,6 +119,7 @@ export function AgentTerminal({
   };
 
   const runRecall = async (): Promise<void> => {
+    setExecuting(true);
     const placeholderId = Date.now();
     setCommands((prev) => [...prev, { id: placeholderId, text: '!recall', output: 'recalling last 10 user memories…' }]);
     try {
@@ -120,10 +129,13 @@ export function AgentTerminal({
       setCommands((prev) => prev.map((c) => (c.id === placeholderId ? { ...c, output: rendered } : c)));
     } catch (e) {
       setCommands((prev) => prev.map((c) => (c.id === placeholderId ? { ...c, output: `recall failed: ${e instanceof Error ? e.message : 'unknown error'}` } : c)));
+    } finally {
+      setExecuting(false);
     }
   };
 
   const runRemember = async (data: string): Promise<void> => {
+    setExecuting(true);
     const placeholderId = Date.now();
     setCommands((prev) => [...prev, { id: placeholderId, text: `!remember ${data}`, output: 'persisting…' }]);
     try {
@@ -131,6 +143,8 @@ export function AgentTerminal({
       setCommands((prev) => prev.map((c) => (c.id === placeholderId ? { ...c, output: `remembered: "${data}"` } : c)));
     } catch (e) {
       setCommands((prev) => prev.map((c) => (c.id === placeholderId ? { ...c, output: `remember failed: ${e instanceof Error ? e.message : 'unknown error'}` } : c)));
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -223,7 +237,11 @@ export function AgentTerminal({
 
       <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-slate-800/60 px-3 py-2">
         <span className="font-mono text-[11px] text-emerald-400 shrink-0">kudbee@studio:~$</span>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="type a command and press enter…" className="flex-1 bg-transparent font-mono text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none" aria-label="Agent terminal command input" />
+        {executing ? (
+          <span className="flex-1 font-mono text-[11px] text-amber-400 animate-pulse">Executing...</span>
+        ) : (
+          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="type a command and press enter…" className="flex-1 bg-transparent font-mono text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none" aria-label="Agent terminal command input" />
+        )}
       </form>
     </div>
   );

@@ -19,6 +19,7 @@ import { useToolInterceptor } from "../hooks/useToolInterceptor";
 import { useThoughtTelemetry } from "../hooks/useThoughtTelemetry";
 import { registerWorkspaceTools } from "../tools/workspace";
 import { TerminalStreamView } from "../components/TerminalStreamView";
+import { PanelErrorBoundary } from "../components/PanelErrorBoundary";
 import { getProxyBase } from "../lib/proxyBase";
 import type { OllamaMessage, StreamStatus } from "../types/ollama";
 import type { ReactElement, FormEvent, KeyboardEvent } from "react";
@@ -374,6 +375,7 @@ export function OllamaChat(): ReactElement {
   }, [isBusy, stream]);
 
   return (
+    <PanelErrorBoundary panel="OLLAMA_CHAT">
     <div style={pageStyle}>
       {/* Header: model selector + status */}
       <div style={headerStyle}>
@@ -555,6 +557,7 @@ export function OllamaChat(): ReactElement {
         </button>
       </form>
     </div>
+    </PanelErrorBoundary>
   );
 }
 

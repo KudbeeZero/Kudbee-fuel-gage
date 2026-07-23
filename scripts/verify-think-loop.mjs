@@ -110,7 +110,7 @@ async function check1_MintThinkTokenWithReasoning() {
 async function check2_TrajectoryEmbeddingValid() {
   const res = await fetch(`${BASE}/api/think/trajectories?limit=10`);
   const data = await res.json();
-  if (!res.status === 200 || !Array.isArray(data.trajectories)) return false;
+  if (res.status !== 200 || !Array.isArray(data.trajectories)) return false;
 
   const hasValidEmbedding = data.trajectories.some((t) => {
     const coords = Array.isArray(t.spatial_coordinates) ? t.spatial_coordinates : [];
@@ -123,7 +123,7 @@ async function check2_TrajectoryEmbeddingValid() {
 async function check3_ThinkTokenStatusRouting() {
   const res = await fetch(`${BASE}/api/think/trajectories?limit=50`);
   const data = await res.json();
-  if (!res.status === 200 || !Array.isArray(data.trajectories)) return false;
+  if (res.status !== 200 || !Array.isArray(data.trajectories)) return false;
 
   const mintedTrajectory = data.trajectories.find((t) => t.task_context?.traceId === lastMintedTraceId);
   if (!mintedTrajectory) return false;

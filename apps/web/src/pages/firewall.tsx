@@ -24,6 +24,7 @@ import { IngestRequestSchema, SecurityViolation } from '@kudbee/types';
 import { PolicyEnginePanel } from '../components/governance/PolicyEnginePanel';
 import { useAuditExport } from '../hooks/useAuditExport';
 import { DLQInspector } from '../components/audit/DLQInspector';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 
 interface DeepServiceStatus {
   status: 'OK' | 'OFFLINE';
@@ -88,9 +89,7 @@ export function FirewallPage() {
 
   const loadTriage = useCallback(async () => {
     try {
-      const res = await fetch('/api/interceptor/triage', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`Triage fetch failed (${res.status})`);
-      const data = (await res.json()) as SecurityViolation[];
+      const data = await apiGet<SecurityViolation[]>('/api/interceptor/triage');
       setViolations(data);
       setError(null);
     } catch (e) {
@@ -135,8 +134,7 @@ export function FirewallPage() {
     async (id: number) => {
       setBusyId(id);
       try {
-        const res = await fetch(`/api/interceptor/triage/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+        await apiPost(`/api/interceptor/triage/${id}`, {});
         await loadTriage();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to delete violation');
@@ -151,11 +149,7 @@ export function FirewallPage() {
     async (id: number) => {
       setBusyId(id);
       try {
-        const res = await fetch(`/api/interceptor/revalidate/${id}`, { method: 'POST' });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Re-validation failed (${res.status})`);
-        }
+        await apiPost(`/api/interceptor/revalidate/${id}`, {});
         await loadTriage();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to re-validate violation');
@@ -174,6 +168,7 @@ export function FirewallPage() {
   };
 
   return (
+    <PanelErrorBoundary panel="FIREWALL">
     <div className="space-y-6" id="firewall-page-container">
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
@@ -440,5 +435,6 @@ export function FirewallPage() {
         </div>
       </div>
     </div>
+    </PanelErrorBoundary>
   );
 }

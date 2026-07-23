@@ -1,4 +1,5 @@
 import { useUIStore } from '../store/uiStore';
+import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import { getFormattedCost } from '../utils/currency';
 import {
   Activity,
@@ -90,7 +91,8 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
   return (
-    <>
+    <PanelErrorBoundary panel="TELEMETRY">
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TelemetryCard
           title="Input Tokens"
@@ -151,7 +153,13 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
                 </tr>
               </thead>
               <tbody className="text-sm divide-y divide-slate-800/50 block md:table-row-group p-3 md:p-0 space-y-3 md:space-y-0">
-                {models.map((m, i) => (
+                {models.length === 0 ? (
+                  <tr><td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="font-mono text-xs text-slate-500">No model routing data available</div>
+                    <div className="mt-1 font-mono text-[10px] text-slate-600">Telemetry ingestion will populate as traces arrive</div>
+                  </td></tr>
+                ) : (
+                  models.map((m, i) => (
                   <tr key={i} className="hover:bg-slate-800/20 transition-colors group block md:table-row bg-slate-900/60 border border-slate-800 md:border-none rounded-xl p-4 md:p-0 mb-4 md:mb-0 space-y-2.5 md:space-y-0 shadow-[0_0_12px_rgba(52,211,153,0.04)] md:shadow-none">
                     <td className={`${displayDensity === 'Compact' ? 'px-3 py-2.5 text-xs' : 'px-6 py-4'} flex md:table-cell justify-between md:justify-start items-center w-full md:w-auto border-b border-slate-900/40 md:border-none pb-2.5 md:pb-0`}>
                       <span className="md:hidden text-slate-500 text-[10px] uppercase font-mono font-bold mr-2">Model:</span>
@@ -189,7 +197,8 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
                       </span>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
@@ -255,6 +264,14 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
           </div>
 
           <div className="h-44 w-full mt-2">
+            {circuitBreakerData.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center">
+                  <div className="font-mono text-xs text-slate-500">No circuit breaker data available</div>
+                  <div className="mt-1 font-mono text-[10px] text-slate-600">API gateway metrics will appear as requests flow</div>
+                </div>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={circuitBreakerData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -304,10 +321,12 @@ export function TelemetryPage({ liveStats, currency, circuitBreakerData, models,
                 />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
     </>
+    </PanelErrorBoundary>
   );
 }
 

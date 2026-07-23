@@ -18,10 +18,13 @@ import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
 const VECTOR_OP_TIMEOUT_MS = 25_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  const timer = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
-  );
-  return Promise.race([promise, timer]);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err instanceof Error ? err : new Error(String(err))); }
+    );
+  });
 }
 
 export interface TopologyMetadata {
@@ -162,7 +165,7 @@ export async function querySystemTopology(
         VECTOR_OP_TIMEOUT_MS,
         'topology_embeddings search'
       );
-      const results: SystemChunk[] = res.rows.map((row: TopologyRow) => ({
+      const results: SystemChunk[] = (res.rows as unknown as TopologyRow[]).map((row) => ({
         id: String(row.id),
         chunk_text: String(row.chunk_text),
         metadata: row.metadata,
@@ -236,9 +239,10 @@ export async function searchSimilar(
         VECTOR_OP_TIMEOUT_MS,
         'vector_memory search'
       );
-      const results: SystemChunk[] = res.rows
-        .filter((row: TopologyRow) => (Number(row.similarity) || 0) >= minScore)
-        .map((row: TopologyRow) => ({
+      const rows = res.rows as unknown as TopologyRow[];
+      const results: SystemChunk[] = rows
+        .filter((row) => (Number(row.similarity) || 0) >= minScore)
+        .map((row) => ({
           id: String(row.id),
           chunk_text: String(row.chunk_text),
           metadata: row.metadata,
@@ -364,8 +368,8 @@ export async function getRelevantThinkTokens(
       );
 
       const rows: ThinkTokenRow[] =
-        (verifiedRows.rows?.length ?? 0) > 0
-          ? verifiedRows.rows
+        ((verifiedRows as { rows: Record<string, unknown>[] }).rows?.length ?? 0) > 0
+          ? (verifiedRows as { rows: Record<string, unknown>[] }).rows as unknown as ThinkTokenRow[]
           : (await withTimeout(
               pool.query(
                 `SELECT id, correction_delta, task_context, failed_state, embedding, status, created_at,
@@ -378,7 +382,7 @@ export async function getRelevantThinkTokens(
               ),
               VECTOR_OP_TIMEOUT_MS,
               'pgvector think_tokens fallback search'
-            )).rows;
+            )).rows as unknown as ThinkTokenRow[];
 
       const results: RelevantThinkToken[] = rows.map((row) => ({
         id: String(row.id),
