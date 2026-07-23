@@ -3909,6 +3909,7 @@ const PROVIDER_COSTS = {
 const BUDGET_USD = Number(process.env.MONTHLY_BUDGET_USD || 50);
 
 import { getBudgetStatus, BudgetExceededError, checkBudgetOrThrow } from '../lib/budgetGate.ts';
+import { runSystemPruner } from '../lib/pruner.ts';
 
 app.get('/api/metrics/budget-status', async (_req, res) => {
   try {
@@ -4595,6 +4596,21 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`);
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
   console.log(`[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`);
+
+  // Schedule system pruner every 6 hours (cleanup stale DLQ entries + checkpoints)
+  const PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => {
+    void runSystemPruner().then((r) => {
+      console.log(`[Pruner] Initial sweep: tasks=${r.governanceTasks} dlq=${r.governanceDlq} jobs=${r.slowJobs}`);
+    });
+  }, 60_000);
+  setInterval(() => {
+    void runSystemPruner().then((r) => {
+      if (r.governanceTasks + r.governanceDlq + r.slowJobs > 0) {
+        console.log(`[Pruner] Sweep: tasks=${r.governanceTasks} dlq=${r.governanceDlq} jobs=${r.slowJobs}`);
+      }
+    });
+  }, PRUNE_INTERVAL_MS);
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
