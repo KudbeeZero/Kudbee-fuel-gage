@@ -777,7 +777,11 @@ export default function App() {
             <GatewayView showToast={showToast} />
           )}
 
-          {activeTab === 'INTERCEPTOR' && <InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
+          {activeTab === 'INTERCEPTOR' && (
+            <Suspense fallback={<div className="h-96 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-500" /></div>}>
+              <InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} />
+            </Suspense>
+          )}
 
           {activeTab === 'HISTORY' && <HistoryPage />}
 

@@ -54,7 +54,7 @@ export function getRedisClient(opts = {}) {
   };
 
   if (isUpstash) {
-    baseConfig.tls = { rejectUnauthorized: false };
+    baseConfig.tls = {};
   }
 
   const client = new Redis(REDIS_URL, baseConfig);
@@ -87,7 +87,7 @@ export function getSubscriberClient() {
   };
 
   if (isUpstash) {
-    subConfig.tls = { rejectUnauthorized: false };
+    subConfig.tls = {};
   }
 
   _subClient = new Redis(REDIS_URL, subConfig);
@@ -122,7 +122,7 @@ export function getRateLimitClient(opts = {}) {
   };
 
   if (isRateLimitUpstash) {
-    baseConfig.tls = { rejectUnauthorized: false };
+    baseConfig.tls = {};
   }
 
   const client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);

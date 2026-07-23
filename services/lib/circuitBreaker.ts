@@ -62,15 +62,21 @@ export class CircuitBreaker {
     try {
       const redis = getRedisClient({ label: 'circuit-breaker' });
       const key = CB_PREFIX + this.name + ':failures';
+      const ttl = Math.ceil(this.resetTimeoutMs / 1000);
 
       const state = await this.getState();
       if (state === 'OPEN') return;
 
-      const count = await redis.incr(key);
-      await redis.expire(key, Math.ceil(this.resetTimeoutMs / 1000));
+      // Atomic: INCR + EXPIRE in one Lua roundtrip — no permanent-key leak
+      const count = await redis.eval(
+        `local c = redis.call('INCR', KEYS[1])
+         redis.call('EXPIRE', KEYS[1], ARGV[1])
+         return c`,
+        1, key, String(ttl)
+      ) as number;
 
       if (state === 'HALF_OPEN' || count >= this.failureThreshold) {
-        await redis.set(CB_PREFIX + this.name + ':state', 'OPEN', 'EX', Math.ceil(this.resetTimeoutMs / 1000));
+        await redis.set(CB_PREFIX + this.name + ':state', 'OPEN', 'EX', ttl);
         if (!this._halfOpenTimer) {
           this._transitionToHalfOpenAfterTimeout();
         }

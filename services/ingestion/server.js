@@ -2958,17 +2958,17 @@ app.get('/api/system/health-deep', async (_req, res) => {
       /* ignore */
     }
 
-    const hermesOnline = !!(redis && (async () => {
+    let hermesOnline = false;
+    if (redis) {
       try {
         const raw = await redis.get(HERMES_HEARTBEAT_KEY);
-        if (!raw) return false;
-        const parsed = JSON.parse(raw);
-        const ts = parsed.timestamp ? Date.parse(parsed.timestamp) : 0;
-        return !Number.isNaN(ts) && Date.now() - ts < HERMES_HEARTBEAT_MAX_AGE_MS;
-      } catch {
-        return false;
-      }
-    })());
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const ts = parsed.timestamp ? Date.parse(parsed.timestamp) : 0;
+          hermesOnline = !Number.isNaN(ts) && Date.now() - ts < HERMES_HEARTBEAT_MAX_AGE_MS;
+        }
+      } catch { /* ignore — hermesOnline stays false */ }
+    }
 
     const overallStatus = (services.postgres.status === 'OK' || services.redis.status === 'OK') ? 'HEALTHY' : 'DEGRADED';
 
@@ -3343,7 +3343,7 @@ const TICKET_TTL_MS = 30000;
 app.post('/api/auth/stream-ticket', (req, res) => {
   const ticket = 'sse_ticket_' + crypto.randomUUID();
   STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
-  const sig = crypto.createHmac('sha256', process.env.STREAM_SECRET || 'kudbee-stream-secret')
+  const sig = crypto.createHmac('sha256', process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex'))
     .update(ticket + ':' + Date.now()).digest('hex');
   res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
 });

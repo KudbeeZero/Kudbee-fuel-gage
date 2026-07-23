@@ -5,24 +5,32 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     services:
       redis:
         image: redis:7-alpine
         ports: [6379:6379]
+    env:
+      REDIS_URL: 'redis://localhost:6379'
+      NODE_ENV: 'test'
+      PORT: '9876'
+      DATABASE_URL: 'postgres://localhost:5432/kudbee_test'
+      STREAM_SECRET: 'ci-generated-stream-secret-key-32b'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: 'npm' }
       - run: npm ci
       - run: npm run typecheck
-      - run: node scripts/verify-e2e.mjs
-        env: { REDIS_URL: 'redis://localhost:6379', NODE_ENV: 'test' }
+      - run: npm run lint
       - run: cd apps/web && npm run build
+      - run: node scripts/verify-e2e.mjs
       - name: Gate
         run: echo "ALL GATES PASSED"

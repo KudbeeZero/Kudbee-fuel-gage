@@ -75,10 +75,13 @@ async function slowBrainReason(prompt) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15_000);
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: `As the Kudbee Governance Slow Brain, analyze this task and return a concise reasoning trace plus a recommended action.\n\nTask: ${prompt}` }] }]
         }),
