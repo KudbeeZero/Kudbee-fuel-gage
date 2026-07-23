@@ -10,6 +10,11 @@ export interface OSPlugin {
   defaultRoute?: string;
 }
 
+export interface OSPluginResult {
+  plugin: OSPlugin | null;
+  isUnknown: boolean;
+}
+
 const registry = new Map<string, OSPlugin>();
 
 export function registerPlugin(plugin: OSPlugin): void {
@@ -19,8 +24,21 @@ export function registerPlugin(plugin: OSPlugin): void {
   registry.set(plugin.id, plugin);
 }
 
-export function getPlugin(id: string): OSPlugin | undefined {
-  return registry.get(id);
+export function getPlugin(id: string): OSPluginResult {
+  const plugin = registry.get(id);
+  if (!plugin) {
+    console.warn(`[PluginRegistry] Unknown plugin requested: ${id}`);
+    return { plugin: null, isUnknown: true };
+  }
+  return { plugin, isUnknown: false };
+}
+
+export function getPluginOrThrow(id: string): OSPlugin {
+  const result = getPlugin(id);
+  if (result.isUnknown || !result.plugin) {
+    throw new Error(`Plugin "${id}" not found in registry`);
+  }
+  return result.plugin;
 }
 
 export function getPluginsByCategory(category: OSPlugin['category']): OSPlugin[] {
@@ -29,4 +47,8 @@ export function getPluginsByCategory(category: OSPlugin['category']): OSPlugin[]
 
 export function getAllPlugins(): OSPlugin[] {
   return Array.from(registry.values());
+}
+
+export function hasPlugin(id: string): boolean {
+  return registry.has(id);
 }
