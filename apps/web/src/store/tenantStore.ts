@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiGet } from '../lib/apiClient';
 
 export type TenantRole = 'ADMIN' | 'OPERATOR' | 'AUDITOR';
 
@@ -47,15 +48,13 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   fetchTenants: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch('/api/governance/tenants', { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`tenants fetch failed (${res.status})`);
-      const data = (await res.json()) as { tenants: Tenant[]; current: string };
+      const data = await apiGet<{ tenants: Tenant[]; current: string }>('/api/governance/tenants');
       set({
         tenants: Array.isArray(data.tenants) ? data.tenants : [],
         currentTenantId: data.current || get().currentTenantId,
         loading: false
       });
-    } catch (e) {
+    } catch (e: unknown) {
       set({
         error: e instanceof Error ? e.message : 'Failed to load tenants',
         loading: false

@@ -25,7 +25,7 @@ function formatError(path: string, method: string, status: number, detail?: stri
   if (status === 429) label = `Rate limited: ${path} — too many requests (429)`;
   const err = new Error(detail ? `${label}: ${detail}` : label) as Error & { status: number; isRateLimit?: boolean };
   err.status = status;
-  if (status === 429) (err as any).isRateLimit = true;
+  if (status === 429) err.isRateLimit = true;
   return err;
 }
 

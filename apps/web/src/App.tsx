@@ -68,7 +68,7 @@ import { DashboardPage } from './pages/dashboard';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
-import { apiGet } from './lib/apiClient';
+import { apiGet, apiPost } from './lib/apiClient';
 import {
   AreaChart,
   Area,
@@ -189,29 +189,25 @@ export function useAgentInterceptor() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const res = await fetch('/api/proxy/pending');
-        if (res.ok) {
-          const data = (await res.json()) as ProxyPendingItem[];
-          setPendingApprovals(prev => {
-            const merged = [...prev];
-            data.forEach((item) => {
-              if (!merged.find(p => p.id === item.id)) {
-                merged.push({
-                  id: item.id,
-                  agentId: 'HTTP_PROXY_CLIENT',
-                  triggeredRule: 'API_INTERCEPT',
-                  actionJson: item.payload ?? null,
-                  resolve: () => {},
-                  reject: () => {},
-                  timestamp: new Date()
-                });
-              }
-            });
-            return merged;
+        const data = await apiGet<ProxyPendingItem[]>('/api/proxy/pending');
+        setPendingApprovals(prev => {
+          const merged = [...prev];
+          data.forEach((item) => {
+            if (!merged.find(p => p.id === item.id)) {
+              merged.push({
+                id: item.id,
+                agentId: 'HTTP_PROXY_CLIENT',
+                triggeredRule: 'API_INTERCEPT',
+                actionJson: item.payload ?? null,
+                resolve: () => {},
+                reject: () => {},
+                timestamp: new Date()
+              });
+            }
           });
-        }
-      } catch (e) {
-        // silently ignore polling errors
+          return merged;
+        });
+      } catch (_e: unknown) {
       }
     };
     const interval = setInterval(poll, 1500);
@@ -238,12 +234,9 @@ export function useAgentInterceptor() {
     setPendingApprovals(prev => {
       const approval = prev.find(p => p.id === id);
       if (approval) {
-        // If it's a backend proxy request
         if (approval.agentId === 'HTTP_PROXY_CLIENT') {
-           fetch('/api/proxy/resolve', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ id, action: 'approve', modifiedPayload: actionJson || approval.actionJson })
+           apiPost('/api/proxy/resolve', {
+             id, action: 'approve', modifiedPayload: actionJson || approval.actionJson
            }).catch(console.error);
         } else {
            approval.resolve();
@@ -258,10 +251,8 @@ export function useAgentInterceptor() {
       const approval = prev.find(p => p.id === id);
       if (approval) {
         if (approval.agentId === 'HTTP_PROXY_CLIENT') {
-           fetch('/api/proxy/resolve', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ id, action: 'reject', rejectReason })
+           apiPost('/api/proxy/resolve', {
+             id, action: 'reject', rejectReason
            }).catch(console.error);
         } else {
            approval.reject(new Error(rejectReason || "Execution Denied"));

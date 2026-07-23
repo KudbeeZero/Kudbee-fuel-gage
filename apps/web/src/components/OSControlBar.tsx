@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope } from 'lucide-react';
 import { useCommandDispatcher, commandRunners, type DispatchedCommand } from '../store/commandDispatcher';
 import { WorkspaceBar } from './WorkspaceBar';
+import { apiGet } from '../lib/apiClient';
 
 export type OSToggleState = {
   dbIngestion: boolean;
@@ -112,6 +113,7 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
             id="os-manual-pulse-btn"
             type="button"
             disabled={!toggles.manualPulse || !isAuthenticated}
+            aria-label="Manual Pulse — trigger Crucible dispatch"
             onClick={() => {
               if (!toggles.manualPulse) return;
               void commandRunners.crucibleDispatch();
@@ -129,6 +131,7 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
           <button
             id="os-resync-vector-btn"
             type="button"
+            aria-label="Resync Vector Store"
             onClick={() => void commandRunners.resyncVector()}
             className="flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-cyan-300 transition-all hover:bg-cyan-500/20"
           >
@@ -145,6 +148,8 @@ export function OSControlBar({ isAuthenticated, onOpenPalette }: OSControlBarPro
               onClick={onOpenPalette}
               className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/60 px-2.5 py-1.5 font-mono text-[10px] text-slate-400 transition-all hover:border-emerald-500/40 hover:text-emerald-300"
               title="Open command palette"
+              aria-label="Open command palette"
+              aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
             >
               <Search className="h-3 w-3" />
               <span>Search</span>
@@ -206,6 +211,8 @@ function ToggleChip({ id, active, activeLabel, inactiveLabel, accent, icon, onCl
         active ? styles.active : styles.inactive
       }`}
       title={active ? 'Click to disable' : 'Click to enable'}
+      aria-label={`${active ? activeLabel : inactiveLabel} — ${active ? 'Click to disable' : 'Click to enable'}`}
+      aria-pressed={active}
     >
       {icon}
       {active ? activeLabel : inactiveLabel}
@@ -231,6 +238,9 @@ function DispatchStatus({ command }: { command: DispatchedCommand | undefined })
   return (
     <span
       id="os-dispatch-status"
+      role="status"
+      aria-live="polite"
+      aria-label={`Command status: ${command.label} — ${command.state}`}
       className={`hidden md:inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest ${config.color}`}
       title={command.detail || command.description}
     >
@@ -348,14 +358,22 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
         icon: Zap,
         group: 'Diagnostic',
         keywords: ['ping', 'connectivity', 'health'],
-        perform: () => {
-          fetch('/api/dashboard/summary', { method: 'GET' })
-            .then((r) => useCommandDispatcher.getState().enqueue({
+        perform: async () => {
+          try {
+            const data = await apiGet('/api/dashboard/summary');
+            useCommandDispatcher.getState().enqueue({
               kind: 'PLAYGROUND_RUN',
               label: 'Diagnostic Ping',
-              description: `status ${r.status}`
-            }))
-            .catch(() => {});
+              description: `Backend reachable — OK`
+            });
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            useCommandDispatcher.getState().enqueue({
+              kind: 'PLAYGROUND_RUN',
+              label: 'Diagnostic Ping',
+              description: `Failed: ${message}`
+            });
+          }
           onClose();
         }
       },
@@ -378,21 +396,22 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
         icon: Stethoscope,
         group: 'Diagnostic',
         keywords: ['diagnostic', 'system', 'health', 'probe'],
-        perform: () => {
-          fetch('/api/system/diagnostics', { method: 'GET' })
-            .then((r) => r.ok ? r.json() : Promise.reject())
-            .then((data) => useCommandDispatcher.getState().enqueue({
+        perform: async () => {
+          try {
+            const data = await apiGet<{ status?: string }>('/api/system/diagnostics');
+            useCommandDispatcher.getState().enqueue({
               kind: 'PLAYGROUND_RUN',
               label: 'System Diagnostic',
-              description: `status: ${data?.status || 'unknown'}`
-            }))
-            .catch(() => {
-              useCommandDispatcher.getState().enqueue({
-                kind: 'PLAYGROUND_RUN',
-                label: 'System Diagnostic',
-                description: 'failed'
-              });
+              description: `status: ${data?.status || 'ok'}`
             });
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            useCommandDispatcher.getState().enqueue({
+              kind: 'PLAYGROUND_RUN',
+              label: 'System Diagnostic',
+              description: `Failed: ${message}`
+            });
+          }
           onClose();
         }
       }
@@ -476,11 +495,15 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
                 onKeyDown={handleKey}
                 placeholder="Type a command, view, or diagnostic…"
                 className="flex-1 bg-transparent font-mono text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
+                aria-label="Search commands, views, or diagnostics"
+                role="combobox"
+                aria-expanded={filtered.length > 0}
+                aria-controls="command-palette-results"
               />
               <span className="font-mono text-[9px] uppercase tracking-widest text-slate-600">esc</span>
             </div>
 
-            <div className="max-h-[55vh] overflow-y-auto p-2">
+            <div id="command-palette-results" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
               {filtered.length === 0 ? (
                 <div className="px-4 py-8 text-center font-mono text-xs text-slate-600">
                   No matches for &ldquo;{query}&rdquo;
@@ -545,6 +568,8 @@ function PaletteGroup({
                 <button
                   key={cmd.id}
                   type="button"
+                  role="option"
+                  aria-selected={isActive}
                   onMouseEnter={() => setActiveIndex(runningIndex)}
                   onClick={() => void cmd.perform()}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${

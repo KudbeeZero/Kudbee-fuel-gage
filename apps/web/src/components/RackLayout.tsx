@@ -7,6 +7,8 @@ import { GovernanceGatePlugin } from './GovernanceGatePlugin';
 import { EdgeSentinelPlugin, parseRawSignal, type EdgeSignal } from './EdgeSentinelPlugin';
 import { HermesAuditorPlugin } from './HermesAuditorPlugin';
 import { HermesAuditLogSchema, type HermesAuditLog } from './HermesAuditorPlugin';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { SkeletonPanel } from './SkeletonPanel';
 import { useEffect, useState } from 'react';
 import { apiGet } from '../lib/apiClient';
 import { useEventStream } from '../hooks/useEventStream';
@@ -73,15 +75,17 @@ function useEdgeSignals(): {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const loadRecent = async () => {
       try {
         const rows = await apiGet<unknown>('/api/telemetry/logs?limit=12');
-        if (cancelled || !Array.isArray(rows)) return;
+        if (cancelled) return;
+        if (!Array.isArray(rows)) return;
         const parsed = rows
           .map((r) => parseRawSignal(r))
           .filter((s): s is EdgeSignal => s !== null)
           .slice(0, 12);
-        setSignals(parsed);
+        if (!cancelled) setSignals(parsed);
       } catch {
         /* degraded: keep existing/empty signals */
       }
@@ -97,6 +101,7 @@ function useEdgeSignals(): {
 
     return () => {
       cancelled = true;
+      controller.abort();
       off();
     };
   }, [stream.on]);
@@ -120,38 +125,62 @@ function renderPlugin(
   switch (plugin.id) {
     case 'plugin-storm':
       return (
-        <div key={plugin.id} className={span}>
-          <ThinkStormPlugin plugin={plugin} trajectories={trajectories} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <ThinkStormPlugin plugin={plugin} trajectories={trajectories} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     case 'plugin-stream':
       return (
-        <div key={plugin.id} className={span}>
-          <ThinkStreamPlugin plugin={plugin} trajectories={trajectories} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <ThinkStreamPlugin plugin={plugin} trajectories={trajectories} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     case 'plugin-storage':
       return (
-        <div key={plugin.id} className={span}>
-          <ThinkStoragePlugin plugin={plugin} trajectories={trajectories} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <ThinkStoragePlugin plugin={plugin} trajectories={trajectories} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     case 'plugin-trajectories':
       return (
-        <div key={plugin.id} className={span}>
-          <ThinkTrajectoriesPlugin plugin={plugin} trajectories={trajectories} loading={trajectoryLoading} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <ThinkTrajectoriesPlugin plugin={plugin} trajectories={trajectories} loading={trajectoryLoading} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     case 'plugin-gov-gate':
       return (
-        <div key={plugin.id} className={span}>
-          <GovernanceGatePlugin plugin={plugin} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <GovernanceGatePlugin plugin={plugin} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     case 'plugin-hermes-auditor':
       return (
-        <div key={plugin.id} className={span}>
-          <HermesAuditorPlugin plugin={plugin} {...hermes} />
+        <div key={plugin.id} className={`${span} min-w-0`}>
+          <PanelErrorBoundary panel={plugin.title}>
+            <SkeletonPanel height="180px">
+              <HermesAuditorPlugin plugin={plugin} {...hermes} />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       );
     default:
@@ -183,12 +212,16 @@ export function RackLayout() {
       </header>
        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12 min-w-0">
         {plugins.map((plugin) => renderPlugin(plugin, hermes, trajectories, trajectoryLoading))}
-        <div className="lg:col-span-12">
-          <EdgeSentinelPlugin
-            signals={edge.signals}
-            connected={edge.connected}
-            lastIngressAt={edge.lastIngressAt}
-          />
+        <div className="lg:col-span-12 min-w-0">
+          <PanelErrorBoundary panel="EDGE: SENTINEL">
+            <SkeletonPanel height="180px">
+              <EdgeSentinelPlugin
+                signals={edge.signals}
+                connected={edge.connected}
+                lastIngressAt={edge.lastIngressAt}
+              />
+            </SkeletonPanel>
+          </PanelErrorBoundary>
         </div>
       </div>
     </section>

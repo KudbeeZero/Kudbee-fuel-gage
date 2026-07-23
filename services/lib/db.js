@@ -202,7 +202,9 @@ function rowToObject(row) {
   return row;
 }
 
-const DB_TIMEOUT_MS = 10_000;
+export const DB_TIMEOUT_MS = 10_000;
+export const VECTOR_QUERY_TIMEOUT_MS = 25_000;
+export const VECTOR_INSERT_TIMEOUT_MS = 30_000;
 
 function withTimeout(promise, ms, label) {
   const timer = new Promise((_, reject) =>
@@ -210,6 +212,8 @@ function withTimeout(promise, ms, label) {
   );
   return Promise.race([promise, timer]);
 }
+
+export { withTimeout };
 
 /**
  * Run a SELECT against the healthy Neon pool, or the in-memory fallback.
@@ -348,6 +352,15 @@ function runInsertMemory(sql, params = []) {
 
   if (/INTO telemetry_traces/.test(s)) {
     const [trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name] = params;
+    const existing = memory.telemetry_traces.find((r) => r.trace_id === trace_id);
+    if (existing) {
+      existing.tokens_in = tokens_in;
+      existing.tokens_out = tokens_out;
+      existing.cost = cost;
+      existing.status = status;
+      existing.timestamp = new Date().toISOString();
+      return { id: existing.id, changes: 1 };
+    }
     const row = {
       id: nextId(),
       trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name,

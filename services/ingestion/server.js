@@ -16,7 +16,7 @@ import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
 import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
-import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool, teardownAll } from '../lib/db.js';
+import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool, teardownAll, DB_TIMEOUT_MS, VECTOR_QUERY_TIMEOUT_MS, withTimeout } from '../lib/db.js';
 import { getRedisClient, getSubscriberClient } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
@@ -199,7 +199,7 @@ app.use('/api/', apiLimiter);
 
 const ingestLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.NODE_ENV === 'test' ? 500 : 50,
+  max: process.env.NODE_ENV === 'test' ? 500 : 25,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -665,7 +665,6 @@ const HEARTBEAT_PATTERNS = [
 function isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status }) {
   const tid = String(trace_id || '').toLowerCase();
   if (HEARTBEAT_PATTERNS.some((re) => re.test(tid))) return true;
-  // No meaningful token/cost footprint and OK status == noise.
   const tokens = (Number(tokens_in) || 0) + (Number(tokens_out) || 0);
   const price = Number(cost) || 0;
   if (tokens === 0 && price === 0 && (status || 'OK') === 'OK' && model === 'heartbeat') {
@@ -674,8 +673,70 @@ function isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status 
   return false;
 }
 
+const METRICS_WINDOW_MS = 60_000;
+let _metricsCount = 0;
+let _metricsWindowStart = Date.now();
+
+function shouldSample() {
+  const rate = parseInt(process.env.SAMPLE_RATE, 10);
+  if (!rate || rate <= 0) return true;
+  if (rate === 1) return true;
+  return Math.random() < 1 / rate;
+}
+
+function recordThroughput() {
+  const now = Date.now();
+  if (now - _metricsWindowStart >= METRICS_WINDOW_MS) {
+    if (_metricsCount > 0) {
+      const rate = _metricsCount / (METRICS_WINDOW_MS / 1000);
+      console.log(`[Ingest] Throughput: ${_metricsCount} events in ${METRICS_WINDOW_MS / 1000}s (${rate.toFixed(1)}/s) — sample_rate: ${process.env.SAMPLE_RATE || '1 (all)'}`);
+    }
+    _metricsCount = 0;
+    _metricsWindowStart = now;
+  }
+  _metricsCount += 1;
+}
+
+const DEDUP_WINDOW_MS = 5_000;
+const _dedupStore = new Map();
+let _dedupCleanupTimer = null;
+
+function startDedupCleanup() {
+  if (_dedupCleanupTimer) return;
+  _dedupCleanupTimer = setInterval(() => {
+    const cutoff = Date.now() - DEDUP_WINDOW_MS;
+    for (const [key, ts] of _dedupStore) {
+      if (ts < cutoff) _dedupStore.delete(key);
+    }
+  }, DEDUP_WINDOW_MS);
+  if (typeof _dedupCleanupTimer.unref === 'function') _dedupCleanupTimer.unref();
+}
+
+function isDuplicateTrace(traceId) {
+  const key = String(traceId || '');
+  if (!key) return false;
+  const now = Date.now();
+  if (_dedupStore.has(key) && (now - _dedupStore.get(key)) < DEDUP_WINDOW_MS) {
+    return true;
+  }
+  _dedupStore.set(key, now);
+  startDedupCleanup();
+  return false;
+}
+
 app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
   try {
+    // Pre-flight health check: reject ingest when both DB and Redis are down.
+    const dbHealthy = isDbHealthy();
+    if (!dbHealthy && !redis) {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        reason: 'Both database and cache are unreachable — pipeline degraded',
+        db_healthy: false,
+        redis: false
+      });
+    }
+
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
     const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, thought_summary, reasoning } = req.body || {};
     const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
@@ -689,6 +750,30 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         bypass: !!agentId,
         recalled_context: [],
         message: 'Event filtered at ingest firewall (low-value/heartbeat) — not persisted'
+      });
+    }
+
+    recordThroughput();
+
+    if (!agentId && !shouldSample()) {
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: undefined,
+        bypass: false,
+        recalled_context: [],
+        message: 'Event sampled (not persisted per SAMPLE_RATE configuration)'
+      });
+    }
+
+    if (!agentId && isDuplicateTrace(trace_id)) {
+      return res.status(200).json({
+        success: true,
+        id: null,
+        agent: undefined,
+        bypass: false,
+        recalled_context: [],
+        message: 'Duplicate trace_id within dedup window — skipped'
       });
     }
 
@@ -745,7 +830,13 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
 
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)
+       ON CONFLICT (trace_id) DO UPDATE SET
+         tokens_in = EXCLUDED.tokens_in,
+         tokens_out = EXCLUDED.tokens_out,
+         cost = EXCLUDED.cost,
+         status = EXCLUDED.status,
+         timestamp = NOW()`,
       [
         String(trace_id ?? (agentId ? `agent-${agentId}` : 'unknown')),
         String(model || 'unknown'),
@@ -758,15 +849,21 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       ]
     );
 
-    const vector = embedTrace(effectiveReasoning, effectiveThought, model || 'unknown');
-    await storeVector({
-      traceId: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
-      thoughtSummary: effectiveThought,
-      reasoning: effectiveReasoning,
-      model: model || 'unknown',
-      vector,
-      agentId
-    }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
+    // Vector store: only embed events with meaningful reasoning context.
+    // Low-token heartbeat-like events skip embedding to conserve DB writes.
+    const tokens = (Number(tokens_in) || 0) + (Number(tokens_out) || 0);
+    const shouldEmbed = agentId || tokens > 10 || effectiveStatus !== 'OK' || isHighValueModel;
+    if (shouldEmbed) {
+      const vector = embedTrace(effectiveReasoning, effectiveThought, model || 'unknown');
+      storeVector({
+        traceId: trace_id ?? (agentId ? `agent-${agentId}` : 'unknown'),
+        thoughtSummary: effectiveThought,
+        reasoning: effectiveReasoning,
+        model: model || 'unknown',
+        vector,
+        agentId
+      }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
+    }
 
     if (agentId) {
       console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
@@ -997,9 +1094,13 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
     let snapshot = null, similarity = 0;
     if (pool) {
       try {
-        const rows = await pool.query(
-          `SELECT text, metadata, 1 - (embedding <=> $1::vector) AS similarity FROM vector_memory WHERE 1 - (embedding <=> $1::vector) > 0.90 ORDER BY embedding <=> $1::vector LIMIT 1`,
-          [JSON.stringify(embedding)]
+        const rows = await withTimeout(
+          pool.query(
+            `SELECT text, metadata, 1 - (embedding <=> $1::vector) AS similarity FROM vector_memory WHERE 1 - (embedding <=> $1::vector) > 0.90 ORDER BY embedding <=> $1::vector LIMIT 1`,
+            [JSON.stringify(embedding)]
+          ),
+          VECTOR_QUERY_TIMEOUT_MS,
+          'vector_memory dictionary lookup'
         );
         if (rows.rows?.length > 0) {
           const r = rows.rows[0];
@@ -1038,7 +1139,7 @@ app.get('/api/governance/probation/docket', async (req, res) => {
 
 app.get('/api/interceptor/threat-heatmap', async (req, res) => {
   try {
-    const rows = await (pool ? pool.query('SELECT model, COUNT(*)::int AS threat_count FROM telemetry_traces WHERE status != $1 GROUP BY model ORDER BY threat_count DESC LIMIT 10', ['OK']) : { rows: [] });
+    const rows = await (pool ? withTimeout(pool.query('SELECT model, COUNT(*)::int AS threat_count FROM telemetry_traces WHERE status != $1 GROUP BY model ORDER BY threat_count DESC LIMIT 10', ['OK']), DB_TIMEOUT_MS, 'threat-heatmap query') : { rows: [] });
     const threats = (rows.rows || []).map((r) => ({ model: r.model, threatCount: r.threat_count || 0, totalTraces: 0, category: 'status_flagged' }));
     return res.status(200).json({ threats, pressure: 0 });
   } catch { return res.status(200).json({ threats: [], pressure: 0 }); }
@@ -1051,7 +1152,7 @@ app.get('/api/governance/failed', async (req, res) => {
     const key = 'kudbee-governance-tasks-failed';
     let items = [];
     if (redis) { const raw = await redis.lrange(key, 0, limit - 1); items = raw.map((r) => { try { return JSON.parse(r); } catch { return { raw: r }; } }); }
-    if (items.length === 0 && pool) { const rows = await pool.query('SELECT * FROM think_tokens WHERE status = $1 ORDER BY created_at DESC LIMIT $2', ['RECYCLED', limit]); items = rows.rows || []; }
+    if (items.length === 0 && pool) { const res = await withTimeout(pool.query('SELECT * FROM think_tokens WHERE status = $1 ORDER BY created_at DESC LIMIT $2', ['RECYCLED', limit]), DB_TIMEOUT_MS, 'DLQ think_tokens query').catch(() => ({ rows: [] })); items = res.rows || []; }
     return res.status(200).json({ items, count: items.length });
   } catch { return res.status(200).json({ items: [], count: 0 }); }
 });
@@ -2022,7 +2123,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
     let pgLatency = -1, redisLatency = -1;
 
     if (pool) {
-      try { const s = Date.now(); await pool.query('SELECT 1 AS health'); pgLatency = Date.now() - s; health.pg = true; } catch {}
+      try { const s = Date.now(); await withTimeout(pool.query('SELECT 1 AS health'), DB_TIMEOUT_MS, 'lifecycle pg check'); pgLatency = Date.now() - s; health.pg = true; } catch {}
     }
     if (redis) {
       try { const s = Date.now(); await redis.ping(); redisLatency = Date.now() - s; health.redis = true; } catch {}
@@ -2131,7 +2232,7 @@ app.get('/metrics', async (req, res) => {
   const uptime = Math.floor(process.uptime());
   const mem = process.memoryUsage();
   let pgHealthy = false, redisHealthy = false;
-  if (pool) try { await pool.query('SELECT 1'); pgHealthy = true; } catch {}
+  if (pool) try { await withTimeout(pool.query('SELECT 1'), DB_TIMEOUT_MS, 'metrics pg check'); pgHealthy = true; } catch {}
   if (redis) try { await redis.ping(); redisHealthy = true; } catch {}
   const body = [
     '# HELP kudbee_uptime_seconds Process uptime',
@@ -2170,7 +2271,7 @@ app.get('/api/alerts/history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const rows = await (pool
-      ? pool.query('SELECT * FROM telemetry_traces WHERE status != $1 AND cost > $2 ORDER BY timestamp DESC LIMIT $3', ['OK', alertConfig.costThreshold, limit])
+      ? withTimeout(pool.query('SELECT * FROM telemetry_traces WHERE status != $1 AND cost > $2 ORDER BY timestamp DESC LIMIT $3', ['OK', alertConfig.costThreshold, limit]), DB_TIMEOUT_MS, 'alerts history query').catch(() => ({ rows: [] }))
       : { rows: [] });
     const alerts = (rows.rows || []).map((r) => ({ id: r.id, trace_id: r.trace_id, model: r.model, cost: r.cost, status: r.status, timestamp: r.timestamp || r.created_at }));
     return res.status(200).json({ alerts, config: alertConfig });
@@ -3035,17 +3136,39 @@ app.get('/api/session-history', async (_req, res) => {
 // to Redis so the worker (and other server dynos) can emit events too.
 
 const EVENTS_CHANNEL = 'kudbee:events';
+const MAX_SSE_CLIENTS = 100;
 const sseClients = new Set();
+
+function sseClientCount() {
+  return sseClients.size;
+}
 
 function broadcast(event) {
   const payload = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+  const deadClients = [];
   for (const res of sseClients) {
     try {
       res.write(payload);
     } catch {
-      sseClients.delete(res);
+      deadClients.add(res);
     }
   }
+  for (const res of deadClients) {
+    sseClients.delete(res);
+  }
+}
+
+function _setupSSEHealth(res, keepAlive) {
+  const cleanup = () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  };
+  res.on('close', cleanup);
+  res.on('error', (err) => {
+    if (err && (err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNABORTED')) {
+      cleanup();
+    }
+  });
 }
 
 function publishEvent(type, data) {
@@ -3087,6 +3210,11 @@ if (redis) {
 }
 
 app.get('/api/events', async (req, res) => {
+  if (sseClientCount() >= MAX_SSE_CLIENTS) {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
+    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached (backpressure)' }));
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -3094,20 +3222,16 @@ app.get('/api/events', async (req, res) => {
     'X-Accel-Buffering': 'no'
   });
   res.write('retry: 3000\n\n');
-  // Flush headers immediately so the Heroku router marks the response as
-  // started and does not trigger an H27 timeout during the snapshot query.
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
   sseClients.add(res);
 
   try {
     const proposed = redis ? await listProposed() : [];
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [] })}\n\n`);
+    res.write(`event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [], db_healthy: isDbHealthy(), redis: !!redis })}\n\n`);
   } catch {
     /* ignore */
   }
 
-  // 10s keepalive ping keeps the Heroku router from killing the SSE stream
-  // (Heroku's default 55s idle timeout requires periodic data frames).
   const keepAlive = setInterval(() => {
     try {
       res.write(`: ping\n\n`);
@@ -3116,15 +3240,17 @@ app.get('/api/events', async (req, res) => {
     }
   }, 10_000);
 
-  req.on('close', () => {
-    clearInterval(keepAlive);
-    sseClients.delete(res);
-  });
+  _setupSSEHealth(res, keepAlive);
 });
 
 // Phase 21: dedicated telemetry stream alias. Identical contract to
 // /api/events but with a more discoverable URL for the History view.
 app.get('/api/telemetry/stream', async (req, res) => {
+  if (sseClientCount() >= MAX_SSE_CLIENTS) {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
+    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached (backpressure)' }));
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -3143,7 +3269,7 @@ app.get('/api/telemetry/stream', async (req, res) => {
               COUNT(*) AS cnt
          FROM telemetry_traces`
     ).catch(() => [{ in_tok: 0, out_tok: 0, total_cost: 0, cnt: 0 }]);
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ summary: summary[0] || {} })}\n\n`);
+    res.write(`event: snapshot\ndata: ${JSON.stringify({ summary: summary[0] || {}, db_healthy: isDbHealthy(), redis: !!redis })}\n\n`);
   } catch {
     /* ignore */
   }
@@ -3154,10 +3280,8 @@ app.get('/api/telemetry/stream', async (req, res) => {
       /* ignore */
     }
   }, 10_000);
-  req.on('close', () => {
-    clearInterval(keepAlive);
-    sseClients.delete(res);
-  });
+
+  _setupSSEHealth(res, keepAlive);
 });
 
 // Broadcast a live event when a governance action is approved/rejected so the

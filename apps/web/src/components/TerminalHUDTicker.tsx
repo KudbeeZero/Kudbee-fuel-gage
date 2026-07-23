@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Terminal, Zap, Scale, ShieldAlert, RefreshCw } from 'lucide-react';
+import { apiGet } from '../lib/apiClient';
 
 interface Headline {
   title: string;
@@ -13,30 +14,46 @@ export function TerminalHUDTicker() {
   const [headlines, setHeadlines] = useState<Headline[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cursorBlink, setCursorBlink] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchHeadlines = async () => {
+  const fetchHeadlines = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const controller = abortControllerRef.current;
+
     try {
-      const res = await fetch('/api/news/headlines');
-      const data = await res.json();
+      setError(null);
+      const data = await apiGet<{ headlines: Headline[] }>('/api/news/headlines', {
+        signal: controller.signal
+      });
       if (data.headlines && data.headlines.length > 0) {
         setHeadlines(data.headlines);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
       console.error('Error loading ticker headlines:', err);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHeadlines();
-    // Refresh ticker data every 60 seconds
     const interval = setInterval(fetchHeadlines, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      abortControllerRef.current?.abort();
+    };
+  }, [fetchHeadlines]);
 
-  // Cycle current headline index every 5 seconds
   useEffect(() => {
     if (headlines.length <= 1) return;
     const interval = setInterval(() => {
@@ -45,7 +62,6 @@ export function TerminalHUDTicker() {
     return () => clearInterval(interval);
   }, [headlines]);
 
-  // Terminal cursor blinking effect
   useEffect(() => {
     const interval = setInterval(() => {
       setCursorBlink((prev) => !prev);
@@ -78,7 +94,11 @@ export function TerminalHUDTicker() {
 
   if (loading) {
     return (
-      <div className="w-full bg-slate-950/70 border border-slate-800/80 rounded-xl px-4 py-3 flex items-center justify-between text-xs font-mono text-slate-500">
+      <div
+        className="w-full bg-slate-950/70 border border-slate-800/80 rounded-xl px-4 py-3 flex items-center justify-between text-xs font-mono text-slate-500"
+        role="status"
+        aria-label="Loading headlines ticker"
+      >
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4 text-emerald-400/70 animate-pulse" />
           <span className="text-[11px] uppercase tracking-wider text-slate-400">SYS_HUD_TICKER: Loading live stream...</span>
@@ -90,16 +110,20 @@ export function TerminalHUDTicker() {
   }
 
   const currentHeadline = headlines[currentIndex] || {
-    title: 'SYS_STATUS_OK: Command bridge telemetry operational.',
-    category: 'Research Breakthrough',
-    source: 'Local System Diagnostics'
+    title: error ? `SYS_ERROR: ${error}` : 'SYS_STATUS_OK: Command bridge telemetry operational.',
+    category: error ? 'API Law & Compliance' : 'Research Breakthrough',
+    source: error ? 'Network' : 'Local System Diagnostics'
   };
 
   const style = getCategoryStyles(currentHeadline.category);
 
   return (
-    <div className="w-full bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 sm:px-4 sm:py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 relative overflow-hidden group select-none">
-      {/* Decorative scanner lines to match mechanical/tactical theme */}
+    <div
+      className="w-full bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 sm:px-4 sm:py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 relative overflow-hidden group select-none"
+      role="marquee"
+      aria-live="off"
+      aria-label="Intelligence headlines ticker"
+    >
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_95%,rgba(16,185,129,0.02)_98%,rgba(16,185,129,0.02)_100%)] bg-[size:100%_4px] pointer-events-none"></div>
       
       <div className="flex items-start md:items-center gap-3 min-w-0 flex-1 w-full">
@@ -111,7 +135,6 @@ export function TerminalHUDTicker() {
           <span className="text-slate-500 uppercase tracking-widest text-[10px]">INTEL_STREAMS:</span>
         </div>
 
-        {/* Carousel Transition area - enlarged h-auto and padded to prevent any vertical text clipping */}
         <div className="min-w-0 flex-1 relative h-auto md:h-6 py-2 flex items-center overflow-hidden w-full">
           <AnimatePresence mode="wait">
             <motion.div
@@ -142,6 +165,7 @@ export function TerminalHUDTicker() {
           onClick={fetchHeadlines}
           className="p-1.5 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded text-slate-500 hover:text-emerald-400 transition-all cursor-pointer flex items-center justify-center"
           title="Manually force intel refresh"
+          aria-label="Refresh headlines"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
