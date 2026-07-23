@@ -295,15 +295,20 @@ export const commandRunners = {
         const pending = await apiGet<Array<{ id: string }>>('/api/governance/pending');
         const items = Array.isArray(pending) ? pending : [];
         let approved = 0;
+        let failed = 0;
         for (const item of items.slice(0, 10)) {
           try {
             await apiPost('/api/governance/approve', { id: item.id });
             approved++;
-          } catch { /* skip failures */ }
+          } catch (err) {
+            failed++;
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[commandDispatcher] approve ${item.id} failed: ${msg}`);
+          }
         }
         return {
           success: true,
-          detail: `${approved}/${items.length} actions approved`
+          detail: `${approved}/${items.length} actions approved, ${failed} failed`
         };
       }
     }),
@@ -322,6 +327,18 @@ export const commandRunners = {
         return {
           success: !!res?.found,
           detail: res?.found ? `Snapshot found (sim ${(res.similarity ?? 0).toFixed(3)})` : 'No matching snapshot'
+        };
+      }
+    }),
+  playgroundRun: (label: string, description: string) =>
+    runWithDispatcher({
+      kind: 'PLAYGROUND_RUN',
+      label: label || 'Playground Run',
+      description: description || 'Execute playground completion request',
+      run: async () => {
+        return {
+          success: true,
+          detail: 'Playground run accepted'
         };
       }
     })

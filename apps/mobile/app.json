@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Kudbee",
+    "slug": "kudbee-mobile",
+    "version": "1.0.0",
+    "scheme": "kudbee-mobile",
+    "platforms": ["ios", "android", "web"],
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kudbee.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0a0a0f"
+      },
+      "package": "com.kudbee.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "newArchEnabled": true,
+    "extra": {
+      "apiUrl": "http://localhost:9900"
+    }
+  }
+}

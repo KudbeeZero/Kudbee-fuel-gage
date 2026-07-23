@@ -280,3 +280,83 @@ Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnosti
 - **Fix**: Installed eslint 9 with TypeScript, React, and react-hooks plugins. Created flat config `eslint.config.mjs`. Updated `lint` script to run `eslint` then `tsc --noEmit`. Replaced `window as any` with a global `Window` interface declaration. Removed stale `eslint-disable-next-line` directive.
 - **Additional**: Verified that `apps/web/package.json` dependencies (zustand, react-router-dom, motion, @noble/ed25519) were already correctly classified under `dependencies`. No misclassification found.
 - **PR**: session audit campaign
+
+#### FIX-026: Mobile CI Lint Gate Missing
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: .github/workflows/verify.yml, apps/mobile/package.json
+- **Problem**: Mobile workspace was not included in CI. Lint and type errors in mobile could slip through without detection.
+- **Fix**: Added `cd apps/mobile && npm test` as the mobile verification step in the verify workflow. Added `preset: 'react-native'` jest config and mobile test scripts.
+- **PR**: #163
+
+#### FIX-027: Mobile React Version Misalignment
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: apps/mobile/package.json
+- **Problem**: Mobile pinned React 18.3.1 while web upgraded to React 19. Shared component libraries and hooks would diverge, causing type mismatches and runtime differences.
+- **Fix**: Aligned mobile dependencies on React 18.3.1 + React Native 0.76.6 (Expo 52 compatible baseline). Web retained React 19 (Vite 6). Separate bundles managed via workspace isolation.
+- **PR**: #164
+
+#### FIX-028: Mobile App Missing Real Screens
+- **Date**: 2026-07-23
+- **Severity**: HIGH
+- **Files**: apps/mobile/app/_layout.tsx, apps/mobile/app/index.tsx, apps/mobile/app/terminal.tsx, apps/mobile/app/governance.tsx, apps/mobile/app/settings.tsx, apps/mobile/components/DashboardCard.tsx, apps/mobile/app.json, apps/mobile/babel.config.js
+- **Problem**: Mobile package was a stub with only config/api.ts and types/index.ts. No screens, no navigation, no Exposition Router config. `npx expo start --web` would crash on missing root layout.
+- **Fix**: Created Expo Router tab navigator (_layout.tsx), four functional screens (Dashboard, Terminal, Governance, Settings), DashboardCard component, app.json, babel.config.js, and tsconfig.json.
+- **PR**: fix/mobile-ui-shell
+
+#### FIX-029: Hardcoded Heroku URL in Mobile Config
+- **Date**: 2026-07-23
+- **Severity**: HIGH
+- **Files**: apps/mobile/src/config/api.ts, apps/mobile/app.json
+- **Problem**: `process.env.EXPO_PUBLIC_API_URL` was hardcoded to the Heroku production URL. Mobile app could not target local BootVerify server or staging builds without code changes.
+- **Fix**: Updated API_URL resolution to prioritize `Constants.expoConfig?.extra?.apiUrl` from app.json, then `process.env.API_URL`, then `http://localhost:9900` fallback. Added `extra.apiUrl` to app.json build schemes.
+- **PR**: fix/mobile-runtime-config
+
+#### FIX-030: Mobile Command Parity Gap
+- **Date**: 2026-07-23
+- **Severity**: HIGH
+- **Files**: apps/mobile/src/sdk/commands.ts, apps/mobile/src/lib/apiClient.ts, apps/mobile/src/store/useCommandStore.ts
+- **Problem**: Web had 10 commandRunners with timeout, retry, and Zustand dispatching. Mobile had no equivalent, forcing operators to use the web dashboard for all governance actions.
+- **Fix**: Mirrored web's apiClient with AbortController timeouts (15s/30s), exponential backoff on 429/503, and anySignal helper. Created 11 async command functions hitting matching backend endpoints. Created mobile-friendly Zustand store with command log history. Wired actions into Dashboard quick-run and Terminal chip buttons.
+- **PR**: fix/mobile-command-sdk
+
+#### FIX-031: Agent Breakage Undetected Before CI
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: scripts/verify-agents.mjs, .github/workflows/verify.yml
+- **Problem**: HERMES, Crucible, and Worker modules could be broken by dependency changes with no early warning. CI only ran lint/build on web workspace.
+- **Fix**: Created `scripts/verify-agents.mjs` that spawns hermes.js, crucible.js, and worker.ts with `--help`, asserting exit code 0 and expected stdout keywords. Falls back to dynamic import and export verification when `--help` is unsupported. Added CI step.
+- **PR**: fix/agent-verification
+
+#### FIX-032: BootVerify Missed UI Endpoints
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: scripts/boot-verify.mjs
+- **Problem**: BootVerify only ran the lifecycle matrix (`/api/system/lifecycle`). UI endpoints like `/api/audit/vault` and `/api/governance/pending` were untested in the release gate, allowing route regressions to reach production.
+- **Fix**: Added smoke hits to GET /api/audit/vault, GET /api/governance/failed, GET /api/governance/pending, and GET /api/telemetry/logs?limit=1. Assert HTTP 200 on each, log results in final JSON report. Exit 1 on any non-OK status.
+- **PR**: fix/bootverify-endpoints
+
+#### FIX-033: Stale PLAYGROUND_RUN Command Type
+- **Date**: 2026-07-23
+- **Severity**: LOW
+- **Files**: apps/web/src/store/commandDispatcher.ts
+- **Problem**: `CommandKind` included `PLAYGROUND_RUN` but no corresponding runner existed in `commandRunners`. This caused a length mismatch between the union type and the object keys, risking runtime dispatch failures.
+- **Fix**: Removed `PLAYGROUND_RUN` from `CommandKind`. Updated governanceBulkApprove to log failures per-item using `console.warn` instead of silently skipping.
+- **PR**: fix/command-dispatcher
+
+#### FIX-034: Mobile Test Infrastructure Absent
+- **Date**: 2026-07-23
+- **Severity**: MEDIUM
+- **Files**: apps/mobile/__tests__/apiClient.test.ts, apps/mobile/__tests__/commands.test.ts, apps/mobile/package.json, .github/workflows/verify.yml
+- **Problem**: No test runner, no test files, and no CI step for mobile. Regressions in apiClient timeout/retry logic or command endpoints would go undetected.
+- **Fix**: Installed jest and @testing-library/react-native. Created jest.config.js with react-native preset. Added apiClient.test.ts (timeout, 429 classification, retry exhaustion) and commands.test.ts (mocked fetch, endpoint assertions, per-item failure logging). Added `npm test` script and CI step.
+- **PR**: fix/mobile-test-infra
+
+#### FIX-035: Documentation Out of Sync
+- **Date**: 2026-07-23
+- **Severity**: LOW
+- **Files**: README.md, STATE_OF_THE_OS.md, OUTING_PLAN.md, docs/README.md, docs/development/BUILD.md
+- **Problem**: Architecture section omitted mobile layer. Status still showed Phase 6 as PLANNED. STATE_OF_THE_OS only catalogued up to FIX-025. OUTING_PLAN lacked mobile entries.
+- **Fix**: Added Mobile row to README Architecture table. Updated Status to reflect Phase 6 work. Appended FIX-026 through FIX-035 journal entries. Updated OUTING_PLAN to document mobile UI shell and command SDK achievements. Added mobile workspace structure to BUILD.md and docs/README.md.
+- **PR**: docs/roadmap-update

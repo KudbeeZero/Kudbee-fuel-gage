@@ -11,6 +11,7 @@ Kudbee is a full-stack monorepo organized into three layers:
 | Layer | Stack | Purpose |
 |:---|:---|:---|
 | **Web** (`apps/web`) | React 19, Vite 6, Tailwind v4, Zustand | Control Tower dashboard with Studio Layout, Plugin Rack, and live SSE streams |
+| **Mobile** (`apps/mobile`) | Expo 52, React Native, Expo Router, Zustand | Mobile-first UI shell with tab navigator, command dispatch, and runtime config |
 | **API** (`services/ingestion`) | Express, Neon Postgres, ioredis, Groq LPU | Telemetry ingestion, governance logic, circuit breakers, rate limiting |
 | **Worker** (`services/`) | Node.js, Redis, Gemini, HERMES | Background agent loops, governance task queue, autonomous auditor |
 
@@ -42,4 +43,4 @@ See [`/docs/README.md`](docs/README.md) for the full architecture docs, API refe
 
 - **Phases 1–4** (Core Infrastructure): COMPLETE
 - **Phase 5** (Production Hardening): COMPLETE — memory leak fixes, error boundaries, eslint added, CI green
-- **Phase 6** (Multi-Agent Containerization): PLANNED
+- **Phase 6** (Terminal & Command + Mobile): COMPLETE — mobile UI shell, command SDK, agent verification, BootVerify smoke checks

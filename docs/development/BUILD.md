@@ -72,10 +72,17 @@ export GROQ_API_KEY=gsk_...         # optional
 │           ├── think.tsx        # THINK tab — Storm, Stream, Storage, Trajectories plugins
 │           ├── governance.tsx   # GOVERNANCE tab — HITL gate + GovernanceView
 │           ├── hermes.tsx       # HERMES tab — audit sweep, probe, filter
-│           ├── sentinel.tsx     # SENTINEL tab — egress monitor, blast radius
+│           ├── sentinel.tsx     # SENTINEL tab — egress monitor, blast radius gauge
 │           ├── dashboard.tsx    # Legacy Control Tower (Control Tower page)
 │           ├── history.tsx
 │           └── firewall.tsx
+├── apps/mobile/           # Expo 52 + React Native mobile shell
+│   └── src/
+│       ├── app/           # Expo Router screens (_layout, index, terminal, governance, settings)
+│       ├── components/    # DashboardCard
+│       ├── lib/           # apiClient (timeout, retry, backoff)
+│       ├── sdk/           # commands.ts (11 command runners)
+│       └── store/         # useCommandStore.ts (Zustand)
 ├── services/
 │   ├── ingestion/server.js   # Main Express server (60+ routes)
 │   ├── agents/worker.ts      # Background task queue
@@ -95,10 +102,12 @@ export GROQ_API_KEY=gsk_...         # optional
 ├── packages/types/           # Zod schemas
 ├── scripts/
 │   ├── verify-e2e.mjs        # 36 integration checks
+│   ├── verify-agents.mjs     # Agent module load verification
 │   ├── verify-receptor-gating.mjs  # 6 gating checks
 │   ├── verify-energy-mesh.mjs      # 4 energy checks
 │   ├── verify-adversarial-challenge.mjs # 13 adversarial
 │   ├── verify-middleware-chaos.mjs     # 6 chaos checks
+│   ├── boot-verify.mjs       # Pre-release UI endpoint smoke + lifecycle checks
 │   └── verify-system-integrity.mjs
 └── .github/workflows/verify.yml  # CI pipeline
 ```
@@ -163,6 +172,8 @@ All of these pages are rendered in `apps/web/src/App.tsx` via the `<main>` conte
 | `tsx scripts/deploy-check.ts` | Pre-deployment readiness check |
 | `tsx scripts/ingest-topology.ts` | Self-ingestion pipeline for topology |
 | `tsx scripts/auto-commit.mjs` | E2E + auto-commit + open PR |
+| `cd apps/mobile && npx expo start --web` | Mobile web preview |
+| `cd apps/mobile && npm test` | Mobile unit tests |
 
 ## Key Endpoints
 

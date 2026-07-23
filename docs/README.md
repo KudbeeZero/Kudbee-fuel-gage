@@ -14,6 +14,7 @@ Master Table of Contents for the Kudbee Spatial-Fluidic AI Operating System mono
 | [04-DATABASE_AND_REDIS](architecture/04-DATABASE_AND_REDIS.md) | Full DB schema (Postgres + pgvector), Redis key map, connection pooling, circuit breaker config |
 | [05-GOVERNANCE_AND_GATING](architecture/05-GOVERNANCE_AND_GATING.md) | Receptor gating engine, AGC contracts, think token lifecycle, probation docket, HERMES auditor, Nash unions |
 | [06-FRONTEND_ARCHITECTURE](architecture/06-FRONTEND_ARCHITECTURE.md) | React component tree, Zustand stores, SSE hooks, apiClient, error boundaries, plugin registry |
+| [07-MOBILE_ARCHITECTURE](architecture/07-MOBILE_ARCHITECTURE.md) | Expo 52, React Native, Expo Router tabs, command SDK, runtime config |
 
 ## Development
 

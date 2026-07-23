@@ -98,11 +98,35 @@ Branch: `feat/fulfilled-outing` | Date: 2026-07-23
 - 6A.4 ThinkingBlock: Add thought chain collapse/expand animation
 - 6A.5 StreamModeBadge: Add tool execution status indicators
 
-### 6B: Command Palette & Control Bar
+### 6B: Mobile UI Shell (COMPLETED)
+**Target:** apps/mobile — Expo 52 + React Native
+- 6B.1 Created root layout with Expo Router tab navigator
+- 6B.2 Implemented Dashboard screen with DashboardCard grid and quick-action buttons
+- 6B.3 Implemented Terminal screen with command dispatch chips and live command log
+- 6B.4 Implemented Governance screen with pending approval cards and status badges
+- 6B.5 Implemented Settings screen with configuration rows and action buttons
+- 6B.6 Wired command SDK into Dashboard and Terminal views
+
+### 6C: Mobile Runtime Config (COMPLETED)
+- 6C.1 Replaced hardcoded Heroku URL with runtime API_URL resolution
+- 6C.2 Integrated expo-constants extra.apiUrl from app.json
+- 6C.3 Added process.env.API_URL fallback and localhost:9900 default
+- 6C.4 Health check hits local BootVerify server
+
+### 6D: Mobile Command SDK (COMPLETED)
+**Target:** apps/mobile/src/sdk/ + mobile-friendly Zustand store
+- 6D.1 Created apiClient.ts mirroring web with AbortController timeouts
+- 6D.2 Implemented exponential backoff on 429/503 with Retry-After / X-RateLimit-Reset headers
+- 6D.3 Created 11 async command functions matching web commandRunners
+- 6D.4 Built useCommandStore.ts with IDLE/RUNNING/SUCCESS/FAILED states
+- 6D.5 Wired hermesAudit, systemProbe, crucibleDispatch, and purge into Terminal chips
+- 6D.6 Wired quick-run actions into Dashboard with success/failure detail logging
+
+### 6E: Command Palette & Control Bar
 **Target:** OSControlBar, WorkspaceBar
-- 6B.1 OSControlBar: Add workspace switcher dropdown
-- 6B.2 OSControlBar: Add tenant-aware command palette
-- 6B.3 WorkspaceBar: Add tenant/workspace CRUD
+- 6E.1 OSControlBar: Add workspace switcher dropdown
+- 6E.2 OSControlBar: Add tenant-aware command palette
+- 6E.3 WorkspaceBar: Add tenant/workspace CRUD
 
 ## PHASE 7: DESKTOP & LAYOUT — Professional OS Shell
 

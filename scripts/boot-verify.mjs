@@ -78,9 +78,36 @@ async function bootVerify() {
   proc.kill('SIGTERM');
 
   if (healthy) {
-    console.log('[BootVerify] SYSTEM READY — all services healthy.');
-    console.log('[BootVerify] Report:', JSON.stringify(report, null, 2));
-    process.exit(0);
+    console.log('[BootVerify] System healthy. Running UI endpoint smoke checks…');
+    const smokeEndpoints = [
+      { path: '/api/audit/vault', method: 'GET' },
+      { path: '/api/governance/failed', method: 'GET' },
+      { path: '/api/governance/pending', method: 'GET' },
+      { path: '/api/telemetry/logs?limit=1', method: 'GET' }
+    ];
+    const routes = [];
+    for (const ep of smokeEndpoints) {
+      try {
+        const res = await fetch(`${BASE}${ep.path}`);
+        const json = await res.json().catch(() => ({}));
+        routes.push({ path: ep.path, status: res.status, ok: res.ok });
+        console.log(`[BootVerify] ${ep.method} ${ep.path} → ${res.status}`);
+      } catch (err) {
+        routes.push({ path: ep.path, status: 0, ok: false, error: err instanceof Error ? err.message : String(err) });
+        console.warn(`[BootVerify] ${ep.method} ${ep.path} → ERROR`, err instanceof Error ? err.message : String(err));
+      }
+    }
+    const allHealthy = routes.every((r) => r.ok);
+    report = { ...report, routes };
+    if (allHealthy) {
+      console.log('[BootVerify] SYSTEM READY — all services and UI endpoints healthy.');
+      console.log('[BootVerify] Report:', JSON.stringify(report, null, 2));
+      process.exit(0);
+    } else {
+      console.error('[BootVerify] FAILED: one or more UI endpoints returned non-OK status.');
+      console.error('[BootVerify] Report:', JSON.stringify(report, null, 2));
+      process.exit(1);
+    }
   } else {
     console.error('[BootVerify] FAILED: services not healthy after', HEALTH_CHECK_MS, 'ms');
     console.error('[BootVerify] Last report:', JSON.stringify(report, null, 2));
