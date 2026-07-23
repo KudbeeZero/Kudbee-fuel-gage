@@ -46,6 +46,7 @@ import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
+import { runSystemPruner } from '../lib/pruner.ts';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -4572,6 +4573,21 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`);
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
   console.log(`[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`);
+
+  const PRUNE_MS = 6 * 60 * 60 * 1000;
+  setTimeout(() => {
+    void runSystemPruner().then((r) => {
+      if (r.locked) console.log(`[Pruner] Initial sweep: tasks=${r.governanceTasks} dlq=${r.governanceDlq} jobs=${r.slowJobs}`);
+      else console.log('[Pruner] Skipped — another process holds the lock');
+    });
+  }, 120_000);
+  setInterval(() => {
+    void runSystemPruner().then((r) => {
+      if (r.locked && (r.governanceTasks + r.governanceDlq + r.slowJobs > 0)) {
+        console.log(`[Pruner] Sweep: tasks=${r.governanceTasks} dlq=${r.governanceDlq} jobs=${r.slowJobs}`);
+      }
+    });
+  }, PRUNE_MS);
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
