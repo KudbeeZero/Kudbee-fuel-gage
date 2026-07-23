@@ -19,6 +19,7 @@ import { useToolInterceptor } from "../hooks/useToolInterceptor";
 import { useThoughtTelemetry } from "../hooks/useThoughtTelemetry";
 import { registerWorkspaceTools } from "../tools/workspace";
 import { TerminalStreamView } from "../components/TerminalStreamView";
+import { getProxyBase } from "../lib/proxyBase";
 import type { OllamaMessage, StreamStatus } from "../types/ollama";
 import type { ReactElement, FormEvent, KeyboardEvent } from "react";
 
@@ -171,7 +172,7 @@ export function OllamaChat(): ReactElement {
       setModelsLoading(true);
       setModelsError(null);
       try {
-        const res = await fetch("ollama/api/tags");
+        const res = await fetch(getProxyBase() + "ollama/api/tags");
         if (!res.ok) {
           throw new Error(`Server returned ${res.status}`);
         }
