@@ -181,7 +181,7 @@ export function RackLayout() {
           12-col grid · {plugins.length} modules
         </span>
       </header>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12">
+       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-12 min-w-0">
         {plugins.map((plugin) => renderPlugin(plugin, hermes, trajectories, trajectoryLoading))}
         <div className="lg:col-span-12">
           <EdgeSentinelPlugin
