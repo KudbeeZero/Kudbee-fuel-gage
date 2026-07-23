@@ -12,7 +12,7 @@ interface Props {
 export function PluginContainer({ component: Comp, panelName, height, props }: Props) {
   return (
     <PanelErrorBoundary panel={panelName}>
-      <Suspense fallback={<SkeletonPanel height={height || '200px'} />}>
+      <Suspense fallback={<SkeletonPanel height={height || '200px'}><div /></SkeletonPanel>}>
         <Comp {...props} />
       </Suspense>
     </PanelErrorBoundary>
