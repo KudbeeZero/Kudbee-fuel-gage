@@ -13,8 +13,10 @@ interface TerminalState {
   pushExternalLog: (log: ConsoleLog) => void;
 }
 
+const MAX_EXTERNAL_LOGS = 1000;
+
 export const useTerminalStore = create<TerminalState>((set) => ({
   externalLogs: [],
   pushExternalLog: (log) =>
-    set((state) => ({ externalLogs: [...state.externalLogs, log] })),
+    set((state) => ({ externalLogs: [...state.externalLogs, log].slice(-MAX_EXTERNAL_LOGS) })),
 }));
