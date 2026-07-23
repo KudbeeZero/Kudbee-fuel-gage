@@ -11,6 +11,8 @@ declare module '../lib/redis.js' {
   import type { Redis } from 'ioredis';
 
   export function getRedisClient(opts?: Record<string, unknown>): Redis;
+  export function getSubscriberClient(): Redis;
+  export function getSlowRedisClient(opts?: Record<string, unknown>): Redis;
 
   export const redisTelemetry: {
     primaryCount: number;

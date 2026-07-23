@@ -19,10 +19,13 @@
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
+const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
 
 let _client = null;
 let _subClient = null;
+let _slowClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 
 /**
@@ -94,6 +97,43 @@ export function getSubscriberClient() {
   _subClient.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
   return _subClient;
+}
+
+/**
+ * Returns a shared Redis client wired to REDIS_SLOW_URL (falling back to
+ * REDIS_URL), for heavy/stateful workers (HERMES, Crucible, JobQueue) so they
+ * never compete for connection slots with the real-time Fast Brain client
+ * (UI telemetry, SSE streams, rate-limiters).
+ * @param {object} [opts] Optional overrides.
+ * @returns {import('ioredis').Redis}
+ */
+export function getSlowRedisClient(opts = {}) {
+  if (!opts.forceNew && _slowClient) return _slowClient;
+
+  const baseConfig = {
+    lazyConnect: opts.lazyConnect ?? false,
+    maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
+    enableReadyCheck: true,
+    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    retryStrategy: opts.retryStrategy ?? (() => null),
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    keepAlive: 15_000
+  };
+
+  if (isSlowUpstash) {
+    baseConfig.tls = { rejectUnauthorized: false };
+  }
+
+  const client = new Redis(REDIS_SLOW_URL, baseConfig);
+
+  client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log('[slow-redis] Redis connected'); });
+  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log('[slow-redis] Redis ready'); });
+  client.on('error', () => { redisTelemetry.errorCount += 1; });
+  client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn('[slow-redis] Redis connection closed'); });
+
+  if (!opts.forceNew) _slowClient = client;
+  return _slowClient;
 }
 
 export { redisTelemetry };
