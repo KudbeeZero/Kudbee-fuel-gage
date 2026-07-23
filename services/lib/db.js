@@ -167,6 +167,17 @@ export async function closeDbPool() {
   }
 }
 
+export async function teardownAll(redisClient) {
+  console.log('[DB] Tearing down database connections…');
+  const results = await Promise.allSettled([
+    closeDbPool(),
+    redisClient ? (async () => { try { await redisClient.quit(); } catch { /* ignore */ } })() : Promise.resolve()
+  ]);
+  const errors = results.filter((r) => r.status === 'rejected');
+  if (errors.length) console.warn('[DB] Teardown errors:', errors.map((e) => e.reason?.message).filter(Boolean));
+  else console.log('[DB] All database connections closed gracefully.');
+}
+
 // ---------------------------------------------------------------------------
 // In-memory fallback store (Resilient-First degrade path).
 // Mirrors the canonical tables so endpoints behave identically with/without

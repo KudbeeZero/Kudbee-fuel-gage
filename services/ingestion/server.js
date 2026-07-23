@@ -16,7 +16,7 @@ import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
 import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
-import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool } from '../lib/db.js';
+import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool, teardownAll } from '../lib/db.js';
 import { getRedisClient, getSubscriberClient } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
@@ -4234,8 +4234,7 @@ app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
 async function shutdown(signal) {
   console.log(`[Server] ${signal} received — shutting down gracefully`);
-  try { if (redis) await redis.quit(); } catch { /* ignore */ }
-  try { await closeDbPool(); } catch { /* ignore */ }
+  await teardownAll(redis);
   process.exit(0);
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
