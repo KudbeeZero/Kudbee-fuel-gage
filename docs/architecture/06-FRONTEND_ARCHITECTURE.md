@@ -268,6 +268,66 @@ Four chart types rendered inline in `App.tsx`:
 - **LineChart** — cost trend lines with Cartesian grid
 - **PieChart** — provider distribution with custom cell colors
 
+---
+
+## OS Stream (Unified Polling Replacement)
+
+**Endpoint**: `GET /api/os-stream` (SSE, 5s interval)
+
+The OS Stream consolidates 8+ polling endpoints into a single persistent SSE connection. Instead of each panel polling its own endpoint independently (45+ active setIntervals), the OS Stream pushes a unified state snapshot every 5 seconds.
+
+**Event**: `os:snapshot` with payload:
+```json
+{
+  "ts": "ISO timestamp",
+  "uptime": seconds,
+  "services": { "postgres": { "ok": bool, "latencyMs": number }, "redis": { ... } },
+  "governance": { "pending": number },
+  "think": { "tokens": number, "verified": number },
+  "memory": { "vectors": number, "chunks": number },
+  "alerts": number
+}
+```
+
+**Frontend integration**: `OsStreamProvider` (React Context) + `useOsSnapshot()` hook. Wired into App.tsx header status bar, footer PING indicator, and governance pending counter. Includes jittered reconnection on error (1-5s).
+
+## New Resilience Hooks
+
+### `useRateThrottle(maxRequestsPerMinute)`
+Token bucket algorithm for client-side rate limiting. Returns `{ tryConsume }` — call before any fetch to check if request is allowed.
+
+### `useAdaptivePolling(callback, baseIntervalMs, healthLevel)`
+Health-aware polling that scales intervals based on backend health: HEALTHY→1x, DEGRADED→2x, OFFLINE→4x.
+
+### `useVisibilityPolling(callback, intervalMs)`
+Auto-pauses polling when browser tab is hidden (via `document.visibilityState`).
+
+### `useOnlineStatus()`
+Monitors `navigator.onLine` and `window.addEventListener('online'/'offline')` events.
+
+### `useBackoffHandling()`
+Exponential backoff state management with hardcoded server timeout/rate-limit constants. Returns `{ isFrozen, backoffState, onFetchError }`.
+
+### ConnectionBanner
+Vue-like alert component that shows when OS Stream disconnects or backend services are unhealthy. Uses `useOsSnapshot()` to detect connection state.
+
+## Telemetry Batcher
+
+**File**: `apps/web/src/lib/telemetryBatcher.ts`
+
+Module-level batching queue that accumulates telemetry events for 1000ms (or 50 events, whichever comes first) and flushes through `POST /api/telemetry/ingest/batch`. Used by `useTelemetryLogger.ts` to reduce DB write pressure.
+
+## apiClient Network Resilience
+
+**File**: `apps/web/src/lib/apiClient.ts`
+
+| Feature | Behavior |
+|:---|:---|
+| Timeout | AbortController-based: 15s GET, 30s POST |
+| 429/503 Retry | Jittered exponential backoff with `Retry-After` / `X-RateLimit-Reset` header support |
+| NetworkError | Typed error class for timeout/offline classification |
+| Jitter | `Math.random() * 1000` added to all retry delays to prevent thundering herd |
+
 All use `<ResponsiveContainer>` + `<Tooltip>` + `<CartesianGrid>`.
 
 ## Motion Animations

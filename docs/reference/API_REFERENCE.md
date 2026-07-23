@@ -20,7 +20,8 @@ Complete route map from `runtime-allowlist.json` and `services/ingestion/server.
 
 | Method | Route | Description |
 |:---|:---|:---|
-| `POST` | `/api/telemetry/ingest` | **Primary ingestion.** FTWB-guarded, Zod-validated, Gemini-triaged |
+| `POST` | `/api/telemetry/ingest` | **Primary ingestion.** FTWB-guarded, Zod-validated, Gemini-triaged, prime-lens sampled |
+| `POST` | `/api/telemetry/ingest/batch` | **Batch ingestion.** Accepts `{ events: [...] }` (max 100). Returns `{ received, persisted, filtered, sampled, deduped }` |
 | `POST` | `/api/telemetry/edge-ingest` | Edge Sentinel webhook (auth via X-Agent-Pass) |
 | `GET` | `/api/telemetry/stats` | Live OS telemetry (vector memory count, think tokens minted, crucible health) |
 | `GET` | `/api/telemetry/stream` | Telemetry event stream |
@@ -173,4 +174,6 @@ Complete route map from `runtime-allowlist.json` and `services/ingestion/server.
 | Method | Route | Description |
 |:---|:---|:---|
 | `GET` | `/api/session-history` | PR session manifest history |
-| `GET` | `/api/events` | SSE event stream |
+| `GET` | `/api/events` | SSE event stream (governance, telemetry, hermes) |
+| `GET` | `/api/telemetry/stream` | SSE telemetry stream alias |
+| `GET` | `/api/os-stream` | **Unified OS SSE stream.** Pushes `os:snapshot` every 5s with db/redis/governance/think/memory/alerts — replaces 8+ per-panel polling endpoints |

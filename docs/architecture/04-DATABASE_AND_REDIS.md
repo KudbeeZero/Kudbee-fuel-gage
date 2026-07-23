@@ -275,3 +275,64 @@ Publishes envelope `{ id, ts, source, kind, data }` to `kudbee:events:v2`.
 Sources: `worker`, `sentinel`, `receptor`, `governance`, `hermes`, `system`, `groq`
 
 Implementation: `services/lib/unifiedEvents.ts` — publishes to v2 channel + legacy channels for backward compatibility.
+
+---
+
+## Connection Pool Configuration
+
+### Postgres Pool (`services/lib/db.js`)
+
+| Setting | Value | Purpose |
+|:---|:---|:---|
+| `max` | 20 | Maximum connections in pool |
+| `idleTimeoutMillis` | 10,000 | Close idle connections after 10s |
+| `connectionTimeoutMillis` | 5,000 | Fail connection attempt after 5s |
+| `keepAlive` | true | TCP keep-alive probes |
+| `keepAliveInitialDelayMillis` | 10,000 | Wait 10s before first probe |
+| `ssl` | `{ rejectUnauthorized: false }` | Required by Neon Postgres |
+
+### Redis Client (`services/lib/redis.js`)
+
+| Setting | Value | Purpose |
+|:---|:---|:---|
+| `connectTimeout` | 5,000 | Fail connect after 5s |
+| `commandTimeout` | 3,000 | Fail command after 3s |
+| `keepAlive` | 15,000 | TCP keep-alive interval |
+| `maxRetriesPerRequest` | 0 | No automatic retry |
+| `retryStrategy` | `() => null` | No reconnection (except subscriber) |
+
+### Query Timeout Wrappers
+
+All raw `pool.query()` calls are wrapped with `withTimeout()` (`services/lib/db.js`):
+
+| Context | Timeout (ms) | Exported Constant |
+|:---|:---|:---|
+| Normal DB queries (SELECT, INSERT) | 10,000 | `DB_TIMEOUT_MS` |
+| pgvector similarity search | 25,000 | `VECTOR_QUERY_TIMEOUT_MS` |
+| pgvector INSERT (think_tokens) | 30,000 | `VECTOR_INSERT_TIMEOUT_MS` |
+
+Callers using raw `pool.query()` (e.g., `thinkTokenGenerator.ts`, `vectorStore.ts`) use the exported `withTimeout()` with the appropriate constant.
+
+---
+
+## Prime-Lens Sampling Architecture
+
+Four layers of defense applied on every `POST /api/telemetry/ingest`:
+
+| Layer | Mechanism | Behavior |
+|:---|:---|:---|
+| 1. Heartbeat/Budget Firewall | Regex + token count filter | Drops heartbeat/ping/zero-token events |
+| 2. Statistical Sampling | `SAMPLE_RATE` env var (1=all, 5=20%, 10=10%) | Random sampling; agents bypass |
+| 3. In-Memory Dedup | 5s LRU window on `trace_id` | Rejects rapid duplicate events |
+| 4. UPSERT | `ON CONFLICT (trace_id) DO UPDATE` | Duplicate trace_ids update existing row |
+| 4.5. Skip Vector Writes | Skip `storeVector()` for ≤10 tokens AND status=OK | Saves 2 DB writes per filtered event |
+
+### Batch Ingest Endpoint
+
+`POST /api/telemetry/ingest/batch` accepts `{ events: [...] }` (max 100). Returns `{ received, persisted, filtered, sampled, deduped }`. The frontend `telemetryBatcher.ts` accumulates events for 1000ms and flushes through this endpoint.
+
+---
+
+## Shutdown Procedure
+
+`teardownAll(redisClient)` in `services/lib/db.js` gracefully closes both DB pool and Redis connection via `Promise.allSettled`. Called on `SIGTERM`/`SIGINT` in `server.js`.
