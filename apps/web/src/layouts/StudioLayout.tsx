@@ -177,7 +177,9 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
         </main>
 
         {/* AGENT TERMINAL — collapsible bottom console */}
-        <AgentTerminal collapsed={terminalCollapsed} onToggleCollapse={() => setTerminalCollapsed((v) => !v)} />
+        <PanelErrorBoundary panel="Agent Terminal">
+          <AgentTerminal collapsed={terminalCollapsed} onToggleCollapse={() => setTerminalCollapsed((v) => !v)} />
+        </PanelErrorBoundary>
       </div>
     </div>
     </WorkspaceRecoveryBoundary>
