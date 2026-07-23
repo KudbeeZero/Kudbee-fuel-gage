@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sliders, RefreshCw, Check, AlertTriangle, Zap } from 'lucide-react';
+import { apiPost } from '../../lib/apiClient';
 
 interface AutoTuneProps {
   onApplied?: () => void;
@@ -32,16 +33,7 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
     setError(null);
     setApplied(false);
     try {
-      const res = await fetch('/api/governance/tune', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lookbackHours: 24 })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Tune analysis failed (${res.status})`);
-      }
-      const data = await res.json();
+      const data = await apiPost('/api/governance/tune', { lookbackHours: 24 });
       setAnalysis(data.analysis);
       setRecommendations(data.recommendations);
     } catch (e) {
@@ -56,15 +48,7 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch('/api/governance/tune/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recommendations })
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Apply failed (${res.status})`);
-      }
+      await apiPost('/api/governance/tune/apply', { recommendations });
       setApplied(true);
       onApplied?.();
     } catch (e) {
@@ -105,6 +89,14 @@ export function AutoTuneButton({ onApplied }: AutoTuneProps) {
         <div className="p-2 rounded border border-amber-500/30 bg-amber-500/10 flex items-center gap-1.5">
           <AlertTriangle className="w-3 h-3 text-amber-400" />
           <span className="text-[10px] font-mono text-amber-300">{error}</span>
+        </div>
+      )}
+
+      {analyzing && !analysis && (
+        <div className="p-2 rounded border border-slate-800 bg-slate-950/50">
+          <span className="text-[10px] font-mono text-slate-500 animate-pulse">
+            Analyzing governance patterns...
+          </span>
         </div>
       )}
 

@@ -52,6 +52,12 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   const [isTyping, setIsTyping] = useState(false);
   const [ragOpen, setRagOpen] = useState(false);
   const [lastPolicy, setLastPolicy] = useState<{ status: 'PASS' | 'WARN' | 'BLOCK'; results: PlaygroundResult['policyResults'] } | null>(null);
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -226,6 +232,7 @@ export function PlaygroundView({ currency, onNewLogTriggered }: PlaygroundViewPr
   const handleTriggerCalculation = () => {
     setIsCalculating(true);
     setTimeout(() => {
+      if (!_mountedRef.current) return;
       setIsCalculating(false);
       setLastCalculation(new Date().toLocaleTimeString());
     }, 600);

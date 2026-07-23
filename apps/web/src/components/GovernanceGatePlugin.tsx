@@ -26,6 +26,12 @@ export function GovernanceGatePlugin({ plugin }: GovernanceGatePluginProps) {
   const [actingId, setActingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   const fetchPending = async () => {
     abortRef.current?.abort();
@@ -69,7 +75,7 @@ export function GovernanceGatePlugin({ plugin }: GovernanceGatePluginProps) {
       setToast({ message: `Failed to ${decision} action ${actionId}.`, type: 'error' });
     } finally {
       setActingId(null);
-      setTimeout(() => setToast(null), 4000);
+      setTimeout(() => { if (!_mountedRef.current) return; setToast(null); }, 4000);
     }
   };
 

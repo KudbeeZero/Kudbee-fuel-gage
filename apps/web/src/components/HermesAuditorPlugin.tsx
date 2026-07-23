@@ -70,6 +70,12 @@ export function HermesAuditorPlugin({
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
   const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -121,7 +127,7 @@ export function HermesAuditorPlugin({
       setProbeResult({ status: 'UNREACHABLE' });
     } finally {
       setProbing(false);
-      probeTimerRef.current = setTimeout(() => setProbeResult(null), 8000);
+      probeTimerRef.current = setTimeout(() => { if (!_mountedRef.current) return; setProbeResult(null); }, 8000);
     }
   };
 

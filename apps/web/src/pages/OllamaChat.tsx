@@ -19,6 +19,7 @@ import { useToolInterceptor } from "../hooks/useToolInterceptor";
 import { useThoughtTelemetry } from "../hooks/useThoughtTelemetry";
 import { registerWorkspaceTools } from "../tools/workspace";
 import { TerminalStreamView } from "../components/TerminalStreamView";
+import { PanelErrorBoundary } from "../components/PanelErrorBoundary";
 import { getProxyBase } from "../lib/proxyBase";
 import type { OllamaMessage, StreamStatus } from "../types/ollama";
 import type { ReactElement, FormEvent, KeyboardEvent } from "react";
@@ -210,10 +211,13 @@ export function OllamaChat(): ReactElement {
   // Post thinking traces to telemetry when stream completes.
   const postedRef = useRef(false);
   useEffect(() => {
+    let cancelled = false;
     if (stream.status === "done" && stream.segments.length > 0 && !postedRef.current) {
       postedRef.current = true;
+      if (cancelled) return;
       telemetry.postTelemetry(stream.segments, stream.session);
     }
+    return () => { cancelled = true; };
   }, [stream.status, stream.segments, stream.session, telemetry]);
 
   // Reset tool/telemetry state on new stream.
@@ -371,6 +375,7 @@ export function OllamaChat(): ReactElement {
   }, [isBusy, stream]);
 
   return (
+    <PanelErrorBoundary panel="OLLAMA_CHAT">
     <div style={pageStyle}>
       {/* Header: model selector + status */}
       <div style={headerStyle}>
@@ -528,7 +533,11 @@ export function OllamaChat(): ReactElement {
         )}
       </div>
 
-      {/* Input area */}
+        {stream.status === "idle" && model.length > 0 && !modelsLoading && (
+          <div style={connectingStyle}>Connecting to Ollama...</div>
+        )}
+
+        {/* Input area */}
       <form onSubmit={onSubmit} style={inputAreaStyle}>
         <textarea
           value={input}
@@ -548,6 +557,7 @@ export function OllamaChat(): ReactElement {
         </button>
       </form>
     </div>
+    </PanelErrorBoundary>
   );
 }
 
@@ -790,4 +800,13 @@ const sessionBadgeStyle: React.CSSProperties = {
   padding: "2px 8px",
   borderRadius: 4,
   border: "1px solid #1a2a40",
+};
+
+const connectingStyle: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+  fontSize: 11,
+  color: "#5b8cff",
+  textAlign: "center",
+  padding: "6px 0",
+  flexShrink: 0,
 };

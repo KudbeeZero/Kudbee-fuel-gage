@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Key } from 'lucide-react';
 
@@ -10,6 +10,12 @@ export function LoginView({ onAuthenticate }: { onAuthenticate: () => void }) {
   const [openaiKey, setOpenaiKey] = useState(() => localStorage.getItem('kudbee_admin_openai') || '');
   const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('kudbee_admin_anthropic') || '');
   const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('kudbee_admin_gemini') || '');
+  const _mountedRef = useRef(true);
+
+  useEffect(() => {
+    _mountedRef.current = true;
+    return () => { _mountedRef.current = false; };
+  }, []);
 
   const handleLogin = () => {
     if (passkey === 'kudbee-admin-2026') {
@@ -20,6 +26,7 @@ export function LoginView({ onAuthenticate }: { onAuthenticate: () => void }) {
       localStorage.setItem('kudbee_admin_gemini', geminiKey);
 
       setTimeout(() => {
+        if (!_mountedRef.current) return;
         localStorage.setItem('kudbee_session', 'authenticated');
         onAuthenticate();
       }, 1500);
