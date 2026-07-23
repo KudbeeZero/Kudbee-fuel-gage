@@ -433,7 +433,7 @@ async function ensureSchema() {
         failed_state JSONB,
         correction_delta TEXT,
         embedding VECTOR(1536),
-        status VARCHAR NOT NULL DEFAULT 'PROVEN',
+        status VARCHAR NOT NULL DEFAULT 'PENDING_APPROVAL',
         token_cost NUMERIC DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
@@ -1875,7 +1875,9 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
         (trace_id, action, type, agent_id, signature, signed_payload, value_score, note, timestamp)
        VALUES ($1, 'VERIFY', 'GOVERNANCE_ACTION', $2, $3, $4, $5, $6, NOW())`,
       [traceId, agentId, providedSignature, providedPayload, score, note ? String(note) : null]
-    ).catch(() => {});
+    ).catch((e) => {
+      console.warn('[Governance] Failed to insert governance action, continuing:', e.message);
+    });
 
     if (score > 0) {
       await runQuery(
@@ -3259,7 +3261,9 @@ function publishEvent(type, data) {
   // deliver server-originated events.)
   if (redis) {
     try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch(() => {});
+      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e) => {
+        console.warn('[publishEvent] Redis publish failed:', e.message);
+      });
       void publishUnifiedEvent('governance', type, data, EVENTS_CHANNEL);
     } catch {
       /* ignore */

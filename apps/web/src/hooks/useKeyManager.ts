@@ -17,9 +17,9 @@ export function useKeyManager() {
   });
 
   useEffect(() => {
-    const openaiKey = localStorage.getItem('kudbee_openai_key') || 'sk-proj-LN92fDka74jGks92019kLsakd92kasdQ23';
-    const anthropicKey = localStorage.getItem('kudbee_anthropic_key') || 'sk-ant-sid01-Las9102Ksad92jKs8Aas0129kLasdK9';
-    const geminiKey = localStorage.getItem('kudbee_gemini_key') || 'AIzaSyAs8192Ksadl29Kasd891Aksj182Ksdka9';
+    const openaiKey = localStorage.getItem('kudbee_openai_key') || '';
+    const anthropicKey = localStorage.getItem('kudbee_anthropic_key') || '';
+    const geminiKey = localStorage.getItem('kudbee_gemini_key') || '';
     const otelPort = localStorage.getItem('kudbee_otel_port') || '8000';
 
     setKeys(prev => ({

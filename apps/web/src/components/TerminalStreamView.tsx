@@ -195,7 +195,9 @@ export function TerminalStreamView({
           title="Copy visible output"
           onClick={() => {
             onCopy?.(visibleText);
-            navigator.clipboard.writeText(visibleText).catch(() => {});
+            navigator.clipboard.writeText(visibleText).catch((e) => {
+              console.warn('[TerminalStream] clipboard write failed:', e.message);
+            });
           }}
         />
         {model && (

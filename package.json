@@ -11,7 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "typecheck": "turbo run lint",
+    "typecheck": "turbo run typecheck",
     "dev": "turbo run dev",
     "start": "turbo run start",
     "start:agent": "node services/monitor/agent.js",
@@ -23,7 +23,7 @@
   "devDependencies": {
     "tsx": "^4.21.0",
     "turbo": "^2.3.3",
-    "typescript": "^7.0.0"
+    "typescript": "^5.7.0"
   },
   "license": "Proprietary",
   "packageManager": "npm@10.9.8",

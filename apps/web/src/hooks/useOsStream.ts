@@ -30,6 +30,7 @@ export function useOsStream() {
   const [error, setError] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
 
   const connect = useCallback(() => {
@@ -50,16 +51,22 @@ export function useOsStream() {
     });
 
     es.addEventListener('open', () => {
-      if (mountedRef.current) setConnected(true);
+      if (mountedRef.current) {
+        setConnected(true);
+        retryCountRef.current = 0;
+      }
     });
 
     es.addEventListener('error', () => {
       if (!mountedRef.current) return;
       setConnected(false);
+      setError('OS stream disconnected — reconnecting...');
       es.close();
       esRef.current = null;
 
-      const jitter = 1000 + Math.random() * 4000;
+      retryCountRef.current += 1;
+      const base = Math.min(30000, 1000 * Math.pow(2, retryCountRef.current));
+      const jitter = base + Math.random() * 1000;
       reconnectTimerRef.current = setTimeout(() => connect(), jitter);
     });
   }, []);
