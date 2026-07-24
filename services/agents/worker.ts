@@ -161,6 +161,17 @@ export default evaluateAgentPayload;
 
 import { getRedisClient } from '../lib/redis.js';
 
+export interface TaskEnvelope {
+  id: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  attempts: number;
+  enqueuedAt: string;
+  failedAt?: string;
+  lastError?: string;
+  retriedAt?: string;
+}
+
 const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
@@ -204,7 +215,7 @@ process.on('SIGTERM', () => {
   });
 });
 
-function broadcast(type: string, data: any) {
+function broadcast(type: string, data: unknown) {
   const redis = getRedisClient();
   if (!redis) return;
   try {
@@ -220,13 +231,13 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function envelope(task: any) {
+function envelope(task: unknown) {
   return JSON.stringify(task);
 }
 
-function parse(raw: any): any {
+function parse(raw: unknown): unknown {
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw as string);
   } catch {
     return null;
   }
@@ -236,15 +247,16 @@ export function isAvailable() {
   return Boolean(getRedisClient());
 }
 
-export async function enqueueTask(task: any) {
+export async function enqueueTask(task: unknown) {
   const redis = getRedisClient();
   if (!redis) {
     return { success: false, error: 'redis unavailable' };
   }
-  const payload = {
-    id: task.id || `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    kind: task.kind || 'GENERIC',
-    payload: task.payload || {},
+  const input = task as Record<string, unknown>;
+  const payload: TaskEnvelope = {
+    id: typeof input.id === 'string' && input.id.length > 0 ? input.id : `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    kind: typeof input.kind === 'string' && input.kind.length > 0 ? input.kind : 'GENERIC',
+    payload: typeof input.payload === 'object' && input.payload !== null ? input.payload as Record<string, unknown> : {},
     attempts: 0,
     enqueuedAt: new Date().toISOString()
   };
@@ -257,7 +269,14 @@ export async function listFailed() {
   const redis = getRedisClient();
   if (!redis) return [];
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
-  return items.map((raw: string) => parse(raw)).filter(Boolean).reverse();
+  const parsed = items.map((raw: string) => {
+    let task = parse(raw);
+    if (typeof task === 'string') {
+      task = JSON.parse(task);
+    }
+    return task;
+  }).filter((task): task is TaskEnvelope => Boolean(task));
+  return parsed.reverse();
 }
 
 export async function discardFailed(taskId: string) {
@@ -265,8 +284,11 @@ export async function discardFailed(taskId: string) {
   if (!redis) return { success: false, error: 'redis unavailable' };
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
   for (const raw of items) {
-    const parsed = parse(raw);
-    if (parsed && parsed.id === taskId) {
+    let parsed = parse(raw);
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
+    }
+    if (parsed && typeof parsed === 'object' && (parsed as TaskEnvelope).id === taskId) {
       await redis.lrem(TASK_DLQ, 1, raw);
       broadcast('task.discarded', { id: taskId, at: new Date().toISOString() });
       return { success: true, id: taskId };
@@ -280,9 +302,12 @@ export async function retryFailed(taskId: string) {
   if (!redis) return { success: false, error: 'redis unavailable' };
   const items = await redis.lrange(TASK_DLQ, 0, -1).catch(() => []);
   for (const raw of items) {
-    const parsed = parse(raw);
-    if (parsed && parsed.id === taskId) {
-      const requeued = { ...parsed, attempts: 0, retriedAt: new Date().toISOString() };
+    let parsed = parse(raw);
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
+    }
+    if (parsed && typeof parsed === 'object' && (parsed as TaskEnvelope).id === taskId) {
+      const requeued = { ...(parsed as TaskEnvelope), attempts: 0, retriedAt: new Date().toISOString() };
       await redis.lrem(TASK_DLQ, 1, raw);
       await redis.lpush(TASK_QUEUE, envelope(requeued));
       broadcast('task.retry_queued', { id: taskId, at: requeued.retriedAt });
@@ -304,18 +329,15 @@ export function isRunning() {
   return _running;
 }
 
-export async function processTask(task: any) {
-  // Inject an optional `shouldFail` hook for E2E testing — the caller can set
-  // task.payload.shouldFail = true (or to a count) to deterministically
-  // simulate failure paths.
-  if (task.payload?.shouldFail) {
-    throw new Error(task.payload.failureMessage || 'simulated failure for E2E');
+export async function processTask(task: unknown) {
+  const input = task as TaskEnvelope;
+  if (input.payload?.shouldFail) {
+    throw new Error(input.payload.failureMessage || 'simulated failure for E2E');
   }
-  // For a generic task, mark the work as complete and return a small result.
   return {
     completedAt: new Date().toISOString(),
     result: 'ok',
-    kind: task.kind
+    kind: input.kind
   };
 }
 
