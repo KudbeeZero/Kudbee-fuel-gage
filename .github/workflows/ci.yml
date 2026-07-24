@@ -36,3 +36,14 @@ jobs:
       - run: node scripts/verify-agents.mjs
       - name: Gate
         run: echo "ALL GATES PASSED"
+      - name: Generate artifact name
+        id: artifact-name
+        uses: alpha-tango-kilo/gha-artifact-name@v1.2.0
+        with:
+          repo-name: Kudbee OS
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-name.outputs.artifact-name }}
+          path: |
+            apps/web/dist/
