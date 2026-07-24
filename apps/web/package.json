@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kudbee/opencode": "*",
     "@kudbee/types": "*",
     "@noble/ed25519": "^3.1.0",
     "d3": "^7.9.0",

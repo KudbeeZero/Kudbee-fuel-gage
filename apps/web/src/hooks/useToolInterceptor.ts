@@ -19,6 +19,10 @@ import { toolRegistry } from "../tools/registry";
 import type { ToolCall, ToolResult } from "../tools/registry";
 import type { OllamaMessage } from "../types/ollama";
 
+// kilocode_change: safe-zone trajectory injection
+import { SafeZoneEngine } from '@kudbee/opencode';
+const safeZone = new SafeZoneEngine();
+
 export type ToolState = "idle" | "executing" | "done";
 
 export interface ToolExecEvent {
@@ -86,6 +90,11 @@ export function useToolInterceptor(): UseToolInterceptorResult {
     setToolState("executing");
     const events: ToolExecEvent[] = [];
     for (const call of newCalls) {
+      await safeZone.evaluateTrajectory({
+        target: call.tool,
+        vector: [Number(call.params.x) || 0, Number(call.params.y) || 0, Number(call.params.z) || 0] as [number, number, number],
+        velocity: Number(call.params.velocity) || 0
+      });
       executedRef.current.add(call.id);
       const result = await toolRegistry.execute(call);
       const event: ToolExecEvent = { call, result, timestamp: Date.now() };
