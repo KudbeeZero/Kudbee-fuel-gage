@@ -72,7 +72,7 @@ describe('Think Token Minter', () => {
   });
 
   test('proven mode sets status to PROVEN', async () => {
-    const token = await mintToken({ spatial_coordinates: [0, 0, 0], proven_mode: true });
+    const token = await mintToken({ spatial_coordinates: [0, 0, 0], scale_factor: 1, proven_mode: true });
     expect(token.status).toBe('PROVEN');
   });
 });

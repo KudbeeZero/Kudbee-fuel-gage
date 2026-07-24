@@ -24,6 +24,7 @@
     "@kudbee/utils": "*"
   },
   "devDependencies": {
+    "@types/bun": "^1.1.0",
     "@types/node": "^22.14.0",
     "typescript": "^5.7.0"
   },
