@@ -22,11 +22,14 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
+const MAX_REQUESTS_LIMIT = 500_000;
+const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
 let _client = null;
 let _subClient = null;
 let _rateLimitClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
+const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
 
 /**
  * Returns a shared, resilient ioredis client.
@@ -42,12 +45,25 @@ export function getRedisClient(opts = {}) {
 
   if (!opts.forceNew && _client) return _client;
 
+  const adaptiveRetryStrategy = (times) => {
+    if (circuitBreaker.open) {
+      const elapsed = Date.now() - circuitBreaker.openedAt;
+      if (elapsed < CIRCUIT_BREAKER_RESET_MS) {
+        return CIRCUIT_BREAKER_RESET_MS - elapsed;
+      }
+      circuitBreaker.open = false;
+      circuitBreaker.requestCount = 0;
+      circuitBreaker.lastError = null;
+    }
+    return Math.min(times * 250, 5000);
+  };
+
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
-    retryStrategy: opts.retryStrategy ?? (() => null),
+    retryStrategy: opts.retryStrategy ?? adaptiveRetryStrategy,
     connectTimeout: 5_000,
     commandTimeout: 3_000,
     keepAlive: 15_000
@@ -68,7 +84,16 @@ export function getRedisClient(opts = {}) {
 
   client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis connected`); });
   client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
-  client.on('error', () => { redisTelemetry.errorCount += 1; });
+  client.on('error', (err) => {
+    redisTelemetry.errorCount += 1;
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('MAX_REQUESTS_LIMIT') || msg.includes('rate limit') || msg.includes('429')) {
+      circuitBreaker.open = true;
+      circuitBreaker.openedAt = Date.now();
+      circuitBreaker.lastError = msg;
+      console.warn(`[${label}] Circuit breaker opened due to rate limit: ${msg}`);
+    }
+  });
   client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn(`[${label}] Redis connection closed`); });
 
   if (!opts.forceNew) _client = client;

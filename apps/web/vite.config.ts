@@ -42,9 +42,14 @@ export default defineConfig(() => {
         },
         output: {
           manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-router': ['react-router-dom'],
             'vendor-lucide': ['lucide-react'],
             'vendor-recharts': ['recharts'],
             'vendor-d3': ['d3'],
+            'vendor-motion': ['motion'],
+            'vendor-zustand': ['zustand'],
+            'vendor-crypto': ['@noble/ed25519'],
           },
         },
       },

@@ -78,3 +78,15 @@ export const SafeZoneEngineConfigSchema = z.object({
   autoBootstrap: z.boolean().default(false)
 });
 export type SafeZoneEngineConfig = z.infer<typeof SafeZoneEngineConfigSchema>;
+
+export const SafeZoneTelemetryMetadataSchema = z.object({
+  zone_id: SafeZoneIdSchema,
+  trajectory_hash: z.string().min(1),
+  threat_score: z.number().min(0).max(1),
+  intercepted: z.boolean().default(false),
+  action: z.string().optional(),
+  kd: z.number().min(0).default(0),
+  efficacy: z.number().min(0).max(1).default(0),
+  timestamp: z.string().datetime().optional()
+});
+export type SafeZoneTelemetryMetadata = z.infer<typeof SafeZoneTelemetryMetadataSchema>;

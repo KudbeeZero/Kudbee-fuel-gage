@@ -17,6 +17,13 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 2. `npm run lint` — Turbo-routed linting.
 3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (36 checks, including Check 28 for DLQ retry policy).
 
+## Safe-Zone Engine Lifecycle
+
+- **Singleton pattern:** `SafeZoneEngine` is instantiated once per process (CLI, web hook) and reused for the session lifetime.
+- **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires the Control Tower gateway, registers native tools, and emits `TRAJECTORY_UPDATE` events.
+- **Trajectory evaluation:** `engine.evaluateTrajectory({ target, vector, velocity })` computes threat scores, mints interception tokens when breached, and publishes telemetry via Upstash Redis pub/sub.
+- **Circuit breaker:** Upstash Redis connections use an adaptive circuit breaker that opens on `MAX_REQUESTS_LIMIT` (500k) and backs off exponentially up to 30s.
+
 ## Key References
 
 | File | What It Contains |
@@ -27,3 +34,38 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 | `STATE_OF_THE_OS.md` | 25 documented production fixes |
 | `.kilo/plans/PRODUCTION_AUDIT.md` | 263 audit findings |
 | `BUILD.md` | Current architecture state, tab layout, codebase simplification |
+| `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package (schema, gateway, mint, telemetry, events, tools, index) |
+| `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis rate-limit backoff |
+| `services/agents/worker.ts` | Governance worker with exponential backoff on Redis rate limits |
+
+## 20-Commit Hardening Sprint (feat/production-hardening-and-crypto-fix)
+
+| Commit | Scope | Summary |
+|:---|:---|:---|
+| 1 | fix(mint) | Replace Node crypto with isomorphic `globalThis.crypto.randomUUID` + fallback sha256 |
+| 2 | fix(redis) | Adaptive circuit breaker in `getRedisClient` for Upstash `MAX_REQUESTS_LIMIT` backoff |
+| 3 | fix(monitor) | Exponential backoff in worker BRPOP loop on Redis rate-limit errors |
+| 4 | feat(schema) | Strict Zod schema for `SafeZoneTelemetryMetadata` in opencode |
+| 5 | feat(gateway) | Strict-typed `RequestOptions` wrapper in `ControlTowerGateway` |
+| 6 | feat(minter) | Trajectory persistence via Upstash HTTP in `mintToken` |
+| 7 | feat(telemetry) | Upstash Redis pub/sub dispatcher in `publishTelemetryUpstash` |
+| 8 | feat(events) | `KudbeeEvents.trajectory` and `KudbeeEvents.governance_lock` via `BusEvent.define` |
+| 9 | feat(tools) | `Tool.define` pattern for native tool registry handlers |
+| 10 | refactor(opencode) | Export `createSafeZoneEngine` factory + singleton-safe `SafeZoneEngine` |
+| 11 | fix(web) | `useToolInterceptor` evaluates safe-zone trajectory before tool execution |
+| 12 | fix(cli) | CLI bootstraps `SafeZoneEngine` before orchestrator dispatch |
+| 13 | test(opencode) | 20 passing unit tests covering schema, gateway, mint, events, tools, engine, telemetry |
+| 14 | docs(kudbee) | AGENTS.md + AGENTS.kilo.md updated with safe-zone lifecycle and hardening contracts |
+| 15 | ci(workflows) | `alpha-tango-kilo/gha-artifact-name@v1.2.0` verified in verify.yml |
+| 16 | fix(groq) | `process.loadEnvFile('.env')` + dual `GROQ_API_KEY`/`GROQ_API` lookup |
+| 17 | security(auth) | `STREAM_SECRET` HMAC fallback enforced in SSE ticket-granting endpoints |
+| 18 | test(e2e) | Check 28 DLQ polling timeout bumped to 30000ms |
+| 19 | refactor(web) | Vite `manualChunks` split: vendor-react, vendor-router, vendor-motion, vendor-zustand, vendor-crypto |
+| 20 | chore(docs) | Final status logs, lockfile sync, workspace hygiene verified |
+
+### Verification Status
+
+- `bun run typecheck` — passes in `packages/opencode`
+- `bun test` — 20/20 passes in `packages/opencode`
+- `npm run build` (apps/web) — passes, main chunk 382 kB (below 500 kB warning threshold)
+- `node scripts/verify-e2e.mjs` — 36/36 checks passed

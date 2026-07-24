@@ -3,9 +3,19 @@ import { ControlTowerGateway } from './gateway';
 import { mintToken } from './mint';
 import { publishTelemetry } from './telemetry';
 import { EngineBus, EngineEventType } from './events';
-import { KudbeeNativeRegistry, type NativeToolEntry } from './tools';
+import { KudbeeNativeRegistry, Tool, type NativeToolEntry } from './tools';
 import { TelemetryEventSchema, type TelemetryEvent, type MintedToken } from './schema';
-import { randomUUID } from 'crypto';
+
+function uuidv4(): string {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export class SafeZoneEngine {
   private cfg: SafeZoneEngineConfig;
@@ -30,7 +40,7 @@ export class SafeZoneEngine {
   }): Promise<void> {
     const [vx, vy, vz] = opts.vector;
     const zone: SafeZoneConfig = {
-      id: randomUUID(),
+      id: uuidv4(),
       name: `zone-${opts.target}`,
       vector: { x: vx, y: vy, z: vz },
       radius: 10,
@@ -70,13 +80,17 @@ export class SafeZoneEngine {
     const gateway = new ControlTowerGateway();
     this.bus.emit('TRAJECTORY_UPDATE', { workspaceRoot, status: 'BOOTSTRAPPED' });
 
-    this.registry.register({
+    this.registry.register(Tool.define({
       name: 'safe_zone.query',
       description: 'Query active safe zones',
       handler: async () => ({ success: true, output: 'Engine active' })
-    });
+    }));
 
     const result = await gateway.getZoneStatus('bootstrap');
     this.bus.emit('TRAJECTORY_UPDATE', { status: 'READY', payload: result });
   }
+}
+
+export function createSafeZoneEngine(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
+  return new SafeZoneEngine(cfg);
 }

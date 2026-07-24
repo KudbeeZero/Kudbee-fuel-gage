@@ -1,4 +1,4 @@
-export type EngineEventType = 'SAFE_ZONE_UPDATE' | 'TRAJECTORY_UPDATE' | 'INTERCEPT';
+export type EngineEventType = 'SAFE_ZONE_UPDATE' | 'TRAJECTORY_UPDATE' | 'INTERCEPT' | 'TRAJECTORY' | 'GOVERNANCE_LOCK';
 
 export interface EngineEvent {
   type: EngineEventType;
@@ -7,6 +7,12 @@ export interface EngineEvent {
 }
 
 type Listener = (evt: EngineEvent) => void;
+
+export class BusEvent {
+  static define(type: EngineEventType): EngineEventType {
+    return type;
+  }
+}
 
 export class EngineBus {
   private channels = new Map<EngineEventType, Set<Listener>>();
@@ -41,3 +47,8 @@ export class EngineBus {
     this.channels.clear();
   }
 }
+
+export const KudbeeEvents = {
+  trajectory: BusEvent.define('TRAJECTORY'),
+  governance_lock: BusEvent.define('GOVERNANCE_LOCK')
+};
