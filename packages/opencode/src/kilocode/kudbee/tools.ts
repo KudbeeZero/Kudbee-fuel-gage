@@ -6,6 +6,12 @@ export interface NativeToolEntry {
   ) => Promise<{ success: boolean; output: string; error?: string }>;
 }
 
+export class Tool {
+  static define(entry: NativeToolEntry): NativeToolEntry {
+    return entry;
+  }
+}
+
 export class KudbeeNativeRegistry {
   private tools = new Map<string, NativeToolEntry>();
 
