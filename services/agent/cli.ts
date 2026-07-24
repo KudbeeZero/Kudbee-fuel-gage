@@ -12,6 +12,10 @@
 import { SupervisorOrchestrator } from './orchestrator';
 import { createInterface } from 'node:readline';
 
+// kilocode_change: bootstrap safe-zone trajectory engine at startup
+import { SafeZoneEngine } from '@kudbee/opencode';
+let safeZone: SafeZoneEngine | null = null;
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function readStdin(): Promise<string> {
@@ -76,6 +80,14 @@ async function main() {
   console.log(`  Workspace : ${workspaceRoot}`);
   console.log(`  Prompt    : ${prompt}`);
   console.log('');
+
+  // kilocode_change: bring up safe-zone engine before task dispatch
+  try {
+    safeZone = new SafeZoneEngine({ mode: 'strict' });
+    await safeZone.bootstrap(workspaceRoot);
+  } catch (_e) {
+    console.error('[CLI] Safe-Zone engine bootstrap failed');
+  }
 
   const orchestrator = new SupervisorOrchestrator();
 
