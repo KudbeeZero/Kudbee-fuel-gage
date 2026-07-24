@@ -1331,7 +1331,7 @@ app.post('/api/governance/failed/retry', async (req, res) => {
     if (redis) {
       const items = await redis.lrange('kudbee-governance-tasks-failed', 0, -1);
       for (const item of items) {
-        try { const p = JSON.parse(item); if (p.id === id) { await redis.lrem('kudbee-governance-tasks-failed', 1, item); delete p.retryCount; await redis.lpush('kudbee-governance-tasks', JSON.stringify(p)); return res.status(200).json({ success: true, action: 'retried' }); } } catch { /* skip */ }
+        try { const p = JSON.parse(item); if (p.id === id) { await redis.lrem('kudbee-governance-tasks-failed', 1, item); p.attempts = 0; p.retriedAt = new Date().toISOString(); delete p.retryCount; await redis.lpush('kudbee-governance-tasks', JSON.stringify(p)); return res.status(200).json({ success: true, action: 'retried' }); } } catch { /* skip */ }
       }
     }
     return res.status(404).json({ error: 'Task not found in DLQ' });
