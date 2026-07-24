@@ -114,3 +114,27 @@ export namespace Kudbee {
 export function createSafeZoneEngine(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
   return new SafeZoneEngine(cfg);
 }
+
+export { EngineBus, KudbeeEvents } from './events';
+export { mintToken, ThinkTokenMinter } from './mint';
+export { publishTelemetry, publishTelemetryUpstash, setupTelemetryListeners } from './telemetry';
+export { ControlTowerGateway } from './gateway';
+export {
+  SafeZoneConfigSchema,
+  SafeZoneEngineConfigSchema,
+  TelemetryEventSchema,
+  GovernanceProposalSchema,
+  type SafeZoneConfig,
+  type SafeZoneEngineConfig,
+  type TelemetryEvent,
+  type GovernanceProposal,
+  type MintedToken,
+  type MintOptions
+} from './schema';
+export {
+  KudbeeNativeRegistry,
+  Tool,
+  registerKudbeeNativeTools,
+  registerKudbeeRecallAndMintTools,
+  registerKudbeeGovernanceTools
+} from './tools';

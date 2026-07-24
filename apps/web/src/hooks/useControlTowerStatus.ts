@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiGet, apiPost } from '../../lib/apiClient';
+import { apiGet, apiPost } from '../lib/apiClient';
 
 export interface ZoneStatus {
   zoneId: string;
