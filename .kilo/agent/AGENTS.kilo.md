@@ -374,3 +374,56 @@ gh pr create --draft --title "feat(think): Mint Official Think Token #001 & Vect
 - **Code review required for:** auth changes, DB schema migrations, receptor gating logic, `groqClient.ts` modifications.
 - **Can be self-merged:** documentation, verification scripts, test fixtures, dependency patches that do not alter runtime behavior.
 - **Never merge without:** `npm run typecheck`, `npm run lint`, and `node scripts/verify-e2e.mjs` all passing.
+
+---
+
+## 15. Quick Reference: Campaign 3 (Safe-Zone & Trajectory Interception Engine)
+
+```bash
+# 1. Hygiene
+git checkout main && git pull origin main
+git checkout -b feat/kudbee-safe-zone-engine
+
+# 2. Create engine package
+mkdir -p packages/opencode/src/kilocode/kudbee
+
+# 3. Run local verification from packages/opencode/
+cd packages/opencode
+bun run typecheck
+bun test
+
+# 4. Commit atomic zones
+git add packages/opencode/src/kilocode/kudbee/{schema,gateway,mint,telemetry,events,tools,index}.ts
+git add packages/opencode/test/kilocode/kudbee/engine.test.ts
+git commit -m "feat(engine): Zones 1-6 — Safe-Zone Schemas + Gateway + Mint + Telemetry + Events + Tools"
+
+# 5. Mark upstream modifications
+# kilocode_change must prefix any touch to apps/web/src/hooks/useToolInterceptor.ts
+# kilocode_change must prefix any touch to services/agent/cli.ts
+
+# 6. Push & PR
+git push -u origin feat/kudbee-safe-zone-engine
+gh pr create --draft --title "feat(engine): Kudbee Safe-Zone & Trajectory Interceptor Engine" \
+  --body "Implements Campaign 3 across atomic commits with strict schema contracts, resilient environment bindings, and // kilocode_change upstream markers."
+```
+
+### Campaign 3 Contracts
+
+| Zone | File | Contract |
+|---|---|---|
+| 1 | `packages/opencode/src/kilocode/kudbee/schema.ts` | Zero `any` types. Single-word identifiers where possible (`cfg`, `err`, `state`, `out`). |
+| 2 | `packages/opencode/src/kilocode/kudbee/gateway.ts` | `ControlTowerGateway` wraps native `fetch` — no external HTTP client. |
+| 3 | `packages/opencode/src/kilocode/kudbee/mint.ts` | `mintToken` returns strict `MintedToken`. Deterministic `sha256` hash via `node:crypto`. |
+| 4 | `packages/opencode/src/kilocode/kudbee/telemetry.ts` | `publishTelemetry` drops gracefully when `UPSTASH_TELEMETRY_URL` is unset and no Redis sink is provided. |
+| 5 | `packages/opencode/src/kilocode/kudbee/events.ts` | `EngineBus` terminates on error to prevent cascading failures. |
+| 6 | `packages/opencode/src/kilocode/kudbee/tools.ts` | `KudbeeNativeRegistry` executes handlers in strict `try/catch` — never throws. |
+| 7 | `apps/web/src/hooks/useToolInterceptor.ts` | Marked with `// kilocode_change`. Evaluates safe-zone trajectory before tool execution. |
+| 8 | `services/agent/cli.ts` | Marked with `// kilocode_change`. Bootstraps `SafeZoneEngine` before orchestrator dispatch. |
+| 9 | `packages/opencode/test/kilocode/kudbee/engine.test.ts` | 14 passing unit tests covering schema validation, minting, events, registry, engine, telemetry, gateway. |
+| 10 | `.kilo/agent/AGENTS.kilo.md` | This section. |
+
+### Environment Reminders
+
+- **Heroku:** `REDIS_URL` and `DATABASE_URL` are the only guaranteed Redis connections. `REDIS_SLOW_URL` is blocked by Heroku — the resilient fallback factory in `services/lib/redis.js` routes safely through the primary string.
+- **Local:** All standalone scripts must `try { process.loadEnvFile('.env'); } catch {}` so `.env` secrets are available without explicit `dotenv` imports.
+- **Secrets:** `DATABASE_URL`, `REDIS_URL`, `GROQ_API_KEY`, `HEROKU_API_KEY`, `STREAM_SECRET`. Never hardcode in source.

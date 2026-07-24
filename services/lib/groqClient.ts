@@ -21,11 +21,12 @@ import { trackSpend, estimateGroqCost, checkBudgetOrThrow } from './budgetGate.t
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROQ_API;
 
-let groqConfigured = !!process.env.GROQ_API_KEY;
+let groqConfigured = !!GROQ_API_KEY;
 
 if (!groqConfigured) {
-  console.warn('[Groq] GROQ_API_KEY not set — Groq inference unavailable. Set the env var for LPU acceleration.');
+  console.warn('[Groq] GROQ_API_KEY / GROQ_API not set — Groq inference unavailable. Set the env var for LPU acceleration.');
 }
 
 export interface GroqSynthesizeRequest {
@@ -89,15 +90,15 @@ async function callGroq(
   temperature = 0.1,
   maxTokens = 1024
 ): Promise<{ text: string; tokensUsed: number; latencyMs: number; costUsd: number }> {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error('GROQ_API_KEY not configured');
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY / GROQ_API not configured');
   }
 
   const start = Date.now();
 
   const config: ProviderConfig = {
     kind: 'openai-compatible',
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: GROQ_API_KEY,
     baseUrl: GROQ_BASE_URL,
     model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL,
     temperature,
@@ -139,7 +140,7 @@ export async function synthesizeThinkToken(
   req: GroqSynthesizeRequest
 ): Promise<GroqSynthesizeResult> {
   if (!groqConfigured) {
-    return { ok: false, error: 'Groq not configured — set GROQ_API_KEY' };
+    return { ok: false, error: 'Groq not configured — set GROQ_API_KEY or GROQ_API' };
   }
 
   try {
@@ -178,7 +179,7 @@ export async function evaluateTokenMatch(
   candidateContext: string
 ): Promise<GroqEvaluateResult> {
   if (!groqConfigured) {
-    return { ok: false, matchProbability: 0, reasoning: 'Groq not configured', latencyMs: 0, error: 'GROQ_API_KEY not set' };
+    return { ok: false, matchProbability: 0, reasoning: 'Groq not configured', latencyMs: 0, error: 'GROQ_API_KEY / GROQ_API not set' };
   }
 
   try {

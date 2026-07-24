@@ -1,0 +1,32 @@
+{
+  "name": "@kudbee/opencode",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/kilocode/kudbee/index.ts",
+  "types": "./src/kilocode/kudbee/index.ts",
+  "exports": {
+    ".": "./src/kilocode/kudbee/index.ts",
+    "./schema": "./src/kilocode/kudbee/schema.ts",
+    "./gateway": "./src/kilocode/kudbee/gateway.ts",
+    "./mint": "./src/kilocode/kudbee/mint.ts",
+    "./telemetry": "./src/kilocode/kudbee/telemetry.ts",
+    "./events": "./src/kilocode/kudbee/events.ts",
+    "./tools": "./src/kilocode/kudbee/tools.ts"
+  },
+  "scripts": {
+    "build": "echo \"@kudbee/opencode: source-only package, nothing to build\"",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kudbee/types": "*",
+    "@kudbee/utils": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "@types/node": "^22.14.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "Proprietary"
+}

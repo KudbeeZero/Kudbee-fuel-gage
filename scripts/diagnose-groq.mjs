@@ -2,9 +2,9 @@ try { process.loadEnvFile('.env'); } catch {}
 
 import Groq from 'groq-sdk';
 
-const apiKey = process.env.GROQ_API_KEY;
+const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
 if (!apiKey) {
-  console.error('[diagnose-groq] GROQ_API_KEY is not set.');
+  console.error('[diagnose-groq] GROQ_API_KEY / GROQ_API is not set.');
   process.exit(1);
 }
 
