@@ -77,6 +77,11 @@ export function registerKudbeeRecallAndMintTools(registry: KudbeeNativeRegistry)
   );
 }
 
+export function registerKudbeeNativeTools(registry: KudbeeNativeRegistry): void {
+  registerKudbeeRecallAndMintTools(registry);
+  registerKudbeeGovernanceTools(registry);
+}
+
 export function registerKudbeeGovernanceTools(registry: KudbeeNativeRegistry): void {
   registry.register(
     Tool.define({
