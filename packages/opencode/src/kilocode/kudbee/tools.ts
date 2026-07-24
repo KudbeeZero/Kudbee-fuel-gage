@@ -64,9 +64,8 @@ export function registerKudbeeRecallAndMintTools(registry: KudbeeNativeRegistry)
       name: 'kudbee_mint_think_token',
       description: 'Mint a think token for a reasoning trajectory',
       handler: async (args) => {
-        const coords = Array.isArray(args.spatial_coordinates)
-          ? (args.spatial_coordinates as [number, number, number])
-          : [0, 0, 0];
+        const raw = Array.isArray(args.spatial_coordinates) ? args.spatial_coordinates : [0, 0, 0];
+        const coords: [number, number, number] = [Number(raw[0]) || 0, Number(raw[1]) || 0, Number(raw[2]) || 0];
         const scale = typeof args.scale_factor === 'number' ? args.scale_factor : 1;
         const proven = typeof args.proven_mode === 'boolean' ? args.proven_mode : false;
         const { mintToken } = await import('./mint');
