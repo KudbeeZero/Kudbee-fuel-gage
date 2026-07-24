@@ -80,13 +80,17 @@ export class SafeZoneEngine {
     const gateway = new ControlTowerGateway();
     this.bus.emit('TRAJECTORY_UPDATE', { workspaceRoot, status: 'BOOTSTRAPPED' });
 
-    this.registry.register({
+    this.registry.register(Tool.define({
       name: 'safe_zone.query',
       description: 'Query active safe zones',
       handler: async () => ({ success: true, output: 'Engine active' })
-    });
+    }));
 
     const result = await gateway.getZoneStatus('bootstrap');
     this.bus.emit('TRAJECTORY_UPDATE', { status: 'READY', payload: result });
   }
+}
+
+export function createSafeZoneEngine(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
+  return new SafeZoneEngine(cfg);
 }
