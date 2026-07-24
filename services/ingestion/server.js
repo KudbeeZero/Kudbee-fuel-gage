@@ -3393,11 +3393,16 @@ if (redis) {
 // --- SSE Stream Ticket (zero-trust handshake) ---
 const STREAM_TICKETS = new Map();
 const TICKET_TTL_MS = 30000;
+const STREAM_SECRET = process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex');
+
+if (!process.env.STREAM_SECRET) {
+  console.warn('[SSE] STREAM_SECRET not set — using ephemeral in-memory fallback (signatures reset on restart)');
+}
 
 app.post('/api/auth/stream-ticket', (req, res) => {
   const ticket = 'sse_ticket_' + crypto.randomUUID();
   STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
-  const sig = crypto.createHmac('sha256', process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex'))
+  const sig = crypto.createHmac('sha256', STREAM_SECRET)
     .update(ticket + ':' + Date.now()).digest('hex');
   res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
 });

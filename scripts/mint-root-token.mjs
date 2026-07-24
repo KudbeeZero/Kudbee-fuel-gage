@@ -105,9 +105,9 @@ function createAgentPass(privateKey) {
 }
 
 async function callGroqReasoning(taskContext, correctionDelta) {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
   if (!apiKey) {
-    console.log('[MintRootToken] GROQ_API_KEY not set — using local fallback reasoning');
+    console.log('[MintRootToken] GROQ_API_KEY / GROQ_API not set — using local fallback reasoning');
     return {
       reasoning: 'Local fallback: architectural reasoning synthesized without Groq LPU. The correction delta aligns with the task context and maintains system integrity.',
       confidence_score: 0.92,
