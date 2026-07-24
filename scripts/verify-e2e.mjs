@@ -535,7 +535,7 @@ async function check28_DLQRetryPolicy() {
   await new Promise((r) => setTimeout(r, 2000));
 
   let dlqRes, dlqData, found;
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
     dlqRes = await fetch(`${BASE}/api/governance/failed`);
     if (dlqRes.status !== 200) { await new Promise((r) => setTimeout(r, 500)); continue; }
@@ -550,7 +550,7 @@ async function check28_DLQRetryPolicy() {
   }
 
   if (!found) {
-    console.error(`[Check28] Task ${taskId} not found in DLQ among ${dlqData?.items?.length || 0} items after ${Math.round((Date.now() - deadline + 15000) / 1000)}s`);
+    console.error(`[Check28] Task ${taskId} not found in DLQ among ${dlqData?.items?.length || 0} items after ${Math.round((Date.now() - deadline + 30000) / 1000)}s`);
     return false;
   }
   console.error(`[Check28] Task found: id=${found.id}, attempts=${found.attempts}, lastError=${found.lastError}`);

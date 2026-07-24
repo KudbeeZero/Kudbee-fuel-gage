@@ -31,7 +31,7 @@ import { runSystemPruner } from './services/lib/pruner.ts';
 const TASKS_QUEUE = 'kudbee:governance:tasks';
 const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
 const HEARTBEAT_INTERVAL_MS = 10_000; // Control Tower online-check cadence
-const POLL_BACKOFF_MS = 1000;
+const POLL_BACKOFF_MS = process.env.NODE_ENV === 'test' ? 0 : 2000;
 
 const redis = getRedisClient({ label: 'worker' });
 
@@ -188,7 +188,8 @@ async function pollTasks() {
       // instead of spinning the loop or crashing the process.
       if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
         noteRedisUnavailable();
-        await new Promise((r) => setTimeout(r, AUDIT_INTERVAL_MS));
+        const backoff = process.env.NODE_ENV === 'test' ? 0 : AUDIT_INTERVAL_MS;
+        await new Promise((r) => setTimeout(r, backoff));
       } else {
         hermes.log.error('polling loop error:', err.message);
         await new Promise((r) => setTimeout(r, POLL_BACKOFF_MS));

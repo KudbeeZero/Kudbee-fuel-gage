@@ -40,6 +40,13 @@ export default defineConfig(() => {
           main: path.resolve(__dirname, 'index.html'),
           terminal: path.resolve(__dirname, 'terminal.html'),
         },
+        output: {
+          manualChunks: {
+            'vendor-lucide': ['lucide-react'],
+            'vendor-recharts': ['recharts'],
+            'vendor-d3': ['d3'],
+          },
+        },
       },
     },
   };

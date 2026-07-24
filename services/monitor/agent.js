@@ -179,7 +179,7 @@ async function runLoop() {
       await processTelemetry(telemetry);
     } catch (err) {
       console.error('[Agent] Polling loop error:', err.message);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 }

@@ -46,7 +46,7 @@ export function getRedisClient(opts = {}) {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
-    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? (() => null),
     connectTimeout: 5_000,
     commandTimeout: 3_000,
@@ -72,7 +72,7 @@ export function getRedisClient(opts = {}) {
   client.on('end', () => { redisTelemetry.fallbackCount += 1; console.warn(`[${label}] Redis connection closed`); });
 
   if (!opts.forceNew) _client = client;
-  return _client;
+  return client;
 }
 
 /**
@@ -169,7 +169,7 @@ export function getSlowRedisClient(opts = {}) {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
-    enableOfflineQueue: opts.enableOfflineQueue ?? false,
+    enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? (() => null),
     connectTimeout: 5_000,
     commandTimeout: 3_000,

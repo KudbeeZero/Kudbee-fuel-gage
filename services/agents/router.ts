@@ -111,7 +111,7 @@ export async function routeAgentPayload(
     });
     governance_action_id = entry?.id ?? null;
     proposed = entry ?? null;
-  } catch (err) {
+  } catch (err: unknown) {
     // Resilient-First: a sink failure must NOT let the payload execute.
     // We still return PENDING_APPROVAL so the caller halts; the failed
     // enqueue is reported in the reason.
