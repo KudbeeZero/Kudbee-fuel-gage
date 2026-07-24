@@ -23,6 +23,10 @@ import type {
   StreamStatus,
 } from "../types/ollama";
 
+// kilocode_change: inject fire-and-forget trajectory interceptor
+import { KudbeeEvents, EngineBus } from "@kudbee/opencode";
+const trajectoryBus = new EngineBus();
+
 /** Configuration for {@link useOllamaStream}. */
 export interface UseOllamaStreamOptions {
   /** Base URL of the local Ollama server. Defaults to `/ollama` (Vite proxy). */
@@ -170,6 +174,12 @@ export function useOllamaStream(
               processor.push(chunk);
               setSegments(processor.allSegments());
               if (chunk.done) finalChunk = chunk;
+              // kilocode_change: fire-and-forget trajectory event on every streamed chunk
+              void trajectoryBus.emit(KudbeeEvents.trajectory, {
+                model,
+                chunk: trimmed.slice(0, 64),
+                timestamp: new Date().toISOString()
+              });
             } catch {
               console.debug(
                 "[useOllamaStream] skipping malformed line:",
