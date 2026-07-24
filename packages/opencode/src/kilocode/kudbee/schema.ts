@@ -79,6 +79,17 @@ export const SafeZoneEngineConfigSchema = z.object({
 });
 export type SafeZoneEngineConfig = z.infer<typeof SafeZoneEngineConfigSchema>;
 
+export const GovernanceProposalSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(256),
+  description: z.string().min(1).max(2048),
+  risk_level: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED']).default('PENDING'),
+  author: z.string().min(1).optional(),
+  created_at: z.string().datetime().optional()
+});
+export type GovernanceProposal = z.infer<typeof GovernanceProposalSchema>;
+
 export const SafeZoneTelemetryMetadataSchema = z.object({
   zone_id: SafeZoneIdSchema,
   trajectory_hash: z.string().min(1),
