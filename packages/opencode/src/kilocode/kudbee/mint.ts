@@ -47,5 +47,33 @@ export async function mintToken(opts: MintOptions): Promise<MintedToken> {
     created_at: new Date().toISOString()
   };
 
+  const persisted = await persistTrajectory(token);
+  if (!persisted) {
+    console.warn(`[mint] trajectory persistence failed for token ${token.id}`);
+  }
+
   return MintedTokenSchema.parse(token);
+}
+
+async function persistTrajectory(token: MintedToken): Promise<boolean> {
+  try {
+    const endpoint = process.env.UPSTASH_TELEMETRY_URL;
+    if (!endpoint) return true;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        event: 'trajectory_persist',
+        token_id: token.id,
+        token_hash: token.token_hash,
+        kd: token.kd,
+        efficacy: token.efficacy,
+        status: token.status,
+        timestamp: token.created_at
+      })
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
