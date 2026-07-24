@@ -204,12 +204,13 @@ process.on('SIGTERM', () => {
         await redis.quit();
         console.log('[Worker] Redis connection closed gracefully.');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
     }
     clearTimeout(forceKillTimeout);
     process.exit(0);
-  })().catch(() => {
+  })().catch((err) => {
+    console.warn('[Worker] Shutdown error:', err instanceof Error ? err.message : String(err));
     clearTimeout(forceKillTimeout);
     process.exit(0);
   });
@@ -395,8 +396,8 @@ export async function startWorker() {
 
   try {
     await redis.ping();
-  } catch {
-    console.warn('[Worker] Redis not yet reachable — worker loop deferred');
+  } catch (err: unknown) {
+    console.warn('[Worker] Redis not yet reachable — worker loop deferred:', err instanceof Error ? err.message : String(err));
     return;
   }
 
