@@ -17,7 +17,7 @@
  */
 
 import { createProvider, type ProviderConfig, type CompletionRequest, type CompletionResponse } from '@kudbee/utils/llm/providers';
-import { trackSpend, estimateGroqCost, checkBudgetOrThrow } from './budgetGate.js';
+import { trackSpend, estimateGroqCost, checkBudgetOrThrow } from './budgetGate.ts';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';

@@ -2,15 +2,20 @@ import http from 'http';
 import { spawn } from 'child_process';
 import { setTimeout as delay } from 'timers/promises';
 import { fileURLToPath } from 'url';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
+const REGISTRY_FILE = path.resolve(INGESTION_DIR, '../../config/agents.json');
 const PORT = 9878;
 const BASE = `http://127.0.0.1:${PORT}`;
 let serverProcess = null;
 let passed = 0;
 let failed = 0;
 let lastMintedTraceId = '';
+let agentPassHeader = '';
 
 function assert(check, label) {
   if (check) {
@@ -20,6 +25,40 @@ function assert(check, label) {
     console.error(`  [FAIL] ${label}`);
     failed++;
   }
+}
+
+function generateAgentIdentity() {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+  });
+  return { agentId: 'kudbee-thinkloop-verify', publicKey, privateKey };
+}
+
+function ensureAgentInRegistry(publicKey) {
+  let registry = { registry: [] };
+  try {
+    const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
+    registry = JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  const existingIndex = registry.registry.findIndex((a) => a.agentId === 'kudbee-thinkloop-verify');
+  const entry = { agentId: 'kudbee-thinkloop-verify', publicKey, status: 'active', createdAt: new Date().toISOString() };
+  if (existingIndex >= 0) {
+    registry.registry[existingIndex] = entry;
+  } else {
+    registry.registry.push(entry);
+  }
+  fs.writeFileSync(REGISTRY_FILE, JSON.stringify(registry, null, 2));
+}
+
+function createAgentPass(privateKey) {
+  const agentId = 'kudbee-thinkloop-verify';
+  const issuedAt = Date.now();
+  const signature = crypto.sign(null, Buffer.from(`${agentId}:${issuedAt}`), privateKey).toString('base64');
+  const pass = { agentId, issuedAt, signature };
+  return Buffer.from(JSON.stringify(pass)).toString('base64');
 }
 
 async function waitForServer(url, timeoutMs = 10000) {
@@ -37,6 +76,10 @@ async function waitForServer(url, timeoutMs = 10000) {
 }
 
 async function startServer() {
+  const identity = generateAgentIdentity();
+  ensureAgentInRegistry(identity.publicKey);
+  agentPassHeader = createAgentPass(identity.privateKey);
+
   console.log('[ThinkLoop] Starting ingestion server...');
   serverProcess = spawn(process.execPath, ['server.js'], {
     cwd: INGESTION_DIR,
@@ -79,7 +122,10 @@ async function check1_MintThinkTokenWithReasoning() {
   lastMintedTraceId = `tr-thinkloop-${Date.now()}`;
   const res = await fetch(`${BASE}/api/governance/mint-think-token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Agent-Pass': agentPassHeader
+    },
     body: JSON.stringify({
       traceId: lastMintedTraceId,
       taskContext: {
