@@ -2,9 +2,7 @@
 
 ## Worker Polling Strategy
 
-The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP POP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **200ms idle backoff** before the worker loops again. When a task is consumed it is processed serially in a single background loop.
-
-A follow-up migration (`TODO`) will switch to true **BRPOP** with a **5-second blocking timeout** to reduce idle wake-ups and Redis call volume.
+The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP BRPOP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **5-second blocking timeout** before the worker loops again. When a task is consumed it is processed serially in a single background loop.
 
 ## Retry & DLQ Policy
 
