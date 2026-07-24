@@ -17,6 +17,13 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 2. `npm run lint` — Turbo-routed linting.
 3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (36 checks, including Check 28 for DLQ retry policy).
 
+## Safe-Zone Engine Lifecycle
+
+- **Singleton pattern:** `SafeZoneEngine` is instantiated once per process (CLI, web hook) and reused for the session lifetime.
+- **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires the Control Tower gateway, registers native tools, and emits `TRAJECTORY_UPDATE` events.
+- **Trajectory evaluation:** `engine.evaluateTrajectory({ target, vector, velocity })` computes threat scores, mints interception tokens when breached, and publishes telemetry via Upstash Redis pub/sub.
+- **Circuit breaker:** Upstash Redis connections use an adaptive circuit breaker that opens on `MAX_REQUESTS_LIMIT` (500k) and backs off exponentially up to 30s.
+
 ## Key References
 
 | File | What It Contains |
@@ -27,3 +34,6 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 | `STATE_OF_THE_OS.md` | 25 documented production fixes |
 | `.kilo/plans/PRODUCTION_AUDIT.md` | 263 audit findings |
 | `BUILD.md` | Current architecture state, tab layout, codebase simplification |
+| `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package (schema, gateway, mint, telemetry, events, tools, index) |
+| `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis rate-limit backoff |
+| `services/agents/worker.ts` | Governance worker with exponential backoff on Redis rate limits |

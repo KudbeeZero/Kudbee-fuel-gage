@@ -427,3 +427,14 @@ gh pr create --draft --title "feat(engine): Kudbee Safe-Zone & Trajectory Interc
 - **Heroku:** `REDIS_URL` and `DATABASE_URL` are the only guaranteed Redis connections. `REDIS_SLOW_URL` is blocked by Heroku — the resilient fallback factory in `services/lib/redis.js` routes safely through the primary string.
 - **Local:** All standalone scripts must `try { process.loadEnvFile('.env'); } catch {}` so `.env` secrets are available without explicit `dotenv` imports.
 - **Secrets:** `DATABASE_URL`, `REDIS_URL`, `GROQ_API_KEY`, `HEROKU_API_KEY`, `STREAM_SECRET`. Never hardcode in source.
+
+### Production Hardening Patterns (20-Commit Sprint)
+
+- **Browser crypto isomorphism:** `packages/opencode/src/kilocode/kudbee/mint.ts` and `index.ts` use `globalThis.crypto.randomUUID()` with a Math.random fallback, and `crypto.subtle.digest('SHA-256', ...)` for hashing. This fixes Vite browser bundling errors externalizing Node `crypto`.
+- **Adaptive Redis circuit breaker:** `services/lib/redis.js` wraps Upstash connections with an adaptive retry strategy that opens on `MAX_REQUESTS_LIMIT` (500k) and backs off exponentially up to 30s.
+- **Worker exponential backoff:** `services/agents/worker.ts` tracks `backoffMs` per tick. On rate-limit errors, backoff doubles up to `MAX_BACKOFF_MS` (30s). On success, resets to `BASE_BACKOFF_MS` (1s).
+- **Safe-zone telemetry schema:** `SafeZoneTelemetryMetadataSchema` in `packages/opencode/src/kilocode/kudbee/schema.ts` enforces strict typing for zone_id, trajectory_hash, threat_score, kd, efficacy, and timestamp.
+- **BusEvent.define pattern:** `events.ts` exports `KudbeeEvents.trajectory` and `KudbeeEvents.governance_lock` via `BusEvent.define()` for typed event constants.
+- **Tool.define pattern:** `tools.ts` exports `Tool.define(entry)` for declaring native tool handlers with strict typing.
+- **CLI and web hooks:** `services/agent/cli.ts` and `apps/web/src/hooks/useToolInterceptor.ts` bootstrap `SafeZoneEngine` with `// kilocode_change` markers for upstream sync tracking.
+- **E2E DLQ timeout:** `scripts/verify-e2e.mjs` Check 28 polls the DLQ with a 30s deadline to accommodate slower Redis rate-limit recovery.
