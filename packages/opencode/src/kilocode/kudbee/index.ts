@@ -91,6 +91,26 @@ export class SafeZoneEngine {
   }
 }
 
+export namespace Kudbee {
+  let engine: SafeZoneEngine | null = null;
+
+  export function Instance(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
+    if (!engine) {
+      engine = new SafeZoneEngine(cfg);
+    }
+    return engine;
+  }
+
+  export function state() {
+    const inst = Instance();
+    return inst.getState();
+  }
+
+  export function reset() {
+    engine = null;
+  }
+}
+
 export function createSafeZoneEngine(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
   return new SafeZoneEngine(cfg);
 }
