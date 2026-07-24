@@ -177,11 +177,14 @@ const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
 const MAX_ATTEMPTS = 3;
 const BRPOP_TIMEOUT_MS = 5_000;
+const BASE_BACKOFF_MS = 1_000;
+const MAX_BACKOFF_MS = 30_000;
 
 let _running = false;
 let _stopRequested = false;
 let shuttingDown = false;
 let tickTimeout: ReturnType<typeof setTimeout> | null = null;
+let backoffMs = BASE_BACKOFF_MS;
 
 process.on('SIGTERM', () => {
   console.log('[Worker] SIGTERM received – draining current task...');
@@ -351,11 +354,17 @@ export async function _tick() {
   const redis = getRedisClient();
   if (!redis) return false;
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
-    console.warn('[Worker] redis brpop failed:', e.message);
+    const msg = e.message;
+    if (msg.includes('MAX_REQUESTS_LIMIT') || msg.includes('rate limit') || msg.includes('429')) {
+      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+      console.warn(`[Worker] Rate limited, backing off for ${backoffMs}ms`);
+    }
+    console.warn('[Worker] redis brpop failed:', msg);
     return null;
   });
 
   if (!result) return false;
+  backoffMs = BASE_BACKOFF_MS;
   const raw = result[1];
   if (!raw) return false;
   let task = parse(raw);
@@ -423,7 +432,7 @@ export async function startWorker() {
       console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
     }
     if (!_stopRequested) {
-      tickTimeout = setTimeout(loop, 0);
+      tickTimeout = setTimeout(loop, backoffMs);
     }
   };
   loop();
