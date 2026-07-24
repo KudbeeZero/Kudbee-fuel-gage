@@ -76,3 +76,27 @@ export function registerKudbeeRecallAndMintTools(registry: KudbeeNativeRegistry)
     })
   );
 }
+
+export function registerKudbeeGovernanceTools(registry: KudbeeNativeRegistry): void {
+  registry.register(
+    Tool.define({
+      name: 'kudbee_propose_governance',
+      description: 'Propose a governance action for high-risk changes',
+      handler: async (args) => {
+        const title = typeof args.title === 'string' ? args.title : 'Untitled Proposal';
+        const description = typeof args.description === 'string' ? args.description : '';
+        const risk = typeof args.risk_level === 'string' ? args.risk_level : 'MEDIUM';
+        return {
+          success: true,
+          output: JSON.stringify({
+            id: `gov-${Date.now()}`,
+            title,
+            description,
+            risk_level: risk,
+            status: 'PENDING'
+          })
+        };
+      }
+    })
+  );
+}
