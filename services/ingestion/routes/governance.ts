@@ -240,7 +240,15 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
       if (!workerAvailable()) {
         return res.status(503).json({ error: 'background worker unavailable (Redis offline)' });
       }
-      const result = await enqueueTask(req.body || {});
+      const body = req.body || {};
+      if (typeof body !== 'object' || body === null || typeof body.kind !== 'string' || body.kind.trim().length === 0) {
+        return res.status(422).json({ error: 'kind (non-empty string) is required' });
+      }
+      const payloadSize = typeof body.payload === 'string' ? body.payload.length : typeof body.payload === 'object' ? JSON.stringify(body.payload).length : 0;
+      if (payloadSize > 64 * 1024) {
+        return res.status(422).json({ error: 'payload exceeds 64 KB limit' });
+      }
+      const result = await enqueueTask(body);
       if (!result.success) {
         return res.status(503).json({ error: result.error || 'enqueue failed' });
       }
