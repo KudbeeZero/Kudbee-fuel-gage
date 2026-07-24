@@ -3,7 +3,7 @@ import { ControlTowerGateway } from './gateway';
 import { mintToken } from './mint';
 import { publishTelemetry } from './telemetry';
 import { EngineBus, EngineEventType } from './events';
-import { KudbeeNativeRegistry, type NativeToolEntry } from './tools';
+import { KudbeeNativeRegistry, Tool, type NativeToolEntry } from './tools';
 import { TelemetryEventSchema, type TelemetryEvent, type MintedToken } from './schema';
 
 function uuidv4(): string {
