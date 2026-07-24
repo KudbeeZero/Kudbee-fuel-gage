@@ -176,7 +176,7 @@ const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
 const MAX_ATTEMPTS = 3;
-const IDLE_POLL_MS = 200;
+const BRPOP_TIMEOUT_MS = 5_000;
 
 let _running = false;
 let _stopRequested = false;
@@ -346,10 +346,13 @@ export async function _tick() {
   if (shuttingDown) return false;
   const redis = getRedisClient();
   if (!redis) return false;
-  const raw = await redis.rpop(TASK_QUEUE).catch((e: Error) => {
-    console.warn('[Worker] redis rpop failed:', e.message);
+  const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
+    console.warn('[Worker] redis brpop failed:', e.message);
     return null;
   });
+
+  if (!result) return false;
+  const raw = result[1];
   if (!raw) return false;
   let task = parse(raw);
   if (typeof task === 'string') {
@@ -396,31 +399,27 @@ export async function startWorker() {
 
   try {
     await redis.ping();
-  } catch (err: unknown) {
-    console.warn('[Worker] Redis not yet reachable — worker loop deferred:', err instanceof Error ? err.message : String(err));
+  } catch {
+    console.warn('[Worker] Redis not yet reachable — worker loop deferred');
     return;
   }
 
   _running = true;
   _stopRequested = false;
-  console.log(`[Worker] Starting background task loop on ${TASK_QUEUE}`);
-  const loop = () => {
+  console.log(`[Worker] Starting background task loop on ${TASK_QUEUE} (BRPOP)`);
+  const loop = async () => {
     if (_stopRequested) {
       _running = false;
       return;
     }
-    _tick()
-      .then((processed) => {
-        if (!processed) {
-          tickTimeout = setTimeout(loop, IDLE_POLL_MS);
-        } else {
-          tickTimeout = setTimeout(loop, 0);
-        }
-      })
-      .catch((err: Error) => {
-        console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
-        tickTimeout = setTimeout(loop, IDLE_POLL_MS);
-      });
+    try {
+      await _tick();
+    } catch (err) {
+      console.error('[Worker] tick error:', err instanceof Error ? err.message : String(err));
+    }
+    if (!_stopRequested) {
+      tickTimeout = setTimeout(loop, 0);
+    }
   };
   loop();
 }
