@@ -43,6 +43,10 @@ class ControlTowerGateway {
   async getZoneStatus(zoneId: string): Promise<ApiResult> {
     return this.request(`/api/zones/${encodeURIComponent(zoneId)}/status`);
   }
+
+  async healthCheck(): Promise<ApiResult> {
+    return this.request('/api/health');
+  }
 }
 
 export { ControlTowerGateway };
