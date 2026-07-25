@@ -1831,11 +1831,9 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
       if (exactMatches.length === 1) {
         matched = exactMatches[0];
       } else if (exactMatches.length > 1) {
-        return res
-          .status(409)
-          .json({
-            error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.',
-          });
+        return res.status(409).json({
+          error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.',
+        });
       }
     }
 
@@ -3003,12 +3001,10 @@ app.get('/api/settings/preferences', async (req, res) => {
 app.get('/api/system/audit-history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
-    return res
-      .status(200)
-      .json({
-        history: await getAuditHistory(limit),
-        count: (await getAuditHistory(limit)).length,
-      });
+    return res.status(200).json({
+      history: await getAuditHistory(limit),
+      count: (await getAuditHistory(limit)).length,
+    });
   } catch {
     return res.status(200).json({ history: [], count: 0 });
   }
@@ -3653,7 +3649,12 @@ app.post('/api/system/compare-providers', async (req, res) => {
   try {
     const { prompt, provider } = req.body || {};
     const selectedProvider =
-      provider === 'vllm' || provider === 'openai-compatible' ? provider : 'gemini';
+      provider === 'vllm' ||
+      provider === 'openai-compatible' ||
+      provider === 'groq' ||
+      provider === 'inception'
+        ? provider
+        : 'gemini';
 
     const systemPrompt = `<ROLE>
 You are the Primary Agent for the Kudbee Agentic Rack System. You are a
@@ -3683,24 +3684,42 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
     let usage = { promptTokens: 0, completionTokens: 0 };
 
     try {
-      const providerConfig =
-        selectedProvider === 'gemini'
-          ? {
-              kind: 'gemini',
-              model: 'gemini-2.0-flash',
-              temperature: 0.2,
-              maxTokens: 512,
-              apiKey: process.env.GEMINI_API_KEY,
-            }
-          : {
-              kind: 'vllm',
-              model: 'openai/gpt-oss-20b',
-              temperature: 0.2,
-              maxTokens: 512,
-              baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
-              apiKey: process.env.VLLM_API_KEY || 'no-key',
-              xmlWrapper: true,
-            };
+      let providerConfig;
+      if (selectedProvider === 'gemini') {
+        providerConfig = {
+          kind: 'gemini',
+          model: 'gemini-2.0-flash',
+          temperature: 0.2,
+          maxTokens: 512,
+          apiKey: process.env.GEMINI_API_KEY,
+        };
+      } else if (selectedProvider === 'groq') {
+        providerConfig = {
+          kind: 'groq',
+          model: 'llama-3.3-70b-versatile',
+          temperature: 0.2,
+          maxTokens: 512,
+          apiKey: process.env.GROQ_API_KEY || process.env.GROQ_API,
+        };
+      } else if (selectedProvider === 'inception') {
+        providerConfig = {
+          kind: 'inception',
+          model: 'mercury-2',
+          temperature: 0.2,
+          maxTokens: 512,
+          apiKey: process.env.INCEPTION_API_KEY || process.env.INCEPTION_API,
+        };
+      } else {
+        providerConfig = {
+          kind: 'vllm',
+          model: 'openai/gpt-oss-20b',
+          temperature: 0.2,
+          maxTokens: 512,
+          baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
+          apiKey: process.env.VLLM_API_KEY || 'no-key',
+          xmlWrapper: true,
+        };
+      }
 
       const client = createProvider(providerConfig);
       const request = {
@@ -3760,12 +3779,10 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
     });
   } catch (err) {
     console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
-    res
-      .status(500)
-      .json({
-        error: 'Comparator failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
+    res.status(500).json({
+      error: 'Comparator failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
@@ -3868,12 +3885,10 @@ app.post('/v1/chat/completions', async (req, res) => {
     });
   } catch (err) {
     console.error('[Chat] Fatal error:', err instanceof Error ? err.message : String(err));
-    res
-      .status(500)
-      .json({
-        error: 'Chat completions failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
+    res.status(500).json({
+      error: 'Chat completions failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
