@@ -47,6 +47,23 @@ import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT } from '../lib/rateLimiter.ts';
+import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
+
+function sanitizeRedisUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
+  if (url.startsWith('https://')) {
+    try { const parsed = new URL(url); return `rediss://${parsed.hostname}:6379`; } catch { return url; }
+  }
+  return url;
+}
+process.env.REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL);
+process.env.REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL);
+
+const middlewareGuard = new MiddlewareGuard('rate-limiter', 5, 30_000);
+const timingGuard = new MiddlewareGuard('timeout', 3, 60_000);
+registerGuard(middlewareGuard);
+registerGuard(timingGuard);
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,7 +86,10 @@ app.use((req, res, next) => {
 });
 
 // --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
+// FAIL-OPEN: If Redis is unreachable, the rate-limit check is skipped
+// and the request passes through. Root / and static assets are excluded.
 const RATE_LIMIT_EXCLUDED = new Set([
+  '/',
   '/health',
   '/api/health',
   '/api/health-check',
@@ -79,27 +99,39 @@ const RATE_LIMIT_EXCLUDED = new Set([
   '/api/events',
   '/api/os-stream',
   '/api/governance/hermes-logs',
-  '/api/dashboard/summary'
+  '/api/dashboard/summary',
+  '/api/telemetry/poll',
+  '/metrics'
 ]);
 
+function isStaticAssetPath(path) {
+  return path.startsWith('/assets/') ||
+    path.startsWith('/fonts/') ||
+    path === '/favicon.ico' ||
+    path === '/manifest.json' ||
+    path.endsWith('.js') || path.endsWith('.css') ||
+    path.endsWith('.svg') || path.endsWith('.png') ||
+    path.endsWith('.woff2');
+}
+
 app.use(async (req, res, next) => {
-  if (RATE_LIMIT_EXCLUDED.has(req.path)) return next();
-
-  const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-  const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
-
-  res.setHeader('X-RateLimit-Limit', String(result.limit));
-  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
-  res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
-
-  if (!result.allowed) {
-    return res.status(429).json({
-      error: 'too_many_requests',
-      message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
-      retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
-    });
+  if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
+  try {
+    const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+    const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
+    res.setHeader('X-RateLimit-Limit', String(result.limit));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
+    if (!result.allowed) {
+      return res.status(429).json({
+        error: 'too_many_requests',
+        message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
+        retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
+      });
+    }
+  } catch (err) {
+    console.warn(`[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error)`);
   }
-
   next();
 });
 
@@ -4645,6 +4677,32 @@ app.post('/api/audit/vault/verify', async (req, res) => {
 });
 
 const distPath = resolveDistPath();
+
+// --- Middleware Health & Metrics endpoints ---
+app.get('/middleware/health', (_req, res) => {
+  res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
+});
+
+let _metricsRequestCount = 0;
+let _metricsRateLimitHits = 0;
+let _metricsRedisFallbackHits = 0;
+
+app.get('/metrics', (_req, res) => {
+  _metricsRequestCount += 1;
+  const uptime = (Date.now() - BOOT_TIME) / 1000;
+  const guards = getAllGuardStats();
+  const lines = [
+    '# HELP kudbee_uptime_seconds Time since server boot',
+    '# TYPE kudbee_uptime_seconds gauge',
+    `kudbee_uptime_seconds ${uptime.toFixed(1)}`,
+    `# HELP kudbee_middleware_healthy 1 if all middleware healthy`,
+    '# TYPE kudbee_middleware_healthy gauge',
+    `kudbee_middleware_healthy ${guards.every((g) => g.healthy) ? 1 : 0}`,
+    ''
+  ];
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+  res.send(lines.join('\n'));
+});
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
