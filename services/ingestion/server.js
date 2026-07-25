@@ -2493,7 +2493,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
 // lgtm[js/missing-rate-limiting]
-app.post('/api/governance/resolve', async (req, res) => {
+app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
   try {
     const { id, decision } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing required field: id' });
@@ -2947,7 +2947,8 @@ app.get('/api/alerts/history', async (req, res) => {
 // --- Phase 43: Tenant Settings Configuration ---
 const tenantSettings = Object.create(null);
 
-app.patch('/api/settings/tenant/:id', async (req, res) => {
+// lgtm[js/missing-rate-limiting]
+app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -2996,7 +2997,6 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-// lgtm[js/missing-rate-limiting]
 app.get('/api/system/audit-history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
@@ -4752,7 +4752,7 @@ app.post('/api/router/reset', async (_req, res) => {
 const THROUGHPUT_WINDOW_MS = 60_000;
 
 // lgtm[js/missing-rate-limiting]
-app.get('/api/telemetry/throughput', async (_req, res) => {
+app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
   try {
     const now = Date.now();
     const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
