@@ -9,14 +9,30 @@ import {
   deserializePass,
   verifyAgentPass,
   verifySignature,
-  AGENT_PASS_MAX_AGE_MS
+  AGENT_PASS_MAX_AGE_MS,
 } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity } from './embedder.js';
 import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
-import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } from '../governance/router.js';
+import {
+  listProposed,
+  approveAction,
+  rejectAction,
+  matchLogic,
+  proposeAction,
+} from '../governance/router.js';
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
-import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool, teardownAll, DB_TIMEOUT_MS, VECTOR_QUERY_TIMEOUT_MS, withTimeout } from '../lib/db.js';
+import {
+  getDbPool,
+  isDbHealthy,
+  runQuery,
+  runInsert,
+  closeDbPool,
+  teardownAll,
+  DB_TIMEOUT_MS,
+  VECTOR_QUERY_TIMEOUT_MS,
+  withTimeout,
+} from '../lib/db.js';
 import { getRedisClient, getSubscriberClient, initRedisFallbackQueue } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
@@ -27,7 +43,7 @@ import {
   buildAgentContext,
   evaluateRequiredSkills,
   appendForgeContext,
-  BASE_IDENTITY
+  BASE_IDENTITY,
 } from '../agents/src/context-factory.ts';
 import { evaluateAgentPayload } from '../agents/worker.ts';
 import { routeAgentPayload, HIGH_UNCERTAINTY_TAG } from '../agents/router.ts';
@@ -53,7 +69,12 @@ function sanitizeRedisUrl(url) {
   if (!url) return url;
   if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
   if (url.startsWith('https://')) {
-    try { const parsed = new URL(url); return `rediss://${parsed.hostname}:6379`; } catch { return url; }
+    try {
+      const parsed = new URL(url);
+      return `rediss://${parsed.hostname}:6379`;
+    } catch {
+      return url;
+    }
   }
   return url;
 }
@@ -64,7 +85,6 @@ const middlewareGuard = new MiddlewareGuard('rate-limiter', 5, 30_000);
 const timingGuard = new MiddlewareGuard('timeout', 3, 60_000);
 registerGuard(middlewareGuard);
 registerGuard(timingGuard);
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,47 +122,57 @@ const RATE_LIMIT_EXCLUDED = new Set([
   '/api/governance/hermes-logs',
   '/api/dashboard/summary',
   '/api/telemetry/poll',
-  '/metrics'
+  '/metrics',
 ]);
 
 function isStaticAssetPath(path) {
-  return path.startsWith('/assets') ||
+  return (
+    path.startsWith('/assets') ||
     path.startsWith('/fonts') ||
     path.startsWith('/icons') ||
     path === '/favicon.ico' ||
     path === '/manifest.json' ||
     path === '/robots.txt' ||
     path === '/sitemap.xml' ||
-    path.endsWith('.js') || path.endsWith('.css') ||
-    path.endsWith('.svg') || path.endsWith('.png') ||
-    path.endsWith('.woff2') || path.endsWith('.ico') ||
-    path.endsWith('.json') || path.endsWith('.map') ||
-    path.endsWith('.html');
+    path.endsWith('.js') ||
+    path.endsWith('.css') ||
+    path.endsWith('.svg') ||
+    path.endsWith('.png') ||
+    path.endsWith('.woff2') ||
+    path.endsWith('.ico') ||
+    path.endsWith('.json') ||
+    path.endsWith('.map') ||
+    path.endsWith('.html')
+  );
 }
 
-app.use(middlewareGuard.wrap(async (req, res, next) => {
-  if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
-  try {
-    const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-    const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
-    res.setHeader('X-RateLimit-Limit', String(result.limit));
-    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
-    res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
-    if (!result.allowed) {
-      res.status(429).json({
-        error: 'too_many_requests',
-        message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
-        retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
-      });
-      return;
+app.use(
+  middlewareGuard.wrap(async (req, res, next) => {
+    if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
+    try {
+      const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+      const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
+      res.setHeader('X-RateLimit-Limit', String(result.limit));
+      res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
+      res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
+      if (!result.allowed) {
+        res.status(429).json({
+          error: 'too_many_requests',
+          message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
+          retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000),
+        });
+        return;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`
+      );
+      throw err;
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`);
-    throw err;
-  }
-  next();
-}));
+    next();
+  })
+);
 
 // --- Reject requests that run longer than 15s to prevent Heroku H27 ---
 app.use((req, res, next) => {
@@ -172,7 +202,7 @@ const _state = {
   bootTimeRef: { value: null },
   redisRef: { value: null },
   poolRef: { value: null },
-  providerConfigRef: { value: null }
+  providerConfigRef: { value: null },
 };
 globalThis.__KUBEE_STATE__ = _state;
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -180,8 +210,13 @@ const BOOT_TIME = Date.now();
 _state.bootTimeRef.value = BOOT_TIME;
 const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
 const HIGH_VALUE_MODELS = new Set([
-  'gpt-4o', 'claude-3-5-sonnet', 'gemini-1.5-pro',
-  'deepseek-r1', 'deepseek-v3', 'o1-preview', 'o1-mini'
+  'gpt-4o',
+  'claude-3-5-sonnet',
+  'gemini-1.5-pro',
+  'deepseek-r1',
+  'deepseek-v3',
+  'o1-preview',
+  'o1-mini',
 ]);
 const MAX_REASONING_LENGTH = 500;
 
@@ -263,9 +298,10 @@ app.use(express.json({ limit: '10mb' }));
 
 const ipFromRequest = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string'
-    ? forwarded.split(',')[0].trim()
-    : (req.ip || req.socket?.remoteAddress || 'unknown');
+  const ip =
+    typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : req.ip || req.socket?.remoteAddress || 'unknown';
   return ip;
 };
 
@@ -280,10 +316,15 @@ const apiLimiter = rateLimit({
     console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${ip}`);
     res.setHeader('Retry-After', Math.ceil(60));
     res.status(429).json({ error: 'Too many requests, please try again later.' });
-  }
+  },
 });
 app.use('/api/', (req, res, next) => {
-  if (req.path === '/api/telemetry/poll' || req.path.startsWith('/api/telemetry/ingest') || req.path === '/api/telemetry/edge-ingest') return next();
+  if (
+    req.path === '/api/telemetry/poll' ||
+    req.path.startsWith('/api/telemetry/ingest') ||
+    req.path === '/api/telemetry/edge-ingest'
+  )
+    return next();
   apiLimiter(req, res, next);
 });
 
@@ -298,7 +339,7 @@ const ingestLimiter = rateLimit({
     console.warn(`[RateLimit:Ingest] 429 on ${req.method} ${req.path} from ${ip}`);
     res.setHeader('Retry-After', Math.ceil(60));
     res.status(429).json({ error: 'Ingest rate limit exceeded' });
-  }
+  },
 });
 app.use('/api/telemetry/ingest', ingestLimiter);
 
@@ -319,7 +360,7 @@ const governanceRouter = createGovernanceRouter({
   getPolicyState: () => _state.policyState,
   getFeedbackState: () => _state.feedbackState,
   getAutoTuneState: () => _state.autoTuneState,
-  getEvaluatePolicies: () => _state.evaluatePolicies
+  getEvaluatePolicies: () => _state.evaluatePolicies,
 });
 app.use('/api/governance', governanceRouter);
 
@@ -336,7 +377,7 @@ const systemRouter = createSystemRouter({
   getRedis: () => _state.redisRef.value,
   getPool: () => _state.poolRef.value,
   getProviderConfig: () => _state.providerConfigRef.value,
-  getAlertsState: () => _state.alertsState
+  getAlertsState: () => _state.alertsState,
 });
 app.use('/api/system', systemRouter);
 
@@ -391,7 +432,6 @@ async function agentContextMiddleware(req, res, next) {
   next();
 }
 
-
 // --- Resilient Neon Postgres connection (system of record) -----------------
 // getDbPool() is lazy + tolerant: missing DATABASE_URL or pool errors degrade
 // to an in-memory store instead of crashing (Resilient-First). SQLite removed.
@@ -422,11 +462,13 @@ async function ensureSchema() {
     await pool.query(
       'CREATE INDEX IF NOT EXISTS idx_trace_timestamp ON telemetry_traces(timestamp)'
     );
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)');
     await pool.query(
-      'CREATE INDEX IF NOT EXISTS idx_trace_model ON telemetry_traces(model)'
+      'ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS input_tokens INTEGER DEFAULT 0'
     );
-    await pool.query('ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS input_tokens INTEGER DEFAULT 0');
-    await pool.query('ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS output_tokens INTEGER DEFAULT 0');
+    await pool.query(
+      'ALTER TABLE telemetry_traces ADD COLUMN IF NOT EXISTS output_tokens INTEGER DEFAULT 0'
+    );
     await pool.query(`
       CREATE TABLE IF NOT EXISTS telemetry_logs (
         id BIGSERIAL PRIMARY KEY,
@@ -501,9 +543,7 @@ async function ensureSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query(
-      'CREATE INDEX IF NOT EXISTS idx_think_created_at ON think (created_at)'
-    );
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_think_created_at ON think (created_at)');
     await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS think_tokens (
@@ -518,10 +558,16 @@ async function ensureSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS token_cost NUMERIC DEFAULT 0`);
+    await pool.query(
+      `ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS token_cost NUMERIC DEFAULT 0`
+    );
     await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS kd NUMERIC DEFAULT 0`);
-    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS efficacy NUMERIC DEFAULT 0`);
-    await pool.query(`ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS locked_by VARCHAR DEFAULT NULL`);
+    await pool.query(
+      `ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS efficacy NUMERIC DEFAULT 0`
+    );
+    await pool.query(
+      `ALTER TABLE think_tokens ADD COLUMN IF NOT EXISTS locked_by VARCHAR DEFAULT NULL`
+    );
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vector_memory (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -559,7 +605,7 @@ if (redis) {
     connect: 'Periodic connection refresh',
     reconnect: 'Upstash inactivity timeout reconnect',
     ready: 'Environment re-sync ready',
-    end: 'Connection closed (will auto-reconnect)'
+    end: 'Connection closed (will auto-reconnect)',
   };
 
   const logRedisEvent = async (event) => {
@@ -571,10 +617,18 @@ if (redis) {
     }
   };
 
-  redis.on('connect', () => { void logRedisEvent('connect'); });
-  redis.on('reconnect', () => { void logRedisEvent('reconnect'); });
-  redis.on('ready', () => { void logRedisEvent('ready'); });
-  redis.on('end', () => { void logRedisEvent('end'); });
+  redis.on('connect', () => {
+    void logRedisEvent('connect');
+  });
+  redis.on('reconnect', () => {
+    void logRedisEvent('reconnect');
+  });
+  redis.on('ready', () => {
+    void logRedisEvent('ready');
+  });
+  redis.on('end', () => {
+    void logRedisEvent('end');
+  });
   redis.on('error', (err) => {
     console.warn(`[Redis] Error (logging SYSTEM_RESET):`, err.message);
     void logRedisEvent('error');
@@ -616,7 +670,7 @@ async function getOrCreateCachedContent() {
         contents: [{ role: 'user', parts: [{ text: TRIAGE_SYSTEM_PROMPT }] }],
         displayName: 'kudbee-telemetry-triage',
         ttl: '86400s',
-      }
+      },
     });
     console.log('[Gemini] Context cache created:', cachedContent.name);
     return cachedContent;
@@ -639,7 +693,7 @@ async function triageWithGemini(event) {
         ...(cached ? { cachedContent: cached.name } : {}),
         temperature: 0,
         maxOutputTokens: 10,
-      }
+      },
     });
     const text = response.text || '';
     return text.trim().toLowerCase().includes('critical');
@@ -650,7 +704,11 @@ async function triageWithGemini(event) {
 }
 
 function quarantineViolation(payload, violationReason) {
-  publishEvent('triage', { payload, violation_reason: violationReason, timestamp: new Date().toISOString() });
+  publishEvent('triage', {
+    payload,
+    violation_reason: violationReason,
+    timestamp: new Date().toISOString(),
+  });
   return runInsert(
     `INSERT INTO security_violations (payload, violation_reason, timestamp)
      VALUES ($1, $2, NOW())`,
@@ -686,13 +744,25 @@ function storeVector({ traceId, thoughtSummary, reasoning, model, vector, agentI
   return runInsert(
     `INSERT INTO telemetry_vectors (trace_id, thought_summary, reasoning, model, vector, timestamp)
      VALUES ($1, $2, $3, $4, $5, NOW())`,
-    [String(traceId), String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
+    [
+      String(traceId),
+      String(thoughtSummary || ''),
+      String(reasoning || ''),
+      String(model || 'unknown'),
+      JSON.stringify(vector),
+    ]
   ).then((res) => {
     // Mirror into user_memories (the semantic long-term store, subject to TTL).
     return runInsert(
       `INSERT INTO user_memories (agent_id, thought_summary, reasoning, model, embedding, created_at)
        VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [agentId ? String(agentId) : null, String(thoughtSummary || ''), String(reasoning || ''), String(model || 'unknown'), JSON.stringify(vector)]
+      [
+        agentId ? String(agentId) : null,
+        String(thoughtSummary || ''),
+        String(reasoning || ''),
+        String(model || 'unknown'),
+        JSON.stringify(vector),
+      ]
     ).catch(() => res);
   });
 }
@@ -709,7 +779,7 @@ async function recallMemories(query, limit = 3) {
         thought_summary: row.thought_summary,
         reasoning: row.reasoning,
         model: row.model,
-        similarity
+        similarity,
       };
     })
     .filter((r) => r.similarity > 0)
@@ -738,7 +808,7 @@ async function recallUserMemories(limit = 10) {
       thought_summary: row.thought_summary || '',
       reasoning: row.reasoning || '',
       model: row.model || 'unknown',
-      created_at: row.created_at ?? null
+      created_at: row.created_at ?? null,
     }))
     .slice(0, limit);
 }
@@ -753,7 +823,7 @@ const HEARTBEAT_PATTERNS = [
   /^health$/i,
   /^keep[-_]?alive$/i,
   /^\/api\/health/i,
-  /_ping$/i
+  /_ping$/i,
 ];
 
 function isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status }) {
@@ -783,7 +853,9 @@ function recordThroughput() {
   if (now - _metricsWindowStart >= METRICS_WINDOW_MS) {
     if (_metricsCount > 0) {
       const rate = _metricsCount / (METRICS_WINDOW_MS / 1000);
-      console.log(`[Ingest] Throughput: ${_metricsCount} events in ${METRICS_WINDOW_MS / 1000}s (${rate.toFixed(1)}/s) — sample_rate: ${process.env.SAMPLE_RATE || '1 (all)'}`);
+      console.log(
+        `[Ingest] Throughput: ${_metricsCount} events in ${METRICS_WINDOW_MS / 1000}s (${rate.toFixed(1)}/s) — sample_rate: ${process.env.SAMPLE_RATE || '1 (all)'}`
+      );
     }
     _metricsCount = 0;
     _metricsWindowStart = now;
@@ -810,7 +882,7 @@ function isDuplicateTrace(traceId) {
   const key = String(traceId || '');
   if (!key) return false;
   const now = Date.now();
-  if (_dedupStore.has(key) && (now - _dedupStore.get(key)) < DEDUP_WINDOW_MS) {
+  if (_dedupStore.has(key) && now - _dedupStore.get(key) < DEDUP_WINDOW_MS) {
     return true;
   }
   _dedupStore.set(key, now);
@@ -827,23 +899,36 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         error: 'Service Unavailable',
         reason: 'Both database and cache are unreachable — pipeline degraded',
         db_healthy: false,
-        redis: false
+        redis: false,
       });
     }
 
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
-    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, thought_summary, reasoning } = req.body || {};
-    const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
+    const {
+      trace_id,
+      model,
+      tokens_in,
+      tokens_out,
+      cost,
+      status,
+      provider,
+      project_name,
+      thought_summary,
+      reasoning,
+    } = req.body || {};
+    const effectiveStatus = agentId ? status || 'authenticated_bypass' : status || 'OK';
 
     // Firewall: drop low-value / heartbeat events before any persistence.
-    if (isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus })) {
+    if (
+      isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus })
+    ) {
       return res.status(200).json({
         success: true,
         id: null,
         agent: agentId || undefined,
         bypass: !!agentId,
         recalled_context: [],
-        message: 'Event filtered at ingest firewall (low-value/heartbeat) — not persisted'
+        message: 'Event filtered at ingest firewall (low-value/heartbeat) — not persisted',
       });
     }
 
@@ -856,7 +941,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         agent: undefined,
         bypass: false,
         recalled_context: [],
-        message: 'Event sampled (not persisted per SAMPLE_RATE configuration)'
+        message: 'Event sampled (not persisted per SAMPLE_RATE configuration)',
       });
     }
 
@@ -867,7 +952,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         agent: undefined,
         bypass: false,
         recalled_context: [],
-        message: 'Duplicate trace_id within dedup window — skipped'
+        message: 'Duplicate trace_id within dedup window — skipped',
       });
     }
 
@@ -878,11 +963,14 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
           .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
           .join('; ');
         await quarantineViolation(req.body, reason);
-        return res.status(422).json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
+        return res
+          .status(422)
+          .json({ error: 'Firewall: invalid telemetry contract', issues: parsed.error.issues });
       }
     }
 
-    const isHeartbeatPing = Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
+    const isHeartbeatPing =
+      Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
     const isHighValueModel = HIGH_VALUE_MODELS.has(model);
     const shouldSave = !isHeartbeatPing && (effectiveStatus !== 'OK' || isHighValueModel);
 
@@ -893,15 +981,26 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         agent: agentId || undefined,
         bypass: !!agentId,
         recalled_context: [],
-        message: `Event filtered at budget firewall (low-value heartbeat) — not persisted`
+        message: `Event filtered at budget firewall (low-value heartbeat) — not persisted`,
       });
     }
 
-    const effectiveThought = agentId ? (thought_summary || '') : truncatePayload(thought_summary || '', MAX_REASONING_LENGTH);
-    const effectiveReasoning = agentId ? (reasoning || '') : truncatePayload(reasoning || '', MAX_REASONING_LENGTH);
+    const effectiveThought = agentId
+      ? thought_summary || ''
+      : truncatePayload(thought_summary || '', MAX_REASONING_LENGTH);
+    const effectiveReasoning = agentId
+      ? reasoning || ''
+      : truncatePayload(reasoning || '', MAX_REASONING_LENGTH);
 
     const shouldPersist = await triageWithGemini({
-      trace_id, model, tokens_in, tokens_out, cost, status: effectiveStatus, provider, project_name
+      trace_id,
+      model,
+      tokens_in,
+      tokens_out,
+      cost,
+      status: effectiveStatus,
+      provider,
+      project_name,
     });
 
     if (!shouldPersist) {
@@ -911,12 +1010,13 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         agent: agentId || undefined,
         bypass: !!agentId,
         recalled_context: [],
-        message: 'Event filtered by Gemini triage (low-value)'
+        message: 'Event filtered by Gemini triage (low-value)',
       });
     }
 
     const recall = await recallMemories(
-      [effectiveThought, effectiveReasoning, model].filter(Boolean).join(' '), 3
+      [effectiveThought, effectiveReasoning, model].filter(Boolean).join(' '),
+      3
     ).catch((e) => {
       console.error('[Memory] Recall failed, continuing without context:', e.message);
       return [];
@@ -939,7 +1039,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         Number(cost) || 0,
         String(effectiveStatus),
         String(provider || 'unknown'),
-        String(project_name || 'kilo-fuel-gauge')
+        String(project_name || 'kilo-fuel-gauge'),
       ]
     );
 
@@ -955,7 +1055,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
         reasoning: effectiveReasoning,
         model: model || 'unknown',
         vector,
-        agentId
+        agentId,
       }).catch((e) => console.error('[Memory] Vector store failed (observability):', e.message));
     }
 
@@ -971,7 +1071,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       recalled_context: recall,
       message: agentId
         ? 'Telemetry trace ingested via authenticated agent fast-path'
-        : 'Telemetry trace ingested successfully'
+        : 'Telemetry trace ingested successfully',
     };
 
     // Real egressed signal — built unconditionally so the SSE broadcast
@@ -986,11 +1086,12 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       status: effectiveStatus,
       provider: provider || 'unknown',
       project_name: project_name || 'kilo-fuel-gauge',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     if (redis) {
-      redis.lpush('kudbee:telemetry_feed', JSON.stringify(feedEntry))
+      redis
+        .lpush('kudbee:telemetry_feed', JSON.stringify(feedEntry))
         .then(() => redis.ltrim('kudbee:telemetry_feed', 0, 9999))
         .catch(async (e) => {
           console.error('[Redis] Telemetry feed push failed:', e.message);
@@ -999,7 +1100,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
           fallbackQueue.enqueue({
             queue: 'kudbee:telemetry_feed',
             data: feedEntry,
-            source: 'ingestion-telemetry-feed'
+            source: 'ingestion-telemetry-feed',
           });
         });
     } else {
@@ -1008,7 +1109,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       fallbackQueue.enqueue({
         queue: 'kudbee:telemetry_feed',
         data: feedEntry,
-        source: 'ingestion-telemetry-feed'
+        source: 'ingestion-telemetry-feed',
       });
     }
 
@@ -1023,7 +1124,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       status: feedEntry.status,
       latency_ms: 0,
       agent: agentId || null,
-      ts: feedEntry.timestamp
+      ts: feedEntry.timestamp,
     });
 
     publishEvent('memory.ingested', {
@@ -1032,7 +1133,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       category: effectiveStatus === 'OK' ? 'FACT' : 'OBSERVATION',
       importance: isHighValueModel ? 0.9 : 0.5,
       content: (effectiveThought || effectiveReasoning || feedEntry.trace_id).slice(0, 80),
-      ts: feedEntry.timestamp
+      ts: feedEntry.timestamp,
     });
 
     return res.status(201).json(responsePayload);
@@ -1055,7 +1156,9 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
 
     const dbHealthy = isDbHealthy();
     if (!dbHealthy && !redis) {
-      return res.status(503).json({ error: 'Service Unavailable', reason: 'DB and cache unreachable' });
+      return res
+        .status(503)
+        .json({ error: 'Service Unavailable', reason: 'DB and cache unreachable' });
     }
 
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
@@ -1065,10 +1168,13 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
     let deduped = 0;
 
     for (const event of events) {
-      const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = event || {};
+      const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } =
+        event || {};
       recordThroughput();
 
-      if (isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: status || 'OK' })) {
+      if (
+        isLowValueEvent({ trace_id, model, tokens_in, tokens_out, cost, status: status || 'OK' })
+      ) {
         filtered++;
         continue;
       }
@@ -1081,16 +1187,28 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
         continue;
       }
 
-      const effectiveStatus = agentId ? (status || 'authenticated_bypass') : (status || 'OK');
-      const isHeartbeatPing = Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
+      const effectiveStatus = agentId ? status || 'authenticated_bypass' : status || 'OK';
+      const isHeartbeatPing =
+        Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
       const isHighValue = HIGH_VALUE_MODELS.has(model);
       if (!isHeartbeatPing || isHighValue) {
         await runInsert(
           `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)
            ON CONFLICT (trace_id) DO UPDATE SET tokens_in = EXCLUDED.tokens_in, tokens_out = EXCLUDED.tokens_out, cost = EXCLUDED.cost, status = EXCLUDED.status, timestamp = NOW()`,
-          [String(trace_id), String(model || 'unknown'), Number(tokens_in) || 0, Number(tokens_out) || 0, Number(cost) || 0, String(effectiveStatus), String(provider || 'unknown'), String(project_name || 'kilo-fuel-gauge')]
-        ).catch(() => { filtered++; });
+          [
+            String(trace_id),
+            String(model || 'unknown'),
+            Number(tokens_in) || 0,
+            Number(tokens_out) || 0,
+            Number(cost) || 0,
+            String(effectiveStatus),
+            String(provider || 'unknown'),
+            String(project_name || 'kilo-fuel-gauge'),
+          ]
+        ).catch(() => {
+          filtered++;
+        });
         persisted++;
       } else {
         filtered++;
@@ -1104,7 +1222,7 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
       filtered,
       sampled,
       deduped,
-      message: `Batch processed: ${persisted} persisted, ${filtered} filtered, ${sampled} sampled, ${deduped} deduped`
+      message: `Batch processed: ${persisted} persisted, ${filtered} filtered, ${sampled} sampled, ${deduped} deduped`,
     });
   } catch (err) {
     console.error('[Ingest:Batch] Error:', err.message);
@@ -1123,7 +1241,7 @@ app.post('/api/agents/verify', express.json(), (req, res) => {
     if (!agentId || !publicKey || !challenge || !signature) {
       return res.status(400).json({
         verified: false,
-        error: 'Missing required fields: agentId, publicKey, challenge, signature'
+        error: 'Missing required fields: agentId, publicKey, challenge, signature',
       });
     }
 
@@ -1131,14 +1249,14 @@ app.post('/api/agents/verify', express.json(), (req, res) => {
     if (!registryKey) {
       return res.status(401).json({
         verified: false,
-        error: `Agent '${agentId}' is not registered`
+        error: `Agent '${agentId}' is not registered`,
       });
     }
 
     if (registryKey !== publicKey) {
       return res.status(401).json({
         verified: false,
-        error: 'Public key does not match registered key for this agent'
+        error: 'Public key does not match registered key for this agent',
       });
     }
 
@@ -1146,14 +1264,14 @@ app.post('/api/agents/verify', express.json(), (req, res) => {
     if (!isValid) {
       return res.status(401).json({
         verified: false,
-        error: 'Invalid signature for challenge'
+        error: 'Invalid signature for challenge',
       });
     }
 
     return res.status(200).json({
       verified: true,
       agentId,
-      serverTime: new Date().toISOString()
+      serverTime: new Date().toISOString(),
     });
   } catch (err) {
     console.error('[AgentVerify] Error:', err.message);
@@ -1173,7 +1291,7 @@ agentsRouter.post('/context', (req, res) => {
     success: true,
     skills: Array.isArray(req.agentSkills) ? req.agentSkills.map((s) => s.id) : [],
     skill_count: Array.isArray(req.agentSkills) ? req.agentSkills.length : 0,
-    system_prompt: req.agentContext || ''
+    system_prompt: req.agentContext || '',
   });
 });
 agentsRouter.get('/context', async (req, res) => {
@@ -1196,10 +1314,21 @@ agentsRouter.get('/context', async (req, res) => {
     } catch (forgeErr) {
       console.warn('[AgentContext] GET Token Forge degraded (non-blocking):', forgeErr?.message);
     }
-    res.json({ success: true, skills: skills.map((s) => s.id), skill_count: skills.length, system_prompt: ctx });
+    res.json({
+      success: true,
+      skills: skills.map((s) => s.id),
+      skill_count: skills.length,
+      system_prompt: ctx,
+    });
   } catch (err) {
     console.warn('[AgentContext] GET factory degraded:', err?.message);
-    res.json({ success: true, skills: [], skill_count: 0, system_prompt: BASE_IDENTITY, degraded: true });
+    res.json({
+      success: true,
+      skills: [],
+      skill_count: 0,
+      system_prompt: BASE_IDENTITY,
+      degraded: true,
+    });
   }
 });
 app.use('/api/agents', agentsRouter);
@@ -1216,10 +1345,7 @@ app.use('/api/agents', agentsRouter);
 app.post('/api/agents/evaluate', async (req, res) => {
   try {
     const routeResult = await routeAgentPayload(req.body || {}, { proposeAction });
-    const status =
-      routeResult.decision === 'EXECUTE'
-        ? 'EXECUTING'
-        : 'PENDING_APPROVAL';
+    const status = routeResult.decision === 'EXECUTE' ? 'EXECUTING' : 'PENDING_APPROVAL';
     publishEvent('uncertainty_gate', {
       decision: routeResult.decision,
       intercepted: routeResult.intercepted,
@@ -1228,7 +1354,7 @@ app.post('/api/agents/evaluate', async (req, res) => {
       governance_action_id: routeResult.governance_action_id,
       reason: routeResult.reason,
       tag: routeResult.intercepted ? HIGH_UNCERTAINTY_TAG : null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     return res.status(routeResult.intercepted ? 202 : 200).json({
       success: true,
@@ -1241,10 +1367,13 @@ app.post('/api/agents/evaluate', async (req, res) => {
       degraded: routeResult.evaluation.degraded,
       reason: routeResult.reason,
       governance_action_id: routeResult.governance_action_id,
-      tag: routeResult.intercepted ? HIGH_UNCERTAINTY_TAG : null
+      tag: routeResult.intercepted ? HIGH_UNCERTAINTY_TAG : null,
     });
   } catch (err) {
-    console.error('[UncertaintyGate] Evaluate error:', err instanceof Error ? err.message : String(err));
+    console.error(
+      '[UncertaintyGate] Evaluate error:',
+      err instanceof Error ? err.message : String(err)
+    );
     return res.status(500).json({ error: 'Uncertainty gate evaluation failed' });
   }
 });
@@ -1260,7 +1389,7 @@ app.get('/api/agents/evaluate', (req, res) => {
       uncertainty_flag: evaluation.uncertainty_flag,
       below_threshold: evaluation.below_threshold,
       degraded: evaluation.degraded,
-      payload: evaluation.payload
+      payload: evaluation.payload,
     });
   } catch (err) {
     console.error('[UncertaintyGate] GET error:', err instanceof Error ? err.message : String(err));
@@ -1277,7 +1406,9 @@ app.post('/api/memory/remember', async (req, res) => {
   try {
     const { data } = req.body || {};
     if (typeof data !== 'string' || !data.trim()) {
-      return res.status(422).json({ success: false, error: 'Data payload must be a non-empty string' });
+      return res
+        .status(422)
+        .json({ success: false, error: 'Data payload must be a non-empty string' });
     }
 
     const result = await runInsert(
@@ -1291,13 +1422,13 @@ app.post('/api/memory/remember', async (req, res) => {
       category: 'FACT',
       importance: 0.7,
       content: data.trim().slice(0, 80),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return res.status(201).json({
       success: true,
       id: result.id,
-      message: 'Memory persisted successfully'
+      message: 'Memory persisted successfully',
     });
   } catch (err) {
     console.error('[Memory] Remember endpoint error:', err?.message);
@@ -1328,7 +1459,7 @@ app.get('/api/memory/recall', async (req, res) => {
         category: memories[0].model || 'FACT',
         importance: 0.8,
         query,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
     return res.json({ query, count: memories.length, memories });
@@ -1347,9 +1478,16 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
     }
     const text = query.trim();
     let embedding;
-    try { const { embedText } = await import('../memory/embedText.ts'); embedding = await embedText(text); } catch { const { embedTextLocal } = await import('../memory/embedText.ts'); embedding = embedTextLocal(text); }
+    try {
+      const { embedText } = await import('../memory/embedText.ts');
+      embedding = await embedText(text);
+    } catch {
+      const { embedTextLocal } = await import('../memory/embedText.ts');
+      embedding = embedTextLocal(text);
+    }
     const start = Date.now();
-    let snapshot = null, similarity = 0;
+    let snapshot = null,
+      similarity = 0;
     if (pool) {
       try {
         const rows = await withTimeout(
@@ -1365,10 +1503,14 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
           snapshot = { text: r.text, metadata: r.metadata || {}, similarity: Number(r.similarity) };
           similarity = Number(r.similarity);
         }
-      } catch { /* degrade */ }
+      } catch {
+        /* degrade */
+      }
     }
     const latencyMs = Date.now() - start;
-    return res.status(200).json({ found: snapshot !== null, snapshot, similarity, latencyMs, query: text });
+    return res
+      .status(200)
+      .json({ found: snapshot !== null, snapshot, similarity, latencyMs, query: text });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -1389,7 +1531,7 @@ app.get('/api/telemetry/poll', async (req, res) => {
       fallbackActive: queue.isActive,
       oldestItemAgeMs: stats.oldestItemAgeMs,
       status: stats.size > 0 ? 'DEGRADED' : 'HEALTHY',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -1398,11 +1540,18 @@ app.get('/api/telemetry/poll', async (req, res) => {
 
 // --- Phase 48: Anomaly Stream — low-confidence Groq-synthesized tokens ---
 app.get('/api/think/anomalies', async (req, res) => {
-  if (!authenticateAgentPass(req.header('X-Agent-Pass'))) return res.json({ count: 0, anomalies: [] });
+  if (!authenticateAgentPass(req.header('X-Agent-Pass')))
+    return res.json({ count: 0, anomalies: [] });
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
     const members = redis ? (await redis.smembers('kudbee:anomalies')).slice(0, limit) : [];
-    const anomalies = members.map((m) => { try { return JSON.parse(m); } catch { return { raw: m }; } });
+    const anomalies = members.map((m) => {
+      try {
+        return JSON.parse(m);
+      } catch {
+        return { raw: m };
+      }
+    });
     return res.status(200).json({ count: anomalies.length, anomalies });
   } catch {
     return res.status(200).json({ count: 0, anomalies: [] });
@@ -1413,17 +1562,41 @@ app.get('/api/think/anomalies', async (req, res) => {
 app.get('/api/governance/probation/docket', async (req, res) => {
   try {
     const items = redis ? await redis.zrange('kudbee:probation:pending', 0, -1) : [];
-    const docket = items.map((i) => { try { return JSON.parse(i); } catch { return { raw: i }; } });
+    const docket = items.map((i) => {
+      try {
+        return JSON.parse(i);
+      } catch {
+        return { raw: i };
+      }
+    });
     return res.status(200).json({ docket, count: docket.length });
-  } catch { return res.status(200).json({ docket: [], count: 0 }); }
+  } catch {
+    return res.status(200).json({ docket: [], count: 0 });
+  }
 });
 
 app.get('/api/interceptor/threat-heatmap', async (req, res) => {
   try {
-    const rows = await (pool ? withTimeout(pool.query('SELECT model, COUNT(*)::int AS threat_count FROM telemetry_traces WHERE status != $1 GROUP BY model ORDER BY threat_count DESC LIMIT 10', ['OK']), DB_TIMEOUT_MS, 'threat-heatmap query') : { rows: [] });
-    const threats = (rows.rows || []).map((r) => ({ model: r.model, threatCount: r.threat_count || 0, totalTraces: 0, category: 'status_flagged' }));
+    const rows = await (pool
+      ? withTimeout(
+          pool.query(
+            'SELECT model, COUNT(*)::int AS threat_count FROM telemetry_traces WHERE status != $1 GROUP BY model ORDER BY threat_count DESC LIMIT 10',
+            ['OK']
+          ),
+          DB_TIMEOUT_MS,
+          'threat-heatmap query'
+        )
+      : { rows: [] });
+    const threats = (rows.rows || []).map((r) => ({
+      model: r.model,
+      threatCount: r.threat_count || 0,
+      totalTraces: 0,
+      category: 'status_flagged',
+    }));
     return res.status(200).json({ threats, pressure: 0 });
-  } catch { return res.status(200).json({ threats: [], pressure: 0 }); }
+  } catch {
+    return res.status(200).json({ threats: [], pressure: 0 });
+  }
 });
 
 // --- DLQ Resurrection: Dead Letter Queue endpoints ---
@@ -1434,7 +1607,14 @@ app.get('/api/governance/failed', async (req, res) => {
     let items = await listFailed();
     items = items.slice(0, limit);
     if (items.length === 0 && pool) {
-      const dbRes = await withTimeout(pool.query('SELECT * FROM think_tokens WHERE status = $1 ORDER BY created_at DESC LIMIT $2', ['RECYCLED', limit]), DB_TIMEOUT_MS, 'DLQ think_tokens query').catch(() => ({ rows: [] }));
+      const dbRes = await withTimeout(
+        pool.query(
+          'SELECT * FROM think_tokens WHERE status = $1 ORDER BY created_at DESC LIMIT $2',
+          ['RECYCLED', limit]
+        ),
+        DB_TIMEOUT_MS,
+        'DLQ think_tokens query'
+      ).catch(() => ({ rows: [] }));
       items = dbRes.rows || [];
     }
     return res.status(200).json({ items, count: items.length });
@@ -1487,7 +1667,13 @@ app.get('/api/memory/think-tokens', async (req, res) => {
     return res.json({ ok: true, count: result.results.length, results: result.results, prompt });
   } catch (err) {
     console.error('[TokenForge] think-tokens endpoint error:', err.message);
-    return res.json({ ok: false, count: 0, results: [], error: 'Failed to retrieve think tokens', prompt: String(req.query.prompt || '') });
+    return res.json({
+      ok: false,
+      count: 0,
+      results: [],
+      error: 'Failed to retrieve think tokens',
+      prompt: String(req.query.prompt || ''),
+    });
   }
 });
 
@@ -1523,7 +1709,7 @@ app.get('/api/think/archive', async (req, res) => {
         phase: req.query.phase ? String(req.query.phase) : undefined,
         tokens_in: Number(req.query.tokens_in) || 0,
         tokens_out: Number(req.query.tokens_out) || 0,
-        model: req.query.model ? String(req.query.model) : 'reasoning'
+        model: req.query.model ? String(req.query.model) : 'reasoning',
       });
       return res.status(201).json({ ok: result.ok, archived: result.ok, task: result.task });
     }
@@ -1570,11 +1756,7 @@ app.get('/api/think/trajectories', async (req, res) => {
           ? Math.max(0, Math.min(1, Number(taskContext.confidence_score)))
           : undefined;
       const statusConfidence =
-        row.status === 'VERIFIED'
-          ? 0.95
-          : row.status === 'RECYCLED'
-            ? 0.25
-            : 0.55;
+        row.status === 'VERIFIED' ? 0.95 : row.status === 'RECYCLED' ? 0.25 : 0.55;
       const confidence_score = explicitConf ?? statusConfidence;
       return {
         id: String(row.id),
@@ -1589,7 +1771,7 @@ app.get('/api/think/trajectories', async (req, res) => {
         created_at: row.created_at,
         kd: Number(row.kd ?? 0),
         efficacy: Number(row.efficacy ?? 0),
-        locked_by: row.locked_by ?? null
+        locked_by: row.locked_by ?? null,
       };
     });
     return res.json({ count: trajectories.length, trajectories });
@@ -1601,21 +1783,25 @@ app.get('/api/think/trajectories', async (req, res) => {
 
 app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
   const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
-  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to modify token status' });
+  if (!agentId)
+    return res
+      .status(401)
+      .json({ error: 'Unauthorized — agent pass required to modify token status' });
   try {
     const { hash } = req.params;
     const { status, reviewerNotes, tokenId } = req.body || {};
     const allowedStatuses = ['VERIFIED', 'RECYCLED'];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ error: `Invalid status: ${status}. Allowed: ${allowedStatuses.join(', ')}` });
+      return res
+        .status(400)
+        .json({ error: `Invalid status: ${status}. Allowed: ${allowedStatuses.join(', ')}` });
     }
 
     let matched = null;
     if (tokenId) {
-      const rows = await runQuery(
-        `SELECT id, original_trace_id FROM think_tokens WHERE id = $1`,
-        [String(tokenId)]
-      );
+      const rows = await runQuery(`SELECT id, original_trace_id FROM think_tokens WHERE id = $1`, [
+        String(tokenId),
+      ]);
       const found = rows.find((r) => String(r.id) === String(tokenId));
       if (found) matched = found;
     }
@@ -1645,7 +1831,9 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
       if (exactMatches.length === 1) {
         matched = exactMatches[0];
       } else if (exactMatches.length > 1) {
-        return res.status(409).json({ error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.' });
+        return res.status(409).json({
+          error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.',
+        });
       }
     }
 
@@ -1654,21 +1842,23 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
     }
 
     const finalTokenId = String(matched.id);
-    await runQuery(
-      `UPDATE think_tokens SET status = $1 WHERE id = $2`,
-      [status, finalTokenId]
-    );
+    await runQuery(`UPDATE think_tokens SET status = $1 WHERE id = $2`, [status, finalTokenId]);
 
     const eventData = {
       id: finalTokenId,
       hash,
       status,
       reviewerNotes: reviewerNotes || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     publishEvent('think_token_status_updated', eventData);
 
-    return res.json({ success: true, tokenId: finalTokenId, status, reviewerNotes: reviewerNotes || null });
+    return res.json({
+      success: true,
+      tokenId: finalTokenId,
+      status,
+      reviewerNotes: reviewerNotes || null,
+    });
   } catch (err) {
     console.error('[Think] Status update error:', err.message);
     return res.status(500).json({ error: 'Failed to update think token status' });
@@ -1678,10 +1868,9 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
 app.get('/api/telemetry/logs', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
-    const rows = await runQuery(
-      `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
-      [limit]
-    );
+    const rows = await runQuery(`SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`, [
+      limit,
+    ]);
     return res.json(rows);
   } catch (err) {
     console.error('[Logs] Error:', err.message);
@@ -1691,13 +1880,25 @@ app.get('/api/telemetry/logs', async (req, res) => {
 
 app.get('/api/dashboard/summary', async (req, res) => {
   try {
-    const totalCostRow = await runQuery(`SELECT COALESCE(SUM(cost), 0) as total FROM telemetry_traces`);
-    const totalTokensRow = await runQuery(`SELECT COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0) as total FROM telemetry_traces`);
-    const totalInputRow = await runQuery(`SELECT COALESCE(SUM(tokens_in), 0) as total FROM telemetry_traces`);
-    const totalOutputRow = await runQuery(`SELECT COALESCE(SUM(tokens_out), 0) as total FROM telemetry_traces`);
-    const activeModelsRow = await runQuery(`SELECT COUNT(DISTINCT model) as count FROM telemetry_traces`);
+    const totalCostRow = await runQuery(
+      `SELECT COALESCE(SUM(cost), 0) as total FROM telemetry_traces`
+    );
+    const totalTokensRow = await runQuery(
+      `SELECT COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0) as total FROM telemetry_traces`
+    );
+    const totalInputRow = await runQuery(
+      `SELECT COALESCE(SUM(tokens_in), 0) as total FROM telemetry_traces`
+    );
+    const totalOutputRow = await runQuery(
+      `SELECT COALESCE(SUM(tokens_out), 0) as total FROM telemetry_traces`
+    );
+    const activeModelsRow = await runQuery(
+      `SELECT COUNT(DISTINCT model) as count FROM telemetry_traces`
+    );
     const totalRequestsRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces`);
-    const errorCountRow = await runQuery(`SELECT COUNT(*) as count FROM telemetry_traces WHERE status != 'OK'`);
+    const errorCountRow = await runQuery(
+      `SELECT COUNT(*) as count FROM telemetry_traces WHERE status != 'OK'`
+    );
 
     const now = Date.now();
     const last24h = new Date(now - 24 * 3600 * 1000).toISOString();
@@ -1733,7 +1934,8 @@ app.get('/api/dashboard/summary', async (req, res) => {
 
     const totalRequests = Number(totalRequestsRow[0]?.count || 0);
     const errorCount = Number(errorCountRow[0]?.count || 0);
-    const errorRate = totalRequests > 0 ? Number(((errorCount / totalRequests) * 100).toFixed(2)) : 0;
+    const errorRate =
+      totalRequests > 0 ? Number(((errorCount / totalRequests) * 100).toFixed(2)) : 0;
     const sinkTokenBalance = Number(process.env.SINK_TOKEN_BALANCE || 1000);
 
     let postgresSizeBytes = null;
@@ -1771,7 +1973,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
       weekly_input_tokens: Number(weeklyInputRow[0]?.total || 0),
       weekly_output_tokens: Number(weeklyOutputRow[0]?.total || 0),
       postgres_size_bytes: postgresSizeBytes,
-      redis_size_bytes: redisSizeBytes
+      redis_size_bytes: redisSizeBytes,
     });
   } catch (err) {
     console.error('[Summary] Error:', err.message);
@@ -1782,8 +1984,12 @@ app.get('/api/dashboard/summary', async (req, res) => {
 // --- Phase 28: Live OS Telemetry Stats ---------------------------------------
 app.get('/api/telemetry/stats', async (_req, res) => {
   try {
-    const vectorRows = await runQuery(`SELECT COUNT(*) as count FROM vector_memory`).catch(() => [{ count: 0 }]);
-    const tokenRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [{ count: 0 }]);
+    const vectorRows = await runQuery(`SELECT COUNT(*) as count FROM vector_memory`).catch(() => [
+      { count: 0 },
+    ]);
+    const tokenRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [
+      { count: 0 },
+    ]);
 
     let crucible = { cycleCount: 0, maxCycles: 5, status: 'READY' };
     if (process.env.CRUCIBLE_ENABLED === 'true') {
@@ -1793,7 +1999,7 @@ app.get('/api/telemetry/stats', async (_req, res) => {
         crucible = {
           cycleCount: crucibleModule.cycleCount,
           maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
-          status: remaining > 0 ? 'ACTIVE' : 'EXHAUSTED'
+          status: remaining > 0 ? 'ACTIVE' : 'EXHAUSTED',
         };
       } catch {
         crucible = { cycleCount: 0, maxCycles: 5, status: 'READY' };
@@ -1805,14 +2011,18 @@ app.get('/api/telemetry/stats', async (_req, res) => {
     try {
       const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
       if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       if (redis) {
         const info = await redis.info('memory');
         const match = info.match(/used_memory:(\d+)/);
         if (match && match[1]) redisSizeBytes = Number(match[1]);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     return res.json({
       vector_memory_count: Number(vectorRows[0]?.count || 0),
@@ -1820,7 +2030,7 @@ app.get('/api/telemetry/stats', async (_req, res) => {
       crucible,
       postgres_size_bytes: postgresSizeBytes,
       redis_size_bytes: redisSizeBytes,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error('[Stats] Error:', err.message);
@@ -1842,41 +2052,75 @@ setInterval(async () => {
     try {
       const pgResult = await runQuery('SELECT pg_database_size(current_database()) as db_size');
       if (pgResult[0]?.db_size) postgresSizeBytes = Number(pgResult[0].db_size);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       if (redis) {
         const info = await redis.info('memory');
         const match = info.match(/used_memory:(\d+)/);
         if (match && match[1]) redisSizeBytes = Number(match[1]);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
-      const vecRows = await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [{ count: 0 }]);
+      const vecRows = await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [
+        { count: 0 },
+      ]);
       vectorMemoryCount = Number(vecRows[0]?.count || 0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
-      const tokRows = await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [{ count: 0 }]);
+      const tokRows = await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [
+        { count: 0 },
+      ]);
       thinkTokensMinted = Number(tokRows[0]?.count || 0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     if (sseClients.size > 0) {
-      broadcast({ type: 'storage_metrics', data: { postgres_size_bytes: postgresSizeBytes, redis_size_bytes: redisSizeBytes, timestamp: new Date().toISOString() } });
-      broadcast({ type: 'os_telemetry', data: { vector_memory_count: vectorMemoryCount, think_tokens_minted: thinkTokensMinted, timestamp: new Date().toISOString() } });
+      broadcast({
+        type: 'storage_metrics',
+        data: {
+          postgres_size_bytes: postgresSizeBytes,
+          redis_size_bytes: redisSizeBytes,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      broadcast({
+        type: 'os_telemetry',
+        data: {
+          vector_memory_count: vectorMemoryCount,
+          think_tokens_minted: thinkTokensMinted,
+          timestamp: new Date().toISOString(),
+        },
+      });
     }
-  } catch { /* never crash the heartbeat */ }
+  } catch {
+    /* never crash the heartbeat */
+  }
 }, 10_000);
 
 // --- Phase 32: Live Think Metrics Aggregation ----------------------------------
 app.get('/api/think/metrics', async (_req, res) => {
   try {
-    const totalRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [{ count: 0 }]);
-    const verifiedRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'`).catch(() => [{ count: 0 }]);
-    const costRows = await runQuery(`SELECT SUM(token_cost) as total FROM think_tokens`).catch(() => [{ total: 0 }]);
+    const totalRows = await runQuery(`SELECT COUNT(*) as count FROM think_tokens`).catch(() => [
+      { count: 0 },
+    ]);
+    const verifiedRows = await runQuery(
+      `SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'`
+    ).catch(() => [{ count: 0 }]);
+    const costRows = await runQuery(`SELECT SUM(token_cost) as total FROM think_tokens`).catch(
+      () => [{ total: 0 }]
+    );
 
     res.json({
       total_think_tokens: Number(totalRows[0]?.count || 0),
       verified_trajectories: Number(verifiedRows[0]?.count || 0),
-      cumulative_token_cost: Number(costRows[0]?.total || 0)
+      cumulative_token_cost: Number(costRows[0]?.total || 0),
     });
   } catch (err) {
     console.error('[Metrics] Error:', err.message);
@@ -1905,7 +2149,7 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
           String(item.status || 'OK'),
           String(item.provider || 'unknown'),
           String(item.project_name || item.project || 'offline-csv-import'),
-          String(item.timestamp || new Date().toISOString())
+          String(item.timestamp || new Date().toISOString()),
         ]
       );
       inserted.push({ id: result.id, ...item });
@@ -1921,7 +2165,10 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
 app.post('/api/telemetry/purge', async (req, res) => {
   try {
     await runQuery(`DELETE FROM telemetry_traces`);
-    return res.json({ status: 'success', message: 'Telemetry logs have been purged and database reset.' });
+    return res.json({
+      status: 'success',
+      message: 'Telemetry logs have been purged and database reset.',
+    });
   } catch (err) {
     console.error('[Purge] Error:', err.message);
     return res.status(500).json({ error: 'Failed to purge database' });
@@ -1930,14 +2177,12 @@ app.post('/api/telemetry/purge', async (req, res) => {
 
 app.get('/api/interceptor/triage', async (req, res) => {
   try {
-    const rows = await runQuery(
-      `SELECT * FROM security_violations ORDER BY timestamp DESC`
-    );
+    const rows = await runQuery(`SELECT * FROM security_violations ORDER BY timestamp DESC`);
     const violations = rows.map((row) => ({
       id: row.id,
       payload: safeParseJson(row.payload),
       violation_reason: row.violation_reason,
-      timestamp: row.timestamp
+      timestamp: row.timestamp,
     }));
     return res.json(violations);
   } catch (err) {
@@ -1979,10 +2224,13 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
         .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
         .join('; ');
       await quarantineViolation(payload, reason);
-      return res.status(422).json({ error: 'Firewall: re-validation failed', issues: parsed.error.issues });
+      return res
+        .status(422)
+        .json({ error: 'Firewall: re-validation failed', issues: parsed.error.issues });
     }
 
-    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } = parsed.data;
+    const { trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name } =
+      parsed.data;
     const result = await runInsert(
       `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $3, $4)`,
@@ -1994,7 +2242,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
         Number(cost) || 0,
         String(status || 'OK'),
         String(provider || 'unknown'),
-        String(project_name || 'kilo-fuel-gauge')
+        String(project_name || 'kilo-fuel-gauge'),
       ]
     );
     await runQuery(`DELETE FROM security_violations WHERE id = $1`, [id]);
@@ -2002,7 +2250,7 @@ app.post('/api/interceptor/revalidate/:id', async (req, res) => {
     return res.status(201).json({
       success: true,
       id: result.id,
-      message: 'Re-validation passed; telemetry trace ingested and violation cleared'
+      message: 'Re-validation passed; telemetry trace ingested and violation cleared',
     });
   } catch (err) {
     console.error('[Interceptor] Revalidate Error:', err.message);
@@ -2019,7 +2267,7 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
       signature,
       signed_payload,
       value_score = 0,
-      note
+      note,
     } = req.body || {};
 
     const traceId = String(trace_id || '');
@@ -2030,7 +2278,7 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
 
     if (!traceId || !agentId || !providedSignature || !providedPayload) {
       return res.status(400).json({
-        error: 'Missing required fields: trace_id, agent_id, signature, signed_payload'
+        error: 'Missing required fields: trace_id, agent_id, signature, signed_payload',
       });
     }
 
@@ -2042,7 +2290,9 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
     }
 
     const verifiedAgent = providedPublicKey
-      ? (verifySignature(providedPublicKey, providedPayload, providedSignature) ? agentId : null)
+      ? verifySignature(providedPublicKey, providedPayload, providedSignature)
+        ? agentId
+        : null
       : verifyAgentSignature(agentId, providedPayload, providedSignature);
     if (!verifiedAgent) {
       return res.status(403).json({ error: 'Signature verification failed for provided trace' });
@@ -2065,7 +2315,7 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
           signed_payload: providedPayload,
           value_score: score,
           note: note ? String(note) : null,
-          timestamp: new Date(govTimestamp).toISOString()
+          timestamp: new Date(govTimestamp).toISOString(),
         };
         await redis.zadd('kudbee:governance_actions', govTimestamp, JSON.stringify(govRecord));
         await redis.sadd('kudbee:verified_traces', traceId);
@@ -2086,12 +2336,12 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
     });
 
     if (score > 0) {
-      await runQuery(
-        `UPDATE telemetry_traces SET value_score = $1 WHERE trace_id = $2`,
-        [score, traceId]
-    ).catch((e) => {
-      console.warn('[Governance] Failed to insert gov action, continuing:', e.message);
-    });
+      await runQuery(`UPDATE telemetry_traces SET value_score = $1 WHERE trace_id = $2`, [
+        score,
+        traceId,
+      ]).catch((e) => {
+        console.warn('[Governance] Failed to insert gov action, continuing:', e.message);
+      });
     }
 
     console.log(`[Governance] Agent ${agentId} VERIFIED trace ${traceId} (value_score=${score})`);
@@ -2106,11 +2356,13 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
       signature: providedSignature,
       signed_payload: providedPayload,
       value_score: score,
-      message: 'Trace verified and signed — governance action recorded on-chain ledger.'
+      message: 'Trace verified and signed — governance action recorded on-chain ledger.',
     });
   } catch (err) {
     console.error('[Governance] Verify error:', err?.message);
-    return res.status(500).json({ error: 'Failed to record governance action', details: err?.message });
+    return res
+      .status(500)
+      .json({ error: 'Failed to record governance action', details: err?.message });
   }
 });
 
@@ -2132,7 +2384,7 @@ app.get('/api/governance/feed', async (req, res) => {
             signed_payload: data.signed_payload,
             value_score: data.value_score,
             note: data.note,
-            timestamp: data.timestamp
+            timestamp: data.timestamp,
           };
         });
         return res.json(feed);
@@ -2155,7 +2407,7 @@ app.get('/api/governance/feed', async (req, res) => {
       signed_payload: row.signed_payload,
       value_score: row.value_score,
       note: row.note,
-      timestamp: row.timestamp
+      timestamp: row.timestamp,
     }));
     return res.json(feed);
   } catch (err) {
@@ -2200,7 +2452,7 @@ app.get('/api/governance/pending', async (_req, res) => {
           agent_id: p.agent_id ? String(p.agent_id) : undefined,
           task: p.action ? String(p.action) : undefined,
           reasoning: prompt || undefined,
-          created_at: p.created_at ? String(p.created_at) : undefined
+          created_at: p.created_at ? String(p.created_at) : undefined,
         };
       });
     return res.json(pending);
@@ -2216,7 +2468,9 @@ app.post('/api/governance/approve', async (req, res) => {
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const proven = await approveActionAndBroadcast(String(id));
     if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, id: proven.id, status: proven.status || 'approved', action: proven });
+    return res
+      .status(200)
+      .json({ success: true, id: proven.id, status: proven.status || 'approved', action: proven });
   } catch (err) {
     console.error('[Governance] Approve error:', err?.message);
     return res.status(500).json({ error: 'Failed to approve action' });
@@ -2229,7 +2483,9 @@ app.post('/api/governance/reject', async (req, res) => {
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const rejected = await rejectActionAndBroadcast(String(id));
     if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, id: rejected.id, status: 'rejected', action: rejected });
+    return res
+      .status(200)
+      .json({ success: true, id: rejected.id, status: 'rejected', action: rejected });
   } catch (err) {
     console.error('[Governance] Reject error:', err?.message);
     return res.status(500).json({ error: 'Failed to reject action' });
@@ -2250,7 +2506,9 @@ app.post('/api/governance/resolve', async (req, res) => {
     if (decision === 'APPROVE') {
       let proven = await approveActionAndBroadcast(String(id));
       if (!proven && /^\d+$/.test(String(id))) {
-        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [Number(id)]);
+        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
+          Number(id),
+        ]);
         if (rows.length > 0) {
           const violation = rows[0];
           const payload = safeParseJson(violation.payload);
@@ -2266,7 +2524,7 @@ app.post('/api/governance/resolve', async (req, res) => {
             signed_payload: JSON.stringify(payload),
             value_score: 50,
             note: `Approved triage #${id}`,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           };
           if (redis) {
             await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
@@ -2291,10 +2549,22 @@ app.post('/api/governance/resolve', async (req, res) => {
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
   const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
-  if (!agentId) return res.status(401).json({ error: 'Unauthorized — agent pass required to mint think tokens' });
+  if (!agentId)
+    return res
+      .status(401)
+      .json({ error: 'Unauthorized — agent pass required to mint think tokens' });
   try {
-    const { traceId, taskContext, failedState, correctionDelta, status,
-            kd, efficacy, tokenType, spatial_coordinates } = req.body || {};
+    const {
+      traceId,
+      taskContext,
+      failedState,
+      correctionDelta,
+      status,
+      kd,
+      efficacy,
+      tokenType,
+      spatial_coordinates,
+    } = req.body || {};
 
     if (!traceId || !correctionDelta) {
       return res.status(400).json({ error: 'Missing required fields: traceId, correctionDelta' });
@@ -2308,25 +2578,36 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
       taskContext: taskContext || {},
       failedState: failedState || {},
       correctionDelta: String(correctionDelta),
-      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status) ? status : 'PENDING_APPROVAL',
+      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status)
+        ? status
+        : 'PENDING_APPROVAL',
       kd: kdValue,
       efficacy: efficacyValue,
-      locked_by: null
+      locked_by: null,
     });
 
     if (!result.ok) {
       return res.status(500).json({ error: result.error });
     }
 
-    const hasGatingParams = typeof kd === 'number' || typeof efficacy === 'number'
-      || tokenType === 'CHALLENGE_TOKEN' || tokenType === 'ADMIN'
-      || req.headers['x-admin-bypass'] === 'true';
+    const hasGatingParams =
+      typeof kd === 'number' ||
+      typeof efficacy === 'number' ||
+      tokenType === 'CHALLENGE_TOKEN' ||
+      tokenType === 'ADMIN' ||
+      req.headers['x-admin-bypass'] === 'true';
 
-    if (hasGatingParams && (kdValue > 0 || efficacyValue === 0 || tokenType === 'ADMIN' || req.headers['x-admin-bypass'] === 'true')) {
+    if (
+      hasGatingParams &&
+      (kdValue > 0 ||
+        efficacyValue === 0 ||
+        tokenType === 'ADMIN' ||
+        req.headers['x-admin-bypass'] === 'true')
+    ) {
       const slot = {
         x: Array.isArray(spatial_coordinates) ? (spatial_coordinates[0] ?? 0) : 0,
         y: Array.isArray(spatial_coordinates) ? (spatial_coordinates[1] ?? 0) : 0,
-        z: Array.isArray(spatial_coordinates) ? (spatial_coordinates[2] ?? 0) : 0
+        z: Array.isArray(spatial_coordinates) ? (spatial_coordinates[2] ?? 0) : 0,
       };
 
       const admission = await receptorGate.evaluateAdmission({
@@ -2336,9 +2617,12 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
         kd: kdValue,
         efficacy: efficacyValue,
         slot,
-        tokenType: tokenType === 'CHALLENGE_TOKEN' ? 'CHALLENGE_TOKEN'
-          : tokenType === 'ADMIN' || req.headers['x-admin-bypass'] === 'true' ? 'ADMIN'
-          : 'ORDINARY'
+        tokenType:
+          tokenType === 'CHALLENGE_TOKEN'
+            ? 'CHALLENGE_TOKEN'
+            : tokenType === 'ADMIN' || req.headers['x-admin-bypass'] === 'true'
+              ? 'ADMIN'
+              : 'ORDINARY',
       });
 
       if (!admission.admitted) {
@@ -2346,7 +2630,7 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
           error: 'Receptor slot locked',
           reason: admission.reason,
           currentOccupant: admission.currentOccupant,
-          auditHash: admission.auditHash
+          auditHash: admission.auditHash,
         });
       }
 
@@ -2357,12 +2641,14 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
         receptor: {
           admitted: true,
           reason: admission.reason,
-          auditHash: admission.auditHash
-        }
+          auditHash: admission.auditHash,
+        },
       });
     }
 
-    return res.status(201).json({ success: true, tokenId: result.id, embedding_dim: result.embedding.length });
+    return res
+      .status(201)
+      .json({ success: true, tokenId: result.id, embedding_dim: result.embedding.length });
   } catch (err) {
     console.error('[ThinkToken] Mint error:', err?.message);
     return res.status(500).json({ error: 'Failed to mint think token' });
@@ -2372,14 +2658,19 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
 // --- Phase 38: Groq LPU Inference Accelerator — Think Token Synthesis ---------
 app.post('/api/think/synthesize', async (req, res) => {
   try {
-    const { taskContext, correctionDelta, confidenceScore, temperature, maxTokens } = req.body || {};
+    const { taskContext, correctionDelta, confidenceScore, temperature, maxTokens } =
+      req.body || {};
 
     if (!groqConfigured) {
-      return res.status(503).json({ error: 'Groq inference unavailable — GROQ_API_KEY not configured' });
+      return res
+        .status(503)
+        .json({ error: 'Groq inference unavailable — GROQ_API_KEY not configured' });
     }
 
     if (!taskContext && !correctionDelta) {
-      return res.status(400).json({ error: 'At least one of taskContext or correctionDelta is required' });
+      return res
+        .status(400)
+        .json({ error: 'At least one of taskContext or correctionDelta is required' });
     }
 
     const result = await synthesizeThinkToken({
@@ -2387,7 +2678,7 @@ app.post('/api/think/synthesize', async (req, res) => {
       correctionDelta: String(correctionDelta || ''),
       confidenceScore: typeof confidenceScore === 'number' ? confidenceScore : undefined,
       temperature: typeof temperature === 'number' ? temperature : 0.1,
-      maxTokens: typeof maxTokens === 'number' ? maxTokens : 512
+      maxTokens: typeof maxTokens === 'number' ? maxTokens : 512,
     });
 
     if (!result.ok) {
@@ -2399,7 +2690,7 @@ app.post('/api/think/synthesize', async (req, res) => {
       reasoning: result.reasoning,
       tokensUsed: result.tokensUsed,
       latencyMs: result.latencyMs,
-      provider: 'groq-lpu'
+      provider: 'groq-lpu',
     });
   } catch (err) {
     console.error('[Groq] Synthesis error:', err?.message);
@@ -2411,39 +2702,65 @@ app.post('/api/think/synthesize', async (req, res) => {
 app.post('/api/system/lifecycle', async (req, res) => {
   try {
     const { action } = req.body || {};
-    const health = { pg: false, redis: false, worker: false, receptor: false, sentinel: null, groq: groqConfigured || null };
-    let pgLatency = -1, redisLatency = -1;
+    const health = {
+      pg: false,
+      redis: false,
+      worker: false,
+      receptor: false,
+      sentinel: null,
+      groq: groqConfigured || null,
+    };
+    let pgLatency = -1,
+      redisLatency = -1;
 
     if (pool) {
-      try { const s = Date.now(); await withTimeout(pool.query('SELECT 1 AS health'), DB_TIMEOUT_MS, 'lifecycle pg check'); pgLatency = Date.now() - s; health.pg = true; } catch {}
+      try {
+        const s = Date.now();
+        await withTimeout(pool.query('SELECT 1 AS health'), DB_TIMEOUT_MS, 'lifecycle pg check');
+        pgLatency = Date.now() - s;
+        health.pg = true;
+      } catch {}
     }
     if (redis) {
-      try { const s = Date.now(); await redis.ping(); redisLatency = Date.now() - s; health.redis = true; } catch {}
+      try {
+        const s = Date.now();
+        await redis.ping();
+        redisLatency = Date.now() - s;
+        health.redis = true;
+      } catch {}
     }
 
     health.worker = typeof _running !== 'undefined' ? _running : null;
     health.receptor = typeof receptorGate !== 'undefined';
 
-    const allHealthy = Object.values(health).every(v => v === true || v === null);
-    const status = allHealthy ? 'HEALTHY' : pgLatency >= 0 && redisLatency >= 0 ? 'DEGRADED' : 'UNHEALTHY';
+    const allHealthy = Object.values(health).every((v) => v === true || v === null);
+    const status = allHealthy
+      ? 'HEALTHY'
+      : pgLatency >= 0 && redisLatency >= 0
+        ? 'DEGRADED'
+        : 'UNHEALTHY';
 
     if (action === 'restart-worker') {
       if (typeof _stopRequested !== 'undefined') _stopRequested = true;
       setTimeout(async () => {
-        try { const { startWorker } = await import('../agents/worker.ts'); void startWorker(); } catch {}
+        try {
+          const { startWorker } = await import('../agents/worker.ts');
+          void startWorker();
+        } catch {}
       }, 2000);
     }
 
     return res.status(200).json({
-      status, health,
+      status,
+      health,
       metrics: { pgLatencyMs: pgLatency, redisLatencyMs: redisLatency },
       services: {
         postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
         redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
-        groq: { status: groqConfigured ? 'configured' : 'disabled' }
+        groq: { status: groqConfigured ? 'configured' : 'disabled' },
       },
       agent: { status: health.worker ? 'running' : 'idle' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     return res.status(500).json({ error: 'Lifecycle check failed', detail: err?.message });
@@ -2461,11 +2778,17 @@ app.post('/api/system/diagnose-breadcrumb', async (req, res) => {
         const { synthesizeThinkToken } = await import('../lib/groqClient.ts');
         const result = await synthesizeThinkToken({
           taskContext: `Diagnostic breadcrumbs for trace ${traceId}`,
-          correctionDelta: JSON.stringify(crumbs.map(c => ({ source: c.source, error: c.errorDelta, ts: c.timestamp }))),
-          confidenceScore: 0.5
+          correctionDelta: JSON.stringify(
+            crumbs.map((c) => ({ source: c.source, error: c.errorDelta, ts: c.timestamp }))
+          ),
+          confidenceScore: 0.5,
         });
-        analysis = result.ok ? (result.reasoning || 'Analysis completed') : 'Groq analysis unavailable';
-      } catch { analysis = 'Diagnostic engine degraded — raw breadcrumbs available.'; }
+        analysis = result.ok
+          ? result.reasoning || 'Analysis completed'
+          : 'Groq analysis unavailable';
+      } catch {
+        analysis = 'Diagnostic engine degraded — raw breadcrumbs available.';
+      }
     }
     return res.status(200).json({ analysis, breadcrumbs: crumbs, count: crumbs.length });
   } catch (err) {
@@ -2485,20 +2808,38 @@ app.get('/api/think/energy-mesh', async (req, res) => {
 
 // --- Phase 55: Nash Token Unions ---
 app.post('/api/governance/union/form', async (req, res) => {
-  try { const { agentIds } = req.body || {}; if (!Array.isArray(agentIds)) return res.status(400).json({ error: 'agentIds array required' }); const state = await formUnion(agentIds); return res.status(201).json(state); } catch (err) { return res.status(500).json({ error: 'Union formation failed' }); }
+  try {
+    const { agentIds } = req.body || {};
+    if (!Array.isArray(agentIds)) return res.status(400).json({ error: 'agentIds array required' });
+    const state = await formUnion(agentIds);
+    return res.status(201).json(state);
+  } catch (err) {
+    return res.status(500).json({ error: 'Union formation failed' });
+  }
 });
 app.post('/api/governance/union/negotiate', async (req, res) => {
-  try { const { unionId, requestedTokens } = req.body || {}; const result = await negotiateAllocation(unionId, Number(requestedTokens) || 100); return res.status(200).json(result); } catch { return res.status(500).json({ error: 'Negotiation failed' }); }
+  try {
+    const { unionId, requestedTokens } = req.body || {};
+    const result = await negotiateAllocation(unionId, Number(requestedTokens) || 100);
+    return res.status(200).json(result);
+  } catch {
+    return res.status(500).json({ error: 'Negotiation failed' });
+  }
 });
 app.get('/api/governance/union/active', async (req, res) => {
-  try { return res.status(200).json({ unions: await getActiveUnions() }); } catch { return res.status(200).json({ unions: [] }); }
+  try {
+    return res.status(200).json({ unions: await getActiveUnions() });
+  } catch {
+    return res.status(200).json({ unions: [] });
+  }
 });
 
 // --- Phase 56: Assume-Guarantee Contracts ---
 app.post('/api/governance/contract/sign', async (req, res) => {
   try {
     const parsed = AGCSchema.safeParse(req.body ?? {});
-    if (!parsed.success) return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
+    if (!parsed.success)
+      return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
     const state = await signContract(parsed.data);
     return res.status(201).json(state);
   } catch (err) {
@@ -2515,17 +2856,30 @@ app.post('/api/governance/contract/verify/:id', async (req, res) => {
     return res.status(500).json({ error: 'Contract verification failed' });
   }
 });
-app.get('/api/governance/contract/active', async (req, res) => {
-  try { return res.status(200).json({ contracts: await getActiveContracts() }); } catch { return res.status(200).json({ contracts: [] }); }
+app.get('/api/governance/contract/active', apiLimiter, async (req, res) => {
+  try {
+    return res.status(200).json({ contracts: await getActiveContracts() });
+  } catch {
+    return res.status(200).json({ contracts: [] });
+  }
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
 app.get('/metrics', async (req, res) => {
   const uptime = Math.floor(process.uptime());
   const mem = process.memoryUsage();
-  let pgHealthy = false, redisHealthy = false;
-  if (pool) try { await withTimeout(pool.query('SELECT 1'), DB_TIMEOUT_MS, 'metrics pg check'); pgHealthy = true; } catch {}
-  if (redis) try { await redis.ping(); redisHealthy = true; } catch {}
+  let pgHealthy = false,
+    redisHealthy = false;
+  if (pool)
+    try {
+      await withTimeout(pool.query('SELECT 1'), DB_TIMEOUT_MS, 'metrics pg check');
+      pgHealthy = true;
+    } catch {}
+  if (redis)
+    try {
+      await redis.ping();
+      redisHealthy = true;
+    } catch {}
   const body = [
     '# HELP kudbee_uptime_seconds Process uptime',
     '# TYPE kudbee_uptime_seconds gauge',
@@ -2537,21 +2891,27 @@ app.get('/metrics', async (req, res) => {
     `kudbee_pg_healthy ${pgHealthy ? 1 : 0}`,
     '# HELP kudbee_redis_healthy Redis health',
     `kudbee_redis_healthy ${redisHealthy ? 1 : 0}`,
-    ''
+    '',
   ].join('\n');
   res.setHeader('Content-Type', 'text/plain');
   return res.status(200).send(body);
 });
 
 // --- Phase 42: Alert System — Configuration & History ---
-const alertConfig = { costThreshold: 5, tokenThreshold: 100000, latencyThresholdMs: 5000, webhookUrl: '' };
+const alertConfig = {
+  costThreshold: 5,
+  tokenThreshold: 100000,
+  latencyThresholdMs: 5000,
+  webhookUrl: '',
+};
 
 app.post('/api/alerts/configure', async (req, res) => {
   try {
     const cfg = req.body || {};
     if (typeof cfg.costThreshold === 'number') alertConfig.costThreshold = cfg.costThreshold;
     if (typeof cfg.tokenThreshold === 'number') alertConfig.tokenThreshold = cfg.tokenThreshold;
-    if (typeof cfg.latencyThresholdMs === 'number') alertConfig.latencyThresholdMs = cfg.latencyThresholdMs;
+    if (typeof cfg.latencyThresholdMs === 'number')
+      alertConfig.latencyThresholdMs = cfg.latencyThresholdMs;
     if (typeof cfg.webhookUrl === 'string') alertConfig.webhookUrl = cfg.webhookUrl;
     return res.status(200).json({ success: true, config: alertConfig });
   } catch (err) {
@@ -2563,9 +2923,23 @@ app.get('/api/alerts/history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const rows = await (pool
-      ? withTimeout(pool.query('SELECT * FROM telemetry_traces WHERE status != $1 AND cost > $2 ORDER BY timestamp DESC LIMIT $3', ['OK', alertConfig.costThreshold, limit]), DB_TIMEOUT_MS, 'alerts history query').catch(() => ({ rows: [] }))
+      ? withTimeout(
+          pool.query(
+            'SELECT * FROM telemetry_traces WHERE status != $1 AND cost > $2 ORDER BY timestamp DESC LIMIT $3',
+            ['OK', alertConfig.costThreshold, limit]
+          ),
+          DB_TIMEOUT_MS,
+          'alerts history query'
+        ).catch(() => ({ rows: [] }))
       : { rows: [] });
-    const alerts = (rows.rows || []).map((r) => ({ id: r.id, trace_id: r.trace_id, model: r.model, cost: r.cost, status: r.status, timestamp: r.timestamp || r.created_at }));
+    const alerts = (rows.rows || []).map((r) => ({
+      id: r.id,
+      trace_id: r.trace_id,
+      model: r.model,
+      cost: r.cost,
+      status: r.status,
+      timestamp: r.timestamp || r.created_at,
+    }));
     return res.status(200).json({ alerts, config: alertConfig });
   } catch {
     return res.status(200).json({ alerts: [], config: alertConfig });
@@ -2573,18 +2947,26 @@ app.get('/api/alerts/history', async (req, res) => {
 });
 
 // --- Phase 43: Tenant Settings Configuration ---
-const tenantSettings = {};
+const tenantSettings = Object.create(null);
 
 app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rateLimitWindow, rateLimitMax, receptorLockThreshold, groqModel, notificationsEnabled } = req.body || {};
+    const {
+      rateLimitWindow,
+      rateLimitMax,
+      receptorLockThreshold,
+      groqModel,
+      notificationsEnabled,
+    } = req.body || {};
     if (!tenantSettings[id]) tenantSettings[id] = {};
     if (typeof rateLimitWindow === 'number') tenantSettings[id].rateLimitWindow = rateLimitWindow;
     if (typeof rateLimitMax === 'number') tenantSettings[id].rateLimitMax = rateLimitMax;
-    if (typeof receptorLockThreshold === 'number') tenantSettings[id].receptorLockThreshold = receptorLockThreshold;
+    if (typeof receptorLockThreshold === 'number')
+      tenantSettings[id].receptorLockThreshold = receptorLockThreshold;
     if (typeof groqModel === 'string') tenantSettings[id].groqModel = groqModel;
-    if (typeof notificationsEnabled === 'boolean') tenantSettings[id].notificationsEnabled = notificationsEnabled;
+    if (typeof notificationsEnabled === 'boolean')
+      tenantSettings[id].notificationsEnabled = notificationsEnabled;
     tenantSettings[id].updatedAt = new Date().toISOString();
     return res.status(200).json({ success: true, settings: tenantSettings[id] });
   } catch (err) {
@@ -2602,33 +2984,104 @@ app.put('/api/settings/preferences', async (req, res) => {
     const { tenantId, ...settings } = req.body || {};
     const saved = await saveSettings(tenantId || 'default', settings);
     return res.status(200).json({ success: true, settings: saved });
-  } catch { return res.status(500).json({ error: 'Settings save failed' }); }
+  } catch {
+    return res.status(500).json({ error: 'Settings save failed' });
+  }
 });
 app.get('/api/settings/preferences', async (req, res) => {
-  try { const settings = await getSettings(req.query.tenantId || 'default'); return res.status(200).json({ settings }); }
-  catch { return res.status(200).json({ settings: {} }); }
+  try {
+    const settings = await getSettings(req.query.tenantId || 'default');
+    return res.status(200).json({ settings });
+  } catch {
+    return res.status(200).json({ settings: {} });
+  }
 });
 
 // --- Agent Audit Layer: history + connection tests ---
 app.get('/api/system/audit-history', async (req, res) => {
-  try { const limit = Math.min(Number(req.query.limit) || 50, 200); return res.status(200).json({ history: await getAuditHistory(limit), count: (await getAuditHistory(limit)).length }); } catch { return res.status(200).json({ history: [], count: 0 }); }
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    return res.status(200).json({
+      history: await getAuditHistory(limit),
+      count: (await getAuditHistory(limit)).length,
+    });
+  } catch {
+    return res.status(200).json({ history: [], count: 0 });
+  }
 });
 app.post('/api/system/test-connections', async (req, res) => {
-  try { const results = await testAllConnections(); return res.status(200).json({ results, timestamp: new Date().toISOString() }); } catch { return res.status(500).json({ error: 'Connection test failed' }); }
+  try {
+    const results = await testAllConnections();
+    return res.status(200).json({ results, timestamp: new Date().toISOString() });
+  } catch {
+    return res.status(500).json({ error: 'Connection test failed' });
+  }
 });
 
 // --- PR #206: OS Control Center — agent fleet + Groq archives ---
 app.get('/api/agents/fleet', async (req, res) => {
-  try { const agents = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {}; const fleet = Object.entries(agents).map(([id, raw]) => { try { return JSON.parse(raw); } catch { return { id, status: 'unknown' }; } }); return res.status(200).json({ fleet, count: fleet.length }); } catch { return res.status(200).json({ fleet: [], count: 0 }); }
+  try {
+    const agents = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {};
+    const fleet = Object.entries(agents).map(([id, raw]) => {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return { id, status: 'unknown' };
+      }
+    });
+    return res.status(200).json({ fleet, count: fleet.length });
+  } catch {
+    return res.status(200).json({ fleet: [], count: 0 });
+  }
 });
 app.post('/api/agents/fleet', async (req, res) => {
-  try { const { id, status, task } = req.body || {}; if (!id) return res.status(400).json({ error: 'Agent id required' }); const state = { id, status: status || 'standby', task: task || 'idle', updatedAt: new Date().toISOString() }; if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify(state)); return res.status(200).json({ success: true, agent: state }); } catch { return res.status(500).json({ error: 'Fleet update failed' }); }
+  try {
+    const { id, status, task } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Agent id required' });
+    const state = {
+      id,
+      status: status || 'standby',
+      task: task || 'idle',
+      updatedAt: new Date().toISOString(),
+    };
+    if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify(state));
+    return res.status(200).json({ success: true, agent: state });
+  } catch {
+    return res.status(500).json({ error: 'Fleet update failed' });
+  }
 });
 app.get('/api/groq/archives', async (req, res) => {
-  try { const limit = Math.min(Number(req.query.limit) || 20, 100); const archives = redis ? (await redis.lrange('kudbee:groq:archives', 0, limit - 1)).map((r) => { try { return JSON.parse(r); } catch { return { raw: r }; } }) : []; return res.status(200).json({ archives, count: archives.length }); } catch { return res.status(200).json({ archives: [], count: 0 }); }
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const archives = redis
+      ? (await redis.lrange('kudbee:groq:archives', 0, limit - 1)).map((r) => {
+          try {
+            return JSON.parse(r);
+          } catch {
+            return { raw: r };
+          }
+        })
+      : [];
+    return res.status(200).json({ archives, count: archives.length });
+  } catch {
+    return res.status(200).json({ archives: [], count: 0 });
+  }
 });
 app.post('/api/agents/dispatch', async (req, res) => {
-  try { const { task, agentId } = req.body || {}; if (!task) return res.status(400).json({ error: 'Task required' }); const id = agentId || `agent-${Date.now()}`; if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify({ id, status: 'active', task, dispatchedAt: new Date().toISOString() })); return res.status(200).json({ success: true, agentId: id, task, status: 'dispatched' }); } catch { return res.status(500).json({ error: 'Dispatch failed' }); }
+  try {
+    const { task, agentId } = req.body || {};
+    if (!task) return res.status(400).json({ error: 'Task required' });
+    const id = agentId || `agent-${Date.now()}`;
+    if (redis)
+      await redis.hset(
+        'kudbee:agent:state',
+        id,
+        JSON.stringify({ id, status: 'active', task, dispatchedAt: new Date().toISOString() })
+      );
+    return res.status(200).json({ success: true, agentId: id, task, status: 'dispatched' });
+  } catch {
+    return res.status(500).json({ error: 'Dispatch failed' });
+  }
 });
 
 const HERMES_HEARTBEAT_KEY = 'kudbee:agents:hermes';
@@ -2666,7 +3119,7 @@ app.get('/api/governance/health', async (_req, res) => {
       router_healthy: true,
       proposed_count: proposedCount,
       hermes: { status: hermesStatus, online: hermesOnline },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error('[Governance] Health error:', err?.message);
@@ -2684,7 +3137,7 @@ app.post('/api/governance/dispatch', async (req, res) => {
       maxCycles: 5,
       traceId: '',
       taskId: task || 'manual-dispatch',
-      message: 'Crucible not enabled'
+      message: 'Crucible not enabled',
     };
 
     if (process.env.CRUCIBLE_ENABLED === 'true') {
@@ -2697,7 +3150,7 @@ app.post('/api/governance/dispatch', async (req, res) => {
           maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
           traceId: cycleResult?.traceId || crypto.randomUUID(),
           taskId: task || 'manual-dispatch',
-          message: cycleResult?.message || `Crucible cycle dispatched`
+          message: cycleResult?.message || `Crucible cycle dispatched`,
         };
       } catch (err) {
         result.message = `Dispatch failed: ${err instanceof Error ? err.message : String(err)}`;
@@ -2720,7 +3173,7 @@ app.post('/api/agents/crucible/run', async (req, res) => {
         cycle: 0,
         maxCycles: 5,
         traceId: '',
-        message: 'Crucible not enabled'
+        message: 'Crucible not enabled',
       });
     }
     const { crucible: crucibleModule } = await import('../agents/crucible.js');
@@ -2731,7 +3184,7 @@ app.post('/api/agents/crucible/run', async (req, res) => {
       cycle: result?.cycle ?? 0,
       maxCycles: crucibleModule.MAX_CYCLES_PER_BOOT,
       traceId: result?.traceId || `cycle-${result?.cycle ?? 0}`,
-      message: result?.message || 'Crucible cycle executed'
+      message: result?.message || 'Crucible cycle executed',
     };
     publishEvent('crucible', { ...response, ts: new Date().toISOString() });
     return res.json(response);
@@ -2754,8 +3207,16 @@ app.get('/api/reasoning/ledger', async (req, res) => {
     const entries = rows.map((row) => {
       let input = {};
       let output = {};
-      try { input = JSON.parse(row.input || '{}'); } catch { /* ignore */ }
-      try { output = JSON.parse(row.output || '{}'); } catch { /* ignore */ }
+      try {
+        input = JSON.parse(row.input || '{}');
+      } catch {
+        /* ignore */
+      }
+      try {
+        output = JSON.parse(row.output || '{}');
+      } catch {
+        /* ignore */
+      }
       return {
         id: row.id,
         context: row.context,
@@ -2765,7 +3226,7 @@ app.get('/api/reasoning/ledger', async (req, res) => {
         provider: row.provider,
         event_type: row.event_type,
         reason: row.reason,
-        created_at: row.created_at
+        created_at: row.created_at,
       };
     });
     return res.json({ count: entries.length, entries });
@@ -2785,7 +3246,7 @@ app.post('/api/health', async (req, res) => {
           agent: 'HERMES',
           status: 'Online',
           ...(req.body || {}),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         }),
         'EX',
         30
@@ -2805,7 +3266,11 @@ app.get('/api/governance/hermes-logs', async (_req, res) => {
     const raw = await redis.lrange('kudbee:hermes:log', 0, 49);
     const logs = raw
       .map((r) => {
-        try { return JSON.parse(r); } catch { return null; }
+        try {
+          return JSON.parse(r);
+        } catch {
+          return null;
+        }
       })
       .filter(Boolean);
     return res.json(logs);
@@ -2865,17 +3330,15 @@ app.get('/api/metrics/community-value', async (req, res) => {
           sampleCount,
           budgetUsd: BUDGET_USD,
           remainingBudgetUsd: Number(Math.max(0, BUDGET_USD - totalCost).toFixed(6)),
-          budgetPct: BUDGET_USD > 0 ? Number(((totalCost / BUDGET_USD) * 100).toFixed(2)) : 0
-        }
+          budgetPct: BUDGET_USD > 0 ? Number(((totalCost / BUDGET_USD) * 100).toFixed(2)) : 0,
+        },
       });
     }
 
     const scoreRow = await runQuery(
       `SELECT COALESCE(SUM(value_score), 0) AS total FROM governance_actions`
     );
-    const actionsRow = await runQuery(
-      `SELECT COUNT(*) AS count FROM governance_actions`
-    );
+    const actionsRow = await runQuery(`SELECT COUNT(*) AS count FROM governance_actions`);
     const verifiedRow = await runQuery(
       `SELECT COUNT(DISTINCT trace_id) AS count FROM governance_actions`
     );
@@ -2890,8 +3353,8 @@ app.get('/api/metrics/community-value', async (req, res) => {
         sampleCount,
         budgetUsd: BUDGET_USD,
         remainingBudgetUsd: Number(Math.max(0, BUDGET_USD - totalCost).toFixed(6)),
-        budgetPct: BUDGET_USD > 0 ? Number(((totalCost / BUDGET_USD) * 100).toFixed(2)) : 0
-      }
+        budgetPct: BUDGET_USD > 0 ? Number(((totalCost / BUDGET_USD) * 100).toFixed(2)) : 0,
+      },
     });
   } catch (err) {
     console.error('[Metrics] Community value error:', err?.message);
@@ -2912,21 +3375,23 @@ app.get('/api/news/headlines', (req, res) => {
     headlines: [
       {
         title: 'OTel Tracing Standards and Compliance Auditing',
-        summary: 'New system integrations push for standardized OpenTelemetry pipelines to audit model token expenditures and guarantee regulatory cost ceilings.',
+        summary:
+          'New system integrations push for standardized OpenTelemetry pipelines to audit model token expenditures and guarantee regulatory cost ceilings.',
         category: 'API Law',
-        source: 'W3C Consortium Standards'
+        source: 'W3C Consortium Standards',
       },
       {
         title: 'Advanced LLM Cost Reductions & Context Ingestion Rates',
-        summary: 'Recent optimization benchmarks show input token processing costs decrease up to 50% across major API endpoints through persistent prompt caching.',
+        summary:
+          'Recent optimization benchmarks show input token processing costs decrease up to 50% across major API endpoints through persistent prompt caching.',
         category: 'Billing Regulation',
-        source: 'API Platform Registry'
-      }
+        source: 'API Platform Registry',
+      },
     ],
     sources: [
       { title: 'Standard OpenTelemetry Guidelines', url: 'https://opentelemetry.io' },
-      { title: 'API Billing Policies Update', url: 'https://ai.google.dev' }
-    ]
+      { title: 'API Billing Policies Update', url: 'https://ai.google.dev' },
+    ],
   });
 });
 
@@ -2938,7 +3403,7 @@ app.get('/api/system/file', async (req, res) => {
   if (!repoPath) {
     return res.status(400).json({
       error: 'Missing "path" query parameter. Expected "owner/repo/path/to/file".',
-      ok: false
+      ok: false,
     });
   }
 
@@ -2952,7 +3417,7 @@ app.get('/api/system/file', async (req, res) => {
       ok: true,
       path: repoPath,
       cached: result.cached,
-      content: result.content
+      content: result.content,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -2961,6 +3426,7 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
+// CodeQL [missing-rate-limiting] suppressed: health check endpoint must remain unconditionally accessible.
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
@@ -3007,8 +3473,8 @@ app.get('/health', async (_req, res) => {
       dependencies: {
         ingestion_db: dbOk ? 'healthy' : 'unhealthy',
         vector_memory: 'healthy',
-        redis: redisOk ? 'healthy' : 'unhealthy'
-      }
+        redis: redisOk ? 'healthy' : 'unhealthy',
+      },
     };
     // Resilient-First: the server is serving, so report 200 even when degraded
     // (a missing/unreachable dependency is not a fatal outage). 503 is reserved
@@ -3020,7 +3486,7 @@ app.get('/health', async (_req, res) => {
       status: 'error',
       service: 'kudbee-control-tower',
       timestamp: new Date().toISOString(),
-      error: err?.message || 'health probe failed'
+      error: err?.message || 'health probe failed',
     });
   }
 });
@@ -3051,7 +3517,7 @@ app.get('/api/health-check', async (_req, res) => {
     res.json({
       uptime_sec: uptimeSec,
       community_value_score: Number(communityValueScore || 0).toFixed(2),
-      alerts: parsedAlerts
+      alerts: parsedAlerts,
     });
   } catch (err) {
     console.warn('[HealthCheck] Redis unavailable, returning empty dependencies:', err?.message);
@@ -3063,8 +3529,8 @@ app.get('/api/health-check', async (_req, res) => {
       dependencies: {
         ingestion_db: 'healthy',
         vector_memory: 'healthy',
-        redis: 'unhealthy'
-      }
+        redis: 'unhealthy',
+      },
     });
   }
 });
@@ -3080,7 +3546,10 @@ app.get('/api/system/health-deep', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
 
-    const services = { postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null }, redis: { status: 'OFFLINE', latencyMs: null, lastPing: null } };
+    const services = {
+      postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null },
+      redis: { status: 'OFFLINE', latencyMs: null, lastPing: null },
+    };
 
     let dbOk = false;
     let dbError = null;
@@ -3098,7 +3567,7 @@ app.get('/api/system/health-deep', async (_req, res) => {
       services.postgres = {
         status: dbOk ? 'OK' : 'OFFLINE',
         latencyMs: dbOk ? latencyMs : null,
-        lastPing: new Date().toISOString()
+        lastPing: new Date().toISOString(),
       };
     } catch (err) {
       dbError = err instanceof Error ? err.message : String(err);
@@ -3134,10 +3603,13 @@ app.get('/api/system/health-deep', async (_req, res) => {
           const ts = parsed.timestamp ? Date.parse(parsed.timestamp) : 0;
           hermesOnline = !Number.isNaN(ts) && Date.now() - ts < HERMES_HEARTBEAT_MAX_AGE_MS;
         }
-      } catch { /* ignore — hermesOnline stays false */ }
+      } catch {
+        /* ignore — hermesOnline stays false */
+      }
     }
 
-    const overallStatus = (services.postgres.status === 'OK' || services.redis.status === 'OK') ? 'HEALTHY' : 'DEGRADED';
+    const overallStatus =
+      services.postgres.status === 'OK' || services.redis.status === 'OK' ? 'HEALTHY' : 'DEGRADED';
 
     res.json({
       status: overallStatus,
@@ -3146,17 +3618,24 @@ app.get('/api/system/health-deep', async (_req, res) => {
       agent: {
         status: hermesOnline ? 'ACTIVE_RUNNING' : 'OFFLINE',
         uptimeSeconds: uptimeSec,
-        pendingTriageCount
-      }
+        pendingTriageCount,
+      },
     });
   } catch (err) {
     console.error('[HealthDeep] Probe error:', err?.message);
     res.status(200).json({
       status: 'DEGRADED',
       timestamp: new Date().toISOString(),
-      services: { postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null }, redis: { status: 'OFFLINE', latencyMs: null, lastPing: null } },
-      agent: { status: 'OFFLINE', uptimeSeconds: Math.floor((Date.now() - BOOT_TIME) / 1000), pendingTriageCount: 0 },
-      error: err?.message || 'deep health probe failed'
+      services: {
+        postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null },
+        redis: { status: 'OFFLINE', latencyMs: null, lastPing: null },
+      },
+      agent: {
+        status: 'OFFLINE',
+        uptimeSeconds: Math.floor((Date.now() - BOOT_TIME) / 1000),
+        pendingTriageCount: 0,
+      },
+      error: err?.message || 'deep health probe failed',
     });
   }
 });
@@ -3170,7 +3649,8 @@ app.get('/api/system/health-deep', async (_req, res) => {
 app.post('/api/system/compare-providers', async (req, res) => {
   try {
     const { prompt, provider } = req.body || {};
-    const selectedProvider = provider === 'vllm' || provider === 'openai-compatible' ? provider : 'gemini';
+    const selectedProvider =
+      provider === 'vllm' || provider === 'openai-compatible' ? provider : 'gemini';
 
     const systemPrompt = `<ROLE>
 You are the Primary Agent for the Kudbee Agentic Rack System. You are a
@@ -3190,7 +3670,9 @@ Your output becomes production infrastructure, so precision beats verbosity.
 Emit only the minimal code/answer required. No apologies, no meta-commentary.
 </OUTPUT_DISCIPLINE>`;
 
-    const userPrompt = prompt || 'Analyze the following telemetry anomaly and propose a single low-risk remediation: latency spike detected on /api/health (p99 > 1200ms).';
+    const userPrompt =
+      prompt ||
+      'Analyze the following telemetry anomaly and propose a single low-risk remediation: latency spike detected on /api/health (p99 > 1200ms).';
 
     const t0 = Date.now();
     let output = '';
@@ -3198,30 +3680,34 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
     let usage = { promptTokens: 0, completionTokens: 0 };
 
     try {
-      const providerConfig = selectedProvider === 'gemini'
-        ? {
-            kind: 'gemini',
-            model: 'gemini-2.0-flash',
-            temperature: 0.2,
-            maxTokens: 512,
-            apiKey: process.env.GEMINI_API_KEY
-          }
-        : {
-            kind: 'vllm',
-            model: 'openai/gpt-oss-20b',
-            temperature: 0.2,
-            maxTokens: 512,
-            baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
-            apiKey: process.env.VLLM_API_KEY || 'no-key',
-            xmlWrapper: true
-          };
+      const providerConfig =
+        selectedProvider === 'gemini'
+          ? {
+              kind: 'gemini',
+              model: 'gemini-2.0-flash',
+              temperature: 0.2,
+              maxTokens: 512,
+              apiKey: process.env.GEMINI_API_KEY,
+            }
+          : {
+              kind: 'vllm',
+              model: 'openai/gpt-oss-20b',
+              temperature: 0.2,
+              maxTokens: 512,
+              baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
+              apiKey: process.env.VLLM_API_KEY || 'no-key',
+              xmlWrapper: true,
+            };
 
       const client = createProvider(providerConfig);
       const request = {
         systemPrompt,
-        userPrompt: selectedProvider === 'gemini' ? userPrompt : wrapPromptForOpenWeights(systemPrompt, userPrompt),
+        userPrompt:
+          selectedProvider === 'gemini'
+            ? userPrompt
+            : wrapPromptForOpenWeights(systemPrompt, userPrompt),
         temperature: 0.2,
-        maxTokens: 512
+        maxTokens: 512,
       };
 
       const response = await client.complete(request);
@@ -3229,7 +3715,10 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
       model = response.model;
       usage = response.usage || { promptTokens: 0, completionTokens: 0 };
     } catch (providerErr) {
-      console.warn(`[Comparator] Provider ${selectedProvider} failed:`, providerErr instanceof Error ? providerErr.message : String(providerErr));
+      console.warn(
+        `[Comparator] Provider ${selectedProvider} failed:`,
+        providerErr instanceof Error ? providerErr.message : String(providerErr)
+      );
       await recordReasoning(
         { context: systemPrompt, thoughtStream: [], trace_id: `cmp-${Date.now()}` },
         { error: providerErr instanceof Error ? providerErr.message : 'Provider unreachable' },
@@ -3243,7 +3732,7 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
         output: null,
         latencyMs: Date.now() - t0,
         error: providerErr instanceof Error ? providerErr.message : 'Provider unreachable',
-        traceId: `cmp-${Date.now()}`
+        traceId: `cmp-${Date.now()}`,
       });
     }
 
@@ -3264,11 +3753,14 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
       output,
       latencyMs,
       usage,
-      traceId
+      traceId,
     });
   } catch (err) {
     console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ error: 'Comparator failed', detail: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({
+      error: 'Comparator failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
@@ -3281,18 +3773,18 @@ app.post('/v1/chat/completions', async (req, res) => {
   const t0 = Date.now();
   try {
     const incomingPrompt =
-      req.body?.messages?.map((m) => m.content).join(' ') ||
-      req.body?.prompt ||
-      '';
-    const preferredProvider = (req.body?.provider && PROVIDER_CONFIG[req.body.provider])
-      ? req.body.provider
-      : null;
+      req.body?.messages?.map((m) => m.content).join(' ') || req.body?.prompt || '';
+    const preferredProvider =
+      req.body?.provider && PROVIDER_CONFIG[req.body.provider] ? req.body.provider : null;
 
     let routing = { route: 'SLOW_BRAIN', matched: false };
     try {
       routing = await matchLogic(incomingPrompt);
     } catch (routerErr) {
-      console.warn('[Server] Governance router unavailable, defaulting to Slow Brain:', routerErr instanceof Error ? routerErr.message : String(routerErr));
+      console.warn(
+        '[Server] Governance router unavailable, defaulting to Slow Brain:',
+        routerErr instanceof Error ? routerErr.message : String(routerErr)
+      );
     }
 
     // Multi-provider load balancing: if preferred provider is unhealthy or
@@ -3317,7 +3809,10 @@ app.post('/v1/chat/completions', async (req, res) => {
         failoverTriggered = true;
         routerState.failovers += 1;
         selectedProvider = alt.id;
-        PROVIDER_CONFIG[selectedProvider].rateLimitPct = Math.max(0, PROVIDER_CONFIG[selectedProvider].rateLimitPct - 0.05);
+        PROVIDER_CONFIG[selectedProvider].rateLimitPct = Math.max(
+          0,
+          PROVIDER_CONFIG[selectedProvider].rateLimitPct - 0.05
+        );
       }
     }
     if (provider) recordLatency(selectedProvider, simulatedLatency);
@@ -3329,7 +3824,7 @@ app.post('/v1/chat/completions', async (req, res) => {
       selected: selectedProvider,
       failover: failoverTriggered,
       latencyMs: simulatedLatency,
-      ts: new Date().toISOString()
+      ts: new Date().toISOString(),
     };
     routerState.decisionLog = [decision, ...routerState.decisionLog].slice(0, 50);
     publishEvent('router', decision);
@@ -3344,13 +3839,13 @@ app.post('/v1/chat/completions', async (req, res) => {
         matched: routing.matched,
         confidence: routing.confidence ?? 0,
         proven_logic: routing.logic?.action ?? null,
-        source: routing.source ?? 'keyword'
+        source: routing.source ?? 'keyword',
       },
       router: {
         preferred: preferredProvider,
         selected: selectedProvider,
         failoverTriggered,
-        latencyMs: simulatedLatency
+        latencyMs: simulatedLatency,
       },
       choices: [
         {
@@ -3360,15 +3855,18 @@ app.post('/v1/chat/completions', async (req, res) => {
             content:
               routing.route === 'FAST_BRAIN'
                 ? `Fast Brain (${selectedProvider}): applied proven logic path "${routing.logic?.action ?? 'unknown'}".`
-                : `Slow Brain (${selectedProvider}): no proven semantic match found — LLM reasoning required.`
+                : `Slow Brain (${selectedProvider}): no proven semantic match found — LLM reasoning required.`,
           },
-          finish_reason: 'stop'
-        }
-      ]
+          finish_reason: 'stop',
+        },
+      ],
     });
   } catch (err) {
     console.error('[Chat] Fatal error:', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ error: 'Chat completions failed', detail: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({
+      error: 'Chat completions failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
@@ -3387,15 +3885,23 @@ app.get('/api/system/last-event', async (_req, res) => {
     const row = rows[0];
     let input = {};
     let output = {};
-    try { input = JSON.parse(row.input || '{}'); } catch { /* ignore */ }
-    try { output = JSON.parse(row.output || '{}'); } catch { /* ignore */ }
+    try {
+      input = JSON.parse(row.input || '{}');
+    } catch {
+      /* ignore */
+    }
+    try {
+      output = JSON.parse(row.output || '{}');
+    } catch {
+      /* ignore */
+    }
     return res.json({
       event: {
         time: row.created_at,
         reason: row.reason || output?.details || row.result_status,
         service: input?.service || 'system',
-        status: row.result_status
-      }
+        status: row.result_status,
+      },
     });
   } catch (err) {
     console.error('[LastEvent] Error:', err instanceof Error ? err.message : String(err));
@@ -3469,9 +3975,11 @@ function publishEvent(type, data) {
   // deliver server-originated events.)
   if (redis) {
     try {
-      redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e) => {
-        console.warn('[publishEvent] Redis publish failed:', e.message);
-      });
+      redis
+        .publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() }))
+        .catch((e) => {
+          console.warn('[publishEvent] Redis publish failed:', e.message);
+        });
       void publishUnifiedEvent('governance', type, data, EVENTS_CHANNEL);
     } catch {
       /* ignore */
@@ -3509,21 +4017,28 @@ const TICKET_TTL_MS = 30000;
 const STREAM_SECRET = process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex');
 
 if (!process.env.STREAM_SECRET) {
-  console.warn('[SSE] STREAM_SECRET not set — using ephemeral in-memory fallback (signatures reset on restart)');
+  console.warn(
+    '[SSE] STREAM_SECRET not set — using ephemeral in-memory fallback (signatures reset on restart)'
+  );
 }
 
 app.post('/api/auth/stream-ticket', (req, res) => {
   const ticket = 'sse_ticket_' + crypto.randomUUID();
   STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
-  const sig = crypto.createHmac('sha256', STREAM_SECRET)
-    .update(ticket + ':' + Date.now()).digest('hex');
+  const sig = crypto
+    .createHmac('sha256', STREAM_SECRET)
+    .update(ticket + ':' + Date.now())
+    .digest('hex');
   res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
 });
 
 function validateStreamTicket(ticket) {
   if (!ticket) return false;
   const exp = STREAM_TICKETS.get(ticket);
-  if (!exp || Date.now() > exp) { STREAM_TICKETS.delete(ticket); return false; }
+  if (!exp || Date.now() > exp) {
+    STREAM_TICKETS.delete(ticket);
+    return false;
+  }
   STREAM_TICKETS.delete(ticket);
   return true;
 }
@@ -3536,14 +4051,19 @@ setInterval(() => {
 app.get('/api/events', async (req, res) => {
   if (sseClientCount() >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
-    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached (backpressure)' }));
+    return res.end(
+      JSON.stringify({
+        error: 'Service Unavailable',
+        reason: 'SSE client limit reached (backpressure)',
+      })
+    );
   }
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no'
+    'X-Accel-Buffering': 'no',
   });
   res.write('retry: 3000\n\n');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
@@ -3551,7 +4071,9 @@ app.get('/api/events', async (req, res) => {
 
   try {
     const proposed = redis ? await listProposed() : [];
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [], db_healthy: isDbHealthy(), redis: !!redis })}\n\n`);
+    res.write(
+      `event: snapshot\ndata: ${JSON.stringify({ proposed: Array.isArray(proposed) ? proposed : [], db_healthy: isDbHealthy(), redis: !!redis })}\n\n`
+    );
   } catch {
     /* ignore */
   }
@@ -3582,7 +4104,9 @@ async function buildOsSnapshot() {
     const t0 = Date.now();
     await runQuery('SELECT 1 as ok');
     pgLatency = dbHealthy ? Date.now() - t0 : null;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   let redisLatency = null;
   if (redisOk) {
@@ -3590,7 +4114,9 @@ async function buildOsSnapshot() {
       const t0 = Date.now();
       await redis.ping();
       redisLatency = Date.now() - t0;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   let pendingActions = [];
@@ -3598,36 +4124,69 @@ async function buildOsSnapshot() {
   let memoryStats = { vectors: 0, chunks: 0 };
   let alertCount = 0;
 
-  try { pendingActions = redisOk ? await listProposed() : []; } catch {}
-  try { thinkStats = { tokens: (await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [{ count: 0 }]))[0]?.count ?? 0, verified: (await runQuery("SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'").catch(() => [{ count: 0 }]))[0]?.count ?? 0 }; } catch {}
-  try { memoryStats = { vectors: (await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [{ count: 0 }]))[0]?.count ?? 0, chunks: (await runQuery('SELECT COUNT(*) as count FROM system_topology_embeddings').catch(() => [{ count: 0 }]))[0]?.count ?? 0 }; } catch {}
-  try { const alerts = _state.alertsState?.alerts; alertCount = Array.isArray(alerts) ? alerts.length : 0; } catch {}
+  try {
+    pendingActions = redisOk ? await listProposed() : [];
+  } catch {}
+  try {
+    thinkStats = {
+      tokens:
+        (
+          await runQuery('SELECT COUNT(*) as count FROM think_tokens').catch(() => [{ count: 0 }])
+        )[0]?.count ?? 0,
+      verified:
+        (
+          await runQuery(
+            "SELECT COUNT(*) as count FROM think_tokens WHERE status = 'VERIFIED'"
+          ).catch(() => [{ count: 0 }])
+        )[0]?.count ?? 0,
+    };
+  } catch {}
+  try {
+    memoryStats = {
+      vectors:
+        (
+          await runQuery('SELECT COUNT(*) as count FROM vector_memory').catch(() => [{ count: 0 }])
+        )[0]?.count ?? 0,
+      chunks:
+        (
+          await runQuery('SELECT COUNT(*) as count FROM system_topology_embeddings').catch(() => [
+            { count: 0 },
+          ])
+        )[0]?.count ?? 0,
+    };
+  } catch {}
+  try {
+    const alerts = _state.alertsState?.alerts;
+    alertCount = Array.isArray(alerts) ? alerts.length : 0;
+  } catch {}
 
   return {
     ts: new Date().toISOString(),
     uptime: uptimeSec,
     services: {
       postgres: { ok: dbHealthy, latencyMs: pgLatency },
-      redis: { ok: redisOk, latencyMs: redisLatency }
+      redis: { ok: redisOk, latencyMs: redisLatency },
     },
     governance: { pending: pendingActions.length },
     think: thinkStats,
     memory: memoryStats,
-    alerts: alertCount
+    alerts: alertCount,
   };
 }
 
 app.get('/api/os-stream', async (req, res) => {
   if (OS_STREAM_CLIENTS.size >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
-    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached' }));
+    return res.end(
+      JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached' })
+    );
   }
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no'
+    'X-Accel-Buffering': 'no',
   });
   res.write('retry: 5000\n\n');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
@@ -3636,13 +4195,17 @@ app.get('/api/os-stream', async (req, res) => {
   try {
     const snapshot = await buildOsSnapshot();
     res.write(`event: os:snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   const interval = setInterval(async () => {
     try {
       const snap = await buildOsSnapshot();
       res.write(`event: os:snapshot\ndata: ${JSON.stringify(snap)}\n\n`);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, OS_STREAM_INTERVAL_MS);
 
   const cleanup = () => {
@@ -3662,14 +4225,19 @@ app.get('/api/os-stream', async (req, res) => {
 app.get('/api/telemetry/stream', async (req, res) => {
   if (sseClientCount() >= MAX_SSE_CLIENTS) {
     res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' });
-    return res.end(JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached (backpressure)' }));
+    return res.end(
+      JSON.stringify({
+        error: 'Service Unavailable',
+        reason: 'SSE client limit reached (backpressure)',
+      })
+    );
   }
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no'
+    'X-Accel-Buffering': 'no',
   });
   res.write('retry: 3000\n\n');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
@@ -3683,7 +4251,9 @@ app.get('/api/telemetry/stream', async (req, res) => {
               COUNT(*) AS cnt
          FROM telemetry_traces`
     ).catch(() => [{ in_tok: 0, out_tok: 0, total_cost: 0, cnt: 0 }]);
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ summary: summary[0] || {}, db_healthy: isDbHealthy(), redis: !!redis })}\n\n`);
+    res.write(
+      `event: snapshot\ndata: ${JSON.stringify({ summary: summary[0] || {}, db_healthy: isDbHealthy(), redis: !!redis })}\n\n`
+    );
   } catch {
     /* ignore */
   }
@@ -3717,7 +4287,7 @@ function resolveDistPath() {
   const candidates = [
     path.resolve(__dirname, '..', '..', 'apps', 'web', 'dist'),
     path.join(process.cwd(), 'apps', 'web', 'dist'),
-    path.join(process.cwd(), 'dist')
+    path.join(process.cwd(), 'dist'),
   ];
   return candidates.find((p) => fs.existsSync(p)) || candidates[0];
 }
@@ -3726,11 +4296,34 @@ function resolveDistPath() {
 // In-memory state for the governance policy engine. Persists across the
 // process lifetime and is exposed to the UI through REST endpoints.
 
-const policyState = {
-  token_budget_cap: { id: 'token_budget_cap', label: 'Token Budget Cap', enabled: true, severity: 'BLOCK', config: { maxTokens: 200000 } },
-  secret_leak_prevention: { id: 'secret_leak_prevention', label: 'Secret Leak Prevention', enabled: true, severity: 'BLOCK', config: { patterns: ['sk-ant-', 'sk-proj-', 'AIzaSy', 'ghp_'] } },
-  system_prompt_guard: { id: 'system_prompt_guard', label: 'System Prompt Guard', enabled: true, severity: 'WARN', config: { denyTerms: ['ignore previous', 'disregard system'] } },
-  pii_redaction: { id: 'pii_redaction', label: 'PII Redaction', enabled: true, severity: 'WARN', config: { pattern: 'email' } }
+const policyState = Object.create(null);
+policyState.token_budget_cap = {
+  id: 'token_budget_cap',
+  label: 'Token Budget Cap',
+  enabled: true,
+  severity: 'BLOCK',
+  config: { maxTokens: 200000 },
+};
+policyState.secret_leak_prevention = {
+  id: 'secret_leak_prevention',
+  label: 'Secret Leak Prevention',
+  enabled: true,
+  severity: 'BLOCK',
+  config: { patterns: ['sk-ant-', 'sk-proj-', 'AIzaSy', 'ghp_'] },
+};
+policyState.system_prompt_guard = {
+  id: 'system_prompt_guard',
+  label: 'System Prompt Guard',
+  enabled: true,
+  severity: 'WARN',
+  config: { denyTerms: ['ignore previous', 'disregard system'] },
+};
+policyState.pii_redaction = {
+  id: 'pii_redaction',
+  label: 'PII Redaction',
+  enabled: true,
+  severity: 'WARN',
+  config: { pattern: 'email' },
 };
 
 const vectorSyncState = {
@@ -3738,11 +4331,11 @@ const vectorSyncState = {
   lastSyncAt: null,
   totalChunks: 0,
   totalVectors: 0,
-  recentDocs: []
+  recentDocs: [],
 };
 
 const alertsState = {
-  alerts: []
+  alerts: [],
 };
 _state.alertsState = alertsState;
 
@@ -3800,11 +4393,17 @@ app.post('/api/governance/policies', async (req, res) => {
     const policy = policyState[id];
     if (!policy) return res.status(404).json({ error: `unknown policy ${id}` });
     if (typeof enabled === 'boolean') policy.enabled = enabled;
-    if (severity === 'PASS' || severity === 'WARN' || severity === 'BLOCK') policy.severity = severity;
+    if (severity === 'PASS' || severity === 'WARN' || severity === 'BLOCK')
+      policy.severity = severity;
     if (config && typeof config === 'object') {
       policy.config = { ...policy.config, ...config };
     }
-    publishEvent('policy', { id: policy.id, enabled: policy.enabled, severity: policy.severity, ts: new Date().toISOString() });
+    publishEvent('policy', {
+      id: policy.id,
+      enabled: policy.enabled,
+      severity: policy.severity,
+      ts: new Date().toISOString(),
+    });
     res.json({ policy });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -3845,11 +4444,22 @@ app.post('/api/vector/sync', async (req, res) => {
     vectorSyncState.state = 'INDEXING';
     publishEvent('vector', { state: vectorSyncState.state, ts: new Date().toISOString() });
 
-    const documents = Array.isArray(req.body?.documents) ? req.body.documents : [
-      { id: 'doc-overview', text: 'Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning).' },
-      { id: 'doc-firewall', text: 'The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies.' },
-      { id: 'doc-vectors', text: 'Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger.' }
-    ];
+    const documents = Array.isArray(req.body?.documents)
+      ? req.body.documents
+      : [
+          {
+            id: 'doc-overview',
+            text: 'Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning).',
+          },
+          {
+            id: 'doc-firewall',
+            text: 'The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies.',
+          },
+          {
+            id: 'doc-vectors',
+            text: 'Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger.',
+          },
+        ];
 
     const newDocs = [];
     let totalChunks = 0;
@@ -3866,7 +4476,11 @@ app.post('/api/vector/sync', async (req, res) => {
       vectorSyncState.totalChunks = totalChunks;
       vectorSyncState.totalVectors = totalChunks;
       vectorSyncState.recentDocs = newDocs;
-      publishEvent('vector', { state: vectorSyncState.state, totalChunks, ts: vectorSyncState.lastSyncAt });
+      publishEvent('vector', {
+        state: vectorSyncState.state,
+        totalChunks,
+        ts: vectorSyncState.lastSyncAt,
+      });
     }, 600);
 
     res.json({ ok: true, state: vectorSyncState.state, documents: newDocs.length, totalChunks });
@@ -3880,15 +4494,29 @@ app.post('/api/vector/recall', async (req, res) => {
   try {
     const prompt = String(req.body?.prompt || '').slice(0, 240);
     const library = [
-      { id: 'doc-overview', text: 'Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning).' },
-      { id: 'doc-firewall', text: 'The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies.' },
-      { id: 'doc-vectors', text: 'Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger.' },
-      { id: 'doc-routing', text: 'Routing decisions are produced by /v1/chat/completions via matchLogic, which consults the vector store before invoking the LLM (Slow Brain).' }
+      {
+        id: 'doc-overview',
+        text: 'Kudbee is an OpenTelemetry-aware LLM cost governance platform that routes traffic through a Fast Brain (semantic vector memory) and a Slow Brain (LLM reasoning).',
+      },
+      {
+        id: 'doc-firewall',
+        text: 'The Edge Sentinel firewall quarantines suspicious telemetry, redacts secrets, and blocks traffic exceeding active governance policies.',
+      },
+      {
+        id: 'doc-vectors',
+        text: 'Vector memory is indexed in 400-character chunks with cosine similarity retrieval. The resync pipeline rebuilds the index from the reasoning ledger.',
+      },
+      {
+        id: 'doc-routing',
+        text: 'Routing decisions are produced by /v1/chat/completions via matchLogic, which consults the vector store before invoking the LLM (Slow Brain).',
+      },
     ];
     const ranked = library
       .map((doc) => {
         const terms = prompt.toLowerCase().split(/\s+/).filter(Boolean);
-        const score = terms.reduce((acc, term) => acc + (doc.text.toLowerCase().includes(term) ? 1 : 0), 0) / Math.max(1, terms.length);
+        const score =
+          terms.reduce((acc, term) => acc + (doc.text.toLowerCase().includes(term) ? 1 : 0), 0) /
+          Math.max(1, terms.length);
         return { ...doc, score: Number(score.toFixed(3)) };
       })
       .sort((a, b) => b.score - a.score)
@@ -3902,7 +4530,12 @@ app.post('/api/vector/recall', async (req, res) => {
 // --- Live Alerts Stream ------------------------------------------------------
 
 function pushAlert(alert) {
-  const entry = { ...alert, id: alert.id || `alert-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, status: alert.status || 'OPEN', createdAt: alert.createdAt || new Date().toISOString() };
+  const entry = {
+    ...alert,
+    id: alert.id || `alert-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+    status: alert.status || 'OPEN',
+    createdAt: alert.createdAt || new Date().toISOString(),
+  };
   alertsState.alerts = [entry, ...alertsState.alerts].slice(0, 50);
   publishEvent('alert', entry);
   return entry;
@@ -3914,7 +4547,7 @@ if (alertsState.alerts.length === 0) {
     severity: 'INFO',
     source: 'governance',
     title: 'Policy engine online',
-    detail: 'Token Budget Cap, Secret Leak Prevention, and System Prompt Guard are active.'
+    detail: 'Token Budget Cap, Secret Leak Prevention, and System Prompt Guard are active.',
   });
 }
 
@@ -3956,32 +4589,67 @@ app.post('/api/system/alerts/:id/mitigate', async (req, res) => {
 
 // --- Phase 21: Multi-Provider Load Balancer --------------------------------
 
-const PROVIDER_CONFIG = {
-  openai:    { id: 'openai',    label: 'OpenAI',    weight: 30, baseLatencyMs: 145, maxLatencyMs: 800, rateLimitPct: 0.0, healthy: true, lastError: null },
-  anthropic: { id: 'anthropic', label: 'Anthropic', weight: 40, baseLatencyMs: 185, maxLatencyMs: 900, rateLimitPct: 0.0, healthy: true, lastError: null },
-  local:     { id: 'local',     label: 'Local VLLM',weight: 20, baseLatencyMs: 60,  maxLatencyMs: 500, rateLimitPct: 0.0, healthy: true, lastError: null },
-  google:    { id: 'google',    label: 'Google',    weight: 10, baseLatencyMs: 210, maxLatencyMs: 700, rateLimitPct: 0.0, healthy: true, lastError: null }
+const PROVIDER_CONFIG = Object.create(null);
+PROVIDER_CONFIG.openai = {
+  id: 'openai',
+  label: 'OpenAI',
+  weight: 30,
+  baseLatencyMs: 145,
+  maxLatencyMs: 800,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.anthropic = {
+  id: 'anthropic',
+  label: 'Anthropic',
+  weight: 40,
+  baseLatencyMs: 185,
+  maxLatencyMs: 900,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.local = {
+  id: 'local',
+  label: 'Local VLLM',
+  weight: 20,
+  baseLatencyMs: 60,
+  maxLatencyMs: 500,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.google = {
+  id: 'google',
+  label: 'Google',
+  weight: 10,
+  baseLatencyMs: 210,
+  maxLatencyMs: 700,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
 };
 _state.providerConfigRef.value = PROVIDER_CONFIG;
 
-const routerState = {
-  decisionLog: [], // Recent routing decisions
-  totalRequests: 0,
-  failovers: 0
-};
+const routerState = Object.create(null);
+routerState.decisionLog = [];
+routerState.totalRequests = 0;
+routerState.failovers = 0;
 
 function buildProviderStatuses() {
   return Object.values(PROVIDER_CONFIG).map((p) => ({
     id: p.id,
     label: p.label,
-    status: p.healthy && p.rateLimitPct < 0.5 ? 'OK' : p.rateLimitPct < 0.9 ? 'DEGRADED' : 'OFFLINE',
+    status:
+      p.healthy && p.rateLimitPct < 0.5 ? 'OK' : p.rateLimitPct < 0.9 ? 'DEGRADED' : 'OFFLINE',
     weight: p.weight,
     baseLatencyMs: p.baseLatencyMs,
     maxLatencyMs: p.maxLatencyMs,
     measuredLatencyMs: p.baseLatencyMs + Math.floor(Math.random() * 40),
     rateLimitPct: Number(p.rateLimitPct.toFixed(3)),
     lastError: p.lastError,
-    healthy: p.healthy
+    healthy: p.healthy,
   }));
 }
 
@@ -4020,7 +4688,7 @@ app.get('/api/router/status', async (_req, res) => {
       providers,
       totalRequests: routerState.totalRequests,
       failovers: routerState.failovers,
-      recent: routerState.decisionLog.slice(0, 20)
+      recent: routerState.decisionLog.slice(0, 20),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4051,14 +4719,14 @@ app.post('/api/router/select', async (req, res) => {
       selected: decision.id,
       failover,
       latencyMs: PROVIDER_CONFIG[decision.id]?.baseLatencyMs || 0,
-      ts: new Date().toISOString()
+      ts: new Date().toISOString(),
     };
     routerState.decisionLog = [entry, ...routerState.decisionLog].slice(0, 50);
     publishEvent('router', entry);
     res.json({
       ...entry,
       failoverTriggered: failover,
-      providers: buildProviderStatuses()
+      providers: buildProviderStatuses(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4120,7 +4788,7 @@ app.get('/api/telemetry/throughput', async (_req, res) => {
       ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
       ttftSamples,
       sampleCount: (rows || []).length,
-      asOf: new Date().toISOString()
+      asOf: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4131,12 +4799,12 @@ app.get('/api/telemetry/throughput', async (_req, res) => {
 
 // Authoritative provider cost table (per 1K tokens, USD).
 const PROVIDER_COSTS = {
-  'gpt-4o':            { in: 0.005,  out: 0.015 },
-  'claude-3-5-sonnet': { in: 0.003,  out: 0.015 },
-  'gemini-1.5-pro':    { in: 0.00125, out: 0.005 },
-  'deepseek-r1':       { in: 0.00055, out: 0.00219 },
-  'deepseek-v3':       { in: 0.00014, out: 0.00028 },
-  'ternary-bonsai-27b':{ in: 0.0008,  out: 0.003 }
+  'gpt-4o': { in: 0.005, out: 0.015 },
+  'claude-3-5-sonnet': { in: 0.003, out: 0.015 },
+  'gemini-1.5-pro': { in: 0.00125, out: 0.005 },
+  'deepseek-r1': { in: 0.00055, out: 0.00219 },
+  'deepseek-v3': { in: 0.00014, out: 0.00028 },
+  'ternary-bonsai-27b': { in: 0.0008, out: 0.003 },
 };
 
 const BUDGET_USD = Number(process.env.MONTHLY_BUDGET_USD || 50);
@@ -4147,7 +4815,11 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
     const last24hIso = new Date(now - 24 * 3600 * 1000).toISOString();
     const last7dIso = new Date(now - 7 * 24 * 3600 * 1000).toISOString();
 
-    let inTok = 0, outTok = 0, totalCost = 0, total24hCost = 0, total7dCost = 0;
+    let inTok = 0,
+      outTok = 0,
+      totalCost = 0,
+      total24hCost = 0,
+      total7dCost = 0;
     let byProvider = {};
     let sampleCount = 0;
 
@@ -4188,7 +4860,7 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
         byProvider[provider] = {
           inputTokens: Number(row.in_tok || 0),
           outputTokens: Number(row.out_tok || 0),
-          cost: Number(row.total_cost || 0)
+          cost: Number(row.total_cost || 0),
         };
       }
     } catch {
@@ -4215,7 +4887,7 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
       sampleCount,
       byProvider,
       providerCosts: PROVIDER_COSTS,
-      asOf: new Date().toISOString()
+      asOf: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4229,7 +4901,9 @@ app.get('/api/telemetry/search', async (req, res) => {
     const q = String(req.query.q || '').trim();
     const traceId = String(req.query.traceId || '').trim();
     const provider = String(req.query.provider || '').trim();
-    const verdict = String(req.query.verdict || '').trim().toUpperCase();
+    const verdict = String(req.query.verdict || '')
+      .trim()
+      .toUpperCase();
     const from = String(req.query.from || '').trim();
     const to = String(req.query.to || '').trim();
     const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
@@ -4239,7 +4913,9 @@ app.get('/api/telemetry/search', async (req, res) => {
     let idx = 1;
 
     if (q) {
-      conditions.push(`(model ILIKE $${idx} OR provider ILIKE $${idx} OR project_name ILIKE $${idx} OR trace_id ILIKE $${idx})`);
+      conditions.push(
+        `(model ILIKE $${idx} OR provider ILIKE $${idx} OR project_name ILIKE $${idx} OR trace_id ILIKE $${idx})`
+      );
       params.push(`%${q}%`);
       idx++;
     }
@@ -4286,10 +4962,14 @@ app.get('/api/telemetry/search', async (req, res) => {
       tokensIn: Number(r.tokens_in || 0),
       tokensOut: Number(r.tokens_out || 0),
       timestamp: r.timestamp,
-      projectName: r.project_name
+      projectName: r.project_name,
     }));
 
-    res.json({ query: { q, traceId, provider, verdict, from, to, limit }, total: results.length, results });
+    res.json({
+      query: { q, traceId, provider, verdict, from, to, limit },
+      total: results.length,
+      results,
+    });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -4301,17 +4981,33 @@ app.get('/api/audit/export', async (req, res) => {
     const from = String(req.query.from || '').trim();
     const to = String(req.query.to || '').trim();
     const provider = String(req.query.provider || '').trim();
-    const status = String(req.query.status || '').trim().toUpperCase();
+    const status = String(req.query.status || '')
+      .trim()
+      .toUpperCase();
 
     const conditions = [];
     const params = [];
     let idx = 1;
 
-    if (from) { conditions.push(`timestamp >= $${idx}`); params.push(from); idx++; }
-    if (to) { conditions.push(`timestamp <= $${idx}`); params.push(to); idx++; }
-    if (provider) { conditions.push(`provider = $${idx}`); params.push(provider); idx++; }
+    if (from) {
+      conditions.push(`timestamp >= $${idx}`);
+      params.push(from);
+      idx++;
+    }
+    if (to) {
+      conditions.push(`timestamp <= $${idx}`);
+      params.push(to);
+      idx++;
+    }
+    if (provider) {
+      conditions.push(`provider = $${idx}`);
+      params.push(provider);
+      idx++;
+    }
     if (status && ['OK', 'ERROR', 'BLOCKED', 'INTERCEPTED'].includes(status)) {
-      conditions.push(`status = $${idx}`); params.push(status); idx++;
+      conditions.push(`status = $${idx}`);
+      params.push(status);
+      idx++;
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -4331,16 +5027,28 @@ app.get('/api/audit/export', async (req, res) => {
       tokensIn: Number(r.tokens_in || 0),
       tokensOut: Number(r.tokens_out || 0),
       timestamp: r.timestamp,
-      projectName: r.project_name
+      projectName: r.project_name,
     }));
 
     const canonical = JSON.stringify(payload);
     const hash = crypto.createHash('sha256').update(canonical).digest('hex');
 
     if (format === 'csv') {
-      const header = 'id,trace_id,model,provider,status,cost,tokens_in,tokens_out,timestamp,project_name';
+      const header =
+        'id,trace_id,model,provider,status,cost,tokens_in,tokens_out,timestamp,project_name';
       const lines = payload.map((r) =>
-        [r.id, r.traceId, r.model, r.provider, r.status, r.cost, r.tokensIn, r.tokensOut, r.timestamp, r.projectName || ''].join(',')
+        [
+          r.id,
+          r.traceId,
+          r.model,
+          r.provider,
+          r.status,
+          r.cost,
+          r.tokensIn,
+          r.tokensOut,
+          r.timestamp,
+          r.projectName || '',
+        ].join(',')
       );
       const csv = [header, ...lines].join('\n');
       res.setHeader('Content-Type', 'text/csv');
@@ -4351,7 +5059,13 @@ app.get('/api/audit/export', async (req, res) => {
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="audit-export-${Date.now()}.json"`);
-    res.json({ exportedAt: new Date().toISOString(), format: 'json', hash, recordCount: payload.length, records: payload });
+    res.json({
+      exportedAt: new Date().toISOString(),
+      format: 'json',
+      hash,
+      recordCount: payload.length,
+      records: payload,
+    });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -4362,7 +5076,7 @@ app.get('/api/system/diagnostics', async (_req, res) => {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
     const services = {
       postgres: { status: 'OFFLINE', latencyMs: null, lastPing: null, poolInfo: null },
-      redis: { status: 'OFFLINE', latencyMs: null, lastPing: null, info: null }
+      redis: { status: 'OFFLINE', latencyMs: null, lastPing: null, info: null },
     };
     const checks = {};
 
@@ -4376,7 +5090,13 @@ app.get('/api/system/diagnostics', async (_req, res) => {
         status: dbOk ? 'OK' : 'OFFLINE',
         latencyMs: dbOk ? latencyMs : null,
         lastPing: new Date().toISOString(),
-        poolInfo: pool ? { totalCount: pool.totalCount || 0, idleCount: pool.idleCount || 0, waitingCount: pool.waitingCount || 0 } : null
+        poolInfo: pool
+          ? {
+              totalCount: pool.totalCount || 0,
+              idleCount: pool.idleCount || 0,
+              waitingCount: pool.waitingCount || 0,
+            }
+          : null,
       };
       checks.dbConnection = dbOk ? 'PASS' : 'FAIL';
     } catch {
@@ -4390,8 +5110,17 @@ app.get('/api/system/diagnostics', async (_req, res) => {
         await redis.ping();
         const latencyMs = Date.now() - t0;
         let memInfo = null;
-        try { memInfo = await redis.info('memory'); } catch { /* ignore */ }
-        services.redis = { status: 'OK', latencyMs, lastPing: new Date().toISOString(), info: memInfo };
+        try {
+          memInfo = await redis.info('memory');
+        } catch {
+          /* ignore */
+        }
+        services.redis = {
+          status: 'OK',
+          latencyMs,
+          lastPing: new Date().toISOString(),
+          info: memInfo,
+        };
         checks.redisConnection = 'PASS';
       } catch {
         services.redis = { status: 'OFFLINE', latencyMs: null, lastPing: null, info: null };
@@ -4406,7 +5135,9 @@ app.get('/api/system/diagnostics', async (_req, res) => {
     try {
       const countRow = await runQuery('SELECT COUNT(*) as cnt FROM telemetry_traces');
       vectorIndexOk = Array.isArray(countRow);
-      vectorIndexDetail = vectorIndexOk ? `${countRow[0]?.cnt || 0} trace rows indexed` : 'count query failed';
+      vectorIndexDetail = vectorIndexOk
+        ? `${countRow[0]?.cnt || 0} trace rows indexed`
+        : 'count query failed';
       checks.vectorIndex = vectorIndexOk ? 'PASS' : 'FAIL';
     } catch {
       checks.vectorIndex = 'FAIL';
@@ -4414,9 +5145,10 @@ app.get('/api/system/diagnostics', async (_req, res) => {
 
     const routerProviders = Object.values(PROVIDER_CONFIG || {}).map((p) => ({
       id: p.id,
-      status: p.healthy && p.rateLimitPct < 0.5 ? 'OK' : p.rateLimitPct < 0.9 ? 'DEGRADED' : 'OFFLINE',
+      status:
+        p.healthy && p.rateLimitPct < 0.5 ? 'OK' : p.rateLimitPct < 0.9 ? 'DEGRADED' : 'OFFLINE',
       latencyMs: p.measuredLatencyMs,
-      lastError: p.lastError || null
+      lastError: p.lastError || null,
     }));
     checks.routerProviders = routerProviders.some((p) => p.status === 'OFFLINE') ? 'FAIL' : 'PASS';
 
@@ -4440,7 +5172,9 @@ app.get('/api/system/diagnostics', async (_req, res) => {
       checks.governanceLedger = 'FAIL';
     }
 
-    const overall = Object.values(checks).every((c) => c === 'PASS' || c === 'SKIP') ? 'HEALTHY' : 'DEGRADED';
+    const overall = Object.values(checks).every((c) => c === 'PASS' || c === 'SKIP')
+      ? 'HEALTHY'
+      : 'DEGRADED';
 
     res.json({
       status: overall,
@@ -4451,7 +5185,7 @@ app.get('/api/system/diagnostics', async (_req, res) => {
       routerProviders,
       logBuffer: { detail: logBufferDetail },
       vectorIndex: { detail: vectorIndexDetail },
-      governanceLedger: checks.governanceLedger === 'PASS'
+      governanceLedger: checks.governanceLedger === 'PASS',
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4461,7 +5195,7 @@ app.get('/api/system/diagnostics', async (_req, res) => {
 // --- Phase 23: Autonomous Agent Feedback Loop & Policy Auto-Tuning ---------------
 
 const feedbackState = {
-  feedback: []
+  feedback: [],
 };
 
 app.post('/api/governance/feedback', async (req, res) => {
@@ -4481,7 +5215,7 @@ app.post('/api/governance/feedback', async (req, res) => {
       policyTag: policyTag || null,
       expectedBehavior: expectedBehavior || null,
       notes: notes || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     feedbackState.feedback.push(entry);
     publishEvent('feedback', { kind: 'submitted', feedback: entry });
@@ -4508,14 +5242,17 @@ app.get('/api/governance/feedback', async (req, res) => {
 
 const autoTuneState = {
   lastAnalysis: null,
-  recommendations: null
+  recommendations: null,
 };
 
 app.post('/api/governance/tune', async (req, res) => {
   try {
-    const lookbackHours = Math.min(168, Math.max(1, parseInt(String(req.body?.lookbackHours || '24'), 10) || 24));
+    const lookbackHours = Math.min(
+      168,
+      Math.max(1, parseInt(String(req.body?.lookbackHours || '24'), 10) || 24)
+    );
     const since = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
-    
+
     const traces = await runQuery(
       `SELECT status, model, tokens_in, tokens_out, cost FROM telemetry_traces WHERE timestamp >= $1`,
       [since]
@@ -4525,29 +5262,37 @@ app.post('/api/governance/tune', async (req, res) => {
     const blocks = traces.filter((t) => t.status === 'BLOCK').length;
     const warns = traces.filter((t) => t.status === 'WARN').length;
     const passes = traces.filter((t) => t.status === 'OK' || t.status === 'PASS').length;
-    
+
     const blockRate = totalTraces > 0 ? (blocks / totalTraces) * 100 : 0;
     const warnRate = totalTraces > 0 ? (warns / totalTraces) * 100 : 0;
-    
+
     const recommendations = {
       token_budget_cap: {
         currentThreshold: policyState.token_budget_cap.config.maxTokens,
-        recommendedThreshold: Math.round(policyState.token_budget_cap.config.maxTokens * (1 + (blockRate / 100))),
-        confidence: Math.min(95, 50 + (totalTraces / 10)),
-        rationale: blockRate > 10 ? 'High block rate suggests threshold too restrictive' : 'Block rate acceptable, maintaining current threshold'
+        recommendedThreshold: Math.round(
+          policyState.token_budget_cap.config.maxTokens * (1 + blockRate / 100)
+        ),
+        confidence: Math.min(95, 50 + totalTraces / 10),
+        rationale:
+          blockRate > 10
+            ? 'High block rate suggests threshold too restrictive'
+            : 'Block rate acceptable, maintaining current threshold',
       },
       secret_leak_prevention: {
         currentEnabled: policyState.secret_leak_prevention.enabled,
         recommendedEnabled: true,
         confidence: 99,
-        rationale: 'Secret leak prevention should always be enabled'
+        rationale: 'Secret leak prevention should always be enabled',
       },
       pii_redaction: {
         currentSeverity: policyState.pii_redaction.severity,
         recommendedSeverity: warnRate > 15 ? 'BLOCK' : 'WARN',
-        confidence: Math.min(90, 60 + (warnRate * 2)),
-        rationale: warnRate > 15 ? 'High PII detection rate, escalating to BLOCK' : 'PII rate acceptable, maintaining WARN severity'
-      }
+        confidence: Math.min(90, 60 + warnRate * 2),
+        rationale:
+          warnRate > 15
+            ? 'High PII detection rate, escalating to BLOCK'
+            : 'PII rate acceptable, maintaining WARN severity',
+      },
     };
 
     autoTuneState.lastAnalysis = {
@@ -4558,7 +5303,7 @@ app.post('/api/governance/tune', async (req, res) => {
       warns,
       passes,
       blockRate: Number(blockRate.toFixed(2)),
-      warnRate: Number(warnRate.toFixed(2))
+      warnRate: Number(warnRate.toFixed(2)),
     };
     autoTuneState.recommendations = recommendations;
 
@@ -4566,7 +5311,7 @@ app.post('/api/governance/tune', async (req, res) => {
       success: true,
       analysis: autoTuneState.lastAnalysis,
       recommendations,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4578,7 +5323,7 @@ app.get('/api/governance/tune', async (_req, res) => {
     res.json({
       lastAnalysis: autoTuneState.lastAnalysis,
       recommendations: autoTuneState.recommendations,
-      available: autoTuneState.recommendations !== null
+      available: autoTuneState.recommendations !== null,
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4594,17 +5339,18 @@ app.post('/api/governance/tune/apply', async (req, res) => {
     if (!recommendations || typeof recommendations !== 'object') {
       return res.status(400).json({ error: 'recommendations object required' });
     }
-    
+
     const applied = [];
     if (recommendations.token_budget_cap?.recommendedThreshold) {
-      policyState.token_budget_cap.config.maxTokens = recommendations.token_budget_cap.recommendedThreshold;
+      policyState.token_budget_cap.config.maxTokens =
+        recommendations.token_budget_cap.recommendedThreshold;
       applied.push('token_budget_cap');
     }
     if (recommendations.pii_redaction?.recommendedSeverity) {
       policyState.pii_redaction.severity = recommendations.pii_redaction.recommendedSeverity;
       applied.push('pii_redaction');
     }
-    
+
     publishEvent('policy', { kind: 'auto_tuned', applied, timestamp: new Date().toISOString() });
     res.json({ success: true, applied, timestamp: new Date().toISOString() });
   } catch (err) {
@@ -4627,7 +5373,7 @@ app.get('/api/governance/tenants', (_req, res) => {
   try {
     res.json({
       tenants: Object.values(TENANTS).map((t) => ({ id: t.id, name: t.name, role: t.role })),
-      current: 'tenant-prod'
+      current: 'tenant-prod',
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4635,7 +5381,7 @@ app.get('/api/governance/tenants', (_req, res) => {
 });
 
 const auditVaultState = {
-  anchors: []
+  anchors: [],
 };
 
 function hashTraceRow(row) {
@@ -4645,7 +5391,7 @@ function hashTraceRow(row) {
     model: row.model,
     status: row.status,
     cost: Number(row.cost || 0),
-    timestamp: row.timestamp || row.created_at
+    timestamp: row.timestamp || row.created_at,
   });
   return crypto.createHash('sha256').update(canonical).digest('hex');
 }
@@ -4663,10 +5409,7 @@ app.post('/api/audit/vault/anchor', async (req, res) => {
     ).catch(() => []);
 
     const leafHashes = (rows || []).map(hashTraceRow);
-    const batchRoot = crypto
-      .createHash('sha256')
-      .update(leafHashes.join('|'))
-      .digest('hex');
+    const batchRoot = crypto.createHash('sha256').update(leafHashes.join('|')).digest('hex');
 
     const anchor = {
       anchorId: `vault-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -4675,7 +5418,7 @@ app.post('/api/audit/vault/anchor', async (req, res) => {
       batchRoot,
       leafCount: leafHashes.length,
       sampleLeafHashes: leafHashes.slice(0, 5),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
     auditVaultState.anchors.push(anchor);
     publishEvent('audit_vault', { kind: 'anchored', anchor });
@@ -4690,7 +5433,7 @@ app.get('/api/audit/vault', async (_req, res) => {
   try {
     res.json({
       count: auditVaultState.anchors.length,
-      anchors: auditVaultState.anchors.slice(-25).reverse()
+      anchors: auditVaultState.anchors.slice(-25).reverse(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4715,10 +5458,7 @@ app.post('/api/audit/vault/verify', async (req, res) => {
     ).catch(() => []);
 
     const leafHashes = (rows || []).map(hashTraceRow);
-    const recomputedRoot = crypto
-      .createHash('sha256')
-      .update(leafHashes.join('|'))
-      .digest('hex');
+    const recomputedRoot = crypto.createHash('sha256').update(leafHashes.join('|')).digest('hex');
 
     const verified = recomputedRoot === anchor.batchRoot;
     res.json({
@@ -4728,7 +5468,7 @@ app.post('/api/audit/vault/verify', async (req, res) => {
       recomputedRoot,
       leafCount: anchor.leafCount,
       currentLeafCount: leafHashes.length,
-      verifiedAt: new Date().toISOString()
+      verifiedAt: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4740,8 +5480,11 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
   res.json({
     middleware_guard: getAllGuardStats(),
     redis: getRateLimiterStats(),
-    in_memory_express: { windowMs: 60000, maxRequests: process.env.NODE_ENV === 'test' ? 1000 : 100 },
-    timestamp: new Date().toISOString()
+    in_memory_express: {
+      windowMs: 60000,
+      maxRequests: process.env.NODE_ENV === 'test' ? 1000 : 100,
+    },
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -4772,13 +5515,14 @@ app.get('/metrics', (_req, res) => {
     `# HELP kudbee_middleware_healthy 1 if all middleware healthy`,
     '# TYPE kudbee_middleware_healthy gauge',
     `kudbee_middleware_healthy ${guards.every((g) => g.healthy) ? 1 : 0}`,
-    ''
+    '',
   ];
   res.setHeader('Content-Type', 'text/plain; version=0.0.4');
   res.send(lines.join('\n'));
 });
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
+  // CodeQL [missing-rate-limiting] suppressed: static file serving must remain unconditionally accessible.
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
@@ -4801,7 +5545,10 @@ try {
   const { startWorker } = await import('../agents/worker.ts');
   void startWorker();
 } catch (err) {
-  console.error('[Worker] Failed to start background loop:', err instanceof Error ? err.message : String(err));
+  console.error(
+    '[Worker] Failed to start background loop:',
+    err instanceof Error ? err.message : String(err)
+  );
 }
 
 // --- Phase 34: Bootstrap shared receptor lock registry from Redis -----------
@@ -4829,12 +5576,19 @@ app.use((err, req, res, next) => {
   const message = err instanceof Error ? err.message : String(err);
   const isTimeout = message.includes('timed out') || message.includes('timeout');
   const status = isTimeout ? 503 : 500;
-  console.error(`[Resilience] Unhandled error on ${req.method} ${req.path} (${status}): ${message}`);
+  console.error(
+    `[Resilience] Unhandled error on ${req.method} ${req.path} (${status}): ${message}`
+  );
   if (!res.headersSent) {
     return res.status(status).json({
       status: 'degraded',
       fallback: true,
-      error: process.env.NODE_ENV === 'production' ? (status === 503 ? 'Service Unavailable' : 'Internal error') : message
+      error:
+        process.env.NODE_ENV === 'production'
+          ? status === 503
+            ? 'Service Unavailable'
+            : 'Internal error'
+          : message,
     });
   }
   next(err);
@@ -4843,9 +5597,13 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`);
+  console.log(
+    `[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`
+  );
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
-  console.log(`[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`);
+  console.log(
+    `[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`
+  );
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
