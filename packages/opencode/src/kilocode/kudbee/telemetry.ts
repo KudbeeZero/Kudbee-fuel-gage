@@ -19,9 +19,72 @@ export function setupTelemetryListeners(opts?: {
     await publishTelemetryUpstash(payload, opts);
   });
 
+  bus.subscribe(KudbeeEvents.quota_exceeded, async (evt) => {
+    console.warn('[telemetry] Quota exceeded — silencing outbound telemetry');
+    const payload = evt.payload as TelemetryEvent;
+    bus.emit(KudbeeEvents.quota_health, {
+      ...payload,
+      silenced: true,
+      reason: 'UPSTASH_QUOTA_EXCEEDED'
+    });
+  });
+
+  bus.subscribe(KudbeeEvents.memory_stored, (evt) => {
+    console.log('[memory] memory.stored:', JSON.stringify(evt.payload).slice(0, 120));
+  });
+
+  bus.subscribe(KudbeeEvents.memory_recalled, (evt) => {
+    console.log('[memory] memory.recalled:', JSON.stringify(evt.payload).slice(0, 120));
+  });
+
   return () => {
     unsub();
   };
+}
+
+export interface QuotaHealthMetric {
+  requestCount: number;
+  quotaLimit: number;
+  utilizationPct: number;
+  backoffActive: boolean;
+  circuitState: string;
+  estimatedResetMs: number;
+  timestamp: string;
+}
+
+export function publishQuotaHealth(
+  metric: QuotaHealthMetric,
+  opts?: {
+    url?: string;
+    redis?: {
+      publish: (channel: string, msg: string) => Promise<number>;
+    };
+  }
+): void {
+  bus.emit(KudbeeEvents.quota_health, metric);
+
+  const serialized = JSON.stringify(metric);
+  const endpoint = opts?.url ?? process.env.UPSTASH_TELEMETRY_URL;
+
+  if (opts?.redis && !endpoint) {
+    opts.redis.publish('kudbee:quota_health', serialized).catch(() => {
+      /* silent */
+    });
+    return;
+  }
+
+  if (!endpoint) {
+    console.warn('[telemetry] No endpoint configured for quota health, dropping');
+    return;
+  }
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: serialized
+  }).catch(() => {
+    /* silent */
+  });
 }
 
 export async function publishTelemetry(

@@ -1279,7 +1279,29 @@ app.post('/api/memory/dictionary/lookup', async (req, res) => {
     const latencyMs = Date.now() - start;
     return res.status(200).json({ found: snapshot !== null, snapshot, similarity, latencyMs, query: text });
   } catch (err) {
-    return res.status(500).json({ error: 'Dictionary lookup failed' });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- Phase 32: HTTP polling fallback for rate-limited clients ----------------
+// When Upstash Redis hits quota, clients can fall back to HTTP polling at
+// this endpoint instead of SSE/WebSocket. Returns the last 50 buffered
+// telemetry events from the InMemoryQueueManager.
+app.get('/api/telemetry/poll', async (req, res) => {
+  try {
+    const { getOrCreateInMemoryQueue } = await import('../lib/inMemoryQueue.ts');
+    const queue = getOrCreateInMemoryQueue();
+    const stats = queue.stats();
+
+    res.json({
+      buffered: stats.size,
+      fallbackActive: queue.isActive,
+      oldestItemAgeMs: stats.oldestItemAgeMs,
+      status: stats.size > 0 ? 'DEGRADED' : 'HEALTHY',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

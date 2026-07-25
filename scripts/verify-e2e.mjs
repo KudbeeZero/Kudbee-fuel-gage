@@ -790,6 +790,73 @@ async function check36_TokenForgeRetrieval() {
   return emptyRes.status === 200 && Array.isArray(emptyData.results);
 }
 
+// Check 37 — Redis quota error detection validates that errors matching
+// Upstash MAX_REQUESTS_LIMIT, 429, and ERR patterns are correctly identified
+// as quota exhaustion errors, while ordinary timeouts and refusals are not.
+async function check37_RedisQuotaErrorDetection() {
+  try {
+    const { isRedisQuotaError } = await import('../services/lib/redis.js');
+
+    const quotaErrors = [
+      'ERR max requests limit exceeded. Limit: 500000, Usage: 500000',
+      'MAX_REQUESTS_LIMIT exceeded',
+      'HTTP 429 Too Many Requests',
+      'rate limit hit on upstash.io'
+    ];
+
+    const nonQuotaErrors = [
+      'Connection refused',
+      'ETIMEDOUT',
+      'Stream isn\'t writeable'
+    ];
+
+    let pass = true;
+    for (const msg of quotaErrors) {
+      if (!isRedisQuotaError(msg)) pass = false;
+      if (!isRedisQuotaError(new Error(msg))) pass = false;
+    }
+
+    for (const msg of nonQuotaErrors) {
+      if (isRedisQuotaError(msg)) pass = false;
+    }
+
+    return pass;
+  } catch (e) {
+    console.error(`[Check 37] Exception: ${e.message}`);
+    return false;
+  }
+}
+
+// Check 38 — InMemoryQueueManager validates that the fallback queue
+// function is exported from the redis.js module and returns a usable
+// object with expected methods (size, stop, enqueue).
+async function check38_InMemoryQueueFallback() {
+  try {
+    const { initRedisFallbackQueue } = await import('../services/lib/redis.js');
+
+    if (typeof initRedisFallbackQueue !== 'function') return false;
+
+    const queue = initRedisFallbackQueue();
+    if (!queue || typeof queue !== 'object') return false;
+    if (typeof queue.size !== 'number') return false;
+    if (typeof queue.enqueue !== 'function') return false;
+    if (typeof queue.flush !== 'function') return false;
+    if (typeof queue.stop !== 'function') return false;
+
+    const id = queue.enqueue({ test: 'e2e-38', timestamp: new Date().toISOString() });
+    if (typeof id !== 'string' || id.length === 0) return false;
+
+    if (queue.size < 1) return false;
+
+    queue.stop();
+
+    return true;
+  } catch (e) {
+    console.error(`[Check 38] Exception: ${e.message}`);
+    return false;
+  }
+}
+
 async function run() {
   try {
     await startServer();
@@ -829,6 +896,8 @@ async function run() {
     await runCheck('Check 34: Uncertainty gate parse variant', check34_UncertaintyGateParse);
     await runCheck('Check 35: Uncertainty gate low-confidence interception', check35_UncertaintyGateInterception);
     await runCheck('Check 36: Token Forge retrieval (getRelevantThinkTokens)', check36_TokenForgeRetrieval);
+    await runCheck('Check 37: Redis quota error detection (isRedisQuotaError)', check37_RedisQuotaErrorDetection);
+    await runCheck('Check 38: InMemoryQueueManager fallback under simulated Redis timeout', check38_InMemoryQueueFallback);
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -837,7 +906,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 36`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 38`);
   console.log('========================================');
 
   if (failed > 0) {

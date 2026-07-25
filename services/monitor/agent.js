@@ -1,4 +1,4 @@
-import { getRedisClient, getBlockingRedisClient } from '../lib/redis.js';
+import { getRedisClient, getBlockingRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining } from '../lib/redis.js';
 import crypto from 'node:crypto';
 import { registerShutdown } from '../lib/shutdown.js';
 
@@ -163,8 +163,15 @@ async function runLoop() {
   console.log('[Agent] Listening on kudbee:telemetry_feed');
 
   while (true) {
+    const remainingBackoff = getRedisQuotaBackoffRemaining();
+    if (remainingBackoff > 0) {
+      console.warn(`[Agent] Upstash quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+      await new Promise((resolve) => setTimeout(resolve, remainingBackoff));
+      continue;
+    }
+
     try {
-      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 0);
+      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
       if (!result) continue;
 
       const [, raw] = result;
@@ -178,8 +185,10 @@ async function runLoop() {
 
       await processTelemetry(telemetry);
     } catch (err) {
-      console.error('[Agent] Polling loop error:', err.message);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const msg = err instanceof Error ? err.message : String(err);
+      const sleepMs = isRedisQuotaError(msg) ? 15_000 : 2000;
+      console.error(`[Agent] Polling loop error (sleeping ${sleepMs}ms):`, msg);
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   }
 }

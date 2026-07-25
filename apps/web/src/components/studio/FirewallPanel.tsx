@@ -2,16 +2,86 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BadgeCheck,
   ShieldX,
+  Activity,
+  ToggleLeft,
+  ToggleRight,
+  Ban,
+  Zap,
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 import { useEventStream } from '../../hooks/useEventStream';
 import { useCommandDispatcher } from '../../store/commandDispatcher';
+import { useControlTowerStore } from '../../store/useControlTowerStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
+
+function UpstashQuotaHealthCard() {
+  const { groqMetrics } = useControlTowerStore();
+  const errorCount = groqMetrics.filter((m) => m.status !== 'OK').length;
+  const isQuotaSuspected = errorCount > 5 || groqMetrics.length > 450_000;
+
+  const cooldownRemaining = isQuotaSuspected ? Math.max(0, Math.ceil((30 * 60 * 1000) / 1000)) : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="upstash-quota-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className={`h-3.5 w-3.5 ${isQuotaSuspected ? 'text-rose-400' : 'text-emerald-400'}`} />
+          <h3 className="font-display text-xs font-semibold text-slate-200">Upstash Quota Health</h3>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+          isQuotaSuspected
+            ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+        }`}>
+          {isQuotaSuspected ? 'QUOTA SUSPECTED' : 'HEALTHY'}
+        </span>
+      </div>
+
+      <div className="p-3 space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[7px] font-mono text-slate-500 uppercase">Requests</div>
+            <div className="font-mono text-xs text-slate-200">{groqMetrics.length.toLocaleString()}</div>
+          </div>
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[7px] font-mono text-slate-500 uppercase">Circuit State</div>
+            <div className={`font-mono text-xs font-bold ${isQuotaSuspected ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {isQuotaSuspected ? 'ENGAGED' : 'READY'}
+            </div>
+          </div>
+        </div>
+
+        {isQuotaSuspected && (
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-2">
+            <div className="flex items-center justify-between text-[8px] font-mono">
+              <span className="text-rose-300">Cooldown (est.)</span>
+              <span className="text-rose-300">{cooldownRemaining}s remaining</span>
+            </div>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full bg-rose-500 animate-pulse" style={{ width: '60%' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface TriageItem {
   id: number;
   payload: unknown;
   violation_reason: string;
   timestamp: string;
+}
+
+interface CircuitBreakerStatus {
+  providerId: string;
+  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  failureCount: number;
+  lastEventAt: string | null;
+  overridden: boolean;
 }
 
 let agentKeyPair: CryptoKeyPair | null = null;
@@ -61,6 +131,145 @@ function formatPayload(payload: unknown): string {
   } catch {
     return String(payload);
   }
+}
+
+function CircuitBreakerStatusCard() {
+  const [breakers, setBreakers] = useState<CircuitBreakerStatus[]>([
+    { providerId: 'groq', state: 'CLOSED', failureCount: 0, lastEventAt: null, overridden: false },
+    { providerId: 'anthropic', state: 'CLOSED', failureCount: 0, lastEventAt: null, overridden: false },
+    { providerId: 'openai', state: 'CLOSED', failureCount: 0, lastEventAt: null, overridden: false }
+  ]);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const toggleOverride = useCallback((providerId: string) => {
+    setBreakers((prev) =>
+      prev.map((b) =>
+        b.providerId === providerId ? { ...b, overridden: !b.overridden, state: b.overridden ? b.failureCount >= 3 ? 'OPEN' : 'CLOSED' : 'CLOSED' as const, failureCount: b.overridden ? b.failureCount : 0 } : b
+      )
+    );
+    setToggling(providerId);
+    setTimeout(() => setToggling(null), 500);
+  }, []);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="circuit-breaker-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-violet-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Circuit Breaker Status</h3>
+        </div>
+        <span className="font-mono text-[10px] text-slate-500">Provider Failover Gate</span>
+      </div>
+
+      <div className="space-y-3 p-4">
+        {breakers.map((breaker) => (
+          <div key={breaker.providerId} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className={`h-3.5 w-3.5 ${
+                  breaker.state === 'CLOSED' ? 'text-emerald-400' :
+                  breaker.state === 'HALF_OPEN' ? 'text-amber-400' : 'text-rose-400'
+                }`} />
+                <span className="font-mono text-xs text-slate-300 uppercase">{breaker.providerId}</span>
+              </div>
+              <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+                breaker.state === 'CLOSED'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : breaker.state === 'HALF_OPEN'
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+              }`}>
+                {breaker.state.replace('_', ' ')}
+              </span>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-slate-500">
+              <span>Failures: {breaker.failureCount}</span>
+              <button
+                type="button"
+                onClick={() => toggleOverride(breaker.providerId)}
+                disabled={toggling === breaker.providerId}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-2 py-1 text-[10px] hover:border-slate-500 transition-colors disabled:opacity-50"
+                style={{ minHeight: 32 }}
+              >
+                {breaker.overridden ? (
+                  <>
+                    <ToggleRight className="h-3 w-3 text-rose-400" />
+                    <span className="text-rose-400">Forced Open</span>
+                  </>
+                ) : (
+                  <>
+                    <ToggleLeft className="h-3 w-3 text-slate-400" />
+                    <span className="text-slate-400">Auto</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RateLimitStatusCard() {
+  const { groqMetrics } = useControlTowerStore();
+  const recentErrors = groqMetrics.filter((m) => m.status !== 'OK').slice(0, 5);
+  const errorRate = groqMetrics.length > 0
+    ? Math.round((recentErrors.length / groqMetrics.length) * 100)
+    : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="rate-limit-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-amber-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Rate Limit Monitor</h3>
+        </div>
+        <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-bold ${
+          errorRate > 10 ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' :
+          errorRate > 5 ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' :
+          'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+        }`}>{errorRate}% errors</span>
+      </div>
+
+      <div className="p-4">
+        <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[8px] font-mono text-slate-500 uppercase">Total</div>
+            <div className="font-mono text-sm text-slate-200">{groqMetrics.length}</div>
+          </div>
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[8px] font-mono text-slate-500 uppercase">Errors</div>
+            <div className="font-mono text-sm text-rose-400">{recentErrors.length}</div>
+          </div>
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[8px] font-mono text-slate-500 uppercase">OK</div>
+            <div className="font-mono text-sm text-emerald-400">{groqMetrics.length - recentErrors.length}</div>
+          </div>
+        </div>
+
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {recentErrors.map((m) => (
+            <div key={m.id} className="flex items-center justify-between rounded bg-slate-800/20 px-2 py-1">
+              <div className="flex items-center gap-1.5">
+                <Ban className="h-3 w-3 text-rose-400" />
+                <span className="font-mono text-[10px] text-slate-400">{m.model}</span>
+              </div>
+              <span className="font-mono text-[9px] text-slate-600">{m.status} · {m.latencyMs}ms</span>
+            </div>
+          ))}
+          {recentErrors.length === 0 && (
+            <div className="text-center py-3 text-[10px] font-mono text-slate-600">
+              No recent errors
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TelemetryFeed({
@@ -230,23 +439,31 @@ export function FirewallPanel() {
   }, [stream.on, loadTriage]);
 
   return (
-    <div className="grid grid-cols-1 gap-5">
-      <TelemetryFeed
-        items={triage}
-        onVerify={handleVerify}
-        verifying={verifying}
-        verifiedIds={verifiedIds}
-      />
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="lg:col-span-2">
+        <TelemetryFeed
+          items={triage}
+          onVerify={handleVerify}
+          verifying={verifying}
+          verifiedIds={verifiedIds}
+        />
+      </div>
+
+      <div className="space-y-5">
+        <CircuitBreakerStatusCard />
+        <RateLimitStatusCard />
+        <UpstashQuotaHealthCard />
+      </div>
 
       {triageError && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
+        <div className="lg:col-span-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-mono text-amber-300">
           <ShieldX className="h-4 w-4" />
           Triage: {triageError}
         </div>
       )}
 
       {verifyError && (
-        <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-mono text-rose-300">
+        <div className="lg:col-span-3 flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-mono text-rose-300">
           <BadgeCheck className="h-4 w-4" />
           Verify: {verifyError}
         </div>

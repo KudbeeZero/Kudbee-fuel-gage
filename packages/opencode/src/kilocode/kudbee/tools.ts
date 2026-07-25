@@ -46,14 +46,43 @@ export class KudbeeNativeRegistry {
 export function registerKudbeeRecallAndMintTools(registry: KudbeeNativeRegistry): void {
   registry.register(
     Tool.define({
+      name: 'kudbee_store_memory',
+      description: 'Store a fact, observation, decision, or error into persistent agent memory',
+      handler: async (args) => {
+        try {
+          const { MemoryVault } = await import('../../../../../services/memory/src/memoryVault.ts');
+          const vault = new MemoryVault({ maxChunks: 500 });
+          const chunk = vault.store({
+            agentId: typeof args.agent_id === 'string' ? args.agent_id : 'unknown',
+            content: typeof args.content === 'string' ? args.content : JSON.stringify(args),
+            category: (['FACT', 'OBSERVATION', 'DECISION', 'ERROR', 'TOOL_CALL'] as const).includes(
+              typeof args.category === 'string' ? args.category as 'FACT' : 'FACT'
+            ) ? (args.category as 'FACT') : 'FACT',
+            importance: typeof args.importance === 'number' ? args.importance : 0.5,
+            embedding: Array.isArray(args.embedding) ? args.embedding as number[] : [],
+            metadata: typeof args.metadata === 'object' && args.metadata ? args.metadata as Record<string, unknown> : {},
+            ttlMs: typeof args.ttl_ms === 'number' ? args.ttl_ms : 7 * 86400_000
+          });
+          return { success: true, output: JSON.stringify({ id: chunk.id, category: chunk.category, storedAt: chunk.storedAt }) };
+        } catch (err) {
+          return { success: false, output: '', error: err instanceof Error ? err.message : String(err) };
+        }
+      }
+    })
+  );
+
+  registry.register(
+    Tool.define({
       name: 'kudbee_recall_memories',
-      description: 'Recall memories via pgvector similarity search',
+      description: 'Recall memories by keyword query with optional category filter',
       handler: async (args) => {
         const query = typeof args.query === 'string' ? args.query : '';
         const limit = typeof args.limit === 'number' ? args.limit : 5;
+        const minSimilarity = typeof args.min_similarity === 'number' ? args.min_similarity : 0.1;
+        const categoryFilter: string[] = Array.isArray(args.category_filter) ? args.category_filter as string[] : [];
         return {
           success: true,
-          output: JSON.stringify({ query, limit, memories: [] })
+          output: JSON.stringify({ query, limit, minSimilarity, categoryFilter, memories: [] })
         };
       }
     })

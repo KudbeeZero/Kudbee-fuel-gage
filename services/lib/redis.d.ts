@@ -17,10 +17,23 @@ declare module '../lib/redis.js' {
   export function getBlockingRedisClient(opts?: Record<string, unknown>): Redis;
   export function isUsingUpstash(): boolean;
 
+  export function isRedisQuotaError(err: Error | string): boolean;
+  export function applyRedisQuotaBackoff(): number;
+  export function resetRedisQuotaBackoff(): void;
+  export function getRedisQuotaBackoffRemaining(): number;
+  export function initRedisFallbackQueue(): Record<string, unknown>;
+
   export const redisTelemetry: {
     primaryCount: number;
     fallbackCount: number;
     errorCount: number;
+  };
+
+  export const quotaBackoffState: {
+    enabled: boolean;
+    backoffMs: number;
+    untilTs: number;
+    consecutiveErrors: number;
   };
 }
 

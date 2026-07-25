@@ -67,6 +67,11 @@ function loadLayoutPrefs(): LayoutPrefs {
 function persistLayoutPrefs(prefs: LayoutPrefs) {
   try {
     localStorage.setItem('kudbee_layout_prefs', JSON.stringify(prefs));
+    localStorage.setItem('kudbee_cross_platform_layout', JSON.stringify({
+      ...prefs,
+      platform: 'web',
+      syncedAt: new Date().toISOString()
+    }));
   } catch { /* ignore */ }
 }
 
@@ -76,6 +81,10 @@ interface ControlTowerState {
   governanceProposals: GovernanceProposal[];
   thinkTokenRecords: ThinkTokenRecord[];
   layoutPrefs: LayoutPrefs;
+  streamMode: 'SSE' | 'POLLING' | 'FALLBACK';
+  memoryFallbackActive: boolean;
+  activeMemories: Array<{ id: string; content: string; category: string; importance: number; recallCount: number; lastRecalledAt: string | null }>;
+  recallMetrics: { totalRecalls: number; avgSimilarity: number; lastWindowSize: number };
 
   pushTelemetryEvent: (event: Omit<TelemetryEvent, 'id' | 'timestamp'>) => void;
   pushGroqMetric: (metric: Omit<GroqRouteMetric, 'id' | 'timestamp'>) => void;
@@ -83,6 +92,11 @@ interface ControlTowerState {
   updateProposalStatus: (id: string, status: 'APPROVED' | 'REJECTED') => void;
   pushThinkTokenRecord: (record: Omit<ThinkTokenRecord, 'id' | 'timestamp'>) => void;
   setLayoutPrefs: (prefs: Partial<LayoutPrefs>) => void;
+  setStreamMode: (mode: 'SSE' | 'POLLING' | 'FALLBACK') => void;
+  setMemoryFallbackActive: (active: boolean) => void;
+  pushMemoryStored: (memory: { id: string; content: string; category: string; importance: number }) => void;
+  incrementMemoryRecall: () => void;
+  setRecallWindowSize: (size: number) => void;
   clearBuffers: () => void;
 }
 
@@ -97,6 +111,10 @@ export const useControlTowerStore = create<ControlTowerState>((set) => ({
   governanceProposals: [],
   thinkTokenRecords: [],
   layoutPrefs: loadLayoutPrefs(),
+  streamMode: 'SSE',
+  memoryFallbackActive: false,
+  activeMemories: [] as Array<{ id: string; content: string; category: string; importance: number; recallCount: number; lastRecalledAt: string | null }>,
+  recallMetrics: { totalRecalls: 0, avgSimilarity: 0, lastWindowSize: 0 },
 
   pushTelemetryEvent: (event) => {
     const record: TelemetryEvent = {
@@ -157,6 +175,48 @@ export const useControlTowerStore = create<ControlTowerState>((set) => ({
       persistLayoutPrefs(next);
       return { layoutPrefs: next };
     });
+  },
+
+  setStreamMode: (mode) => {
+    set({ streamMode: mode });
+  },
+
+  setMemoryFallbackActive: (active) => {
+    set({ memoryFallbackActive: active });
+  },
+
+  pushMemoryStored: (memory) => {
+    set((state) => ({
+      activeMemories: [
+        {
+          id: memory.id,
+          content: memory.content,
+          category: memory.category,
+          importance: memory.importance,
+          recallCount: 0,
+          lastRecalledAt: null
+        },
+        ...state.activeMemories
+      ].slice(0, 200)
+    }));
+  },
+
+  incrementMemoryRecall: () => {
+    set((state) => ({
+      recallMetrics: {
+        ...state.recallMetrics,
+        totalRecalls: state.recallMetrics.totalRecalls + 1
+      }
+    }));
+  },
+
+  setRecallWindowSize: (size) => {
+    set((state) => ({
+      recallMetrics: {
+        ...state.recallMetrics,
+        lastWindowSize: size
+      }
+    }));
   },
 
   clearBuffers: () => {
