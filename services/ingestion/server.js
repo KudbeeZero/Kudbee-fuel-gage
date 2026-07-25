@@ -165,7 +165,7 @@ app.use(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(
-        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`
+        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (rate limit error: ${msg})`
       );
       throw err;
     }
@@ -1830,11 +1830,9 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
       if (exactMatches.length === 1) {
         matched = exactMatches[0];
       } else if (exactMatches.length > 1) {
-        return res
-          .status(409)
-          .json({
-            error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.',
-          });
+        return res.status(409).json({
+          error: 'Ambiguous token hash: multiple tokens match. Include tokenId in request body.',
+        });
       }
     }
 
@@ -3002,12 +3000,10 @@ app.get('/api/settings/preferences', async (req, res) => {
 app.get('/api/system/audit-history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
-    return res
-      .status(200)
-      .json({
-        history: await getAuditHistory(limit),
-        count: (await getAuditHistory(limit)).length,
-      });
+    return res.status(200).json({
+      history: await getAuditHistory(limit),
+      count: (await getAuditHistory(limit)).length,
+    });
   } catch {
     return res.status(200).json({ history: [], count: 0 });
   }
@@ -3759,12 +3755,10 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
     });
   } catch (err) {
     console.error('[Comparator] Fatal error:', err instanceof Error ? err.message : String(err));
-    res
-      .status(500)
-      .json({
-        error: 'Comparator failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
+    res.status(500).json({
+      error: 'Comparator failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 
@@ -3867,12 +3861,10 @@ app.post('/v1/chat/completions', async (req, res) => {
     });
   } catch (err) {
     console.error('[Chat] Fatal error:', err instanceof Error ? err.message : String(err));
-    res
-      .status(500)
-      .json({
-        error: 'Chat completions failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
+    res.status(500).json({
+      error: 'Chat completions failed',
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 });
 

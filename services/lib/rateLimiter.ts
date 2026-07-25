@@ -16,19 +16,20 @@ export interface RateLimiterStats {
   totalRequests: number;
   blockedRequests: number;
   activeWindows: number;
-  fallbackActivations: number;
+  inMemoryChecks: number;
 }
 
 const stats: RateLimiterStats = {
   totalRequests: 0,
   blockedRequests: 0,
   activeWindows: 0,
-  fallbackActivations: 0,
+  inMemoryChecks: 0,
 };
 
 const slidingWindow = new Map<string, number[]>();
 const PRUNE_INTERVAL_MS = 10_000;
 let _lastPrune = 0;
+let _maxWindowMs = 0;
 
 export async function rateLimitCheck(
   key: string,
@@ -36,24 +37,29 @@ export async function rateLimitCheck(
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const windowCeiling = Math.ceil(now / config.windowMs) * config.windowMs;
-  const redisKey = RL_PREFIX + key;
+  const windowKey = RL_PREFIX + key;
+
+  if (config.windowMs > _maxWindowMs) {
+    _maxWindowMs = config.windowMs;
+  }
 
   stats.totalRequests += 1;
-  stats.fallbackActivations += 1;
+  stats.inMemoryChecks += 1;
 
   if (now - _lastPrune > PRUNE_INTERVAL_MS) {
+    const pruneWindow = _maxWindowMs || config.windowMs;
     for (const [k, timestamps] of slidingWindow.entries()) {
-      const pruned = timestamps.filter((t) => t > now - config.windowMs);
+      const pruned = timestamps.filter((t) => t > now - pruneWindow);
       if (pruned.length === 0) slidingWindow.delete(k);
       else slidingWindow.set(k, pruned);
     }
     _lastPrune = now;
   }
 
-  let timestamps = slidingWindow.get(redisKey) || [];
+  let timestamps = slidingWindow.get(windowKey) || [];
   timestamps = timestamps.filter((t) => t > now - config.windowMs);
   timestamps.push(now);
-  slidingWindow.set(redisKey, timestamps);
+  slidingWindow.set(windowKey, timestamps);
 
   stats.activeWindows = slidingWindow.size;
 
@@ -76,8 +82,9 @@ export function resetRateLimiterStats(): void {
   stats.totalRequests = 0;
   stats.blockedRequests = 0;
   stats.activeWindows = 0;
-  stats.fallbackActivations = 0;
+  stats.inMemoryChecks = 0;
   slidingWindow.clear();
+  _maxWindowMs = 0;
 }
 
 export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
