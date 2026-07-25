@@ -46,7 +46,24 @@ import { getBreadcrumbs } from '../lib/breadcrumbs.ts';
 import { getEnergyHeatmap } from '../lib/energyMesh.ts';
 import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUnion.ts';
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
-import { rateLimitCheck, DEFAULT_RATE_LIMIT } from '../lib/rateLimiter.ts';
+import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
+import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
+
+function sanitizeRedisUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
+  if (url.startsWith('https://')) {
+    try { const parsed = new URL(url); return `rediss://${parsed.hostname}:6379`; } catch { return url; }
+  }
+  return url;
+}
+process.env.REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL);
+process.env.REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL);
+
+const middlewareGuard = new MiddlewareGuard('rate-limiter', 5, 30_000);
+const timingGuard = new MiddlewareGuard('timeout', 3, 60_000);
+registerGuard(middlewareGuard);
+registerGuard(timingGuard);
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,39 +86,63 @@ app.use((req, res, next) => {
 });
 
 // --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
+// FAIL-OPEN: If Redis is unreachable, the rate-limit check is skipped
+// and the request passes through. Root / and static assets are excluded.
 const RATE_LIMIT_EXCLUDED = new Set([
+  '/',
   '/health',
   '/api/health',
   '/api/health-check',
   '/api/system/health-deep',
   '/api/system/diagnostics',
+  '/api/system/rate-limit-stats',
   '/api/governance/health',
   '/api/events',
   '/api/os-stream',
   '/api/governance/hermes-logs',
-  '/api/dashboard/summary'
+  '/api/dashboard/summary',
+  '/api/telemetry/poll',
+  '/metrics'
 ]);
 
-app.use(async (req, res, next) => {
-  if (RATE_LIMIT_EXCLUDED.has(req.path)) return next();
+function isStaticAssetPath(path) {
+  return path.startsWith('/assets') ||
+    path.startsWith('/fonts') ||
+    path.startsWith('/icons') ||
+    path === '/favicon.ico' ||
+    path === '/manifest.json' ||
+    path === '/robots.txt' ||
+    path === '/sitemap.xml' ||
+    path.endsWith('.js') || path.endsWith('.css') ||
+    path.endsWith('.svg') || path.endsWith('.png') ||
+    path.endsWith('.woff2') || path.endsWith('.ico') ||
+    path.endsWith('.json') || path.endsWith('.map') ||
+    path.endsWith('.html');
+}
 
-  const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-  const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
-
-  res.setHeader('X-RateLimit-Limit', String(result.limit));
-  res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
-  res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
-
-  if (!result.allowed) {
-    return res.status(429).json({
-      error: 'too_many_requests',
-      message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
-      retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
-    });
+app.use(middlewareGuard.wrap(async (req, res, next) => {
+  if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
+  try {
+    const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+    const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
+    res.setHeader('X-RateLimit-Limit', String(result.limit));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
+    if (!result.allowed) {
+      res.status(429).json({
+        error: 'too_many_requests',
+        message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
+        retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000)
+      });
+      return;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`);
+    throw err;
   }
-
   next();
-});
+}));
 
 // --- Reject requests that run longer than 15s to prevent Heroku H27 ---
 app.use((req, res, next) => {
@@ -241,7 +282,10 @@ const apiLimiter = rateLimit({
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   }
 });
-app.use('/api/', apiLimiter);
+app.use('/api/', (req, res, next) => {
+  if (req.path === '/api/telemetry/poll' || req.path.startsWith('/api/telemetry/ingest') || req.path === '/api/telemetry/edge-ingest') return next();
+  apiLimiter(req, res, next);
+});
 
 const ingestLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -963,6 +1007,15 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       ts: feedEntry.timestamp
     });
 
+    publishEvent('memory.ingested', {
+      trace_id: feedEntry.trace_id,
+      agentId: agentId || null,
+      category: effectiveStatus === 'OK' ? 'FACT' : 'OBSERVATION',
+      importance: isHighValueModel ? 0.9 : 0.5,
+      content: (effectiveThought || effectiveReasoning || feedEntry.trace_id).slice(0, 80),
+      ts: feedEntry.timestamp
+    });
+
     return res.status(201).json(responsePayload);
   } catch (err) {
     console.error('[Ingest] Error:', err.message);
@@ -1213,6 +1266,15 @@ app.post('/api/memory/remember', async (req, res) => {
       [data.trim()]
     );
 
+    publishEvent('memory.stored', {
+      chunkId: String(result.id),
+      agentId: null,
+      category: 'FACT',
+      importance: 0.7,
+      content: data.trim().slice(0, 80),
+      timestamp: new Date().toISOString()
+    });
+
     return res.status(201).json({
       success: true,
       id: result.id,
@@ -1240,6 +1302,16 @@ app.get('/api/memory/recall', async (req, res) => {
       return res.status(400).json({ error: 'Missing required query parameter: query' });
     }
     const memories = await recallMemories(query, limit);
+    if (memories.length > 0) {
+      publishEvent('memory.recalled', {
+        chunkId: memories[0].trace_id || 'unknown',
+        agentId: null,
+        category: memories[0].model || 'FACT',
+        importance: 0.8,
+        query,
+        timestamp: new Date().toISOString()
+      });
+    }
     return res.json({ query, count: memories.length, memories });
   } catch (err) {
     console.error('[Memory] Recall endpoint error:', err.message);
@@ -4642,6 +4714,21 @@ app.post('/api/audit/vault/verify', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+// --- Rate-Limit Diagnostics ---
+app.get('/api/system/rate-limit-stats', (_req, res) => {
+  res.json({
+    middleware_guard: getAllGuardStats(),
+    redis: getRateLimiterStats(),
+    in_memory_express: { windowMs: 60000, maxRequests: process.env.NODE_ENV === 'test' ? 1000 : 100 },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// --- Middleware Health ---
+app.get('/middleware/health', (_req, res) => {
+  res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
 });
 
 const distPath = resolveDistPath();
