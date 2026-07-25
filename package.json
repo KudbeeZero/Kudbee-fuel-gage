@@ -26,6 +26,9 @@
     "turbo": "^2.3.3",
     "typescript": "^5.7.0"
   },
+  "overrides": {
+    "brace-expansion": "^5.0.8"
+  },
   "license": "Proprietary",
   "packageManager": "npm@10.9.8",
   "engines": {
