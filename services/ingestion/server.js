@@ -17,7 +17,7 @@ import { listProposed, approveAction, rejectAction, matchLogic, proposeAction } 
 import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governance/ledger.js';
 import { archive_thought } from '../agents/hermes.js';
 import { getDbPool, isDbHealthy, runQuery, runInsert, closeDbPool, teardownAll, DB_TIMEOUT_MS, VECTOR_QUERY_TIMEOUT_MS, withTimeout } from '../lib/db.js';
-import { getRedisClient, getSubscriberClient } from '../lib/redis.js';
+import { getRedisClient, getSubscriberClient, initRedisFallbackQueue } from '../lib/redis.js';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
@@ -579,6 +579,8 @@ if (redis) {
     console.warn(`[Redis] Error (logging SYSTEM_RESET):`, err.message);
     void logRedisEvent('error');
   });
+
+  initRedisFallbackQueue();
 }
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
