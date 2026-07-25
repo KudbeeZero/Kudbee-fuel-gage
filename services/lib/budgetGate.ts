@@ -29,7 +29,9 @@ async function ensureMonthKey(): Promise<void> {
       await redis.set(BUDGET_MONTH_KEY, month);
       await redis.set(BUDGET_KEY, '0');
     }
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function trackSpend(costUsd: number): Promise<void> {
@@ -38,7 +40,9 @@ export async function trackSpend(costUsd: number): Promise<void> {
     await ensureMonthKey();
     const redis = getRedisClient({ label: 'budget-gate' });
     await redis.incrbyfloat(BUDGET_KEY, costUsd.toString());
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function getCurrentSpend(): Promise<number> {
@@ -52,7 +56,11 @@ export async function getCurrentSpend(): Promise<number> {
   }
 }
 
-export async function checkBudgetOrThrow(tokensIn: number, tokensOut: number, model: string): Promise<void> {
+export async function checkBudgetOrThrow(
+  tokensIn: number,
+  tokensOut: number,
+  model: string
+): Promise<void> {
   const budgetUsd = getMonthlyBudgetUsd();
   const currentSpend = await getCurrentSpend();
   const estimatedCost = estimateCost(tokensIn, tokensOut, model);
@@ -72,15 +80,21 @@ function estimateCost(tokensIn: number, tokensOut: number, model: string): numbe
     'deepseek-v3': { inCost: 0.00014, outCost: 0.00028 },
     'llama-3.1-8b-instant': { inCost: 0.00005, outCost: 0.00008 },
     'mixtral-8x7b': { inCost: 0.00024, outCost: 0.00024 },
-    'llama-3.3-70b': { inCost: 0.00059, outCost: 0.00079 }
+    'llama-3.3-70b': { inCost: 0.00059, outCost: 0.00079 },
+    'mercury-2': { inCost: 0.00025, outCost: 0.00025 },
   };
   const modelKey = Object.keys(per1k).find((k) => model.toLowerCase().includes(k));
   const rates = modelKey && per1k[modelKey] ? per1k[modelKey] : { inCost: 0.001, outCost: 0.002 };
-  return ((tokensIn * rates.inCost) + (tokensOut * rates.outCost)) / 1000;
+  return (tokensIn * rates.inCost + tokensOut * rates.outCost) / 1000;
 }
 
 export function estimateGroqCost(tokensUsed: number): number {
   const rate = 0.00005;
+  return (tokensUsed * rate) / 1000;
+}
+
+export function estimateInceptionCost(tokensUsed: number): number {
+  const rate = 0.00025;
   return (tokensUsed * rate) / 1000;
 }
 
@@ -98,6 +112,6 @@ export async function getBudgetStatus(): Promise<{
     budgetUsd,
     remainingUsd: Math.max(0, Math.round((budgetUsd - spendUsd) * 10000) / 10000),
     pct: Math.min(100, Math.round((spendUsd / budgetUsd) * 10000) / 100),
-    monthReset: currentMonthKey()
+    monthReset: currentMonthKey(),
   };
 }
