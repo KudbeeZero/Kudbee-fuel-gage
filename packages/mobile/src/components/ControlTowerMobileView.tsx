@@ -3,6 +3,7 @@ import { useMobileTelemetryStore } from '../store/useMobileTelemetryStore';
 import { MobileTelemetryCard } from './MobileTelemetryCard';
 import { MobileGovernanceQueue } from './MobileGovernanceQueue';
 import { MobileThinkTokenBadge } from './MobileThinkTokenBadge';
+import { Brain, CircleDot, Circle } from 'lucide-react';
 
 interface ControlTowerMobileProps {
   onNavigate?: (tab: string) => void;
@@ -13,6 +14,11 @@ export function ControlTowerMobileView({ onNavigate }: ControlTowerMobileProps) 
   const snapshots = useMobileTelemetryStore((s) => s.snapshots);
   const governanceItems = useMobileTelemetryStore((s) => s.governanceItems);
   const online = useMobileTelemetryStore((s) => s.online);
+
+  const memoryItems = governanceItems.filter((g) => g.agentId === 'memory-pipeline');
+  const memoryStored = memoryItems.filter((g) => g.action.startsWith('Memory stored:')).length;
+  const memoryRecalled = memoryItems.filter((g) => g.action === 'Memory recall executed').length;
+  const memoryLive = memoryStored > 0;
 
   const tabs = [
     { key: 'telemetry' as const, label: 'Telemetry', count: snapshots.length },
@@ -32,6 +38,22 @@ export function ControlTowerMobileView({ onNavigate }: ControlTowerMobileProps) 
           <span className="text-[10px] text-slate-500">{online ? 'ONLINE' : 'OFFLINE'}</span>
         </div>
       </header>
+
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center gap-1.5">
+          <Brain className="h-3 w-3 text-violet-400" />
+          <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-slate-400">Memory</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase ${
+            memoryLive ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border border-slate-700 bg-slate-900 text-slate-500'
+          }`}>
+            {memoryLive ? <CircleDot className="h-2 w-2" /> : <Circle className="h-2 w-2" />}
+            {memoryLive ? 'LIVE' : 'IDLE'}
+          </span>
+          <span className="text-[8px] font-mono text-slate-500">{memoryStored}s · {memoryRecalled}r</span>
+        </div>
+      </div>
 
       <nav className="flex border-b border-slate-800">
         {tabs.map((tab) => (
