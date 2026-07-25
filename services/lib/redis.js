@@ -17,6 +17,7 @@
  */
 
 import Redis from 'ioredis';
+import { getOrCreateInMemoryQueue } from './inMemoryQueue.ts';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
@@ -30,6 +31,64 @@ let _subClient = null;
 let _rateLimitClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
+const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecutiveErrors: 0 };
+
+/**
+ * Inspects a Redis error message and returns true if the error indicates
+ * a quota exhaustion or rate-limit condition (Upstash MAX_REQUESTS_LIMIT,
+ * HTTP 429, or ERR max requests).
+ * @param {Error|string} err
+ * @returns {boolean}
+ */
+export function isRedisQuotaError(err) {
+  const msg = typeof err === 'string' ? err : (err instanceof Error ? err.message : String(err));
+  return (
+    msg.includes('MAX_REQUESTS_LIMIT') ||
+    msg.includes('max requests limit exceeded') ||
+    msg.includes('ERR max requests') ||
+    msg.includes('rate limit') ||
+    msg.includes('429')
+  );
+}
+
+/**
+ * Adaptive exponential backoff for Redis quota exhaustion.
+ * Starting at 2s, doubling each consecutive quota error up to 30s.
+ * Returns the recommended sleep duration in milliseconds.
+ * @returns {number}
+ */
+export function applyRedisQuotaBackoff() {
+  quotaBackoffState.consecutiveErrors += 1;
+  const baseMs = 2000;
+  const maxMs = 30_000;
+  const backoffMs = Math.min(baseMs * Math.pow(2, quotaBackoffState.consecutiveErrors - 1), maxMs);
+  quotaBackoffState.backoffMs = backoffMs;
+  quotaBackoffState.untilTs = Date.now() + backoffMs;
+  quotaBackoffState.enabled = true;
+  return backoffMs;
+}
+
+/**
+ * Resets the quota backoff state after a successful operation.
+ */
+export function resetRedisQuotaBackoff() {
+  quotaBackoffState.consecutiveErrors = 0;
+  quotaBackoffState.backoffMs = 2000;
+  quotaBackoffState.enabled = false;
+  quotaBackoffState.untilTs = 0;
+}
+
+/**
+ * Returns the remaining backoff time in ms, or 0 if not currently backing off.
+ * @returns {number}
+ */
+export function getRedisQuotaBackoffRemaining() {
+  if (!quotaBackoffState.enabled) return 0;
+  const remaining = quotaBackoffState.untilTs - Date.now();
+  return Math.max(0, remaining);
+}
+
+export { quotaBackoffState };
 
 /**
  * Returns a shared, resilient ioredis client.
@@ -83,11 +142,17 @@ export function getRedisClient(opts = {}) {
   }
 
   client.on('connect', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis connected`); });
-  client.on('ready', () => { redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
+  client.on('ready', () => { resetRedisQuotaBackoff(); redisTelemetry.primaryCount += 1; console.log(`[${label}] Redis ready`); });
   client.on('error', (err) => {
     redisTelemetry.errorCount += 1;
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('MAX_REQUESTS_LIMIT') || msg.includes('rate limit') || msg.includes('429')) {
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      circuitBreaker.open = true;
+      circuitBreaker.openedAt = Date.now();
+      circuitBreaker.lastError = msg;
+      console.warn(`[${label}] Quota error — circuit opened, backoff ${backoff}ms: ${msg}`);
+    } else if (msg.includes('MAX_REQUESTS_LIMIT') || msg.includes('rate limit') || msg.includes('429')) {
       circuitBreaker.open = true;
       circuitBreaker.openedAt = Date.now();
       circuitBreaker.lastError = msg;
@@ -250,8 +315,18 @@ export function getBlockingRedisClient(opts = {}) {
   }
 
   client.on('connect', () => console.log('[blocking-redis] Redis connected'));
-  client.on('ready', () => console.log('[blocking-redis] Redis ready'));
-  client.on('error', (err) => console.error('[blocking-redis] Error:', err.message));
+  client.on('ready', () => { resetRedisQuotaBackoff(); console.log('[blocking-redis] Redis ready'); });
+  client.on('error', (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[blocking-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
+
+      const inMemoryQueue = getOrCreateInMemoryQueue();
+      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' });
+    }
+    console.error('[blocking-redis] Error:', msg);
+  });
   client.on('end', () => { console.warn('[blocking-redis] Redis connection closed'); _blockingClient = null; });
 
   if (!opts.forceNew) _blockingClient = client;
