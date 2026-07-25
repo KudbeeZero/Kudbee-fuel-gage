@@ -12,6 +12,7 @@ interface UseMobileTelemetrySyncResult {
   lastFlushAt: string | null;
   flushError: string | null;
   flushNow: () => Promise<void>;
+  rateLimitDetected: boolean;
 }
 
 export function useMobileTelemetrySync(
@@ -26,6 +27,7 @@ export function useMobileTelemetrySync(
   const [pendingCount, setPendingCount] = useState(0);
   const [lastFlushAt, setLastFlushAt] = useState<string | null>(null);
   const [flushError, setFlushError] = useState<string | null>(null);
+  const [rateLimitDetected, setRateLimitDetected] = useState(false);
   const flushingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -75,6 +77,17 @@ export function useMobileTelemetrySync(
       setOnline(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+
+      const isRateLimit = message.includes('429') ||
+        message.includes('MAX_REQUESTS_LIMIT') ||
+        message.includes('rate limit') ||
+        message.includes('ERR max requests');
+
+      if (isRateLimit) {
+        setRateLimitDetected(true);
+        console.warn('[MobileSync] Redis rate limit detected — caching to SQLite');
+      }
+
       setFlushError(message);
       setOnline(false);
 
@@ -115,5 +128,5 @@ export function useMobileTelemetrySync(
     };
   }, [online, unsyncedSnapshots.length, flushNow]);
 
-  return { pendingCount, lastFlushAt, flushError, flushNow };
+  return { pendingCount, lastFlushAt, flushError, flushNow, rateLimitDetected };
 }
