@@ -47,6 +47,8 @@ interface MobileTelemetryState {
   setLastSyncAt: (ts: string) => void;
   setLayoutPrefs: (prefs: Partial<MobileLayoutPrefs>) => void;
   clearSnapshots: () => void;
+  pushMemoryStored: (memory: { id: string; content: string; category: string; importance: number }) => void;
+  incrementMemoryRecall: () => void;
 }
 
 let _counter = 0;
@@ -139,5 +141,31 @@ export const useMobileTelemetryStore = create<MobileTelemetryState>((set) => ({
     });
   },
 
-  clearSnapshots: () => set({ snapshots: [] })
+  clearSnapshots: () => set({ snapshots: [] }),
+
+  pushMemoryStored: (memory) => {
+    const item: MobileGovernanceItem = {
+      id: nextId('mobile-mem'),
+      action: `Memory stored: ${memory.content.slice(0, 50)}`,
+      agentId: 'memory-pipeline',
+      riskLevel: 'LOW',
+      status: 'APPROVED'
+    };
+    set((state) => ({
+      governanceItems: [item, ...state.governanceItems].slice(0, MAX_GOVERNANCE_ITEMS)
+    }));
+  },
+
+  incrementMemoryRecall: () => {
+    const item: MobileGovernanceItem = {
+      id: nextId('mobile-rec'),
+      action: 'Memory recall executed',
+      agentId: 'memory-pipeline',
+      riskLevel: 'LOW',
+      status: 'APPROVED'
+    };
+    set((state) => ({
+      governanceItems: [item, ...state.governanceItems].slice(0, MAX_GOVERNANCE_ITEMS)
+    }));
+  }
 }));
