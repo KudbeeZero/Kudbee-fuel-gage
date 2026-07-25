@@ -6,6 +6,17 @@ import { EngineBus, EngineEventType } from './events';
 import { KudbeeNativeRegistry, Tool, type NativeToolEntry } from './tools';
 import { TelemetryEventSchema, type TelemetryEvent, type MintedToken } from './schema';
 
+let _globalMemoryVault: unknown = null;
+
+function getMemoryVault(): unknown {
+  if (_globalMemoryVault) return _globalMemoryVault;
+  return null;
+}
+
+export function injectMemoryVault(vault: unknown): void {
+  _globalMemoryVault = vault;
+}
+
 function uuidv4(): string {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -80,6 +91,20 @@ export class SafeZoneEngine {
     const gateway = new ControlTowerGateway();
     this.bus.emit('TRAJECTORY_UPDATE', { workspaceRoot, status: 'BOOTSTRAPPED' });
 
+    const vault = getMemoryVault() as { store: (chunk: Record<string, unknown>) => { id: string; content: string; category: string } } | null;
+    if (vault) {
+      vault.store({
+        agentId: 'safe-zone-engine',
+        content: 'SafeZoneEngine bootstrapped for workspace: ' + workspaceRoot,
+        category: 'OBSERVATION',
+        importance: 0.8,
+        embedding: [],
+        metadata: { workspace_root: workspaceRoot },
+        ttlMs: 7 * 86400_000
+      });
+      this.bus.emit('MEMORY_STORED', { workspaceRoot, status: 'BOOTSTRAPPED' });
+    }
+
     this.registry.register(Tool.define({
       name: 'safe_zone.query',
       description: 'Query active safe zones',
@@ -138,3 +163,4 @@ export {
   registerKudbeeRecallAndMintTools,
   registerKudbeeGovernanceTools
 } from './tools';
+export { injectMemoryVault };
