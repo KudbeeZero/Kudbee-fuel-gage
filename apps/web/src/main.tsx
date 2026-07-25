@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, StrictMode } from 'react';
+import React, { Suspense, StrictMode } from 'react';
 import {createRoot} from 'react-dom/client';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { OsStreamProvider } from './components/OsStreamProvider.tsx';
@@ -26,8 +26,8 @@ const App = React.lazy(() =>
           </pre>
         </div>
       </div>
-    )} as { default: React.ComponentType<{}> };
-  }) as unknown as Promise<{ default: React.ComponentType<{}> }>
+    )};
+  }) as Promise<{ default: React.ComponentType<object> }>
 );
 
 createRoot(document.getElementById('root')!).render(
