@@ -28,7 +28,7 @@ export function recallSimilarMemories(
   chunks: AgentMemoryChunk[],
   options: SemanticRecallOptions = {}
 ): AgentMemoryChunk[] {
-  const threshold = options.similarityThreshold ?? 0.1;
+  const threshold = query.minSimilarity ?? options.similarityThreshold ?? 0.1;
   const embeddingEnabled = options.embeddingEnabled ?? false;
 
   const scored: Array<{ chunk: AgentMemoryChunk; score: number }> = [];
