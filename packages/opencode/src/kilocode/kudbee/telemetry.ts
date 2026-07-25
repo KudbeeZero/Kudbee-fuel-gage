@@ -29,6 +29,14 @@ export function setupTelemetryListeners(opts?: {
     });
   });
 
+  bus.subscribe(KudbeeEvents.memory_stored, (evt) => {
+    console.log('[memory] memory.stored:', JSON.stringify(evt.payload).slice(0, 120));
+  });
+
+  bus.subscribe(KudbeeEvents.memory_recalled, (evt) => {
+    console.log('[memory] memory.recalled:', JSON.stringify(evt.payload).slice(0, 120));
+  });
+
   return () => {
     unsub();
   };
