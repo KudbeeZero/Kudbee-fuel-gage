@@ -81,6 +81,8 @@ interface ControlTowerState {
   governanceProposals: GovernanceProposal[];
   thinkTokenRecords: ThinkTokenRecord[];
   layoutPrefs: LayoutPrefs;
+  streamMode: 'SSE' | 'POLLING' | 'FALLBACK';
+  memoryFallbackActive: boolean;
 
   pushTelemetryEvent: (event: Omit<TelemetryEvent, 'id' | 'timestamp'>) => void;
   pushGroqMetric: (metric: Omit<GroqRouteMetric, 'id' | 'timestamp'>) => void;
@@ -88,6 +90,8 @@ interface ControlTowerState {
   updateProposalStatus: (id: string, status: 'APPROVED' | 'REJECTED') => void;
   pushThinkTokenRecord: (record: Omit<ThinkTokenRecord, 'id' | 'timestamp'>) => void;
   setLayoutPrefs: (prefs: Partial<LayoutPrefs>) => void;
+  setStreamMode: (mode: 'SSE' | 'POLLING' | 'FALLBACK') => void;
+  setMemoryFallbackActive: (active: boolean) => void;
   clearBuffers: () => void;
 }
 
@@ -102,6 +106,8 @@ export const useControlTowerStore = create<ControlTowerState>((set) => ({
   governanceProposals: [],
   thinkTokenRecords: [],
   layoutPrefs: loadLayoutPrefs(),
+  streamMode: 'SSE',
+  memoryFallbackActive: false,
 
   pushTelemetryEvent: (event) => {
     const record: TelemetryEvent = {
@@ -162,6 +168,14 @@ export const useControlTowerStore = create<ControlTowerState>((set) => ({
       persistLayoutPrefs(next);
       return { layoutPrefs: next };
     });
+  },
+
+  setStreamMode: (mode) => {
+    set({ streamMode: mode });
+  },
+
+  setMemoryFallbackActive: (active) => {
+    set({ memoryFallbackActive: active });
   },
 
   clearBuffers: () => {
