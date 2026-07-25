@@ -61,7 +61,7 @@ export class CircuitBreaker {
     };
   }
 
-  private emit(type: 'OPENED' | 'CLOSED' | 'HALF_OPEN' | 'FAILURE' | 'SUCCESS'): void {
+  private emit(type: 'OPENED' | 'CLOSED' | 'HALF_OPEN' | 'FAILURE' | 'SUCCESS' | 'UPSTASH_QUOTA_EXCEEDED'): void {
     const event = {
       type,
       providerId: this.providerId,

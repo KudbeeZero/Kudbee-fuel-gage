@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SlidingWindowRateLimiter } from '../src/rateLimiter';
 import { CircuitBreaker } from '../src/circuitBreaker';
 import { AnomalyEngine, createDefaultRules, wireFirewallEvents } from '../src/anomalyEngine';

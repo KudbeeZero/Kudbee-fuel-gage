@@ -15,9 +15,11 @@ declare module '../lib/redis.js' {
   export function getRateLimitClient(opts?: Record<string, unknown>): Redis;
   export function getSlowRedisClient(opts?: Record<string, unknown>): Redis;
   export function getBlockingRedisClient(opts?: Record<string, unknown>): Redis;
+  export function getWorkerRedisClient(opts?: Record<string, unknown>): Redis;
   export function isUsingUpstash(): boolean;
 
   export function isRedisQuotaError(err: Error | string): boolean;
+  export function isUpstashMaxRequestsError(err: Error | string): boolean;
   export function applyRedisQuotaBackoff(): number;
   export function resetRedisQuotaBackoff(): void;
   export function getRedisQuotaBackoffRemaining(): number;

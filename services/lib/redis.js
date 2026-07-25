@@ -36,8 +36,10 @@ function sanitizeRedisUrl(url) {
 
 const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL || REDIS_URL);
+const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL);
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
+const isWorkerUpstash = REDIS_WORKER_URL.startsWith('rediss://') || REDIS_WORKER_URL.includes('upstash.io');
 const MAX_REQUESTS_LIMIT = 500_000;
 const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
@@ -104,6 +106,22 @@ export function getRedisQuotaBackoffRemaining() {
 }
 
 export { quotaBackoffState };
+
+/**
+ * Detects Upstash free-tier quota exhaustion errors in worker BRPOP/BLPOP loops.
+ * Matches the canonical Upstash error messages: "ERR max requests",
+ * "max requests limit exceeded", and "MAX_REQUESTS_LIMIT".
+ * @param {Error|string} err
+ * @returns {boolean}
+ */
+export function isUpstashMaxRequestsError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('ERR max requests') ||
+    msg.includes('max requests limit exceeded') ||
+    msg.includes('MAX_REQUESTS_LIMIT')
+  );
+}
 
 /**
  * Returns a shared, resilient ioredis client.
@@ -303,6 +321,12 @@ export function getSlowRedisClient(opts = {}) {
 
 let _blockingClient = null;
 
+// BRPOP/BLPOP AUDIT (PR #181 / Bead 1 — Worker Loop Resilience):
+//   #1 services/monitor/agent.js:174   blpop kudbee:telemetry_feed 5s   (monitor-worker)
+//   #2 services/agents/worker.ts:364   brpop kudbee-governance-tasks 5s  (ingestion server)
+//   #3 services/lib/jobQueue.ts:35     brpop kudbee:jobs:{queue} 5s      (generic job queue)
+//   #4 worker.js:173                   blpop kudbee:governance:tasks 0s   (hermes-worker)
+// All call sites MUST survive Upstash quota errors (ERR max requests) without crashing.
 export function getBlockingRedisClient(opts = {}) {
   if (!opts.forceNew && _blockingClient) return _blockingClient;
 
@@ -338,14 +362,74 @@ export function getBlockingRedisClient(opts = {}) {
       console.warn(`[blocking-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
 
       const inMemoryQueue = getOrCreateInMemoryQueue();
-      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' });
+      inMemoryQueue.enqueue({
+        queue: 'kudbee:telemetry_buffer',
+        data: { error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' },
+        source: 'blocking-redis'
+      });
     }
     console.error('[blocking-redis] Error:', msg);
   });
   client.on('end', () => { console.warn('[blocking-redis] Redis connection closed'); _blockingClient = null; });
 
   if (!opts.forceNew) _blockingClient = client;
-  return _blockingClient;
+  return client;
+}
+
+let _workerClient = null;
+
+export function getWorkerRedisClient(opts = {}) {
+  if (!opts.forceNew && _workerClient) return _workerClient;
+
+  const baseConfig = {
+    lazyConnect: false,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    enableOfflineQueue: true,
+    retryStrategy: (times) => Math.min(times * 500, 10000),
+    connectTimeout: 10_000,
+    commandTimeout: 0,
+    keepAlive: 15_000
+  };
+
+  if (isWorkerUpstash) {
+    baseConfig.tls = {};
+  }
+
+  let client;
+  try {
+    client = new Redis(REDIS_WORKER_URL, baseConfig);
+  } catch {
+    console.warn('[worker-redis] Invalid REDIS_WORKER_URL, falling back to REDIS_URL');
+    try {
+      client = new Redis(REDIS_URL, baseConfig);
+    } catch {
+      console.warn('[worker-redis] Invalid REDIS_URL, skipping worker client creation');
+      return null;
+    }
+  }
+
+  client.on('connect', () => console.log('[worker-redis] Redis connected'));
+  client.on('ready', () => { resetRedisQuotaBackoff(); console.log('[worker-redis] Redis ready'); });
+  client.on('error', (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[worker-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
+
+      const inMemoryQueue = getOrCreateInMemoryQueue();
+      inMemoryQueue.enqueue({
+        queue: 'kudbee:telemetry_buffer',
+        data: { error: msg, timestamp: new Date().toISOString(), source: 'worker-redis' },
+        source: 'worker-redis'
+      });
+    }
+    console.error('[worker-redis] Error:', msg);
+  });
+  client.on('end', () => { console.warn('[worker-redis] Redis connection closed'); _workerClient = null; });
+
+  if (!opts.forceNew) _workerClient = client;
+  return client;
 }
 
 /**
@@ -363,7 +447,10 @@ export function initRedisFallbackQueue() {
       }
       for (const item of items) {
         try {
-          await redis.publish('kudbee:telemetry_buffer', JSON.stringify(item.data));
+          const payload = item.data;
+          if (payload && typeof payload === 'object' && payload.queue && payload.data) {
+            await redis.lpush(payload.queue, JSON.stringify(payload.data));
+          }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           if (isRedisQuotaError(msg)) {

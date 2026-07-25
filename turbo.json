@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["NODE_ENV", "PORT", "DATABASE_URL", "REDIS_URL", "GEMINI_API_KEY", "STREAM_SECRET", "GROQ_API_KEY"],
+  "globalEnv": ["NODE_ENV", "PORT", "DATABASE_URL", "REDIS_URL", "REDIS_WORKER_URL", "GEMINI_API_KEY", "STREAM_SECRET", "GROQ_API_KEY"],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "typecheck", "lint"],
