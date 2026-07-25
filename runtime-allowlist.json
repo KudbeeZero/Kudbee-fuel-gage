@@ -59,6 +59,8 @@
     "GET:/api/agents/fleet",
     "POST:/api/agents/fleet",
     "GET:/api/groq/archives",
+    "POST:/api/think/synthesize-inception",
+    "GET:/api/inception/archives",
     "POST:/api/agents/dispatch",
     "GET:/api/settings/tenant/:id",
     "GET:/metrics",
