@@ -163,4 +163,3 @@ export {
   registerKudbeeRecallAndMintTools,
   registerKudbeeGovernanceTools
 } from './tools';
-export { injectMemoryVault };

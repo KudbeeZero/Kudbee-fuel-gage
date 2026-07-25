@@ -149,7 +149,8 @@ export const useMobileTelemetryStore = create<MobileTelemetryState>((set) => ({
       action: `Memory stored: ${memory.content.slice(0, 50)}`,
       agentId: 'memory-pipeline',
       riskLevel: 'LOW',
-      status: 'APPROVED'
+      status: 'APPROVED',
+      timestamp: new Date().toISOString()
     };
     set((state) => ({
       governanceItems: [item, ...state.governanceItems].slice(0, MAX_GOVERNANCE_ITEMS)
@@ -162,7 +163,8 @@ export const useMobileTelemetryStore = create<MobileTelemetryState>((set) => ({
       action: 'Memory recall executed',
       agentId: 'memory-pipeline',
       riskLevel: 'LOW',
-      status: 'APPROVED'
+      status: 'APPROVED',
+      timestamp: new Date().toISOString()
     };
     set((state) => ({
       governanceItems: [item, ...state.governanceItems].slice(0, MAX_GOVERNANCE_ITEMS)
