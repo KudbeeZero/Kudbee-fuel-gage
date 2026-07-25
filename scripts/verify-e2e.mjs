@@ -45,7 +45,7 @@ async function startServer() {
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 
   serverProcess.stdout.on('data', (d) => console.log(`[server] ${d.toString().trim()}`));
@@ -82,7 +82,11 @@ async function runCheck(name, fn) {
 async function check1_HealthEndpoint() {
   const res = await fetch(`${BASE}/health`);
   const data = await res.json();
-  return res.status === 200 && ['ok', 'degraded'].includes(data.status) && data.dependencies?.ingestion_db;
+  return (
+    res.status === 200 &&
+    ['ok', 'degraded'].includes(data.status) &&
+    data.dependencies?.ingestion_db
+  );
 }
 
 async function check2_HealthCheckApi() {
@@ -91,7 +95,9 @@ async function check2_HealthCheckApi() {
   const hasUptime = typeof data.uptime_sec === 'number';
   const hasError = typeof data.error === 'string';
   const degradedGracefully = res.status === 500 && hasError;
-  return (res.status === 200 || res.status === 503 || degradedGracefully) && (hasUptime || hasError);
+  return (
+    (res.status === 200 || res.status === 503 || degradedGracefully) && (hasUptime || hasError)
+  );
 }
 
 async function check3_ValidIngest() {
@@ -103,12 +109,12 @@ async function check3_ValidIngest() {
     cost: 0.0025,
     status: 'OK',
     provider: 'Google',
-    project_name: 'kilo-fuel-gauge'
+    project_name: 'kilo-fuel-gauge',
   };
   const res = await fetch(`${BASE}/api/telemetry/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
   return (res.status === 200 || res.status === 201) && data.success === true;
@@ -118,7 +124,7 @@ async function check4_InvalidIngestRejection() {
   const res = await fetch(`${BASE}/api/telemetry/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invalid: true })
+    body: JSON.stringify({ invalid: true }),
   });
   return res.status === 422;
 }
@@ -144,13 +150,18 @@ async function check7_GovernanceHealth() {
 async function check8_HermesLogs() {
   const res = await fetch(`${BASE}/api/governance/hermes-logs`);
   const data = await res.json();
-  return (res.status === 200 || res.status === 500) && (Array.isArray(data) || typeof data === 'object');
+  return (
+    (res.status === 200 || res.status === 500) && (Array.isArray(data) || typeof data === 'object')
+  );
 }
 
 async function check9_DatabaseDependency() {
   const res = await fetch(`${BASE}/health`);
   const data = await res.json();
-  return data.dependencies && (data.dependencies.ingestion_db === 'healthy' || data.dependencies.ingestion_db === 'unhealthy');
+  return (
+    data.dependencies &&
+    (data.dependencies.ingestion_db === 'healthy' || data.dependencies.ingestion_db === 'unhealthy')
+  );
 }
 
 async function check10_SchemaExistence() {
@@ -167,17 +178,26 @@ async function check11_DashboardAggregate() {
 async function check12_DeepHealthEndpoint() {
   const res = await fetch(`${BASE}/api/system/health-deep`);
   const data = await res.json();
-  return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && data.services && data.agent;
+  return (
+    res.status === 200 &&
+    (data.status === 'HEALTHY' || data.status === 'DEGRADED') &&
+    data.services &&
+    data.agent
+  );
 }
 
 async function check13_ModelComparator() {
   const res = await fetch(`${BASE}/api/system/compare-providers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider: 'gemini' })
+    body: JSON.stringify({ provider: 'gemini' }),
   });
   const data = await res.json();
-  return res.status === 200 && (data.status === 'OK' || data.status === 'PROVIDER_UNREACHABLE') && typeof data.traceId === 'string';
+  return (
+    res.status === 200 &&
+    (data.status === 'OK' || data.status === 'PROVIDER_UNREACHABLE') &&
+    typeof data.traceId === 'string'
+  );
 }
 
 async function check14_MintThinkToken() {
@@ -188,8 +208,8 @@ async function check14_MintThinkToken() {
       traceId: `tr-e2e-${Date.now()}`,
       taskContext: { task: 'e2e-test' },
       failedState: { status: 'FAILED' },
-      correctionDelta: 'E2E correction delta'
-    })
+      correctionDelta: 'E2E correction delta',
+    }),
   });
   const data = await res.json();
   if (res.status === 401) {
@@ -202,7 +222,11 @@ async function check14_MintThinkToken() {
 async function check15_ThinkTrajectories() {
   const res = await fetch(`${BASE}/api/think/trajectories?limit=10`);
   const data = await res.json();
-  return res.status === 200 && Array.isArray(data.trajectories) && Array.isArray(data.count !== undefined ? [data.count] : []);
+  return (
+    res.status === 200 &&
+    Array.isArray(data.trajectories) &&
+    Array.isArray(data.count !== undefined ? [data.count] : [])
+  );
 }
 
 async function check16_AutoThinkTokenEmbedding() {
@@ -214,19 +238,30 @@ async function check16_AutoThinkTokenEmbedding() {
       taskContext: { task: 'e2e-auto-check' },
       failedState: { status: 'AUTO_TEST' },
       correctionDelta: 'Automated verification correction delta',
-      reasoningSteps: ['Step 1: verify embedding generation', 'Step 2: verify persistence', 'Step 3: verify trajectory surfacing']
-    })
+      reasoningSteps: [
+        'Step 1: verify embedding generation',
+        'Step 2: verify persistence',
+        'Step 3: verify trajectory surfacing',
+      ],
+    }),
   });
   const data = await res.json();
   if (res.status === 401) {
-    console.log('  [PASS] Check 16: Auto Think Token embedding & trajectory (auth-gated, 401 expected)');
+    console.log(
+      '  [PASS] Check 16: Auto Think Token embedding & trajectory (auth-gated, 401 expected)'
+    );
     return true;
   }
-  const minted = res.status === 201 && data.success === true && typeof data.tokenId === 'string' && data.embedding_dim === 1536;
+  const minted =
+    res.status === 201 &&
+    data.success === true &&
+    typeof data.tokenId === 'string' &&
+    data.embedding_dim === 1536;
 
   const trajRes = await fetch(`${BASE}/api/think/trajectories?limit=5`);
   const trajData = await trajRes.json();
-  const hasValidTrajectory = trajRes.status === 200 &&
+  const hasValidTrajectory =
+    trajRes.status === 200 &&
     Array.isArray(trajData.trajectories) &&
     trajData.trajectories.some((t) => {
       const coords = Array.isArray(t.spatial_coordinates) ? t.spatial_coordinates : [];
@@ -246,15 +281,19 @@ async function check17_GovernancePromotionEndpoint() {
       taskContext: { task: 'e2e-gov-check' },
       failedState: { status: 'GOV_TEST' },
       correctionDelta: 'Governance promotion test delta',
-      status: 'PENDING_APPROVAL'
-    })
+      status: 'PENDING_APPROVAL',
+    }),
   });
   const mintData = await mintRes.json();
   if (mintRes.status === 401) {
     console.log('  [PASS] Check 17: Governance promotion endpoint (auth-gated, 401 expected)');
     return true;
   }
-  if (!(mintRes.status === 201 && mintData.success === true && typeof mintData.tokenId === 'string')) {
+  if (!(
+    mintRes.status === 201 &&
+    mintData.success === true &&
+    typeof mintData.tokenId === 'string'
+  )) {
     return false;
   }
 
@@ -265,11 +304,18 @@ async function check17_GovernancePromotionEndpoint() {
     return true; // graceful degrade: in-memory store may not persist between sequential checks
   }
 
-  const patchRes = await fetch(`${BASE}/api/think/trajectories/${encodeURIComponent(token.token_hash)}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'VERIFIED', reviewerNotes: 'E2E governance promotion', tokenId: token.id })
-  });
+  const patchRes = await fetch(
+    `${BASE}/api/think/trajectories/${encodeURIComponent(token.token_hash)}/status`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'VERIFIED',
+        reviewerNotes: 'E2E governance promotion',
+        tokenId: token.id,
+      }),
+    }
+  );
   const patchData = await patchRes.json();
   if (patchRes.status !== 200 || !patchData.success) {
     // Graceful degrade: in-memory store may not support all PATCH operations
@@ -291,13 +337,20 @@ async function check18_TelemetrySearchEndpoint() {
 async function check19_AuditExportJsonEndpoint() {
   const res = await fetch(`${BASE}/api/audit/export?format=json`);
   const data = await res.json();
-  return res.status === 200 && typeof data.hash === 'string' && typeof data.recordCount === 'number';
+  return (
+    res.status === 200 && typeof data.hash === 'string' && typeof data.recordCount === 'number'
+  );
 }
 
 async function check20_SystemDiagnosticsEndpoint() {
   const res = await fetch(`${BASE}/api/system/diagnostics`);
   const data = await res.json();
-  return res.status === 200 && (data.status === 'HEALTHY' || data.status === 'DEGRADED') && typeof data.summary === 'object' && Array.isArray(data.routerProviders);
+  return (
+    res.status === 200 &&
+    (data.status === 'HEALTHY' || data.status === 'DEGRADED') &&
+    typeof data.summary === 'object' &&
+    Array.isArray(data.routerProviders)
+  );
 }
 
 async function check21_AgentFeedbackEndpoint() {
@@ -311,43 +364,56 @@ async function check21_AgentFeedbackEndpoint() {
       verdict: 'thumbs_up',
       policyTag: 'pii_redaction',
       expectedBehavior: 'Should not block on benign prompt',
-      notes: 'E2E feedback test'
-    })
+      notes: 'E2E feedback test',
+    }),
   });
   const submitData = await submitRes.json();
-  if (!(submitRes.status === 201 && submitData.success === true && typeof submitData.feedbackId === 'string')) {
+  if (!(
+    submitRes.status === 201 &&
+    submitData.success === true &&
+    typeof submitData.feedbackId === 'string'
+  )) {
     return false;
   }
 
   const invalidRes = await fetch(`${BASE}/api/governance/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ traceId, verdict: 'maybe' })
+    body: JSON.stringify({ traceId, verdict: 'maybe' }),
   });
   if (invalidRes.status !== 400) {
     return false;
   }
 
-  const listRes = await fetch(`${BASE}/api/governance/feedback?traceId=${encodeURIComponent(traceId)}`);
+  const listRes = await fetch(
+    `${BASE}/api/governance/feedback?traceId=${encodeURIComponent(traceId)}`
+  );
   const listData = await listRes.json();
-  return listRes.status === 200 &&
+  return (
+    listRes.status === 200 &&
     Array.isArray(listData.feedback) &&
-    listData.feedback.some((f) => f.traceId === traceId && f.verdict === 'thumbs_up' && f.policyTag === 'pii_redaction');
+    listData.feedback.some(
+      (f) => f.traceId === traceId && f.verdict === 'thumbs_up' && f.policyTag === 'pii_redaction'
+    )
+  );
 }
 
 async function check22_PolicyAutoTuneEndpoint() {
   const tuneRes = await fetch(`${BASE}/api/governance/tune`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lookbackHours: 24 })
+    body: JSON.stringify({ lookbackHours: 24 }),
   });
   const tuneData = await tuneRes.json();
-  if (!(tuneRes.status === 200 && tuneData.success === true &&
-        typeof tuneData.analysis === 'object' &&
-        tuneData.recommendations &&
-        typeof tuneData.recommendations.token_budget_cap === 'object' &&
-        typeof tuneData.recommendations.pii_redaction === 'object' &&
-        typeof tuneData.recommendations.secret_leak_prevention === 'object')) {
+  if (!(
+    tuneRes.status === 200 &&
+    tuneData.success === true &&
+    typeof tuneData.analysis === 'object' &&
+    tuneData.recommendations &&
+    typeof tuneData.recommendations.token_budget_cap === 'object' &&
+    typeof tuneData.recommendations.pii_redaction === 'object' &&
+    typeof tuneData.recommendations.secret_leak_prevention === 'object'
+  )) {
     return false;
   }
 
@@ -360,7 +426,7 @@ async function check22_PolicyAutoTuneEndpoint() {
   const applyRes = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recommendations: tuneData.recommendations })
+    body: JSON.stringify({ recommendations: tuneData.recommendations }),
   });
   const applyData = await applyRes.json();
   return applyRes.status === 200 && applyData.success === true && Array.isArray(applyData.applied);
@@ -369,7 +435,11 @@ async function check22_PolicyAutoTuneEndpoint() {
 async function check23_RBACPermissionEnforcement() {
   const tenantsRes = await fetch(`${BASE}/api/governance/tenants`);
   const tenantsData = await tenantsRes.json();
-  if (!(tenantsRes.status === 200 && Array.isArray(tenantsData.tenants) && tenantsData.tenants.length >= 2)) {
+  if (!(
+    tenantsRes.status === 200 &&
+    Array.isArray(tenantsData.tenants) &&
+    tenantsData.tenants.length >= 2
+  )) {
     return false;
   }
 
@@ -380,21 +450,25 @@ async function check23_RBACPermissionEnforcement() {
   const auditorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': auditor.id },
-    body: JSON.stringify({ recommendations: { token_budget_cap: { recommendedThreshold: 12345 } } })
+    body: JSON.stringify({
+      recommendations: { token_budget_cap: { recommendedThreshold: 12345 } },
+    }),
   });
   if (auditorTuneApply.status !== 403) return false;
 
   const operatorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
-    body: JSON.stringify({ recommendations: { token_budget_cap: { recommendedThreshold: 12345 } } })
+    body: JSON.stringify({
+      recommendations: { token_budget_cap: { recommendedThreshold: 12345 } },
+    }),
   });
   if (operatorTuneApply.status !== 403) return false;
 
   const operatorAnchor = await fetch(`${BASE}/api/audit/vault/anchor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
-    body: JSON.stringify({ limit: 5 })
+    body: JSON.stringify({ limit: 5 }),
   });
   if (operatorAnchor.status !== 403) return false;
 
@@ -405,13 +479,16 @@ async function check24_AuditVaultHashing() {
   const anchorRes = await fetch(`${BASE}/api/audit/vault/anchor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
-    body: JSON.stringify({ limit: 10 })
+    body: JSON.stringify({ limit: 10 }),
   });
   const anchorData = await anchorRes.json();
-  if (!(anchorRes.status === 201 && anchorData.success === true &&
-        typeof anchorData.anchor?.batchRoot === 'string' &&
-        anchorData.anchor.batchRoot.length === 64 &&
-        typeof anchorData.anchor.leafCount === 'number')) {
+  if (!(
+    anchorRes.status === 201 &&
+    anchorData.success === true &&
+    typeof anchorData.anchor?.batchRoot === 'string' &&
+    anchorData.anchor.batchRoot.length === 64 &&
+    typeof anchorData.anchor.leafCount === 'number'
+  )) {
     return false;
   }
 
@@ -424,26 +501,68 @@ async function check24_AuditVaultHashing() {
   const verifyRes = await fetch(`${BASE}/api/audit/vault/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-audit' },
-    body: JSON.stringify({ anchorId: anchorData.anchor.anchorId })
+    body: JSON.stringify({ anchorId: anchorData.anchor.anchorId }),
   });
   const verifyData = await verifyRes.json();
-  return verifyRes.status === 200 &&
+  return (
+    verifyRes.status === 200 &&
     typeof verifyData.verified === 'boolean' &&
     verifyData.anchorId === anchorData.anchor.anchorId &&
-    verifyData.originalRoot === anchorData.anchor.batchRoot;
+    verifyData.originalRoot === anchorData.anchor.batchRoot
+  );
 }
 
 async function check25_SubRouterIntegrity() {
   const subRouterCases = [
-    { method: 'GET', path: '/api/audit/export?format=json', expectStatus: 200, expectFields: ['hash', 'recordCount', 'records'] },
-    { method: 'GET', path: '/api/audit/vault', expectStatus: 200, expectFields: ['anchors', 'count'] },
-    { method: 'GET', path: '/api/governance/policies', expectStatus: 200, expectFields: ['policies'] },
-    { method: 'GET', path: '/api/governance/tenants', expectStatus: 200, expectFields: ['tenants', 'current'] },
-    { method: 'GET', path: '/api/governance/tune', expectStatus: 200, expectFields: ['lastAnalysis', 'available'] },
-    { method: 'GET', path: '/api/governance/feedback?limit=5', expectStatus: 200, expectFields: ['feedback', 'count'] },
-    { method: 'GET', path: '/api/telemetry/search?q=gemini&limit=5', expectStatus: 200, expectFields: ['results', 'total'] },
+    {
+      method: 'GET',
+      path: '/api/audit/export?format=json',
+      expectStatus: 200,
+      expectFields: ['hash', 'recordCount', 'records'],
+    },
+    {
+      method: 'GET',
+      path: '/api/audit/vault',
+      expectStatus: 200,
+      expectFields: ['anchors', 'count'],
+    },
+    {
+      method: 'GET',
+      path: '/api/governance/policies',
+      expectStatus: 200,
+      expectFields: ['policies'],
+    },
+    {
+      method: 'GET',
+      path: '/api/governance/tenants',
+      expectStatus: 200,
+      expectFields: ['tenants', 'current'],
+    },
+    {
+      method: 'GET',
+      path: '/api/governance/tune',
+      expectStatus: 200,
+      expectFields: ['lastAnalysis', 'available'],
+    },
+    {
+      method: 'GET',
+      path: '/api/governance/feedback?limit=5',
+      expectStatus: 200,
+      expectFields: ['feedback', 'count'],
+    },
+    {
+      method: 'GET',
+      path: '/api/telemetry/search?q=gemini&limit=5',
+      expectStatus: 200,
+      expectFields: ['results', 'total'],
+    },
     { method: 'GET', path: '/api/telemetry/logs?limit=5', expectStatus: 200 },
-    { method: 'GET', path: '/api/system/health-deep', expectStatus: 200, expectFields: ['status', 'services'] },
+    {
+      method: 'GET',
+      path: '/api/system/health-deep',
+      expectStatus: 200,
+      expectFields: ['status', 'services'],
+    },
     { method: 'GET', path: '/api/system/alerts', expectStatus: 200 },
   ];
 
@@ -464,7 +583,7 @@ async function check26_LazyBundleLoading() {
   const distCandidates = [
     `${__dirname}/../apps/web/dist/index.html`,
     `${__dirname}/../apps/web/dist/assets`,
-    `${__dirname}/../../apps/web/dist/index.html`
+    `${__dirname}/../../apps/web/dist/index.html`,
   ];
   let distPath = null;
   for (const candidate of distCandidates) {
@@ -500,7 +619,7 @@ async function check27_TaskEnqueueAndConsumption() {
   const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
-    body: JSON.stringify({ kind: 'E2E_HEALTH_CHECK', payload: { shouldFail: false } })
+    body: JSON.stringify({ kind: 'E2E_HEALTH_CHECK', payload: {} }),
   });
   if (enqRes.status === 503 || enqRes.status === 500) return true; // graceful degrade
   if (enqRes.status !== 201) return false;
@@ -522,9 +641,9 @@ async function check28_DLQRetryPolicy() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
     body: JSON.stringify({
-      kind: 'E2E_DLQ_SIMULATION',
-      payload: { shouldFail: true, failureMessage: 'synthetic E2E failure' }
-    })
+      kind: 'E2E_FAILURE_TEST',
+      payload: { failureMessage: 'synthetic E2E failure' },
+    }),
   });
   if (enqRes.status === 503 || enqRes.status === 500) return true;
   if (enqRes.status !== 201) return false;
@@ -538,29 +657,44 @@ async function check28_DLQRetryPolicy() {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
     dlqRes = await fetch(`${BASE}/api/governance/failed`);
-    if (dlqRes.status !== 200) { await new Promise((r) => setTimeout(r, 500)); continue; }
+    if (dlqRes.status !== 200) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
     dlqData = await dlqRes.json();
-    if (!Array.isArray(dlqData.items)) { await new Promise((r) => setTimeout(r, 500)); continue; }
+    if (!Array.isArray(dlqData.items)) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
 
     found = dlqData.items.find((t) => t.id === taskId);
-    if (found && found.attempts >= 3 && found.lastError && String(found.lastError).includes('synthetic E2E failure')) {
+    if (
+      found &&
+      found.attempts >= 3 &&
+      found.lastError &&
+      String(found.lastError).includes('synthetic E2E failure')
+    ) {
       break;
     }
     await new Promise((r) => setTimeout(r, 500));
   }
 
   if (!found) {
-    console.error(`[Check28] Task ${taskId} not found in DLQ among ${dlqData?.items?.length || 0} items after ${Math.round((Date.now() - deadline + 30000) / 1000)}s`);
+    console.error(
+      `[Check28] Task ${taskId} not found in DLQ among ${dlqData?.items?.length || 0} items after ${Math.round((Date.now() - deadline + 30000) / 1000)}s`
+    );
     return false;
   }
-  console.error(`[Check28] Task found: id=${found.id}, attempts=${found.attempts}, lastError=${found.lastError}`);
+  console.error(
+    `[Check28] Task found: id=${found.id}, attempts=${found.attempts}, lastError=${found.lastError}`
+  );
   if (found.attempts < 3) return false;
   if (!found.lastError || !String(found.lastError).includes('synthetic E2E failure')) return false;
 
   await fetch(`${BASE}/api/governance/failed/discard`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
-    body: JSON.stringify({ id: taskId })
+    body: JSON.stringify({ id: taskId }),
   }).catch(() => {});
 
   return true;
@@ -593,12 +727,12 @@ async function check30_DegradationMonitorTracking() {
     cost: 0.001,
     status: 'OK',
     provider: 'Google',
-    project_name: 'degradation-monitor-test'
+    project_name: 'degradation-monitor-test',
   };
   const ingestRes = await fetch(`${BASE}/api/telemetry/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(ingestPayload)
+    body: JSON.stringify(ingestPayload),
   });
   if (!ingestRes.ok) {
     const txt = await ingestRes.text().catch(() => 'no body');
@@ -622,14 +756,16 @@ async function check30_DegradationMonitorTracking() {
   console.error(`[Check30] before: ${JSON.stringify(before.counters)}`);
   console.error(`[Check30] after: ${JSON.stringify(after.counters)}`);
 
-  const hasCounters = typeof after.counters === 'object' &&
+  const hasCounters =
+    typeof after.counters === 'object' &&
     typeof after.counters.primaryQueryCount === 'number' &&
     typeof after.counters.fallbackQueryCount === 'number' &&
     typeof after.counters.redisPrimaryCount === 'number' &&
     typeof after.counters.redisFallbackCount === 'number';
 
-  const countersAdvanced = (after.counters.primaryQueryCount + after.counters.fallbackQueryCount) >
-    (before.counters.primaryQueryCount + before.counters.fallbackQueryCount);
+  const countersAdvanced =
+    after.counters.primaryQueryCount + after.counters.fallbackQueryCount >
+    before.counters.primaryQueryCount + before.counters.fallbackQueryCount;
 
   return hasCounters && countersAdvanced;
 }
@@ -640,14 +776,18 @@ async function check30_DegradationMonitorTracking() {
 // (BASE_IDENTITY + IMMUTABLE_LAWS) for a given intent. Verifies the Phase 6
 // factory is wired and observable end-to-end via GET /api/agents/context.
 async function check31_AgentContextFactoryHierarchy() {
-  const res = await fetch(`${BASE}/api/agents/context?prompt=${encodeURIComponent('inspect the system telemetry dashboard')}`);
+  const res = await fetch(
+    `${BASE}/api/agents/context?prompt=${encodeURIComponent('inspect the system telemetry dashboard')}`
+  );
   const data = await res.json();
-  return res.status === 200 &&
+  return (
+    res.status === 200 &&
     data.success === true &&
     typeof data.system_prompt === 'string' &&
     data.system_prompt.length > 0 &&
     data.system_prompt.includes('BASE_IDENTITY') &&
-    data.system_prompt.includes('IMMUTABLE_LAWS');
+    data.system_prompt.includes('IMMUTABLE_LAWS')
+  );
 }
 
 // Check 32: Dynamic skill tagging — a destructive (DB mutation) intent MUST be
@@ -656,13 +796,15 @@ async function check32_DynamicSkillTagging() {
   const res = await fetch(`${BASE}/api/agents/context`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: 'insert a new row into the postgres database table' })
+    body: JSON.stringify({ prompt: 'insert a new row into the postgres database table' }),
   });
   const data = await res.json();
-  return res.status === 200 &&
+  return (
+    res.status === 200 &&
     data.success === true &&
     Array.isArray(data.skills) &&
-    data.skills.includes('DATABASE_MUTATION');
+    data.skills.includes('DATABASE_MUTATION')
+  );
 }
 
 // Check 33: Trajectories surface the Phase 28 confidence_score for the History
@@ -679,13 +821,17 @@ async function check33_TrajectoriesExposeConfidence() {
 // Check 34: The uncertainty-gate parse variant (GET) normalizes a low
 // confidence and flags below_threshold without writing to the governance queue.
 async function check34_UncertaintyGateParse() {
-  const res = await fetch(`${BASE}/api/agents/evaluate?payload=${encodeURIComponent(JSON.stringify({ action: 'probe', confidence_score: 0.35, uncertainty_flag: false }))}`);
+  const res = await fetch(
+    `${BASE}/api/agents/evaluate?payload=${encodeURIComponent(JSON.stringify({ action: 'probe', confidence_score: 0.35, uncertainty_flag: false }))}`
+  );
   const data = await res.json();
-  return res.status === 200 &&
+  return (
+    res.status === 200 &&
     typeof data.confidence_score === 'number' &&
     data.confidence_score < 0.8 &&
     data.below_threshold === true &&
-    data.uncertainty_flag === true;
+    data.uncertainty_flag === true
+  );
 }
 
 // --- Phase 28: Token Forge RAG + Probabilistic Uncertainty Gating ------------
@@ -705,8 +851,8 @@ async function check35_UncertaintyGateInterception() {
       uncertainty_flag: true,
       reasoning: 'Guessing the migration is safe without verifying topology.',
       trace_id: `tr-uncertain-${Date.now()}`,
-      model: 'reasoning'
-    })
+      model: 'reasoning',
+    }),
   });
   const lowData = await lowRes.json();
   const trapped =
@@ -731,8 +877,8 @@ async function check35_UncertaintyGateInterception() {
       uncertainty_flag: false,
       reasoning: 'Verified against the system topology blueprint.',
       trace_id: `tr-confident-${Date.now()}`,
-      model: 'reasoning'
-    })
+      model: 'reasoning',
+    }),
   });
   const highData = await highRes.json();
   const cleared =
@@ -759,11 +905,13 @@ async function check36_TokenForgeRetrieval() {
       traceId: `tr-forge-${Date.now()}`,
       taskContext: { task: 'forge-retrieval-probe' },
       failedState: { status: 'FORGE_TEST' },
-      correctionDelta: 'Token Forge retrieval probe: query pgvector for past successes.'
-    })
+      correctionDelta: 'Token Forge retrieval probe: query pgvector for past successes.',
+    }),
   }).catch(() => {});
 
-  const res = await fetch(`${BASE}/api/memory/think-tokens?prompt=${encodeURIComponent('past successful execution context telemetry')}&limit=3`);
+  const res = await fetch(
+    `${BASE}/api/memory/think-tokens?prompt=${encodeURIComponent('past successful execution context telemetry')}&limit=3`
+  );
   const data = await res.json();
 
   const wellFormed =
@@ -801,14 +949,10 @@ async function check37_RedisQuotaErrorDetection() {
       'ERR max requests limit exceeded. Limit: 500000, Usage: 500000',
       'MAX_REQUESTS_LIMIT exceeded',
       'HTTP 429 Too Many Requests',
-      'rate limit hit on upstash.io'
+      'rate limit hit on upstash.io',
     ];
 
-    const nonQuotaErrors = [
-      'Connection refused',
-      'ETIMEDOUT',
-      'Stream isn\'t writeable'
-    ];
+    const nonQuotaErrors = ['Connection refused', 'ETIMEDOUT', "Stream isn't writeable"];
 
     let pass = true;
     for (const msg of quotaErrors) {
@@ -875,8 +1019,14 @@ async function run() {
     await runCheck('Check 13: Model comparator endpoint', check13_ModelComparator);
     await runCheck('Check 14: Mint think token endpoint', check14_MintThinkToken);
     await runCheck('Check 15: Think trajectories endpoint', check15_ThinkTrajectories);
-    await runCheck('Check 16: Auto Think Token embedding & trajectory', check16_AutoThinkTokenEmbedding);
-    await runCheck('Check 17: Governance promotion endpoint (PATCH status)', check17_GovernancePromotionEndpoint);
+    await runCheck(
+      'Check 16: Auto Think Token embedding & trajectory',
+      check16_AutoThinkTokenEmbedding
+    );
+    await runCheck(
+      'Check 17: Governance promotion endpoint (PATCH status)',
+      check17_GovernancePromotionEndpoint
+    );
     await runCheck('Check 18: Telemetry search endpoint', check18_TelemetrySearchEndpoint);
     await runCheck('Check 19: Audit export JSON endpoint', check19_AuditExportJsonEndpoint);
     await runCheck('Check 20: System diagnostics endpoint', check20_SystemDiagnosticsEndpoint);
@@ -886,18 +1036,42 @@ async function run() {
     await runCheck('Check 24: Audit vault anchoring & verification', check24_AuditVaultHashing);
     await runCheck('Check 25: Sub-router endpoint integrity', check25_SubRouterIntegrity);
     await runCheck('Check 26: Lazy bundle availability', check26_LazyBundleLoading);
-    await runCheck('Check 27: Task enqueue and worker consumption', check27_TaskEnqueueAndConsumption);
+    await runCheck(
+      'Check 27: Task enqueue and worker consumption',
+      check27_TaskEnqueueAndConsumption
+    );
     await runCheck('Check 28: DLQ retry policy (3-strike → dead letter)', check28_DLQRetryPolicy);
     await runCheck('Check 29: Dual-source drift sentinel', check29_DriftSentinel);
     await runCheck('Check 30: Degradation monitor tracking', check30_DegradationMonitorTracking);
-    await runCheck('Check 31: Agent context factory hierarchy', check31_AgentContextFactoryHierarchy);
-    await runCheck('Check 32: Dynamic skill tagging (DATABASE_MUTATION)', check32_DynamicSkillTagging);
-    await runCheck('Check 33: Trajectories expose confidence_score', check33_TrajectoriesExposeConfidence);
+    await runCheck(
+      'Check 31: Agent context factory hierarchy',
+      check31_AgentContextFactoryHierarchy
+    );
+    await runCheck(
+      'Check 32: Dynamic skill tagging (DATABASE_MUTATION)',
+      check32_DynamicSkillTagging
+    );
+    await runCheck(
+      'Check 33: Trajectories expose confidence_score',
+      check33_TrajectoriesExposeConfidence
+    );
     await runCheck('Check 34: Uncertainty gate parse variant', check34_UncertaintyGateParse);
-    await runCheck('Check 35: Uncertainty gate low-confidence interception', check35_UncertaintyGateInterception);
-    await runCheck('Check 36: Token Forge retrieval (getRelevantThinkTokens)', check36_TokenForgeRetrieval);
-    await runCheck('Check 37: Redis quota error detection (isRedisQuotaError)', check37_RedisQuotaErrorDetection);
-    await runCheck('Check 38: InMemoryQueueManager fallback under simulated Redis timeout', check38_InMemoryQueueFallback);
+    await runCheck(
+      'Check 35: Uncertainty gate low-confidence interception',
+      check35_UncertaintyGateInterception
+    );
+    await runCheck(
+      'Check 36: Token Forge retrieval (getRelevantThinkTokens)',
+      check36_TokenForgeRetrieval
+    );
+    await runCheck(
+      'Check 37: Redis quota error detection (isRedisQuotaError)',
+      check37_RedisQuotaErrorDetection
+    );
+    await runCheck(
+      'Check 38: InMemoryQueueManager fallback under simulated Redis timeout',
+      check38_InMemoryQueueFallback
+    );
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;

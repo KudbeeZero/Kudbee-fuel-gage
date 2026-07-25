@@ -18,11 +18,7 @@
 // router guard (services/agents/router.ts) is what intercepts and reroutes.
 // ---------------------------------------------------------------------------
 
-import {
-  AgentPayloadSchema,
-  UNCERTAINTY_THRESHOLD,
-  type AgentPayload
-} from '@kudbee/types';
+import { AgentPayloadSchema, UNCERTAINTY_THRESHOLD, type AgentPayload } from '@kudbee/types';
 
 /** A confidence reading that has been normalized but not yet routed. */
 export interface EvaluatedPayload {
@@ -40,7 +36,8 @@ export const DEGRADED_PAYLOAD: AgentPayload = {
   action: 'UNKNOWN',
   confidence_score: 0,
   uncertainty_flag: true,
-  reasoning: 'Worker could not parse agent output — defaulting to safest low-confidence interpretation.'
+  reasoning:
+    'Worker could not parse agent output — defaulting to safest low-confidence interpretation.',
 };
 
 function clamp01(value: number): number {
@@ -93,7 +90,11 @@ export function parseAgentPayload(raw: unknown): AgentPayload {
   const uncertainty_flag = explicit || confidence_score < UNCERTAINTY_THRESHOLD;
 
   const reasoning =
-    typeof obj.reasoning === 'string' ? obj.reasoning : typeof obj.reason === 'string' ? obj.reason : '';
+    typeof obj.reasoning === 'string'
+      ? obj.reasoning
+      : typeof obj.reason === 'string'
+        ? obj.reason
+        : '';
 
   const trace_id = typeof obj.trace_id === 'string' ? obj.trace_id : undefined;
   const model = typeof obj.model === 'string' ? obj.model : undefined;
@@ -104,7 +105,7 @@ export function parseAgentPayload(raw: unknown): AgentPayload {
     uncertainty_flag,
     reasoning,
     ...(trace_id !== undefined ? { trace_id } : {}),
-    ...(model !== undefined ? { model } : {})
+    ...(model !== undefined ? { model } : {}),
   };
 
   // Validate against the canonical schema. On a validation failure we still
@@ -122,15 +123,14 @@ export function parseAgentPayload(raw: unknown): AgentPayload {
  */
 export function evaluateAgentPayload(raw: unknown): EvaluatedPayload {
   const payload = parseAgentPayload(raw);
-  const degraded =
-    payload.action === DEGRADED_PAYLOAD.action && payload.confidence_score === 0;
+  const degraded = payload.action === DEGRADED_PAYLOAD.action && payload.confidence_score === 0;
   const below_threshold = payload.confidence_score < UNCERTAINTY_THRESHOLD;
   return {
     payload,
     confidence_score: payload.confidence_score,
     uncertainty_flag: payload.uncertainty_flag || below_threshold,
     below_threshold,
-    degraded
+    degraded,
   };
 }
 
@@ -159,7 +159,15 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import {
+  getRedisClient,
+  getWorkerRedisClient,
+  isRedisQuotaError,
+  isUpstashMaxRequestsError,
+  getRedisQuotaBackoffRemaining,
+  applyRedisQuotaBackoff,
+  resetRedisQuotaBackoff,
+} from '../lib/redis.js';
 import { getOrCreateInMemoryQueue } from '../lib/inMemoryQueue.ts';
 
 export interface TaskEnvelope {
@@ -209,7 +217,10 @@ process.on('SIGTERM', () => {
         console.log('[Worker] Redis connection closed gracefully.');
       }
     } catch (err) {
-      console.warn('[Worker] Error closing Redis:', err instanceof Error ? err.message : String(err));
+      console.warn(
+        '[Worker] Error closing Redis:',
+        err instanceof Error ? err.message : String(err)
+      );
     }
     clearTimeout(forceKillTimeout);
     process.exit(0);
@@ -224,9 +235,11 @@ function broadcast(type: string, data: unknown) {
   const redis = getRedisClient();
   if (!redis) return;
   try {
-    redis.publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() })).catch((e: Error) => {
-    console.warn('[Worker] broadcast failed:', e.message);
-  });
+    redis
+      .publish(EVENTS_CHANNEL, JSON.stringify({ type, data, ts: new Date().toISOString() }))
+      .catch((e: Error) => {
+        console.warn('[Worker] broadcast failed:', e.message);
+      });
   } catch {
     /* ignore */
   }
@@ -259,11 +272,17 @@ export async function enqueueTask(task: unknown) {
   }
   const input = task as Record<string, unknown>;
   const payload: TaskEnvelope = {
-    id: typeof input.id === 'string' && input.id.length > 0 ? input.id : `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id:
+      typeof input.id === 'string' && input.id.length > 0
+        ? input.id
+        : `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: typeof input.kind === 'string' && input.kind.length > 0 ? input.kind : 'GENERIC',
-    payload: typeof input.payload === 'object' && input.payload !== null ? input.payload as Record<string, unknown> : {},
+    payload:
+      typeof input.payload === 'object' && input.payload !== null
+        ? (input.payload as Record<string, unknown>)
+        : {},
     attempts: 0,
-    enqueuedAt: new Date().toISOString()
+    enqueuedAt: new Date().toISOString(),
   };
   await redis.lpush(TASK_QUEUE, envelope(payload));
   broadcast('task.queued', { id: payload.id, kind: payload.kind, enqueuedAt: payload.enqueuedAt });
@@ -315,7 +334,11 @@ export async function retryFailed(taskId: string) {
       parsed = JSON.parse(parsed);
     }
     if (parsed && typeof parsed === 'object' && (parsed as TaskEnvelope).id === taskId) {
-      const requeued = { ...(parsed as TaskEnvelope), attempts: 0, retriedAt: new Date().toISOString() };
+      const requeued = {
+        ...(parsed as TaskEnvelope),
+        attempts: 0,
+        retriedAt: new Date().toISOString(),
+      };
       await redis.lrem(TASK_DLQ, 1, raw);
       await redis.lpush(TASK_QUEUE, envelope(requeued));
       broadcast('task.retry_queued', { id: taskId, at: requeued.retriedAt });
@@ -339,14 +362,17 @@ export function isRunning() {
 
 export async function processTask(task: unknown) {
   const input = task as TaskEnvelope;
-  const message = typeof input.payload?.failureMessage === 'string' ? input.payload.failureMessage : 'simulated failure for E2E';
-  if (input.payload?.shouldFail) {
+  if (input.kind === 'E2E_FAILURE_TEST') {
+    const message =
+      typeof input.payload?.failureMessage === 'string'
+        ? input.payload.failureMessage
+        : 'synthetic E2E failure';
     throw new Error(message);
   }
   return {
     completedAt: new Date().toISOString(),
     result: 'ok',
-    kind: input.kind
+    kind: input.kind,
   };
 }
 
@@ -361,7 +387,7 @@ export async function _tick() {
     fallbackQueue.enqueue({
       queue: 'kudbee:telemetry_buffer',
       data: { event: 'worker_backoff', remainingMs: remainingBackoff, timestamp: Date.now() },
-      source: 'worker-backoff'
+      source: 'worker-backoff',
     });
 
     await sleep(remainingBackoff);
@@ -377,11 +403,15 @@ export async function _tick() {
     const msg = e.message;
     if (isUpstashMaxRequestsError(e)) {
       const backoff = applyRedisQuotaBackoff();
-      console.error(`[worker:governance] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+      console.error(
+        `[worker:governance] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`
+      );
       backoffMs = Math.min(backoff, MAX_BACKOFF_MS);
     } else if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
-      console.warn(`[Worker] Quota exceeded — backing off ${backoff}ms (consecutive: ${(backoffMs / BASE_BACKOFF_MS).toFixed(0)})`);
+      console.warn(
+        `[Worker] Quota exceeded — backing off ${backoff}ms (consecutive: ${(backoffMs / BASE_BACKOFF_MS).toFixed(0)})`
+      );
     } else if (msg.includes('Command timed out') || msg.includes('timeout')) {
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
       console.warn(`[Worker] Command timeout — backing off for ${backoffMs}ms`);
@@ -406,26 +436,45 @@ export async function _tick() {
   const taskEnvelope = task as TaskEnvelope;
 
   taskEnvelope.attempts = (taskEnvelope.attempts || 0) + 1;
-  broadcast('task.processing', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts });
+  broadcast('task.processing', {
+    id: taskEnvelope.id,
+    kind: taskEnvelope.kind,
+    attempt: taskEnvelope.attempts,
+  });
 
-   try {
-     const result = await processTask(taskEnvelope);
-     broadcast('task.success', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts, result });
-     return true;
-   } catch (err: unknown) {
-     const message = err instanceof Error ? err.message : String(err);
+  try {
+    const result = await processTask(taskEnvelope);
+    broadcast('task.success', {
+      id: taskEnvelope.id,
+      kind: taskEnvelope.kind,
+      attempt: taskEnvelope.attempts,
+      result,
+    });
+    return true;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     if (taskEnvelope.attempts >= MAX_ATTEMPTS) {
       const dead = { ...taskEnvelope, failedAt: new Date().toISOString(), lastError: message };
       await redis.lpush(TASK_DLQ, envelope(dead)).catch((e: Error) => {
         console.warn('[Worker] DLQ push failed:', e.message);
       });
-      broadcast('task.dead_lettered', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempts: taskEnvelope.attempts, error: message });
+      broadcast('task.dead_lettered', {
+        id: taskEnvelope.id,
+        kind: taskEnvelope.kind,
+        attempts: taskEnvelope.attempts,
+        error: message,
+      });
     } else {
       const requeued = { ...taskEnvelope, lastError: message };
       await redis.lpush(TASK_QUEUE, envelope(requeued)).catch((e: Error) => {
         console.warn('[Worker] requeue failed:', e.message);
       });
-      broadcast('task.failed', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts, error: message });
+      broadcast('task.failed', {
+        id: taskEnvelope.id,
+        kind: taskEnvelope.kind,
+        attempt: taskEnvelope.attempts,
+        error: message,
+      });
     }
     return true;
   }
