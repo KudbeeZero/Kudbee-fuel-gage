@@ -170,6 +170,9 @@ async function pollTasks() {
   hermes.log.info(`task polling started on ${TASKS_QUEUE}`);
   while (true) {
     try {
+      // BLPOP call site #4: worker.js:173
+      // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getRedisClient
+      // Procfile: hermes-worker — MUST survive Upstash quota errors.
       const result = await redis.blpop(TASKS_QUEUE, 0);
       if (!result) continue;
       const [, raw] = result;

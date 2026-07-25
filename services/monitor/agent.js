@@ -158,6 +158,10 @@ async function processTelemetry(telemetry) {
   }
 }
 
+// BRPOP call site #1: services/monitor/agent.js:174
+// Queue: kudbee:telemetry_feed | Timeout: 5s | Client: getBlockingRedisClient
+// Procfile: monitor-worker
+// Worker consumes telemetry from ingestion feed; MUST survive Upstash quota errors.
 async function runLoop() {
   console.log('[Agent] Starting polling loop...');
   console.log('[Agent] Listening on kudbee:telemetry_feed');

@@ -32,6 +32,9 @@ export async function dequeueJob(queue: string): Promise<Job | null> {
   try {
     const redis = getBlockingRedisClient({ label: 'job-queue' });
     if (!redis) return null;
+    // BRPOP call site #3: services/lib/jobQueue.ts:35
+    // Queue: kudbee:jobs:{queue} | Timeout: 5s | Client: getBlockingRedisClient
+    // Generic job dequeue; consumers MUST survive Upstash quota errors.
     const result = await redis.brpop(JOB_PREFIX + queue, 5);
     if (!result) return null;
     const raw = result[1];

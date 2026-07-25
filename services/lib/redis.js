@@ -303,6 +303,12 @@ export function getSlowRedisClient(opts = {}) {
 
 let _blockingClient = null;
 
+// BRPOP/BLPOP AUDIT (PR #181 / Bead 1 — Worker Loop Resilience):
+//   #1 services/monitor/agent.js:174   blpop kudbee:telemetry_feed 5s   (monitor-worker)
+//   #2 services/agents/worker.ts:364   brpop kudbee-governance-tasks 5s  (ingestion server)
+//   #3 services/lib/jobQueue.ts:35     brpop kudbee:jobs:{queue} 5s      (generic job queue)
+//   #4 worker.js:173                   blpop kudbee:governance:tasks 0s   (hermes-worker)
+// All call sites MUST survive Upstash quota errors (ERR max requests) without crashing.
 export function getBlockingRedisClient(opts = {}) {
   if (!opts.forceNew && _blockingClient) return _blockingClient;
 
