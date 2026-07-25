@@ -55,7 +55,9 @@ export class CircuitBreaker {
       const redis = getRedisClient({ label: 'circuit-breaker' });
       const v = await redis.get(CB_PREFIX + this.name + ':state');
       return (v as BreakerState) || 'CLOSED';
-    } catch { return 'CLOSED'; }
+    } catch {
+      return 'CLOSED';
+    }
   }
 
   async recordFailure(): Promise<void> {
@@ -68,12 +70,14 @@ export class CircuitBreaker {
       if (state === 'OPEN') return;
 
       // Atomic: INCR + EXPIRE in one Lua roundtrip — no permanent-key leak
-      const count = await redis.eval(
+      const count = (await redis.eval(
         `local c = redis.call('INCR', KEYS[1])
          redis.call('EXPIRE', KEYS[1], ARGV[1])
          return c`,
-        1, key, String(ttl)
-      ) as number;
+        1,
+        key,
+        String(ttl)
+      )) as number;
 
       if (state === 'HALF_OPEN' || count >= this.failureThreshold) {
         await redis.set(CB_PREFIX + this.name + ':state', 'OPEN', 'EX', ttl);
@@ -81,7 +85,9 @@ export class CircuitBreaker {
           this._transitionToHalfOpenAfterTimeout();
         }
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   async recordSuccess(): Promise<void> {
@@ -90,7 +96,9 @@ export class CircuitBreaker {
       await redis.set(CB_PREFIX + this.name + ':state', 'CLOSED');
       await redis.del(CB_PREFIX + this.name + ':failures');
       this._halfOpenPermits = 0;
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   private _transitionToHalfOpenAfterTimeout(): void {
@@ -104,7 +112,9 @@ export class CircuitBreaker {
           await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
           this._halfOpenPermits = this.halfOpenMax;
         }
-      } catch { /* best-effort */ }
+      } catch {
+        /* best-effort */
+      }
     }, this.resetTimeoutMs).unref();
   }
 
@@ -139,7 +149,9 @@ export class CircuitBreaker {
       const redis = getRedisClient({ label: 'circuit-breaker' });
       await redis.set(CB_PREFIX + this.name + ':state', 'OPEN');
       await redis.set(CB_PREFIX + this.name + ':failures', String(this.failureThreshold + 1));
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   async forceReset(): Promise<void> {
@@ -148,10 +160,25 @@ export class CircuitBreaker {
       await redis.set(CB_PREFIX + this.name + ':state', 'CLOSED');
       await redis.set(CB_PREFIX + this.name + ':failures', '0');
       await redis.set(CB_PREFIX + this.name + ':half_open_permits', String(this.halfOpenMax));
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 }
 
-export const groqBreaker = new CircuitBreaker('groq-ftwb', { failureThreshold: 5, resetTimeoutMs: 30000 });
-export const geminiBreaker = new CircuitBreaker('gemini', { failureThreshold: 5, resetTimeoutMs: 30000 });
-export const redisSinkBreaker = new CircuitBreaker('redis-sink', { failureThreshold: 3, resetTimeoutMs: 15000 });
+export const groqBreaker = new CircuitBreaker('groq-ftwb', {
+  failureThreshold: 5,
+  resetTimeoutMs: 30000,
+});
+export const geminiBreaker = new CircuitBreaker('gemini', {
+  failureThreshold: 5,
+  resetTimeoutMs: 30000,
+});
+export const inceptionBreaker = new CircuitBreaker('inception', {
+  failureThreshold: 5,
+  resetTimeoutMs: 30000,
+});
+export const redisSinkBreaker = new CircuitBreaker('redis-sink', {
+  failureThreshold: 3,
+  resetTimeoutMs: 15000,
+});

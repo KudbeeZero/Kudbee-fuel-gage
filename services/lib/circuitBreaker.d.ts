@@ -5,7 +5,10 @@ declare module './circuitBreaker.js' {
     resetTimeoutMs: number;
     halfOpenMax: number;
 
-    constructor(name: string, config?: { failureThreshold?: number; resetTimeoutMs?: number; halfOpenMax?: number });
+    constructor(
+      name: string,
+      config?: { failureThreshold?: number; resetTimeoutMs?: number; halfOpenMax?: number }
+    );
     dispose(): void;
     getState(): Promise<'CLOSED' | 'OPEN' | 'HALF_OPEN'>;
     recordFailure(): Promise<void>;
@@ -18,6 +21,7 @@ declare module './circuitBreaker.js' {
 
   export const groqBreaker: CircuitBreaker;
   export const geminiBreaker: CircuitBreaker;
+  export const inceptionBreaker: CircuitBreaker;
   export const redisSinkBreaker: CircuitBreaker;
 }
 
