@@ -402,33 +402,6 @@ export function getWorkerRedisClient(opts = {}) {
   return client;
 }
 
-  let client;
-  try {
-    client = new Redis(REDIS_URL, baseConfig);
-  } catch {
-    console.warn('[blocking-redis] Invalid REDIS_URL, skipping blocking client creation');
-    return null;
-  }
-
-  client.on('connect', () => console.log('[blocking-redis] Redis connected'));
-  client.on('ready', () => { resetRedisQuotaBackoff(); console.log('[blocking-redis] Redis ready'); });
-  client.on('error', (err) => {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (isRedisQuotaError(msg)) {
-      const backoff = applyRedisQuotaBackoff();
-      console.warn(`[blocking-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
-
-      const inMemoryQueue = getOrCreateInMemoryQueue();
-      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' });
-    }
-    console.error('[blocking-redis] Error:', msg);
-  });
-  client.on('end', () => { console.warn('[blocking-redis] Redis connection closed'); _blockingClient = null; });
-
-  if (!opts.forceNew) _blockingClient = client;
-  return _blockingClient;
-}
-
 /**
  * Initializes the InMemoryQueueManager with a Redis-backed flush handler.
  * When Redis recovers from quota exhaustion, buffered events are replayed
