@@ -70,9 +70,9 @@ function slotKey(slot: CellSlot): string {
 
 function computeAuditHash(event: Record<string, unknown>): string {
   const serialized = JSON.stringify(event);
-  const bounded = serialized.slice(0, 1024 * 1024);
   let hash = 0;
-  for (let i = 0; i < bounded.length; i++) {
+  const len = Math.min(serialized.length, 1048576);
+  for (let i = 0; i < len; i++) {
     const c = serialized.charCodeAt(i);
     hash = (hash << 5) - hash + c;
     hash |= 0;
