@@ -455,8 +455,19 @@ export async function _tick() {
     const message = err instanceof Error ? err.message : String(err);
     if (taskEnvelope.attempts >= MAX_ATTEMPTS) {
       const dead = { ...taskEnvelope, failedAt: new Date().toISOString(), lastError: message };
-      await redis.lpush(TASK_DLQ, envelope(dead)).catch((e: Error) => {
-        console.warn('[Worker] DLQ push failed:', e.message);
+      await redis.lpush(TASK_DLQ, envelope(dead)).catch(async (e: Error) => {
+        console.warn('[Worker] DLQ push on worker client failed:', e.message);
+        const main = getRedisClient();
+        if (main) {
+          await main.lpush(TASK_DLQ, envelope(dead)).catch((e2: Error) => {
+            console.warn('[Worker] DLQ push on main client failed:', e2.message);
+            const fb = getOrCreateInMemoryQueue();
+            fb.enqueue({ queue: TASK_DLQ, data: dead, source: 'worker-dlq-fallback' });
+          });
+        } else {
+          const fb = getOrCreateInMemoryQueue();
+          fb.enqueue({ queue: TASK_DLQ, data: dead, source: 'worker-dlq-fallback' });
+        }
       });
       broadcast('task.dead_lettered', {
         id: taskEnvelope.id,
@@ -466,8 +477,19 @@ export async function _tick() {
       });
     } else {
       const requeued = { ...taskEnvelope, lastError: message };
-      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch((e: Error) => {
-        console.warn('[Worker] requeue failed:', e.message);
+      await redis.lpush(TASK_QUEUE, envelope(requeued)).catch(async (e: Error) => {
+        console.warn('[Worker] requeue on worker client failed:', e.message);
+        const main = getRedisClient();
+        if (main) {
+          await main.lpush(TASK_QUEUE, envelope(requeued)).catch((e2: Error) => {
+            console.warn('[Worker] requeue on main client failed:', e2.message);
+            const fb = getOrCreateInMemoryQueue();
+            fb.enqueue({ queue: TASK_QUEUE, data: requeued, source: 'worker-requeue-fallback' });
+          });
+        } else {
+          const fb = getOrCreateInMemoryQueue();
+          fb.enqueue({ queue: TASK_QUEUE, data: requeued, source: 'worker-requeue-fallback' });
+        }
       });
       broadcast('task.failed', {
         id: taskEnvelope.id,
