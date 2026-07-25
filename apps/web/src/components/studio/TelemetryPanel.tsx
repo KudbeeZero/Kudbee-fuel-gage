@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEventStream } from '../../hooks/useEventStream';
 import { useDegradationStatus, type DegradationStatus } from '../../hooks/useDegradationStatus';
+import { useControlTowerStore } from '../../store/useControlTowerStore';
 import { apiGet, apiPost, apiUrl } from '../../lib/apiClient';
 import type { TelemetryStats } from '@kudbee/types';
 
@@ -817,6 +818,68 @@ function ModelComparator({ result, loading, error, provider, onProviderChange, o
   );
 }
 
+function TelemetryBufferCard() {
+  const events = useControlTowerStore((s) => s.telemetryEvents);
+  const groqMetrics = useControlTowerStore((s) => s.groqMetrics);
+  const thinkRecords = useControlTowerStore((s) => s.thinkTokenRecords);
+  const clearBuffers = useControlTowerStore((s) => s.clearBuffers);
+
+  const recentEvents = events.slice(0, 20);
+  const totalBuffered = events.length + groqMetrics.length + thinkRecords.length;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="telemetry-buffer-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-cyan-400" />
+          <h3 className="font-display text-sm font-semibold text-slate-200">Unified Telemetry Buffer</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-slate-500">
+            {totalBuffered} / 1500 events
+          </span>
+          <button
+            type="button"
+            onClick={clearBuffers}
+            className="rounded-lg border border-slate-700 px-2 py-0.5 font-mono text-[9px] text-slate-500 hover:text-slate-300 hover:border-slate-600 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="max-h-[320px] space-y-1.5 overflow-y-auto p-4">
+        {recentEvents.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-slate-600">
+            <Activity className="h-6 w-6 opacity-40" />
+            <span className="font-mono text-[10px]">Awaiting telemetry events…</span>
+          </div>
+        )}
+        {recentEvents.map((event) => (
+          <div key={event.id} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-1.5">
+            <span className={`shrink-0 rounded-full w-1.5 h-1.5 ${
+              event.kind === 'telemetry' ? 'bg-emerald-400' :
+              event.kind === 'think_token' ? 'bg-violet-400' :
+              event.kind === 'groq_route' ? 'bg-cyan-400' :
+              'bg-amber-400'
+            }`} />
+            <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest shrink-0">
+              [{event.kind}]
+            </span>
+            <span className="font-mono text-[10px] text-slate-500 truncate">
+              {JSON.stringify(event.payload).slice(0, 80)}
+            </span>
+            <span className="ml-auto font-mono text-[8px] text-slate-600 shrink-0">
+              {new Date(event.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TelemetryPanel() {
   const _mountedRef = useRef(true);
   const stream = useEventStream();
@@ -1031,6 +1094,10 @@ export function TelemetryPanel() {
         <StorageGaugeCard bytes={redisSize} label="Redis Storage" icon={MemoryStick} thresholdBytes={524288000} />
       </div>
       <TelemetryGauges stats={telemetryStats} loading={telemetryStatsLoading} error={telemetryStatsError} />
+
+      <div className="lg:col-span-3">
+        <TelemetryBufferCard />
+      </div>
 
       {telemetryStatsError && (
         <div className="lg:col-span-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-[10px] font-mono text-amber-300">
