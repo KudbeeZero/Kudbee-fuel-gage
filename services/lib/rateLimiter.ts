@@ -1,5 +1,7 @@
 const RL_PREFIX = 'kudbee:ratelimit:';
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
 export interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
@@ -27,9 +29,26 @@ const stats: RateLimiterStats = {
 };
 
 const slidingWindow = new Map<string, number[]>();
-const PRUNE_INTERVAL_MS = 10_000;
-let _lastPrune = 0;
+let _lastCleanup = 0;
 let _maxWindowMs = 0;
+
+function pruneDeadEntries(now: number): void {
+  const pruneWindow = _maxWindowMs;
+  for (const [k, timestamps] of slidingWindow.entries()) {
+    const pruned = timestamps.filter((t) => t > now - pruneWindow);
+    if (pruned.length === 0) {
+      slidingWindow.delete(k);
+    } else if (pruned.length < timestamps.length) {
+      slidingWindow.set(k, pruned);
+    }
+  }
+}
+
+export function createRateLimiter(config: RateLimitConfig) {
+  return {
+    check: (key: string) => rateLimitCheck(key, config),
+  };
+}
 
 export async function rateLimitCheck(
   key: string,
@@ -46,14 +65,9 @@ export async function rateLimitCheck(
   stats.totalRequests += 1;
   stats.inMemoryChecks += 1;
 
-  if (now - _lastPrune > PRUNE_INTERVAL_MS) {
-    const pruneWindow = _maxWindowMs || config.windowMs;
-    for (const [k, timestamps] of slidingWindow.entries()) {
-      const pruned = timestamps.filter((t) => t > now - pruneWindow);
-      if (pruned.length === 0) slidingWindow.delete(k);
-      else slidingWindow.set(k, pruned);
-    }
-    _lastPrune = now;
+  if (now - _lastCleanup > CLEANUP_INTERVAL_MS) {
+    pruneDeadEntries(now);
+    _lastCleanup = now;
   }
 
   let timestamps = slidingWindow.get(windowKey) || [];
