@@ -1,4 +1,4 @@
-export type EngineEventType = 'SAFE_ZONE_UPDATE' | 'TRAJECTORY_UPDATE' | 'INTERCEPT' | 'TRAJECTORY' | 'GOVERNANCE_LOCK' | 'QUOTA_HEALTH' | 'QUOTA_EXCEEDED';
+export type EngineEventType = 'SAFE_ZONE_UPDATE' | 'TRAJECTORY_UPDATE' | 'INTERCEPT' | 'TRAJECTORY' | 'GOVERNANCE_LOCK' | 'QUOTA_HEALTH' | 'QUOTA_EXCEEDED' | 'MEMORY_STORED' | 'MEMORY_RECALLED';
 
 export interface EngineEvent {
   type: EngineEventType;
@@ -52,5 +52,7 @@ export const KudbeeEvents = {
   trajectory: BusEvent.define('TRAJECTORY'),
   governance_lock: BusEvent.define('GOVERNANCE_LOCK'),
   quota_health: BusEvent.define('QUOTA_HEALTH'),
-  quota_exceeded: BusEvent.define('QUOTA_EXCEEDED')
+  quota_exceeded: BusEvent.define('QUOTA_EXCEEDED'),
+  memory_stored: BusEvent.define('MEMORY_STORED'),
+  memory_recalled: BusEvent.define('MEMORY_RECALLED')
 };
