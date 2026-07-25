@@ -10,14 +10,18 @@ export function MultiModelSelector({ selectedModel, setSelectedModel }: MultiMod
     'Claude 3.5 Sonnet',
     'DeepSeek-R1',
     'GPT-4o',
-    'Gemini 1.5 Pro'
+    'Gemini 1.5 Pro',
+    'Groq Llama 3.3 70B',
+    'Mercury 2',
   ];
 
   return (
     <div className="pt-2">
-      <label className="block text-xs font-mono uppercase tracking-wider text-slate-500 mb-2">Active Route</label>
+      <label className="block text-xs font-mono uppercase tracking-wider text-slate-500 mb-2">
+        Active Route
+      </label>
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-        {models.map(model => (
+        {models.map((model) => (
           <button
             key={model}
             onClick={() => setSelectedModel(model)}
