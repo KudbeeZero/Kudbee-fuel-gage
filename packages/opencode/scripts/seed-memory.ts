@@ -110,6 +110,79 @@ async function runRecallQueries(vault: MemoryVault, chunks: AgentMemoryChunk[], 
   return totalRecalled;
 }
 
+function verifyRecallAccuracy(chunks: AgentMemoryChunk[]): number {
+  const assertions = [
+    {
+      query: 'What does the user prefer for UI?',
+      expectedPhrase: 'dark mode',
+      test: () => {
+        const results = recallSimilarMemories(
+          { query: 'What does the user prefer for UI?', limit: 3, minSimilarity: 0.2, categoryFilter: [] },
+          chunks
+        );
+        return results.length >= 1 && results[0]!.content.includes('dark mode');
+      }
+    },
+    {
+      query: 'What does the agent use for telemetry and pub/sub?',
+      expectedPhrase: 'Upstash Redis',
+      test: () => {
+        const results = recallSimilarMemories(
+          { query: 'What does the agent use for telemetry and pub/sub?', limit: 3, minSimilarity: 0.2, categoryFilter: [] },
+          chunks
+        );
+        return results.length >= 1 && results[0]!.content.includes('Upstash Redis');
+      }
+    },
+    {
+      query: 'What blocks anomalous tool calls?',
+      expectedPhrase: 'Sentinel firewall',
+      test: () => {
+        const results = recallSimilarMemories(
+          { query: 'What blocks anomalous tool calls?', limit: 3, minSimilarity: 0.2, categoryFilter: ['DECISION'] },
+          chunks
+        );
+        return results.length >= 1 && results[0]!.content.includes('Sentinel firewall');
+      }
+    },
+    {
+      query: 'What is the context window size?',
+      expectedPhrase: '1M token',
+      test: () => {
+        const results = recallSimilarMemories(
+          { query: 'What is the context window size?', limit: 3, minSimilarity: 0.2, categoryFilter: ['OBSERVATION'] },
+          chunks
+        );
+        return results.length >= 1 && results[0]!.content.includes('1M token');
+      }
+    },
+    {
+      query: 'When did the last rate limit error occur?',
+      expectedPhrase: '2026-07-24T15:30:00Z',
+      test: () => {
+        const results = recallSimilarMemories(
+          { query: 'When did the last rate limit error occur?', limit: 3, minSimilarity: 0.2, categoryFilter: ['ERROR'] },
+          chunks
+        );
+        return results.length >= 1 && results[0]!.content.includes('2026-07-24');
+      }
+    }
+  ];
+
+  let passed = 0;
+  for (const assertion of assertions) {
+    const result = assertion.test();
+    if (result) {
+      passed += 1;
+      console.log(`  ✓ "${assertion.query}" → "${assertion.expectedPhrase}"`);
+    } else {
+      console.error(`  ✗ "${assertion.query}" → "${assertion.expectedPhrase}" FAILED`);
+    }
+  }
+
+  return passed;
+}
+
 async function main() {
   console.log('=== Kudbee Live Memory Seeding ===\n');
 
@@ -128,10 +201,15 @@ async function main() {
   console.log(`  Vault size: ${vault.size}`);
   console.log(`  Context window:\n${vault.getContextWindow(500)}\n`);
 
+  console.log('  Running recall accuracy assertions...');
+  const assertionsPassed = verifyRecallAccuracy(seeded);
+  console.log(`  Assertions: ${assertionsPassed}/5 passed\n`);
+
   const allRecalled = totalRecalled >= 3;
   const vaultHealthy = vault.size >= 4;
+  const assertionsOk = assertionsPassed >= 4;
 
-  if (allRecalled && vaultHealthy) {
+  if (allRecalled && vaultHealthy && assertionsOk) {
     console.log('✓ All checks passed — memory pipeline is live and operational.');
     process.exit(0);
   } else {
