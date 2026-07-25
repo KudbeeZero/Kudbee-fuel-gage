@@ -34,14 +34,23 @@ function sanitizeRedisUrl(url) {
   return url;
 }
 
+function isUpstashHost(url) {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname === 'upstash.io' || hostname.endsWith('.upstash.io');
+  } catch {
+    return false;
+  }
+}
+
 const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL || REDIS_URL);
 const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL);
-const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
+const isUpstash = REDIS_URL.startsWith('rediss://') || isUpstashHost(REDIS_URL);
 const isRateLimitUpstash =
-  REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
-const isWorkerUpstash =
-  REDIS_WORKER_URL.startsWith('rediss://') || REDIS_WORKER_URL.includes('upstash.io');
+  REDIS_RATE_LIMIT_URL.startsWith('rediss://') || isUpstashHost(REDIS_RATE_LIMIT_URL);
+const isWorkerUpstash = REDIS_WORKER_URL.startsWith('rediss://') || isUpstashHost(REDIS_WORKER_URL);
 const MAX_REQUESTS_LIMIT = 500_000;
 const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
@@ -313,8 +322,7 @@ export function getRateLimitClient(opts = {}) {
  */
 export function getSlowRedisClient(opts = {}) {
   const REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL || REDIS_URL);
-  const isSlowUpstash =
-    REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
+  const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || isUpstashHost(REDIS_SLOW_URL);
 
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
@@ -376,7 +384,7 @@ export function getBlockingRedisClient(opts = {}) {
     keepAlive: 15_000,
   };
 
-  if (REDIS_URL.includes('upstash.io') || REDIS_URL.startsWith('rediss://')) {
+  if (isUpstashHost(REDIS_URL) || REDIS_URL.startsWith('rediss://')) {
     baseConfig.tls = {};
   }
 
