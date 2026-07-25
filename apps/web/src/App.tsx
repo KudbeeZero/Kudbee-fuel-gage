@@ -36,10 +36,10 @@ import {
   X,
   Maximize2,
   Radio,
-  Monitor
+  Monitor,
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
-import { PlaygroundView } from "./components/playground/PlaygroundView";
+import { PlaygroundView } from './components/playground/PlaygroundView';
 import { ConsoleDock } from './components/ConsoleDock';
 import { useLiveTaskStream } from './hooks/useLiveTaskStream';
 import { OSControlBar, CommandPalette } from './components/OSControlBar';
@@ -53,10 +53,18 @@ import { ThinkPage } from './pages/think';
 import { GovernancePage } from './pages/governance';
 import { HermesPage } from './pages/hermes';
 import { SentinelPage } from './pages/sentinel';
-const FirewallPage = lazy(() => import('./pages/firewall').then((m) => ({ default: m.FirewallPage })));
-const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel })));
-const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
-const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
+const FirewallPage = lazy(() =>
+  import('./pages/firewall').then((m) => ({ default: m.FirewallPage }))
+);
+const AlertsPanel = lazy(() =>
+  import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel }))
+);
+const InterceptorView = lazy(() =>
+  import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView }))
+);
+const GovernanceView = lazy(() =>
+  import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView }))
+);
 import { OllamaChat } from './pages/OllamaChat';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
@@ -135,14 +143,6 @@ export interface DashboardSummary {
   redis_size_bytes: number;
 }
 
-
-
-
-
-
-
-
-
 // --- MAIN APPLICATION ENTRY WITH SIDEBAR ROUTING ---
 
 export default function App() {
@@ -155,7 +155,9 @@ export default function App() {
   }, []);
 
   const [activeTab, setActiveTab] = useState('TELEMETRY');
-  const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
+  const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(
+    null
+  );
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
   const { snapshot: os, connected: osConnected } = useOsSnapshot();
@@ -174,23 +176,38 @@ export default function App() {
 
   // Governance Router + HERMES auditor health (polled every 5s).
   const { health: govHealth } = useGovernanceHealth(5000);
-  
-  const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } = useAgentInterceptor();
+
+  const { pendingApprovals, executeAgentTool, resolveApproval, rejectApproval } =
+    useAgentInterceptor();
 
   // --- SUBSCRIPTION LEDGER BUDGET CAPS (GAP TRACKER) ---
-  const [claudeProCap, setClaudeProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_claude') || '0'));
-  const [cursorProCap, setCursorProCap] = useState(() => Number(localStorage.getItem('kudbee_cap_cursor') || '0'));
-  const [chatGptCap, setChatGptCap] = useState(() => Number(localStorage.getItem('kudbee_cap_chatgpt') || '0'));
-  const [apiGatewayCap, setApiGatewayCap] = useState(() => Number(localStorage.getItem('kudbee_cap_api') || '0'));
+  const [claudeProCap, setClaudeProCap] = useState(() =>
+    Number(localStorage.getItem('kudbee_cap_claude') || '0')
+  );
+  const [cursorProCap, setCursorProCap] = useState(() =>
+    Number(localStorage.getItem('kudbee_cap_cursor') || '0')
+  );
+  const [chatGptCap, setChatGptCap] = useState(() =>
+    Number(localStorage.getItem('kudbee_cap_chatgpt') || '0')
+  );
+  const [apiGatewayCap, setApiGatewayCap] = useState(() =>
+    Number(localStorage.getItem('kudbee_cap_api') || '0')
+  );
 
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [tempCapVal, setTempCapVal] = useState('');
 
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP'>('USD');
-  const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>('Standard');
+  const [displayDensity, setDisplayDensity] = useState<'Compact' | 'Standard' | 'Comfortable'>(
+    'Standard'
+  );
   const [toast, setToast] = useState<{ id: number; message: string; type: string } | null>(null);
-  const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(() => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space');
-  const [reducedMotion, setReducedMotion] = useState<boolean>(() => localStorage.getItem('kudbee_reduced_motion') === 'true');
+  const [theme, setTheme] = useState<'Deep Space' | 'Midnight'>(
+    () => (localStorage.getItem('kudbee_theme') as 'Deep Space' | 'Midnight') || 'Deep Space'
+  );
+  const [reducedMotion, setReducedMotion] = useState<boolean>(
+    () => localStorage.getItem('kudbee_reduced_motion') === 'true'
+  );
 
   // Real edge-gateway round-trip latency for the global footer indicator.
   // Measured from an actual fetch round-trip to the backend (Resilient-First:
@@ -225,16 +242,16 @@ export default function App() {
   // Global command palette (Cmd+K / Ctrl+K)
   const [paletteOpen, setPaletteOpen] = useState(false);
   const paletteOpenRef = useRef(paletteOpen);
-  useEffect(() => { paletteOpenRef.current = paletteOpen; }, [paletteOpen]);
+  useEffect(() => {
+    paletteOpenRef.current = paletteOpen;
+  }, [paletteOpen]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isEditable =
         !!target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable);
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setPaletteOpen((open) => !open);
@@ -271,7 +288,11 @@ export default function App() {
   const [dbSummary, setDbSummary] = useState<DashboardSummary | null>(null);
   const [dbLogs, setDbLogs] = useState<TelemetryLog[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const operationalState: OperationalState = historyError ? 'DISCONNECTED' : dbLogs.length > 0 ? 'INTERCEPTING' : 'STANDBY';
+  const operationalState: OperationalState = historyError
+    ? 'DISCONNECTED'
+    : dbLogs.length > 0
+      ? 'INTERCEPTING'
+      : 'STANDBY';
 
   const fetchTelemetryData = async () => {
     if (!isAuthenticated) return;
@@ -279,14 +300,14 @@ export default function App() {
     try {
       const [sRaw, rawLogs] = await Promise.all([
         apiGet<unknown>('/api/dashboard/summary'),
-        apiGet<unknown>('/api/telemetry/logs?limit=50')
+        apiGet<unknown>('/api/telemetry/logs?limit=50'),
       ]);
       const sData = normalizeDashboardSummary(sRaw) as DashboardSummary | null;
       if (sData) setDbSummary(sData);
       setDbLogs(normalizeTelemetryLogs(rawLogs) as TelemetryLog[]);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error("Failed to fetch dashboard metrics:", message);
+      console.error('Failed to fetch dashboard metrics:', message);
       setHistoryError(message);
     }
   };
@@ -332,7 +353,7 @@ export default function App() {
       pgSizeBytes: dbSummary?.postgres_size_bytes ?? 0,
       redisSizeBytes: dbSummary?.redis_size_bytes ?? 0,
       pgHealthy: (dbSummary?.postgres_size_bytes ?? -1) >= 0,
-      redisHealthy: (dbSummary?.redis_size_bytes ?? -1) >= 0
+      redisHealthy: (dbSummary?.redis_size_bytes ?? -1) >= 0,
     };
   }, [dbSummary, dbLogs]);
 
@@ -365,7 +386,7 @@ export default function App() {
       claude: Number(claudeSpent.toFixed(4)),
       cursor: Number(cursorSpent.toFixed(4)),
       chatGpt: Number(chatGptSpent.toFixed(4)),
-      api: Number(apiSpent.toFixed(4))
+      api: Number(apiSpent.toFixed(4)),
     };
   }, [dbLogs]);
 
@@ -374,14 +395,23 @@ export default function App() {
   // backend has not ingested anything yet. No fabricated historical points.
   const chartData = React.useMemo(() => {
     if (!dbLogs || dbLogs.length === 0) return [];
-    return [...dbLogs].slice(0, 10).reverse().map((l: TelemetryLog) => {
-      const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      return {
-        name: timeStr,
-        tokens: (Number(l.input_tokens ?? l.tokens_in) || 0) + (Number(l.output_tokens ?? l.tokens_out) || 0),
-        cost: Number(l.calculated_cost ?? l.cost) || 0
-      };
-    });
+    return [...dbLogs]
+      .slice(0, 10)
+      .reverse()
+      .map((l: TelemetryLog) => {
+        const timeStr = new Date(l.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+        return {
+          name: timeStr,
+          tokens:
+            (Number(l.input_tokens ?? l.tokens_in) || 0) +
+            (Number(l.output_tokens ?? l.tokens_out) || 0),
+          cost: Number(l.calculated_cost ?? l.cost) || 0,
+        };
+      });
   }, [dbLogs]);
 
   // Derive circuit breaker real-time success vs failure request counts for the last 60 minutes
@@ -415,10 +445,10 @@ export default function App() {
               closestBin = bins[i]!;
             }
           }
-          
+
           // Determine success vs failure deterministically
           const logId = Number(log.id) || 0;
-          const isFailure = (logId % 9 === 0) || (log.provider === 'Anthropic' && logId % 13 === 0);
+          const isFailure = logId % 9 === 0 || (log.provider === 'Anthropic' && logId % 13 === 0);
           if (isFailure) {
             closestBin.failure += 1;
           } else {
@@ -431,9 +461,9 @@ export default function App() {
     // Add randomized/simulated baseline so it is fully populated with nice values
     bins.forEach((bin, idx) => {
       const seed = (idx + now.getMinutes()) % 10;
-      const baseSuccess = 15 + (seed * 3) + Math.floor(Math.sin(idx * 2) * 4);
+      const baseSuccess = 15 + seed * 3 + Math.floor(Math.sin(idx * 2) * 4);
       const baseFailure = Math.max(0, 1 + Math.floor(Math.cos(idx * 1.5) * 2) + (seed % 3));
-      
+
       bin.success += baseSuccess;
       bin.failure += baseFailure;
     });
@@ -459,18 +489,76 @@ export default function App() {
     { icon: History, label: 'HISTORY' },
     { icon: Bell, label: 'ALERTS' },
     { icon: Search, label: 'INTELLIGENCE' },
-    { icon: Settings, label: 'SETTINGS' }
+    { icon: Settings, label: 'SETTINGS' },
   ];
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   const models = [
-    { name: "GPT-4o", org: "OpenAI", costIn: "5.00", costOut: "15.00", speed: 85, quality: 5, status: "ACTIVE" },
-    { name: "Claude 3.5 Sonnet", org: "Anthropic", costIn: "3.00", costOut: "15.00", speed: 92, quality: 5, status: "ACTIVE" },
-    { name: "Gemini 1.5 Pro", org: "Google", costIn: "1.25", costOut: "5.00", speed: 78, quality: 4.5, status: "ACTIVE" },
-    { name: "Llama 3.1 70B", org: "Meta", costIn: "0.70", costOut: "0.90", speed: 95, quality: 4, status: "STANDBY" },
-    { name: "Mistral Large 2", org: "Mistral", costIn: "3.00", costOut: "9.00", speed: 82, quality: 4.5, status: "STANDBY" }
+    {
+      name: 'GPT-4o',
+      org: 'OpenAI',
+      costIn: '5.00',
+      costOut: '15.00',
+      speed: 85,
+      quality: 5,
+      status: 'ACTIVE',
+    },
+    {
+      name: 'Claude 3.5 Sonnet',
+      org: 'Anthropic',
+      costIn: '3.00',
+      costOut: '15.00',
+      speed: 92,
+      quality: 5,
+      status: 'ACTIVE',
+    },
+    {
+      name: 'Gemini 1.5 Pro',
+      org: 'Google',
+      costIn: '1.25',
+      costOut: '5.00',
+      speed: 78,
+      quality: 4.5,
+      status: 'ACTIVE',
+    },
+    {
+      name: 'Llama 3.1 70B',
+      org: 'Meta',
+      costIn: '0.70',
+      costOut: '0.90',
+      speed: 95,
+      quality: 4,
+      status: 'STANDBY',
+    },
+    {
+      name: 'Mistral Large 2',
+      org: 'Mistral',
+      costIn: '3.00',
+      costOut: '9.00',
+      speed: 82,
+      quality: 4.5,
+      status: 'STANDBY',
+    },
+    {
+      name: 'Groq Llama 3.3 70B',
+      org: 'Groq',
+      costIn: '0.59',
+      costOut: '0.79',
+      speed: 98,
+      quality: 4.5,
+      status: 'ACTIVE',
+    },
+    {
+      name: 'Mercury 2',
+      org: 'Inception',
+      costIn: '0.25',
+      costOut: '0.75',
+      speed: 95,
+      quality: 5,
+      status: 'ACTIVE',
+    },
   ];
 
   if (!isAuthenticated) {
@@ -484,12 +572,17 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex flex-col selection:bg-emerald-500/30`}>
+    <div
+      className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex flex-col selection:bg-emerald-500/30`}
+    >
       {!reducedMotion && <div className="crt-overlay" />}
       {!reducedMotion && <div className="crt-scanline" />}
-      
+
       {/* LEFT SIDEBAR */}
-      <aside className="w-64 border-r border-slate-800/60 bg-slate-950 flex flex-col shrink-0 hidden md:flex z-10" id="main-sidebar">
+      <aside
+        className="w-64 border-r border-slate-800/60 bg-slate-950 flex flex-col shrink-0 hidden md:flex z-10"
+        id="main-sidebar"
+      >
         <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800/60 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[1px] bg-emerald-500/20"></div>
           <div className="flex items-center gap-3">
@@ -497,11 +590,18 @@ export default function App() {
               <TerminalSquare className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <span className="font-display font-bold text-lg tracking-tight text-slate-100 block leading-none">KUDBEE<span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">|</span></span>
-              <span className="font-mono text-[9px] text-emerald-500 uppercase tracking-widest block mt-1">Fuel Gauge v1.0</span>
+              <span className="font-display font-bold text-lg tracking-tight text-slate-100 block leading-none">
+                KUDBEE
+                <span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">
+                  |
+                </span>
+              </span>
+              <span className="font-mono text-[9px] text-emerald-500 uppercase tracking-widest block mt-1">
+                Fuel Gauge v1.0
+              </span>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => {
               localStorage.removeItem('kudbee_session');
               setIsAuthenticated(false);
@@ -512,7 +612,7 @@ export default function App() {
             <Lock className="w-4 h-4" />
           </button>
         </div>
-        
+
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {primaryNavItems.map((item) => {
             const isActive = activeTab === item.label;
@@ -527,9 +627,13 @@ export default function App() {
                     : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent cursor-pointer'
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                <item.icon
+                  className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`}
+                />
                 {item.label}
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] relative after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></div>}
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] relative after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></div>
+                )}
               </button>
             );
           })}
@@ -545,7 +649,9 @@ export default function App() {
                   : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent cursor-pointer'
               }`}
             >
-              <ChevronDown className={`w-4 h-4 ${moreMenuOpen ? 'rotate-180' : ''} ${secondaryNavItems.some((i) => i.label === activeTab) ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <ChevronDown
+                className={`w-4 h-4 ${moreMenuOpen ? 'rotate-180' : ''} ${secondaryNavItems.some((i) => i.label === activeTab) ? 'text-emerald-400' : 'text-slate-500'}`}
+              />
               More
               {secondaryNavItems.some((i) => i.label === activeTab) && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] relative after:absolute after:inset-0 after:rounded-full after:bg-emerald-400 after:animate-pulse after:content-['']"></div>
@@ -577,7 +683,9 @@ export default function App() {
                             : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'
                         }`}
                       >
-                        <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                        <item.icon
+                          className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`}
+                        />
                         {item.label}
                       </button>
                     );
@@ -587,48 +695,69 @@ export default function App() {
             </AnimatePresence>
           </div>
         </nav>
-        
+
         <div className="p-5 border-t border-slate-800/60 bg-slate-900/20">
           <div className="flex items-center gap-3 mb-3">
             <div className="relative flex h-2 w-2">
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
             </div>
-            <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest drop-shadow-[0_0_4px_rgba(52,211,153,0.25)]">System Status: Nominal</span>
+            <span className="text-[10px] font-mono text-emerald-500/80 uppercase tracking-widest drop-shadow-[0_0_4px_rgba(52,211,153,0.25)]">
+              System Status: Nominal
+            </span>
           </div>
-           <div className="flex flex-wrap items-center gap-2">
-             <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.pgHealthy ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}>[NEON: {liveStats.pgHealthy ? 'OK' : 'DOWN'}]</span>
-             <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.redisHealthy ? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}>[REDIS: {liveStats.redisHealthy ? 'OK' : 'DOWN'}]</span>
-             <span className="rounded-full border border-violet-500/20 bg-violet-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-violet-400">[CRUCIBLE: ACTIVE]</span>
-           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.pgHealthy ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}
+            >
+              [NEON: {liveStats.pgHealthy ? 'OK' : 'DOWN'}]
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${liveStats.redisHealthy ? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-400' : 'border-rose-500/20 bg-rose-500/5 text-rose-400'}`}
+            >
+              [REDIS: {liveStats.redisHealthy ? 'OK' : 'DOWN'}]
+            </span>
+            <span className="rounded-full border border-violet-500/20 bg-violet-500/5 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-violet-400">
+              [CRUCIBLE: ACTIVE]
+            </span>
+          </div>
         </div>
       </aside>
 
       {/* MAIN DASHBOARD CONTENT */}
-      <main className="flex-1 min-h-0 overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
+      <main
+        className="flex-1 min-h-0 overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative"
+        id="main-content-panel"
+      >
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
-        
-        <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-28 sm:pb-36 ${
-          displayDensity === 'Compact' 
-            ? 'p-4 space-y-4 text-xs' 
-            : displayDensity === 'Comfortable' 
-              ? 'p-8 md:p-10 space-y-8 text-base' 
-              : 'p-6 md:p-8 space-y-6 text-sm'
-        }`}>
-          
+
+        <div
+          className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-28 sm:pb-36 ${
+            displayDensity === 'Compact'
+              ? 'p-4 space-y-4 text-xs'
+              : displayDensity === 'Comfortable'
+                ? 'p-8 md:p-10 space-y-8 text-base'
+                : 'p-6 md:p-8 space-y-6 text-sm'
+          }`}
+        >
           <header className="mb-8 md:hidden">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <TerminalSquare className="w-6 h-6 text-emerald-400" />
-                  <span className="font-display font-bold text-lg text-slate-100">KUDBEE Fuel Gauge<span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">|</span></span>
+                  <span className="font-display font-bold text-lg text-slate-100">
+                    KUDBEE Fuel Gauge
+                    <span className="animate-[pulse_1s_infinite] text-emerald-400 font-normal ml-0.5">
+                      |
+                    </span>
+                  </span>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-2 w-2">
                     <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       localStorage.removeItem('kudbee_session');
                       setIsAuthenticated(false);
@@ -680,21 +809,42 @@ export default function App() {
           >
             <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
               <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className={`${osConnected && os.services.postgres.ok && os.services.postgres.latencyMs !== null ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`} />
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600'}`} />
+                <span
+                  className={`${osConnected && os.services.postgres.ok && os.services.postgres.latencyMs !== null ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-2.5 w-2.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600'}`}
+                />
               </span>
               <span className="font-mono text-xs text-slate-300">
-                Status: <span className={osConnected && os.services.postgres.ok ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>{
-                  osConnected ? (os.services.postgres.ok ? 'Online' : 'Degraded') : 'Connecting...'
-                }</span>
+                Status:{' '}
+                <span
+                  className={
+                    osConnected && os.services.postgres.ok
+                      ? 'text-emerald-400 font-semibold'
+                      : 'text-amber-400 font-semibold'
+                  }
+                >
+                  {osConnected
+                    ? os.services.postgres.ok
+                      ? 'Online'
+                      : 'Degraded'
+                    : 'Connecting...'}
+                </span>
               </span>
               <span className="hidden sm:inline text-slate-700">|</span>
 
               {/* Governance Status indicator */}
               <span className="flex items-center gap-1.5 font-mono text-xs">
-                <Scale className={`h-3 w-3 ${govHealth.governanceActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                <Scale
+                  className={`h-3 w-3 ${govHealth.governanceActive ? 'text-emerald-400' : 'text-slate-500'}`}
+                />
                 Governance:{' '}
-                <span className={govHealth.governanceActive ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>
+                <span
+                  className={
+                    govHealth.governanceActive ? 'text-emerald-400 font-semibold' : 'text-slate-500'
+                  }
+                >
                   {govHealth.governanceActive ? 'Active' : 'Offline'}
                 </span>
                 {govHealth.proposedCount > 0 && (
@@ -717,7 +867,13 @@ export default function App() {
                   <WifiOff className="h-3 w-3 text-rose-400" />
                 )}
                 HERMES Auditor:{' '}
-                <span className={govHealth.hermes.online ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                <span
+                  className={
+                    govHealth.hermes.online
+                      ? 'text-emerald-400 font-semibold'
+                      : 'text-rose-400 font-semibold'
+                  }
+                >
                   {govHealth.hermes.online ? 'Online' : 'Offline'}
                 </span>
               </span>
@@ -728,9 +884,30 @@ export default function App() {
               </span>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">Docs</a>
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage/issues" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">Support</a>
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">API</a>
+              <a
+                href="https://github.com/KudbeeZero/Kudbee-fuel-gage"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-emerald-400 transition-colors"
+              >
+                Docs
+              </a>
+              <a
+                href="https://github.com/KudbeeZero/Kudbee-fuel-gage/issues"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-emerald-400 transition-colors"
+              >
+                Support
+              </a>
+              <a
+                href="https://github.com/KudbeeZero/Kudbee-fuel-gage"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-emerald-400 transition-colors"
+              >
+                API
+              </a>
             </div>
           </div>
 
@@ -747,25 +924,19 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'THINK' && (
-            <ThinkPage />
-          )}
+          {activeTab === 'THINK' && <ThinkPage />}
 
-          {activeTab === 'GOVERNANCE' && (
-            <GovernancePage />
-          )}
+          {activeTab === 'GOVERNANCE' && <GovernancePage />}
 
-          {activeTab === 'HERMES' && (
-            <HermesPage />
-          )}
+          {activeTab === 'HERMES' && <HermesPage />}
 
-          {activeTab === 'SENTINEL' && (
-            <SentinelPage />
-          )}
+          {activeTab === 'SENTINEL' && <SentinelPage />}
 
           {activeTab === 'TERMINAL' && <OllamaChat />}
 
-          {activeTab === 'PLAYGROUND' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
+          {activeTab === 'PLAYGROUND' && (
+            <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />
+          )}
 
           {activeTab === 'FIREWALL' && (
             <Suspense fallback={<RouteFallback label="Loading Firewall" />}>
@@ -773,12 +944,16 @@ export default function App() {
             </Suspense>
           )}
 
-          {activeTab === 'GATEWAY' && (
-            <GatewayView showToast={showToast} />
-          )}
+          {activeTab === 'GATEWAY' && <GatewayView showToast={showToast} />}
 
           {activeTab === 'INTERCEPTOR' && (
-            <Suspense fallback={<div className="h-96 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-500" /></div>}>
+            <Suspense
+              fallback={
+                <div className="h-96 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+                </div>
+              }
+            >
               <InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} />
             </Suspense>
           )}
@@ -820,11 +995,16 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <div className="flex items-center gap-2">
                 <TerminalSquare className="w-4 h-4 text-emerald-400" />
-                <span className="font-display font-bold tracking-tight text-slate-200">KUDBEE<span className="text-emerald-400">|</span><span className="text-slate-500 font-normal">Fuel Gauge</span></span>
+                <span className="font-display font-bold tracking-tight text-slate-200">
+                  KUDBEE<span className="text-emerald-400">|</span>
+                  <span className="text-slate-500 font-normal">Fuel Gauge</span>
+                </span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
                 <span className="uppercase tracking-widest">24h Cost</span>
-                <span className="text-emerald-400">{getFormattedCost(liveStats.cost, currency, 4)}</span>
+                <span className="text-emerald-400">
+                  {getFormattedCost(liveStats.cost, currency, 4)}
+                </span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-500">
                 <span className="uppercase tracking-widest">Req</span>
@@ -843,12 +1023,23 @@ export default function App() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                 </span>
-                <span className="uppercase tracking-widest text-emerald-400 font-semibold">ENV: PRODUCTION</span>
+                <span className="uppercase tracking-widest text-emerald-400 font-semibold">
+                  ENV: PRODUCTION
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40" title="Edge gateway round-trip latency (real fetch measurement)">
-                <Radio className={`w-3.5 h-3.5 ${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${osConnected ? 'animate-pulse' : ''}`} />
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-800 bg-slate-900/40"
+                title="Edge gateway round-trip latency (real fetch measurement)"
+              >
+                <Radio
+                  className={`w-3.5 h-3.5 ${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'} ${osConnected ? 'animate-pulse' : ''}`}
+                />
                 <span className="uppercase tracking-widest text-slate-400">PING</span>
-                <span className={`${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}>{pgLatency !== null ? `${pgLatency}ms` : '—'}</span>
+                <span
+                  className={`${pgLatency !== null ? (pgLatency < 60 ? 'text-emerald-400' : pgLatency < 140 ? 'text-amber-400' : 'text-rose-400') : 'text-slate-600'}`}
+                >
+                  {pgLatency !== null ? `${pgLatency}ms` : '—'}
+                </span>
               </div>
             </div>
 
@@ -857,7 +1048,7 @@ export default function App() {
               {[
                 { label: 'Docs', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage' },
                 { label: 'Support', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage/issues' },
-                { label: 'API', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage' }
+                { label: 'API', href: 'https://github.com/KudbeeZero/Kudbee-fuel-gage' },
               ].map((link) => (
                 <a
                   key={link.label}
@@ -869,7 +1060,6 @@ export default function App() {
               ))}
             </nav>
           </footer>
-
         </div>
       </main>
 
@@ -880,25 +1070,30 @@ export default function App() {
             initial={{ opacity: 0, y: -40, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border border-amber-500/50 bg-slate-950/95 text-slate-100 shadow-[0_0_24px_rgba(245,158,11,0.2)] max-w-md backdrop-blur-md animate-[pulse_2s_infinite]"
           >
             <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></div>
-            <span className="font-mono text-xs font-semibold tracking-wide leading-relaxed">{toast.message}</span>
+            <span className="font-mono text-xs font-semibold tracking-wide leading-relaxed">
+              {toast.message}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* 1. THE GLASSMORPHIC TRACE DRAWER (Slide-Up Sheet) */}
-      <div 
+      <div
         className={`fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-300 ease-out h-[75vh] flex flex-col bg-slate-950/95 backdrop-blur-md border-t border-slate-800 rounded-t-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] ${
           selectedTraceForDrawer ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
         {/* Grab-handle / Drag bar */}
-        <div className="flex justify-center py-3 border-b border-slate-900 bg-slate-950/40 relative cursor-pointer" onClick={() => setSelectedTraceForDrawer(null)}>
+        <div
+          className="flex justify-center py-3 border-b border-slate-900 bg-slate-950/40 relative cursor-pointer"
+          onClick={() => setSelectedTraceForDrawer(null)}
+        >
           <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
-          <button 
+          <button
             onClick={() => setSelectedTraceForDrawer(null)}
             className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-100 transition-colors"
           >
@@ -911,16 +1106,22 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-6 space-y-6 select-text pb-12">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-xs font-mono text-emerald-500 uppercase tracking-widest">OTel Ingestion Context Deep-Dive</h3>
-                <h2 className="text-xl font-bold font-display text-slate-100 mt-1">Trace Payload Explorer</h2>
+                <h3 className="text-xs font-mono text-emerald-500 uppercase tracking-widest">
+                  OTel Ingestion Context Deep-Dive
+                </h3>
+                <h2 className="text-xl font-bold font-display text-slate-100 mt-1">
+                  Trace Payload Explorer
+                </h2>
               </div>
-              <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase border ${
-                selectedTraceForDrawer.status === 'OK' 
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]' 
-                  : selectedTraceForDrawer.status === 'INTERCEPTED'
-                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                    : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
-              }`}>
+              <span
+                className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase border ${
+                  selectedTraceForDrawer.status === 'OK'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.1)]'
+                    : selectedTraceForDrawer.status === 'INTERCEPTED'
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                      : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                }`}
+              >
                 {selectedTraceForDrawer.status}
               </span>
             </div>
@@ -928,32 +1129,49 @@ export default function App() {
             {/* Trace Meta Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Trace ID</div>
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  Trace ID
+                </div>
                 <div className="text-xs font-mono font-bold text-emerald-400 mt-1 truncate select-all">{`tr-${selectedTraceForDrawer.timestamp ? selectedTraceForDrawer.timestamp.replace(/[^0-9]/g, '').slice(-10) : '3928173928'}`}</div>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Model ID</div>
-                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{selectedTraceForDrawer.model}</div>
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  Model ID
+                </div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">
+                  {selectedTraceForDrawer.model}
+                </div>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Provider</div>
-                <div className="text-xs font-mono font-bold text-slate-300 mt-1 uppercase">{selectedTraceForDrawer.provider}</div>
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  Provider
+                </div>
+                <div className="text-xs font-mono font-bold text-slate-300 mt-1 uppercase">
+                  {selectedTraceForDrawer.provider}
+                </div>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-lg">
-                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Input | Output Tokens</div>
-                <div className="text-xs font-mono font-bold text-slate-100 mt-1">{(selectedTraceForDrawer.tokens_in || 0).toLocaleString()} | {(selectedTraceForDrawer.tokens_out || 0).toLocaleString()}</div>
+                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  Input | Output Tokens
+                </div>
+                <div className="text-xs font-mono font-bold text-slate-100 mt-1">
+                  {(selectedTraceForDrawer.tokens_in || 0).toLocaleString()} |{' '}
+                  {(selectedTraceForDrawer.tokens_out || 0).toLocaleString()}
+                </div>
               </div>
             </div>
 
             {/* In-depth JSON Payload */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Syntax-Highlighted Trace JSON Payload</span>
+                <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                  Syntax-Highlighted Trace JSON Payload
+                </span>
                 <button
                   onClick={() => {
                     const jsonStr = JSON.stringify(selectedTraceForDrawer, null, 2);
                     navigator.clipboard.writeText(jsonStr);
-                    showToast("✓ Copied full trace JSON to clipboard", "success");
+                    showToast('✓ Copied full trace JSON to clipboard', 'success');
                   }}
                   className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
@@ -962,26 +1180,32 @@ export default function App() {
                 </button>
               </div>
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto max-h-[40vh] overflow-y-auto font-mono text-[11px] text-slate-300 leading-relaxed shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
-                <pre>{JSON.stringify({
-                  trace_id: `tr-${selectedTraceForDrawer.timestamp ? selectedTraceForDrawer.timestamp.replace(/[^0-9]/g, '').slice(-10) : '3928173928'}`,
-                  timestamp: selectedTraceForDrawer.timestamp,
-                  resource: {
-                    "service.name": "kudbee-otel-collector-service",
-                    "service.version": "1.0.0",
-                    "telemetry.sdk.language": "typescript",
-                    "telemetry.sdk.name": "opentelemetry",
-                    "telemetry.sdk.version": "1.24.0"
-                  },
-                  attributes: {
-                    "ai.model": selectedTraceForDrawer.model,
-                    "ai.provider": selectedTraceForDrawer.provider,
-                    "ai.tokens.input": selectedTraceForDrawer.tokens_in || 0,
-                    "ai.tokens.output": selectedTraceForDrawer.tokens_out || 0,
-                    "ai.cost": selectedTraceForDrawer.cost || 0,
-                    "ai.status": selectedTraceForDrawer.status || "OK",
-                    "ai.project": selectedTraceForDrawer.project || "KUDBEE-LIVE"
-                  }
-                }, null, 2)}</pre>
+                <pre>
+                  {JSON.stringify(
+                    {
+                      trace_id: `tr-${selectedTraceForDrawer.timestamp ? selectedTraceForDrawer.timestamp.replace(/[^0-9]/g, '').slice(-10) : '3928173928'}`,
+                      timestamp: selectedTraceForDrawer.timestamp,
+                      resource: {
+                        'service.name': 'kudbee-otel-collector-service',
+                        'service.version': '1.0.0',
+                        'telemetry.sdk.language': 'typescript',
+                        'telemetry.sdk.name': 'opentelemetry',
+                        'telemetry.sdk.version': '1.24.0',
+                      },
+                      attributes: {
+                        'ai.model': selectedTraceForDrawer.model,
+                        'ai.provider': selectedTraceForDrawer.provider,
+                        'ai.tokens.input': selectedTraceForDrawer.tokens_in || 0,
+                        'ai.tokens.output': selectedTraceForDrawer.tokens_out || 0,
+                        'ai.cost': selectedTraceForDrawer.cost || 0,
+                        'ai.status': selectedTraceForDrawer.status || 'OK',
+                        'ai.project': selectedTraceForDrawer.project || 'KUDBEE-LIVE',
+                      },
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
               </div>
             </div>
           </div>
@@ -1009,7 +1233,9 @@ export default function App() {
             >
               <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-700" />
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Secondary Navigation</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                  Secondary Navigation
+                </span>
                 <button
                   onClick={() => setMobileMoreOpen(false)}
                   className="p-1.5 text-slate-400 hover:text-slate-100 transition-colors"
@@ -1035,7 +1261,9 @@ export default function App() {
                           : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border border-transparent'
                       }`}
                     >
-                      <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <item.icon
+                        className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`}
+                      />
                       {item.label}
                     </button>
                   );
