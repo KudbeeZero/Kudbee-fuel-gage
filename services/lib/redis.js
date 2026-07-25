@@ -106,6 +106,22 @@ export function getRedisQuotaBackoffRemaining() {
 export { quotaBackoffState };
 
 /**
+ * Detects Upstash free-tier quota exhaustion errors in worker BRPOP/BLPOP loops.
+ * Matches the canonical Upstash error messages: "ERR max requests",
+ * "max requests limit exceeded", and "MAX_REQUESTS_LIMIT".
+ * @param {Error|string} err
+ * @returns {boolean}
+ */
+export function isUpstashMaxRequestsError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('ERR max requests') ||
+    msg.includes('max requests limit exceeded') ||
+    msg.includes('MAX_REQUESTS_LIMIT')
+  );
+}
+
+/**
  * Returns a shared, resilient ioredis client.
  * Upstash Redis (rediss://) receives permissive TLS settings to accommodate
  * cloud-native TLS termination. Callers that need persistent polling (workers,
