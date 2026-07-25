@@ -992,7 +992,24 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
     if (redis) {
       redis.lpush('kudbee:telemetry_feed', JSON.stringify(feedEntry))
         .then(() => redis.ltrim('kudbee:telemetry_feed', 0, 9999))
-        .catch((e) => console.error('[Redis] Telemetry feed push failed:', e.message));
+        .catch(async (e) => {
+          console.error('[Redis] Telemetry feed push failed:', e.message);
+          const { getOrCreateInMemoryQueue } = await import('../lib/inMemoryQueue.ts');
+          const fallbackQueue = getOrCreateInMemoryQueue();
+          fallbackQueue.enqueue({
+            queue: 'kudbee:telemetry_feed',
+            data: feedEntry,
+            source: 'ingestion-telemetry-feed'
+          });
+        });
+    } else {
+      const { getOrCreateInMemoryQueue } = await import('../lib/inMemoryQueue.ts');
+      const fallbackQueue = getOrCreateInMemoryQueue();
+      fallbackQueue.enqueue({
+        queue: 'kudbee:telemetry_feed',
+        data: feedEntry,
+        source: 'ingestion-telemetry-feed'
+      });
     }
 
     // Native SSE broadcast of the real egressed signal so the Edge Sentinel
