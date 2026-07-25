@@ -14,7 +14,7 @@
 /**
  * Supported provider identifiers.
  */
-export type ProviderKind = 'gemini' | 'vllm' | 'openai-compatible';
+export type ProviderKind = 'gemini' | 'vllm' | 'openai-compatible' | 'groq' | 'inception';
 
 /**
  * Configuration required to instantiate a provider.
@@ -109,9 +109,12 @@ export class GeminiProvider implements ModelProvider {
       contents: combinedPrompt,
       config: {
         temperature: request.temperature ?? this.temperature,
-        maxOutputTokens: request.maxTokens ?? this.maxTokens
-      }
-    })) as { text: string; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } };
+        maxOutputTokens: request.maxTokens ?? this.maxTokens,
+      },
+    })) as {
+      text: string;
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+    };
 
     const text = response.text ?? '';
     return {
@@ -120,8 +123,8 @@ export class GeminiProvider implements ModelProvider {
       provider: 'gemini',
       usage: {
         promptTokens: response.usageMetadata?.promptTokenCount ?? 0,
-        completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0
-      }
+        completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+      },
     };
   }
 
@@ -172,17 +175,17 @@ export class VLLMProvider implements ModelProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: request.userPrompt }
+          { role: 'user', content: request.userPrompt },
         ],
         temperature: request.temperature ?? this.temperature,
-        max_tokens: request.maxTokens ?? this.maxTokens
-      })
+        max_tokens: request.maxTokens ?? this.maxTokens,
+      }),
     });
 
     if (!res.ok) {
@@ -202,15 +205,15 @@ export class VLLMProvider implements ModelProvider {
       provider: 'vllm',
       usage: {
         promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0
-      }
+        completionTokens: data.usage?.completion_tokens ?? 0,
+      },
     };
   }
 
   async healthCheck(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/health`, {
-        headers: { Authorization: `Bearer ${this.apiKey}` }
+        headers: { Authorization: `Bearer ${this.apiKey}` },
       });
       return res.ok;
     } catch {
@@ -254,17 +257,17 @@ export class OpenAICompatibleProvider implements ModelProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: request.userPrompt }
+          { role: 'user', content: request.userPrompt },
         ],
         temperature: request.temperature ?? this.temperature,
-        max_tokens: request.maxTokens ?? this.maxTokens
-      })
+        max_tokens: request.maxTokens ?? this.maxTokens,
+      }),
     });
 
     if (!res.ok) {
@@ -284,15 +287,186 @@ export class OpenAICompatibleProvider implements ModelProvider {
       provider: 'openai-compatible',
       usage: {
         promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0
-      }
+        completionTokens: data.usage?.completion_tokens ?? 0,
+      },
     };
   }
 
   async healthCheck(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/health`, {
-        headers: { Authorization: `Bearer ${this.apiKey}` }
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inception Provider (Mercury-2 diffusion LLM)
+// ---------------------------------------------------------------------------
+
+export class InceptionProvider implements ModelProvider {
+  readonly kind: ProviderKind = 'inception';
+  readonly model: string;
+
+  private readonly apiKey: string | undefined;
+  private readonly baseUrl: string;
+  private readonly temperature: number;
+  private readonly maxTokens: number;
+
+  constructor(config: ProviderConfig) {
+    this.apiKey = config.apiKey ?? process.env.INCEPTION_API_KEY ?? process.env.INCEPTION_API;
+    if (!this.apiKey) {
+      console.warn(
+        '[InceptionProvider] No API key found. Set INCEPTION_API_KEY or INCEPTION_API env var.'
+      );
+    }
+    this.baseUrl = (config.baseUrl ?? 'https://api.inceptionlabs.ai/v1').replace(/\/$/, '');
+    this.model = config.model || 'mercury-2';
+    this.temperature = config.temperature ?? 0.75;
+    this.maxTokens = config.maxTokens ?? 8192;
+  }
+
+  async complete(request: CompletionRequest): Promise<CompletionResponse> {
+    if (!this.apiKey) {
+      throw new Error('InceptionProvider requires an API key (INCEPTION_API_KEY or INCEPTION_API)');
+    }
+
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: 'system', content: request.systemPrompt },
+          { role: 'user', content: request.userPrompt },
+        ],
+        temperature: request.temperature ?? this.temperature,
+        max_tokens: request.maxTokens ?? this.maxTokens,
+        reasoning_effort: 'medium',
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Inception completion failed (${res.status}): ${body}`);
+    }
+
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+
+    const text = data.choices[0]?.message?.content ?? '';
+    return {
+      text,
+      model: this.model,
+      provider: 'inception',
+      usage: {
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
+      },
+    };
+  }
+
+  async healthCheck(): Promise<boolean> {
+    if (!this.apiKey) {
+      console.warn('[InceptionProvider] healthCheck skipped: no API key configured');
+      return false;
+    }
+    try {
+      const res = await fetch(`${this.baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Groq Provider (LPU-accelerated inference)
+// ---------------------------------------------------------------------------
+
+export class GroqProvider implements ModelProvider {
+  readonly kind: ProviderKind = 'groq';
+  readonly model: string;
+
+  private readonly apiKey: string | undefined;
+  private readonly baseUrl: string;
+  private readonly temperature: number;
+  private readonly maxTokens: number;
+
+  constructor(config: ProviderConfig) {
+    this.apiKey = config.apiKey ?? process.env.GROQ_API_KEY ?? process.env.GROQ_API;
+    if (!this.apiKey) {
+      console.warn('[GroqProvider] No API key found. Set GROQ_API_KEY or GROQ_API env var.');
+    }
+    this.baseUrl = (config.baseUrl ?? 'https://api.groq.com/openai/v1').replace(/\/$/, '');
+    this.model = config.model || 'llama-3.3-70b-versatile';
+    this.temperature = config.temperature ?? 0.7;
+    this.maxTokens = config.maxTokens ?? 1024;
+  }
+
+  async complete(request: CompletionRequest): Promise<CompletionResponse> {
+    if (!this.apiKey) {
+      throw new Error('GroqProvider requires an API key (GROQ_API_KEY or GROQ_API)');
+    }
+
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: 'system', content: request.systemPrompt },
+          { role: 'user', content: request.userPrompt },
+        ],
+        temperature: request.temperature ?? this.temperature,
+        max_tokens: request.maxTokens ?? this.maxTokens,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Groq completion failed (${res.status}): ${body}`);
+    }
+
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+
+    const text = data.choices[0]?.message?.content ?? '';
+    return {
+      text,
+      model: this.model,
+      provider: 'groq',
+      usage: {
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
+      },
+    };
+  }
+
+  async healthCheck(): Promise<boolean> {
+    if (!this.apiKey) {
+      console.warn('[GroqProvider] healthCheck skipped: no API key configured');
+      return false;
+    }
+    try {
+      const res = await fetch(`${this.baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
       });
       return res.ok;
     } catch {
@@ -313,6 +487,10 @@ export function createProvider(config: ProviderConfig): ModelProvider {
       return new VLLMProvider(config);
     case 'openai-compatible':
       return new OpenAICompatibleProvider(config);
+    case 'groq':
+      return new GroqProvider(config);
+    case 'inception':
+      return new InceptionProvider(config);
     default:
       throw new Error(`Unsupported provider kind: ${config.kind satisfies never}`);
   }
