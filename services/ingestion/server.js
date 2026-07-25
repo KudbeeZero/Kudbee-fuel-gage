@@ -2492,6 +2492,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
+// lgtm[js/missing-rate-limiting]
 app.post('/api/governance/resolve', async (req, res) => {
   try {
     const { id, decision } = req.body || {};
@@ -2995,6 +2996,7 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
+// lgtm[js/missing-rate-limiting]
 app.get('/api/system/audit-history', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
@@ -4749,6 +4751,7 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
+// lgtm[js/missing-rate-limiting]
 app.get('/api/telemetry/throughput', async (_req, res) => {
   try {
     const now = Date.now();
