@@ -21,7 +21,7 @@ declare module '../lib/redis.js' {
   export function applyRedisQuotaBackoff(): number;
   export function resetRedisQuotaBackoff(): void;
   export function getRedisQuotaBackoffRemaining(): number;
-  export function initRedisFallbackQueue(): import('./inMemoryQueue.ts').InMemoryQueueManager;
+  export function initRedisFallbackQueue(): Record<string, unknown>;
 
   export const redisTelemetry: {
     primaryCount: number;
@@ -35,21 +35,6 @@ declare module '../lib/redis.js' {
     untilTs: number;
     consecutiveErrors: number;
   };
-}
-
-declare module '../lib/inMemoryQueue.ts' {
-  export class InMemoryQueueManager {
-    start(): void;
-    stop(): void;
-    enqueue(data: unknown): string;
-    flush(): Promise<number>;
-    readonly size: number;
-    readonly isActive: boolean;
-    stats(): { size: number; active: boolean; oldestItemAgeMs: number | null };
-  }
-
-  export function getOrCreateInMemoryQueue(options?: Record<string, unknown>): InMemoryQueueManager;
-  export function isInMemoryFallbackActive(): boolean;
 }
 
 export {};
