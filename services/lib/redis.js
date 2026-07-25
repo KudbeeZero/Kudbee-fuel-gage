@@ -45,11 +45,8 @@ function hostnameIsUpstash(url) {
 }
 
 const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
-const REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL || REDIS_URL);
 const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL);
 const isUpstash = REDIS_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_URL);
-const isRateLimitUpstash =
-  REDIS_RATE_LIMIT_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_RATE_LIMIT_URL);
 const isWorkerUpstash =
   REDIS_WORKER_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_WORKER_URL);
 const MAX_REQUESTS_LIMIT = 500_000;
@@ -57,7 +54,6 @@ const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
 let _client = null;
 let _subClient = null;
-let _rateLimitClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
 const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecutiveErrors: 0 };
@@ -259,60 +255,6 @@ export function getSubscriberClient() {
   client.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
   return client;
-}
-
-/**
- * Returns a dedicated Redis client wired exclusively to REDIS_RATE_LIMIT_URL
- * for Heroku-favored INCR/EXPIRE rate limiting. Offloaded to a separate
- * Redis instance so rate-limit bursts never compete with pub/sub or state ops.
- * Falls back to REDIS_URL if REDIS_RATE_LIMIT_URL is not set.
- * @param {object} [opts] Optional overrides.
- * @returns {import('ioredis').Redis}
- */
-export function getRateLimitClient(opts = {}) {
-  if (!opts.forceNew && _rateLimitClient) return _rateLimitClient;
-
-  const baseConfig = {
-    lazyConnect: opts.lazyConnect ?? false,
-    maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
-    enableReadyCheck: true,
-    enableOfflineQueue: opts.enableOfflineQueue ?? false,
-    retryStrategy: opts.retryStrategy ?? (() => null),
-    connectTimeout: 3_000,
-    commandTimeout: 1_000,
-    keepAlive: 10_000,
-  };
-
-  if (isRateLimitUpstash) {
-    baseConfig.tls = {};
-  }
-
-  let client;
-  try {
-    client = new Redis(REDIS_RATE_LIMIT_URL, baseConfig);
-  } catch {
-    console.warn('[rate-limit] Invalid REDIS_RATE_LIMIT_URL, falling back to REDIS_URL');
-    client = new Redis(REDIS_URL, baseConfig);
-  }
-
-  client.on('connect', () => {
-    redisTelemetry.primaryCount += 1;
-    console.log('[rate-limit] Redis connected');
-  });
-  client.on('ready', () => {
-    redisTelemetry.primaryCount += 1;
-    console.log('[rate-limit] Redis ready');
-  });
-  client.on('error', () => {
-    redisTelemetry.errorCount += 1;
-  });
-  client.on('end', () => {
-    redisTelemetry.fallbackCount += 1;
-    console.warn('[rate-limit] Redis connection closed');
-  });
-
-  if (!opts.forceNew) _rateLimitClient = client;
-  return _rateLimitClient;
 }
 
 /**

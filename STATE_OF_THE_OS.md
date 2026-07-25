@@ -7,6 +7,7 @@ This document catalogs every production fix applied across the codebase, organiz
 ### Journal Entries
 
 #### FIX-001: withTimeout Promise.race TypeScript Inference
+
 - **Date**: 2026-07-23
 - **Severity**: CI-BREAKING
 - **Files**: services/memory/vectorStore.ts, services/memory/thinkTokenGenerator.ts
@@ -15,6 +16,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: #148
 
 #### FIX-002: Raw fetch() without AbortController
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Sites**: 20 across SettingsView, firewall, audit, auto-tune, DLQ, vault, feedback, news
@@ -23,6 +25,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: #149
 
 #### FIX-003: Missing ErrorBoundary Wrappers
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Sites**: 4 pages (telemetry.tsx, firewall.tsx, history.tsx, OllamaChat.tsx)
@@ -31,6 +34,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: #149
 
 #### FIX-004: setState After Unmount (mountedRef Guards)
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **Sites**: 14 across FeedbackButton, history, LoginView, PlaygroundView, EdgeSentinel, HermesAuditor, GovernanceGate, InterceptorView, AgentTerminal, ThinkStorage, plus 4 plugin files
@@ -39,6 +43,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PRs**: #149, campaign PR
 
 #### FIX-005: Missing useEffect Cleanups
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **Sites**: 5 (OllamaChat telemetry, ConsoleDock logs, AgentTerminal, useVectorSync, usePlaygroundBackend)
@@ -47,6 +52,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: #149
 
 #### FIX-006: Missing Loading States
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **Sites**: 7 (FeedbackButton, AutoTune, DLQInspector, AuditVaultCard, ConsoleDock, OllamaChat, AgentTerminal)
@@ -55,6 +61,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: #149
 
 #### FIX-007: Procfile sentinel Crash
+
 - **Date**: 2026-07-23
 - **Severity**: CRITICAL
 - **File**: Procfile:5, services/sentinel/package.json:8
@@ -63,6 +70,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-008: Governance Approval Race Condition
+
 - **Date**: 2026-07-23
 - **Severity**: CRITICAL
 - **File**: services/governance/router.js:236-263
@@ -71,6 +79,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-009: DB Schema Default Mismatch
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **File**: services/ingestion/server.js:436
@@ -79,6 +88,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-010: Hardcoded API Keys in Source
+
 - **Date**: 2026-07-23
 - **Severity**: CRITICAL
 - **File**: apps/web/src/hooks/useKeyManager.ts:20-22
@@ -87,6 +97,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-011: Silent Data Loss (Empty Catch Blocks)
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Sites**: 10 across telemetryBatcher, server.js, worker.ts, agentLogger.ts
@@ -95,6 +106,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-012: TypeScript Version ^7.0.0
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Sites**: 9 package.json files
@@ -103,6 +115,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-013: CI Node Version Inconsistency
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **Sites**: .github/workflows/ci.yml (Node 24), session-log.yml (Node 20), verify.yml (Node 22)
@@ -111,6 +124,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-014: turbo.json Missing typecheck Task
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **File**: turbo.json, root package.json
@@ -119,6 +133,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-015: StatusBadge Missing PROVEN Color
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **File**: apps/web/src/components/ThinkTrajectoriesPlugin.tsx:13-25
@@ -127,6 +142,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-016: OS Stream Exponential Backoff
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **File**: apps/web/src/hooks/useOsStream.ts:56-63
@@ -135,6 +151,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-017: Empty States in Telemetry + Think
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **Sites**: 3 (telemetry models table, circuit breaker chart, trajectory grid)
@@ -143,6 +160,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-018: RackLayout Unknown Plugin Handling
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **File**: apps/web/src/components/RackLayout.tsx
@@ -151,6 +169,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-019: Governance PENDING Badge
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **File**: apps/web/src/components/GovernanceGatePlugin.tsx
@@ -159,6 +178,7 @@ This document catalogs every production fix applied across the codebase, organiz
 - **PR**: campaign PR
 
 #### FIX-020: DLQInspector Dynamic Worker Text
+
 - **Date**: 2026-07-23
 - **Severity**: LOW
 - **File**: apps/web/src/components/audit/DLQInspector.tsx:134
@@ -170,93 +190,94 @@ This document catalogs every production fix applied across the codebase, organiz
 
 ## Plugin Registry (CORE_RACK_PLUGINS)
 
-| ID | Component | Category | Status |
-|:---|:---|:---|:---|
-| `plugin-storm` | ThinkStormPlugin | storm | proven |
-| `plugin-stream` | ThinkStreamPlugin | stream | proven |
-| `plugin-storage` | ThinkStoragePlugin | storage | proven |
-| `plugin-trajectories` | ThinkTrajectoriesPlugin | trajectories | proven |
-| `plugin-gov-gate` | GovernanceGatePlugin | governance | pending |
-| `plugin-hermes-auditor` | HermesAuditorPlugin | auditor | proven |
+| ID                      | Component               | Category     | Status  |
+| :---------------------- | :---------------------- | :----------- | :------ |
+| `plugin-storm`          | ThinkStormPlugin        | storm        | proven  |
+| `plugin-stream`         | ThinkStreamPlugin       | stream       | proven  |
+| `plugin-storage`        | ThinkStoragePlugin      | storage      | proven  |
+| `plugin-trajectories`   | ThinkTrajectoriesPlugin | trajectories | proven  |
+| `plugin-gov-gate`       | GovernanceGatePlugin    | governance   | pending |
+| `plugin-hermes-auditor` | HermesAuditorPlugin     | auditor      | proven  |
 
 Always-mounted: `EdgeSentinelPlugin`
 
 ## Tab Architecture (14 Tabs)
 
-| # | Tab | File | Route |
-|:--|:---|:---|:---|
-| 0 | STUDIO | StudioRouter.tsx | /tower/* |
-| 1 | TELEMETRY | pages/telemetry.tsx | - |
-| 2 | THINK | pages/think.tsx | - |
-| 3 | GOVERNANCE | pages/governance.tsx | - |
-| 4 | HERMES | pages/hermes.tsx | - |
-| 5 | SENTINEL | pages/sentinel.tsx | - |
-| 6 | PLAYGROUND | PlaygroundView | - |
-| 7 | TERMINAL | OllamaChat | - |
-| 8 | FIREWALL | pages/firewall.tsx | - |
-| 9 | GATEWAY | GatewayView | - |
-| 10 | INTERCEPTOR | InterceptorView | - |
-| 11 | HISTORY | pages/history.tsx | - |
-| 12 | ALERTS | AlertsPanel | - |
-| 13 | INTELLIGENCE | IntelligenceView | - |
-| 14 | SETTINGS | SettingsView | - |
+| #   | Tab          | File                 | Route    |
+| :-- | :----------- | :------------------- | :------- |
+| 0   | STUDIO       | StudioRouter.tsx     | /tower/* |
+| 1   | TELEMETRY    | pages/telemetry.tsx  | -        |
+| 2   | THINK        | pages/think.tsx      | -        |
+| 3   | GOVERNANCE   | pages/governance.tsx | -        |
+| 4   | HERMES       | pages/hermes.tsx     | -        |
+| 5   | SENTINEL     | pages/sentinel.tsx   | -        |
+| 6   | PLAYGROUND   | PlaygroundView       | -        |
+| 7   | TERMINAL     | OllamaChat           | -        |
+| 8   | FIREWALL     | pages/firewall.tsx   | -        |
+| 9   | GATEWAY      | GatewayView          | -        |
+| 10  | INTERCEPTOR  | InterceptorView      | -        |
+| 11  | HISTORY      | pages/history.tsx    | -        |
+| 12  | ALERTS       | AlertsPanel          | -        |
+| 13  | INTELLIGENCE | IntelligenceView     | -        |
+| 14  | SETTINGS     | SettingsView         | -        |
 
 ## Database Rate Limits
 
-| Feature | Value |
-|:---|:---|
-| `telemetry_traces` write | UPSERT ON CONFLICT (trace_id) |
-| Statistical sampling | SAMPLE_RATE env (1=all, 5=20%) |
-| In-memory dedup window | 5,000ms |
-| DB query timeout (normal) | 10,000ms |
-| DB query timeout (vector) | 25,000ms |
-| DB insert timeout (vector) | 30,000ms |
-| Connection pool max | 20 |
-| Idle timeout | 10,000ms |
-| Connection timeout | 5,000ms |
+| Feature                    | Value                          |
+| :------------------------- | :----------------------------- |
+| `telemetry_traces` write   | UPSERT ON CONFLICT (trace_id)  |
+| Statistical sampling       | SAMPLE_RATE env (1=all, 5=20%) |
+| In-memory dedup window     | 5,000ms                        |
+| DB query timeout (normal)  | 10,000ms                       |
+| DB query timeout (vector)  | 25,000ms                       |
+| DB insert timeout (vector) | 30,000ms                       |
+| Connection pool max        | 20                             |
+| Idle timeout               | 10,000ms                       |
+| Connection timeout         | 5,000ms                        |
 
 ## Connection Pool Config
 
-| Setting | Postgres | Redis |
-|:---|:---|:---|
-| Max connections | 20 | — |
-| Connect timeout | 5,000ms | 5,000ms |
-| Command timeout | — | 3,000ms |
-| Idle timeout | 10,000ms | — |
-| TCP keepalive | 10s delay | 15,000ms |
+| Setting         | Postgres  | Redis    |
+| :-------------- | :-------- | :------- |
+| Max connections | 20        | —        |
+| Connect timeout | 5,000ms   | 5,000ms  |
+| Command timeout | —         | 3,000ms  |
+| Idle timeout    | 10,000ms  | —        |
+| TCP keepalive   | 10s delay | 15,000ms |
 
 ## Backend Agent Utilities
 
-| Module | File | Purpose |
-|:---|:---|:---|
-| shutdown.js | services/lib/shutdown.js | Unified SIGTERM/SIGINT with 30s force-exit |
-| tokenBucket.ts | services/lib/tokenBucket.ts | Redis-backed rate limiter (Groq/Gemini/Neon) |
-| rateLimiter.ts | services/lib/rateLimiter.ts | Heroku Fixed-Window INCR+EXPIRE limiter on REDIS_RATE_LIMIT_URL |
-| agentLogger.ts | services/lib/agentLogger.ts | Structured JSON logging + SSE state broadcast |
-| jobQueue.ts | services/lib/jobQueue.ts | Redis-backed queue with retry + dead-letter |
-| circuitBreaker.ts | services/lib/circuitBreaker.ts | groqBreaker + geminiBreaker circuit breakers |
+| Module            | File                           | Purpose                                       |
+| :---------------- | :----------------------------- | :-------------------------------------------- |
+| shutdown.js       | services/lib/shutdown.js       | Unified SIGTERM/SIGINT with 30s force-exit    |
+| tokenBucket.ts    | services/lib/tokenBucket.ts    | Redis-backed rate limiter (Groq/Gemini/Neon)  |
+| rateLimiter.ts    | services/lib/rateLimiter.ts    | In-memory sliding-window rate limiter         |
+| agentLogger.ts    | services/lib/agentLogger.ts    | Structured JSON logging + SSE state broadcast |
+| jobQueue.ts       | services/lib/jobQueue.ts       | Redis-backed queue with retry + dead-letter   |
+| circuitBreaker.ts | services/lib/circuitBreaker.ts | groqBreaker + geminiBreaker circuit breakers  |
 
 ## Rate Limiting Architecture (FIX-021)
 
-Uses Lua-eval atomic INCR+EXPIRE on a dedicated Redis instance (`REDIS_RATE_LIMIT_URL`).
-Server middleware returns standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers.
+In-memory sliding-window rate limiter in `services/lib/rateLimiter.ts`. Timestamps are stored per IP/key in a `Map<string, number[]>`, pruned every 10 seconds to prevent memory leaks. Server middleware returns standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` headers.
 
-| Config | Window | Max Requests | Scope |
-|:---|:---|:---|:---|
-| DEFAULT_RATE_LIMIT | 60s | 300 | Global per-IP ceiling |
-| PER_ENDPOINT_RATE_LIMIT | 60s | 60 | Per individual API route |
-| UI_POLL_RATE_LIMIT | 60s | 600 | UI polling endpoints |
+| Config                  | Window | Max Requests | Scope                    |
+| :---------------------- | :----- | :----------- | :----------------------- |
+| DEFAULT_RATE_LIMIT      | 60s    | 300          | Global per-IP ceiling    |
+| PER_ENDPOINT_RATE_LIMIT | 60s    | 60           | Per individual API route |
+| UI_POLL_RATE_LIMIT      | 60s    | 600          | UI polling endpoints     |
 
 Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnostics`.
 
 ## Frontend Production Hardening — Session Audit Fixes
 
 #### FIX-022: Stub Components Verification
+
 - **Date**: 2026-07-23
 - **Severity**: NONE (already resolved)
 - **Status**: All 16 components referenced in the audit (TerminalHUDTicker, TerminalStreamView, StreamModeBadge, BatcherIndicator, GovernanceGatePlugin, GovernanceView, HermesAuditorPlugin, DLQInspector, AuditVaultCard, ThinkStormPlugin, ThinkStreamPlugin, ThinkStoragePlugin, ThinkTrajectoriesPlugin, DiagnosticTicker, EdgeSentinelPlugin, FeedbackButton) are fully implemented. No stub components remain in the codebase. No code changes required.
 
 #### FIX-023: Unbounded Terminal Log Memory Leak
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Files**: apps/web/src/store/terminalStore.ts
@@ -265,6 +286,7 @@ Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnosti
 - **PR**: session audit campaign
 
 #### FIX-024: AgentTerminal Missing Error Boundary
+
 - **Date**: 2026-07-23
 - **Severity**: HIGH
 - **Files**: apps/web/src/layouts/StudioLayout.tsx, apps/web/src/components/studio/AgentTerminal.tsx
@@ -273,6 +295,7 @@ Excluded endpoints: `/health`, `/api/system/health-deep`, `/api/system/diagnosti
 - **PR**: session audit campaign
 
 #### FIX-025: Broken Linting & Missing ESLint Configuration
+
 - **Date**: 2026-07-23
 - **Severity**: MEDIUM
 - **Files**: apps/web/package.json, apps/web/eslint.config.mjs, apps/web/src/tools/workspace.ts, apps/web/src/hooks/useOllamaStream.ts
