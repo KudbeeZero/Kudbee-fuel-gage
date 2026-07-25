@@ -17,11 +17,39 @@ declare module '../lib/redis.js' {
   export function getBlockingRedisClient(opts?: Record<string, unknown>): Redis;
   export function isUsingUpstash(): boolean;
 
+  export function isRedisQuotaError(err: Error | string): boolean;
+  export function applyRedisQuotaBackoff(): number;
+  export function resetRedisQuotaBackoff(): void;
+  export function getRedisQuotaBackoffRemaining(): number;
+  export function initRedisFallbackQueue(): import('./inMemoryQueue.ts').InMemoryQueueManager;
+
   export const redisTelemetry: {
     primaryCount: number;
     fallbackCount: number;
     errorCount: number;
   };
+
+  export const quotaBackoffState: {
+    enabled: boolean;
+    backoffMs: number;
+    untilTs: number;
+    consecutiveErrors: number;
+  };
+}
+
+declare module '../lib/inMemoryQueue.ts' {
+  export class InMemoryQueueManager {
+    start(): void;
+    stop(): void;
+    enqueue(data: unknown): string;
+    flush(): Promise<number>;
+    readonly size: number;
+    readonly isActive: boolean;
+    stats(): { size: number; active: boolean; oldestItemAgeMs: number | null };
+  }
+
+  export function getOrCreateInMemoryQueue(options?: Record<string, unknown>): InMemoryQueueManager;
+  export function isInMemoryFallbackActive(): boolean;
 }
 
 export {};

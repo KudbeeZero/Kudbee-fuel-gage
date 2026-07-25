@@ -333,5 +333,35 @@ export function getBlockingRedisClient(opts = {}) {
   return _blockingClient;
 }
 
+/**
+ * Initializes the InMemoryQueueManager with a Redis-backed flush handler.
+ * When Redis recovers from quota exhaustion, buffered events are replayed
+ * through the publish channel. Call this once during application bootstrap.
+ */
+export function initRedisFallbackQueue() {
+  const inMemoryQueue = getOrCreateInMemoryQueue({
+    onFlush: async (items) => {
+      const redis = getRedisClient({ label: 'fallback-flush' });
+      if (!redis) {
+        console.warn('[InMemoryQueue] No Redis client available for flush — items retained');
+        throw new Error('Redis unavailable');
+      }
+      for (const item of items) {
+        try {
+          await redis.publish('kudbee:telemetry_buffer', JSON.stringify(item.data));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (isRedisQuotaError(msg)) {
+            throw new Error('Redis quota still exhausted');
+          }
+          console.warn(`[InMemoryQueue] Failed to flush item ${item.id}: ${msg}`);
+        }
+      }
+      console.log(`[InMemoryQueue] Flushed ${items.length} items to Redis`);
+    }
+  });
+  return inMemoryQueue;
+}
+
 export { redisTelemetry };
 export default getRedisClient;
