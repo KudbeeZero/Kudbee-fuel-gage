@@ -79,3 +79,46 @@ export class SlidingWindowRateLimiter {
     };
   }
 }
+
+export class LocalTokenBucketRateLimiter {
+  private capacity: number;
+  private refillRatePerMs: number;
+  private tokens: Map<string, { tokens: number; lastRefill: number }>;
+
+  constructor(tokensPerSecond: number, burstCapacity?: number) {
+    this.capacity = burstCapacity ?? tokensPerSecond * 2;
+    this.refillRatePerMs = tokensPerSecond / 1000;
+    this.tokens = new Map();
+  }
+
+  allow(key: string): { allowed: boolean; remaining: number } {
+    const now = Date.now();
+    let bucket = this.tokens.get(key);
+
+    if (!bucket) {
+      bucket = { tokens: this.capacity, lastRefill: now };
+    } else {
+      const elapsed = now - bucket.lastRefill;
+      const refill = elapsed * this.refillRatePerMs;
+      bucket.tokens = Math.min(this.capacity, bucket.tokens + refill);
+      bucket.lastRefill = now;
+    }
+
+    if (bucket.tokens >= 1) {
+      bucket.tokens -= 1;
+      this.tokens.set(key, bucket);
+      return { allowed: true, remaining: Math.floor(bucket.tokens) };
+    }
+
+    this.tokens.set(key, bucket);
+    return { allowed: false, remaining: 0 };
+  }
+
+  reset(key: string): void {
+    this.tokens.delete(key);
+  }
+
+  resetAll(): void {
+    this.tokens.clear();
+  }
+}
