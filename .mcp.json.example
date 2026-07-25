@@ -5,8 +5,8 @@
       "command": "npx",
       "args": ["-y", "@upstash/redis-mcp"],
       "env": {
-        "UPSTASH_REDIS_REST_URL": "${UPSTASH_REDIS_REST_URL}",
-        "UPSTASH_REDIS_REST_TOKEN": "${UPSTASH_REDIS_REST_TOKEN}"
+        "UPSTASH_REDIS_REST_URL": "https://your-instance.upstash.io/",
+        "UPSTASH_REDIS_REST_TOKEN": "your-upstash-rest-token"
       }
     }
   }
