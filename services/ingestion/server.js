@@ -2496,8 +2496,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
-// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
-app.post('/api/governance/resolve', async (req, res) => {
+app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
   try {
     const { id, decision } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing required field: id' });
@@ -2951,8 +2950,7 @@ app.get('/api/alerts/history', async (req, res) => {
 // --- Phase 43: Tenant Settings Configuration ---
 const tenantSettings = Object.create(null);
 
-// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
-app.patch('/api/settings/tenant/:id', async (req, res) => {
+app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -2977,12 +2975,12 @@ app.patch('/api/settings/tenant/:id', async (req, res) => {
   }
 });
 
-app.get('/api/settings/tenant/:id', async (req, res) => {
+app.get('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
   return res.status(200).json({ settings: tenantSettings[req.params.id] || {} });
 });
 
 // --- Settings persistence via settingsStore.ts ---
-app.put('/api/settings/preferences', async (req, res) => {
+app.put('/api/settings/preferences', apiLimiter, async (req, res) => {
   try {
     const { tenantId, ...settings } = req.body || {};
     const saved = await saveSettings(tenantId || 'default', settings);
@@ -2991,7 +2989,7 @@ app.put('/api/settings/preferences', async (req, res) => {
     return res.status(500).json({ error: 'Settings save failed' });
   }
 });
-app.get('/api/settings/preferences', async (req, res) => {
+app.get('/api/settings/preferences', apiLimiter, async (req, res) => {
   try {
     const settings = await getSettings(req.query.tenantId || 'default');
     return res.status(200).json({ settings });
@@ -3001,7 +2999,7 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-app.get('/api/system/audit-history', async (req, res) => {
+app.get('/api/system/audit-history', apiLimiter, async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     return res.status(200).json({
@@ -3012,7 +3010,7 @@ app.get('/api/system/audit-history', async (req, res) => {
     return res.status(200).json({ history: [], count: 0 });
   }
 });
-app.post('/api/system/test-connections', async (req, res) => {
+app.post('/api/system/test-connections', apiLimiter, async (req, res) => {
   try {
     const results = await testAllConnections();
     return res.status(200).json({ results, timestamp: new Date().toISOString() });
@@ -3022,7 +3020,7 @@ app.post('/api/system/test-connections', async (req, res) => {
 });
 
 // --- PR #206: OS Control Center — agent fleet + Groq archives ---
-app.get('/api/agents/fleet', async (req, res) => {
+app.get('/api/agents/fleet', apiLimiter, async (req, res) => {
   try {
     const agents = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {};
     const fleet = Object.entries(agents).map(([id, raw]) => {
@@ -4755,8 +4753,7 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
-app.get('/api/telemetry/throughput', async (_req, res) => {
+app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
   try {
     const now = Date.now();
     const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
