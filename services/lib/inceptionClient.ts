@@ -132,7 +132,6 @@ async function callInception(
 
     if (!res.ok) {
       const errorBody = await res.text();
-      await inceptionBreaker.recordFailure();
       throw new Error(`Inception completion failed (${res.status}): ${errorBody}`);
     }
 
