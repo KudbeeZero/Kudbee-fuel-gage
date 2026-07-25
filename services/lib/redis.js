@@ -19,8 +19,23 @@
 import Redis from 'ioredis';
 import { getOrCreateInMemoryQueue } from './inMemoryQueue.ts';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-const REDIS_RATE_LIMIT_URL = process.env.REDIS_RATE_LIMIT_URL || REDIS_URL;
+function sanitizeRedisUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
+  if (url.startsWith('https://')) {
+    try {
+      const parsed = new URL(url);
+      return `rediss://${parsed.hostname}:6379`;
+    } catch {
+      console.warn('[redis] Failed to parse URL, keeping original');
+      return url;
+    }
+  }
+  return url;
+}
+
+const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+const REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL || REDIS_URL);
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
 const MAX_REQUESTS_LIMIT = 500_000;
@@ -252,7 +267,7 @@ export function getRateLimitClient(opts = {}) {
  * @returns {import('ioredis').Redis}
  */
 export function getSlowRedisClient(opts = {}) {
-  const REDIS_SLOW_URL = process.env.REDIS_SLOW_URL || REDIS_URL;
+  const REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL || REDIS_URL);
   const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || REDIS_SLOW_URL.includes('upstash.io');
 
   const baseConfig = {
