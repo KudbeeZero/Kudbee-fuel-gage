@@ -41,10 +41,10 @@ export async function dequeueJob(queue: string): Promise<Job | null> {
     if (!raw) return null;
     return JSON.parse(raw) as Job;
   } catch (err) {
-    if (isUpstashMaxRequestsError(err)) {
+    if (isUpstashMaxRequestsError(err as Error | string)) {
       const backoff = applyRedisQuotaBackoff();
       agentLog('job-queue', 'upstash-quota-exhausted', 'ERROR', { queue, backoffMs: backoff }, `[worker:job-queue] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
-    } else if (isRedisQuotaError(err)) {
+    } else if (isRedisQuotaError(err as Error | string)) {
       applyRedisQuotaBackoff();
       agentLog('job-queue', 'redis-quota-error', 'ERROR', { queue }, `[worker:job-queue] Redis quota error during dequeue: ${err instanceof Error ? err.message : String(err)}`);
     }

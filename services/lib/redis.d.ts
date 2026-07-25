@@ -19,6 +19,7 @@ declare module '../lib/redis.js' {
   export function isUsingUpstash(): boolean;
 
   export function isRedisQuotaError(err: Error | string): boolean;
+  export function isUpstashMaxRequestsError(err: Error | string): boolean;
   export function applyRedisQuotaBackoff(): number;
   export function resetRedisQuotaBackoff(): void;
   export function getRedisQuotaBackoffRemaining(): number;
