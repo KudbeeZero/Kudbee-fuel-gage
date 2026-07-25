@@ -1,0 +1,9 @@
+{
+  "extends": "@kudbee/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "types": ["node"]
+  },
+  "include": ["*.ts", "*.js", "*.d.ts"]
+}
