@@ -168,7 +168,7 @@ app.use(
       console.warn(
         `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`
       );
-      throw err;
+      next();
     }
     next();
   })
