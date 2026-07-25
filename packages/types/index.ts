@@ -385,3 +385,39 @@ export interface FirewallConfig {
   blockPromptInjection: boolean;
   rateLimitByIp: boolean;
 }
+
+export interface AgentMemoryChunk {
+  id: string;
+  agentId: string;
+  content: string;
+  category: 'FACT' | 'OBSERVATION' | 'DECISION' | 'ERROR' | 'TOOL_CALL';
+  importance: number;
+  embedding: number[];
+  metadata: Record<string, unknown>;
+  storedAt: string;
+  ttlMs: number;
+}
+
+export interface MemoryVector {
+  id: string;
+  chunkId: string;
+  vector: number[];
+  dimensions: number;
+}
+
+export interface MemoryRetrievalQuery {
+  query: string;
+  limit: number;
+  minSimilarity: number;
+  categoryFilter: string[];
+}
+
+export interface MemoryStorageEvent {
+  type: 'memory.stored' | 'memory.recalled' | 'memory.evicted';
+  chunkId: string;
+  agentId: string;
+  category: string;
+  importance: number;
+  contextWindowSize: number;
+  timestamp: string;
+}
