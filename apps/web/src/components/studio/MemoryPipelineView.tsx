@@ -1,5 +1,6 @@
 import { Brain, TrendingUp, Clock, Hash, Database, Circle, CircleDot } from 'lucide-react';
 import { useControlTowerStore } from '../../store/useControlTowerStore';
+import { useMemoryEvents } from '../../hooks/useMemoryEvents';
 
 const CATEGORY_COLORS: Record<string, string> = {
   FACT: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
@@ -31,6 +32,7 @@ export function MemoryStatusBadge({ stored, recalled }: { stored: number; recall
 }
 
 export function MemoryPipelineView() {
+  useMemoryEvents();
   const activeMemories = useControlTowerStore((s) => s.activeMemories);
   const recallMetrics = useControlTowerStore((s) => s.recallMetrics);
 
