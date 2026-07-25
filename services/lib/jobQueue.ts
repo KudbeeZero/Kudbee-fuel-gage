@@ -1,4 +1,4 @@
-import { getRedisClient, getBlockingRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, applyRedisQuotaBackoff } from './redis.js';
+import { getRedisClient, getWorkerRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, applyRedisQuotaBackoff } from './redis.js';
 import { agentLog } from './agentLogger.js';
 
 const JOB_PREFIX = 'kudbee:jobs:';
@@ -30,7 +30,7 @@ export async function enqueueJob(queue: string, type: string, payload: Record<st
 
 export async function dequeueJob(queue: string): Promise<Job | null> {
   try {
-    const redis = getBlockingRedisClient({ label: 'job-queue' });
+    const redis = getWorkerRedisClient({ label: 'job-queue' });
     if (!redis) return null;
     // BRPOP call site #3: services/lib/jobQueue.ts:35
     // Queue: kudbee:jobs:{queue} | Timeout: 5s | Client: getBlockingRedisClient

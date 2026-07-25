@@ -36,8 +36,10 @@ function sanitizeRedisUrl(url) {
 
 const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL || REDIS_URL);
+const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL);
 const isUpstash = REDIS_URL.startsWith('rediss://') || REDIS_URL.includes('upstash.io');
 const isRateLimitUpstash = REDIS_RATE_LIMIT_URL.startsWith('rediss://') || REDIS_RATE_LIMIT_URL.includes('upstash.io');
+const isWorkerUpstash = REDIS_WORKER_URL.startsWith('rediss://') || REDIS_WORKER_URL.includes('upstash.io');
 const MAX_REQUESTS_LIMIT = 500_000;
 const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
@@ -367,7 +369,59 @@ export function getBlockingRedisClient(opts = {}) {
   client.on('end', () => { console.warn('[blocking-redis] Redis connection closed'); _blockingClient = null; });
 
   if (!opts.forceNew) _blockingClient = client;
-  return _blockingClient;
+  return client;
+}
+
+let _workerClient = null;
+
+export function getWorkerRedisClient(opts = {}) {
+  if (!opts.forceNew && _workerClient) return _workerClient;
+
+  const baseConfig = {
+    lazyConnect: false,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    enableOfflineQueue: true,
+    retryStrategy: (times) => Math.min(times * 500, 10000),
+    connectTimeout: 10_000,
+    commandTimeout: 0,
+    keepAlive: 15_000
+  };
+
+  if (isWorkerUpstash) {
+    baseConfig.tls = {};
+  }
+
+  let client;
+  try {
+    client = new Redis(REDIS_WORKER_URL, baseConfig);
+  } catch {
+    console.warn('[worker-redis] Invalid REDIS_WORKER_URL, falling back to REDIS_URL');
+    try {
+      client = new Redis(REDIS_URL, baseConfig);
+    } catch {
+      console.warn('[worker-redis] Invalid REDIS_URL, skipping worker client creation');
+      return null;
+    }
+  }
+
+  client.on('connect', () => console.log('[worker-redis] Redis connected'));
+  client.on('ready', () => { resetRedisQuotaBackoff(); console.log('[worker-redis] Redis ready'); });
+  client.on('error', (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[worker-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
+
+      const inMemoryQueue = getOrCreateInMemoryQueue();
+      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'worker-redis' });
+    }
+    console.error('[worker-redis] Error:', msg);
+  });
+  client.on('end', () => { console.warn('[worker-redis] Redis connection closed'); _workerClient = null; });
+
+  if (!opts.forceNew) _workerClient = client;
+  return client;
 }
 
 /**

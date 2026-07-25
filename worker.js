@@ -20,7 +20,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from './services/lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
 import { registerShutdown } from './services/lib/shutdown.js';
@@ -34,6 +34,7 @@ const HEARTBEAT_INTERVAL_MS = 10_000; // Control Tower online-check cadence
 const POLL_BACKOFF_MS = process.env.NODE_ENV === 'test' ? 0 : 2000;
 
 const redis = getRedisClient({ label: 'worker' });
+const workerRedis = getWorkerRedisClient({ label: 'worker' });
 
 // --- Event bus (Redis pub/sub) -------------------------------------------
 // Publishes real-time events that the web server fans out to dashboard SSE
@@ -178,9 +179,9 @@ async function pollTasks() {
 
     try {
       // BLPOP call site #4: worker.js:173
-      // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getRedisClient
+      // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getWorkerRedisClient
       // Procfile: hermes-worker — MUST survive Upstash quota errors.
-      const result = await redis.blpop(TASKS_QUEUE, 0);
+      const result = await workerRedis.blpop(TASKS_QUEUE, 0);
       if (!result) continue;
       resetRedisQuotaBackoff();
       const [, raw] = result;

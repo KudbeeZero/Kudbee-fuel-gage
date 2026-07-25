@@ -159,7 +159,7 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 
 export interface TaskEnvelope {
   id: string;
@@ -359,7 +359,7 @@ export async function _tick() {
     return false;
   }
 
-  const redis = getRedisClient();
+  const redis = getWorkerRedisClient();
   if (!redis) return false;
   // BRPOP call site #2: services/agents/worker.ts:364
   // Queue: kudbee-governance-tasks | Timeout: 5s | Client: getRedisClient
