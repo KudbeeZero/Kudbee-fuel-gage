@@ -64,7 +64,7 @@ export function getRedisClient(opts = {}) {
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? adaptiveRetryStrategy,
-    connectTimeout: 5_000,
+    connectTimeout: 10_000,
     commandTimeout: 3_000,
     keepAlive: 15_000
   };
@@ -195,8 +195,8 @@ export function getSlowRedisClient(opts = {}) {
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
     enableReadyCheck: true,
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
-    retryStrategy: opts.retryStrategy ?? (() => null),
-    connectTimeout: 5_000,
+    retryStrategy: opts.retryStrategy ?? ((times) => Math.min(times * 250, 5000)),
+    connectTimeout: 10_000,
     commandTimeout: 3_000,
     keepAlive: 15_000
   };
@@ -230,9 +230,9 @@ export function getBlockingRedisClient(opts = {}) {
     lazyConnect: false,
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
-    enableOfflineQueue: false,
-    retryStrategy: (times) => Math.min(times * 250, 5000),
-    connectTimeout: 5_000,
+    enableOfflineQueue: true,
+    retryStrategy: (times) => Math.min(times * 500, 10000),
+    connectTimeout: 10_000,
     commandTimeout: 0,
     keepAlive: 15_000
   };
