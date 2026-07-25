@@ -1,9 +1,9 @@
-import { getRedisClient, getBlockingRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining } from '../lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining } from '../lib/redis.js';
 import crypto from 'node:crypto';
 import { registerShutdown } from '../lib/shutdown.js';
 
 const redis = getRedisClient({ label: 'monitor-agent' });
-const blockingRedis = getBlockingRedisClient({ label: 'monitor-agent' });
+const workerRedis = getWorkerRedisClient({ label: 'monitor-agent' });
 
 registerShutdown('monitor-agent', redis);
 
@@ -171,7 +171,7 @@ async function runLoop() {
     }
 
     try {
-      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
+      const result = await workerRedis.blpop('kudbee:telemetry_feed', 5);
       if (!result) continue;
 
       const [, raw] = result;

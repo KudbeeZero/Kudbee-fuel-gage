@@ -159,7 +159,7 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 
 export interface TaskEnvelope {
   id: string;
@@ -359,7 +359,7 @@ export async function _tick() {
     return false;
   }
 
-  const redis = getRedisClient();
+  const redis = getWorkerRedisClient();
   if (!redis) return false;
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
     const msg = e.message;
