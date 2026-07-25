@@ -30,7 +30,7 @@ import { getRedisClient } from '../../lib/redis.js';
 import { getDbPool, isDbHealthy, runInsert } from '../../lib/db.js';
 
 export const LOCK_THRESHOLD = 0.05;
-export const GUARD_TOKEN_AFFINITY_MIN = 0.90;
+export const GUARD_TOKEN_AFFINITY_MIN = 0.9;
 const REDIS_LOCK_KEY = 'kudbee:receptor:locks';
 const REDIS_SYNC_CHANNEL = 'kudbee:receptor:sync';
 
@@ -70,10 +70,11 @@ function slotKey(slot: CellSlot): string {
 
 function computeAuditHash(event: Record<string, unknown>): string {
   const serialized = JSON.stringify(event);
+  const bounded = serialized.slice(0, 1024 * 1024);
   let hash = 0;
-  for (let i = 0; i < serialized.length; i++) {
+  for (let i = 0; i < bounded.length; i++) {
     const c = serialized.charCodeAt(i);
-    hash = ((hash << 5) - hash) + c;
+    hash = (hash << 5) - hash + c;
     hash |= 0;
   }
   return Math.abs(hash).toString(16).padStart(8, '0');
@@ -86,7 +87,9 @@ async function publishAuditEvent(event: Record<string, unknown>): Promise<void> 
       'kudbee:stream:audit',
       JSON.stringify({ ...event, ts: new Date().toISOString() })
     );
-  } catch { /* best-effort pub/sub */ }
+  } catch {
+    /* best-effort pub/sub */
+  }
 
   try {
     const pool = getDbPool();
@@ -102,7 +105,7 @@ async function publishAuditEvent(event: Record<string, unknown>): Promise<void> 
           event.auditHash ?? 'nohash',
           JSON.stringify(event),
           0,
-          new Date().toISOString()
+          new Date().toISOString(),
         ]
       );
     } else {
@@ -117,11 +120,13 @@ async function publishAuditEvent(event: Record<string, unknown>): Promise<void> 
           event.auditHash ?? 'nohash',
           JSON.stringify(event),
           0,
-          new Date().toISOString()
+          new Date().toISOString(),
         ]
       );
     }
-  } catch { /* best-effort persistence */ }
+  } catch {
+    /* best-effort persistence */
+  }
 }
 
 // --- Phase 34: Shared Redis lock registry with pub/sub sync ----------------
@@ -134,7 +139,9 @@ async function persistLock(record: LockRecord): Promise<void> {
     const redis = getRedisClient({ label: 'receptor-locks' });
     await redis.hset(REDIS_LOCK_KEY, record.slotKey, JSON.stringify(record));
     await redis.publish(REDIS_SYNC_CHANNEL, JSON.stringify({ type: 'lock_set', record }));
-  } catch { /* best-effort — local cache still holds the lock */ }
+  } catch {
+    /* best-effort — local cache still holds the lock */
+  }
 }
 
 async function removeLock(slotKey: string): Promise<void> {
@@ -142,7 +149,9 @@ async function removeLock(slotKey: string): Promise<void> {
     const redis = getRedisClient({ label: 'receptor-locks' });
     await redis.hdel(REDIS_LOCK_KEY, slotKey);
     await redis.publish(REDIS_SYNC_CHANNEL, JSON.stringify({ type: 'lock_released', slotKey }));
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 }
 
 async function loadAllLocks(): Promise<Map<string, LockRecord>> {
@@ -157,10 +166,14 @@ async function loadAllLocks(): Promise<Map<string, LockRecord>> {
           if (record.slotKey && record.tokenHash) {
             map.set(key, record);
           }
-        } catch { /* skip malformed */ }
+        } catch {
+          /* skip malformed */
+        }
       }
     }
-  } catch { /* return empty cache on Redis failure */ }
+  } catch {
+    /* return empty cache on Redis failure */
+  }
   return map;
 }
 
@@ -184,7 +197,9 @@ function setLock(key: string, record: LockRecord): void {
 
 function cosineSimilarityLocal(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
-  let dot = 0, na = 0, nb = 0;
+  let dot = 0,
+    na = 0,
+    nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += (a[i] ?? 0) * (b[i] ?? 0);
     na += (a[i] ?? 0) * (a[i] ?? 0);
@@ -222,9 +237,13 @@ export class ReceptorGatingEngine {
           } else if (msg.type === 'lock_released' && msg.slotKey) {
             this.lockStore.delete(msg.slotKey);
           }
-        } catch { /* skip malformed sync messages */ }
+        } catch {
+          /* skip malformed sync messages */
+        }
       });
-    } catch { /* resilient — keep working with local cache */ }
+    } catch {
+      /* resilient — keep working with local cache */
+    }
     console.log('[Receptor] Lock registry bootstrapped from Redis.');
   }
 
@@ -243,10 +262,7 @@ export class ReceptorGatingEngine {
 
   isGuardToken(token: TokenAdmissionRequest): boolean {
     const affinity = 1 - Math.max(0, Math.min(1, Math.abs(token.kd)));
-    return (
-      token.efficacy === 0 &&
-      affinity >= GUARD_TOKEN_AFFINITY_MIN
-    );
+    return token.efficacy === 0 && affinity >= GUARD_TOKEN_AFFINITY_MIN;
   }
 
   async evaluateAdmission(
@@ -262,39 +278,61 @@ export class ReceptorGatingEngine {
         void removeLock(key);
       }
       const auditEvent: Record<string, unknown> = {
-        tokenId: token.tokenId, tokenHash: token.tokenHash, slot: key,
+        tokenId: token.tokenId,
+        tokenHash: token.tokenHash,
+        slot: key,
         action: existingLock ? 'ADMIN_BYPASS_RELEASE' : 'ADMIN_BYPASS',
-        bypass: true, tokenType: 'ADMIN', auditHash: ''
+        bypass: true,
+        tokenType: 'ADMIN',
+        auditHash: '',
       };
       auditEvent.auditHash = computeAuditHash(auditEvent);
       await publishAuditEvent(auditEvent);
       return {
         admitted: true,
-        reason: existingLock ? `ADMIN bypass — lock released and token admitted.` : `ADMIN bypass — token admitted without gating.`,
+        reason: existingLock
+          ? `ADMIN bypass — lock released and token admitted.`
+          : `ADMIN bypass — token admitted without gating.`,
         currentOccupant: null,
-        auditHash: auditEvent.auditHash as string
+        auditHash: auditEvent.auditHash as string,
       };
     }
 
     // Atomic check-then-set to prevent TOCTOU — local Map ops are synchronous
     // so concurrent Node.js microtasks can't interleave between get and set.
     const existing = this.lockStore.get(key);
-    if (existing) return { admitted: false, reason: 'slot_already_locked', currentOccupant: existing.tokenHash, auditHash: '' };
+    if (existing)
+      return {
+        admitted: false,
+        reason: 'slot_already_locked',
+        currentOccupant: existing.tokenHash,
+        auditHash: '',
+      };
 
     const isGuard = this.isGuardToken(token);
     if (!isGuard || token.kd > LOCK_THRESHOLD) {
-      return { admitted: false, reason: isGuard ? 'kd_above_threshold' : 'not_guard_token', currentOccupant: null, auditHash: '' };
+      return {
+        admitted: false,
+        reason: isGuard ? 'kd_above_threshold' : 'not_guard_token',
+        currentOccupant: null,
+        auditHash: '',
+      };
     }
 
     const lockRecord: LockRecord = {
       slotKey: key,
       tokenHash: token.tokenHash,
       kd: token.kd,
-      lockedAt: new Date().toISOString()
+      lockedAt: new Date().toISOString(),
     };
     setLock(key, lockRecord);
     void persistLock(lockRecord);
-    return { admitted: true, reason: 'guard_token_locked', currentOccupant: token.tokenHash, auditHash: '' };
+    return {
+      admitted: true,
+      reason: 'guard_token_locked',
+      currentOccupant: token.tokenHash,
+      auditHash: '',
+    };
   }
 
   async releaseLock(slot: CellSlot, tokenHash: string): Promise<void> {
@@ -309,7 +347,7 @@ export class ReceptorGatingEngine {
         action: 'LOCK_RELEASED',
         slot: key,
         tokenHash,
-        auditHash: ''
+        auditHash: '',
       };
       auditEvent.auditHash = computeAuditHash(auditEvent);
       await publishAuditEvent(auditEvent);
