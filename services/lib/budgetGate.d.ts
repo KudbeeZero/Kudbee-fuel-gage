@@ -7,8 +7,13 @@ declare module './budgetGate.js' {
   export function getMonthlyBudgetUsd(): number;
   export function trackSpend(costUsd: number): Promise<void>;
   export function getCurrentSpend(): Promise<number>;
-  export function checkBudgetOrThrow(tokensIn: number, tokensOut: number, model: string): Promise<void>;
+  export function checkBudgetOrThrow(
+    tokensIn: number,
+    tokensOut: number,
+    model: string
+  ): Promise<void>;
   export function estimateGroqCost(tokensUsed: number): number;
+  export function estimateInceptionCost(tokensUsed: number): number;
   export function getBudgetStatus(): Promise<{
     spendUsd: number;
     budgetUsd: number;
