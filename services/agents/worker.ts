@@ -159,7 +159,7 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 
 export interface TaskEnvelope {
   id: string;
@@ -366,7 +366,11 @@ export async function _tick() {
   // Started from ingestion server at boot; MUST survive Upstash quota errors.
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
     const msg = e.message;
-    if (isRedisQuotaError(msg)) {
+    if (isUpstashMaxRequestsError(e)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.error(`[worker:governance] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+      backoffMs = Math.min(backoff, MAX_BACKOFF_MS);
+    } else if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(`[Worker] Quota exceeded — backing off ${backoff}ms (consecutive: ${(backoffMs / BASE_BACKOFF_MS).toFixed(0)})`);
     } else if (msg.includes('Command timed out') || msg.includes('timeout')) {

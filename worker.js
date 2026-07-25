@@ -20,7 +20,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from './services/lib/redis.js';
+import { getRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
 import { registerShutdown } from './services/lib/shutdown.js';
@@ -169,12 +169,20 @@ async function handleTask(task) {
 async function pollTasks() {
   hermes.log.info(`task polling started on ${TASKS_QUEUE}`);
   while (true) {
+    const remainingBackoff = getRedisQuotaBackoffRemaining();
+    if (remainingBackoff > 0) {
+      console.warn(`[worker:hermes] Upstash quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+      await new Promise((r) => setTimeout(r, remainingBackoff));
+      continue;
+    }
+
     try {
       // BLPOP call site #4: worker.js:173
       // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getRedisClient
       // Procfile: hermes-worker — MUST survive Upstash quota errors.
       const result = await redis.blpop(TASKS_QUEUE, 0);
       if (!result) continue;
+      resetRedisQuotaBackoff();
       const [, raw] = result;
       let task;
       try {
@@ -187,6 +195,19 @@ async function pollTasks() {
         hermes.log.error('task handling failed:', err.message)
       );
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (isUpstashMaxRequestsError(err)) {
+        const backoff = applyRedisQuotaBackoff();
+        console.error(`[worker:hermes] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
+      if (isRedisQuotaError(err)) {
+        const backoff = applyRedisQuotaBackoff();
+        console.error(`[worker:hermes] Redis quota error — backing off ${backoff}ms`);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
       // Connection failures are benign outages — warn once and back off
       // instead of spinning the loop or crashing the process.
       if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
@@ -270,6 +291,12 @@ async function init() {
 }
 
 init().catch((err) => {
-  hermes.log.error('fatal init error:', err.message);
+  const msg = err instanceof Error ? err.message : String(err);
+  if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
+    console.error(`[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`);
+    setTimeout(init, applyRedisQuotaBackoff());
+    return;
+  }
+  hermes.log.error('fatal init error:', msg);
   process.exit(1);
 });

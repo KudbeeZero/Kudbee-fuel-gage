@@ -1,4 +1,4 @@
-import { getRedisClient, getBlockingRedisClient } from './redis.js';
+import { getRedisClient, getBlockingRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, applyRedisQuotaBackoff } from './redis.js';
 import { agentLog } from './agentLogger.js';
 
 const JOB_PREFIX = 'kudbee:jobs:';
@@ -40,7 +40,14 @@ export async function dequeueJob(queue: string): Promise<Job | null> {
     const raw = result[1];
     if (!raw) return null;
     return JSON.parse(raw) as Job;
-  } catch {
+  } catch (err) {
+    if (isUpstashMaxRequestsError(err)) {
+      const backoff = applyRedisQuotaBackoff();
+      agentLog('job-queue', 'upstash-quota-exhausted', 'ERROR', { queue, backoffMs: backoff }, `[worker:job-queue] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+    } else if (isRedisQuotaError(err)) {
+      applyRedisQuotaBackoff();
+      agentLog('job-queue', 'redis-quota-error', 'ERROR', { queue }, `[worker:job-queue] Redis quota error during dequeue: ${err instanceof Error ? err.message : String(err)}`);
+    }
     return null;
   }
 }
