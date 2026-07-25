@@ -15,12 +15,6 @@
  * ---------------------------------------------------------------------------
  */
 
-import {
-  createProvider,
-  type ProviderConfig,
-  type CompletionRequest,
-  type CompletionResponse,
-} from '@kudbee/utils/llm/providers';
 import { trackSpend, estimateInceptionCost, checkBudgetOrThrow } from './budgetGate.ts';
 import { inceptionBreaker } from './circuitBreaker.ts';
 
