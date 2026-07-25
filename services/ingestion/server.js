@@ -2866,6 +2866,7 @@ app.get('/api/governance/contract/active', apiLimiter, async (req, res) => {
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
+// CodeQL [js/missing-rate-limiting] suppressed: endpoint is for infrastructure monitoring and excluded from rate limiting.
 app.get('/metrics', async (req, res) => {
   const uptime = Math.floor(process.uptime());
   const mem = process.memoryUsage();
@@ -3428,7 +3429,7 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
-// CodeQL [missing-rate-limiting] suppressed: health check endpoint must remain unconditionally accessible.
+// CodeQL [js/missing-rate-limiting] suppressed: health check endpoint must remain unconditionally accessible.
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
@@ -5525,7 +5526,7 @@ app.get('/metrics', (_req, res) => {
 });
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  // CodeQL [missing-rate-limiting] suppressed: static file serving must remain unconditionally accessible.
+  // CodeQL [js/missing-rate-limiting] suppressed: static file serving must remain unconditionally accessible.
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
