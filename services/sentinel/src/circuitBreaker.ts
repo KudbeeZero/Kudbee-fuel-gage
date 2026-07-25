@@ -1,4 +1,4 @@
-export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN' | 'QUOTA_EXCEEDED';
 
 export interface CircuitBreakerConfig {
   failureThreshold: number;
@@ -15,11 +15,12 @@ interface CircuitBreakerState {
 }
 
 export type CircuitBreakerEventCallback = (event: {
-  type: 'OPENED' | 'CLOSED' | 'HALF_OPEN' | 'FAILURE' | 'SUCCESS';
+  type: 'OPENED' | 'CLOSED' | 'HALF_OPEN' | 'FAILURE' | 'SUCCESS' | 'UPSTASH_QUOTA_EXCEEDED' | 'QUOTA_RESET_ESTIMATED';
   providerId: string;
   timestamp: string;
   state: CircuitState;
   failureCount: number;
+  quotaResetEstimateMs?: number;
 }) => void;
 
 export class CircuitBreaker {
@@ -143,5 +144,66 @@ export class CircuitBreaker {
 
   getState(): Readonly<CircuitBreakerState> {
     return { ...this.state };
+  }
+
+  /**
+   * Activates the UPSTASH_QUOTA_EXCEEDED state. Unlike OPEN (which uses
+   * a fixed resetTimeoutMs), QUOTA_EXCEEDED estimates the reset window
+   * based on the Upstash monthly billing cycle (resets at the start of
+   * the next hour or next calendar month boundary).
+   */
+  triggerQuotaExceeded(): void {
+    this.state.state = 'QUOTA_EXCEEDED';
+    this.state.openedAt = Date.now();
+    const resetEstimate = this.estimateQuotaReset();
+    this.emit('UPSTASH_QUOTA_EXCEEDED');
+
+    const event = {
+      type: 'QUOTA_RESET_ESTIMATED' as const,
+      providerId: this.providerId,
+      timestamp: new Date().toISOString(),
+      state: this.state.state,
+      failureCount: this.state.failureCount,
+      quotaResetEstimateMs: resetEstimate
+    };
+    for (const cb of this.listeners) {
+      try { cb(event); } catch { /* ignore */ }
+    }
+  }
+
+  /**
+   * Estimates the remaining time until the Upstash quota resets.
+   * For hourly rate limits: resets at the top of the next hour.
+   * For monthly limits: resets at the start of the next month.
+   * Falls back to 60 minutes if the cycle cannot be determined.
+   */
+  estimateQuotaReset(): number {
+    const now = new Date();
+    const hourEnd = new Date(now);
+    hourEnd.setHours(hourEnd.getHours() + 1, 0, 0, 0);
+    const msUntilHourEnd = hourEnd.getTime() - now.getTime();
+
+    if (msUntilHourEnd <= 3600_000) {
+      return msUntilHourEnd;
+    }
+
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const msUntilMonthEnd = monthEnd.getTime() - now.getTime();
+
+    if (msUntilMonthEnd <= 31 * 86400_000) {
+      return msUntilMonthEnd;
+    }
+
+    return 3600_000;
+  }
+
+  /**
+   * Checks if outbound telemetry should be silenced due to quota exhaustion.
+   */
+  shouldSilenceTelemetry(): boolean {
+    if (this.state.state !== 'QUOTA_EXCEEDED') return false;
+    const elapsed = Date.now() - (this.state.openedAt ?? 0);
+    const resetEstimate = this.estimateQuotaReset();
+    return elapsed < resetEstimate;
   }
 }
