@@ -74,6 +74,11 @@ function loadLayoutPrefs(): MobileLayoutPrefs {
 function persistLayoutPrefs(prefs: MobileLayoutPrefs): void {
   try {
     localStorage.setItem('kudbee_mobile_layout', JSON.stringify(prefs));
+    localStorage.setItem('kudbee_cross_platform_layout', JSON.stringify({
+      ...prefs,
+      platform: 'mobile',
+      syncedAt: new Date().toISOString()
+    }));
   } catch { /* ignore */ }
 }
 

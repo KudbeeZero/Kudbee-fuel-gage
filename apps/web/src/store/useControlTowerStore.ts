@@ -67,6 +67,11 @@ function loadLayoutPrefs(): LayoutPrefs {
 function persistLayoutPrefs(prefs: LayoutPrefs) {
   try {
     localStorage.setItem('kudbee_layout_prefs', JSON.stringify(prefs));
+    localStorage.setItem('kudbee_cross_platform_layout', JSON.stringify({
+      ...prefs,
+      platform: 'web',
+      syncedAt: new Date().toISOString()
+    }));
   } catch { /* ignore */ }
 }
 
