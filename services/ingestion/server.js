@@ -2492,12 +2492,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
-<<<<<<< HEAD
-// lgtm[js/missing-rate-limiting]
-app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
-=======
 app.post('/api/governance/resolve', async (req, res) => {
->>>>>>> 442cf0b (fix(codeql): use direct app.use pattern and skip option for rate limiter; fix connector.ts polynomial-redos)
   try {
     const { id, decision } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing required field: id' });
@@ -3000,12 +2995,7 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-<<<<<<< HEAD
-// lgtm[js/missing-rate-limiting]
-app.get('/api/system/audit-history', apiLimiter, async (req, res) => {
-=======
 app.get('/api/system/audit-history', async (req, res) => {
->>>>>>> 442cf0b (fix(codeql): use direct app.use pattern and skip option for rate limiter; fix connector.ts polynomial-redos)
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     return res.status(200).json({
@@ -4759,12 +4749,7 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-<<<<<<< HEAD
-// lgtm[js/missing-rate-limiting]
-app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
-=======
 app.get('/api/telemetry/throughput', async (_req, res) => {
->>>>>>> 442cf0b (fix(codeql): use direct app.use pattern and skip option for rate limiter; fix connector.ts polynomial-redos)
   try {
     const now = Date.now();
     const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
