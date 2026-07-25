@@ -83,6 +83,12 @@ export function MemoryPipelineView() {
           <span className="text-slate-600">Similarity avg: {recallMetrics.avgSimilarity.toFixed(3)}</span>
         </div>
       )}
+
+      {totalStored === 0 && recallMetrics.totalRecalls === 0 && (
+        <div className="border-t border-slate-800/60 px-5 py-3 flex items-center justify-center text-[9px] font-mono text-slate-600">
+          Run seed-memory.ts to populate agent memories
+        </div>
+      )}
     </div>
   );
 }
