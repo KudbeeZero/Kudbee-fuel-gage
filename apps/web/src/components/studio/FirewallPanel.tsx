@@ -15,6 +15,60 @@ import { useCommandDispatcher } from '../../store/commandDispatcher';
 import { useControlTowerStore } from '../../store/useControlTowerStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
 
+function UpstashQuotaHealthCard() {
+  const { groqMetrics } = useControlTowerStore();
+  const errorCount = groqMetrics.filter((m) => m.status !== 'OK').length;
+  const isQuotaSuspected = errorCount > 5 || groqMetrics.length > 450_000;
+
+  const cooldownRemaining = isQuotaSuspected ? Math.max(0, Math.ceil((30 * 60 * 1000) / 1000)) : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60" id="upstash-quota-card">
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
+      <div className="flex items-center justify-between border-b border-slate-800/60 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className={`h-3.5 w-3.5 ${isQuotaSuspected ? 'text-rose-400' : 'text-emerald-400'}`} />
+          <h3 className="font-display text-xs font-semibold text-slate-200">Upstash Quota Health</h3>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-bold uppercase ${
+          isQuotaSuspected
+            ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+        }`}>
+          {isQuotaSuspected ? 'QUOTA SUSPECTED' : 'HEALTHY'}
+        </span>
+      </div>
+
+      <div className="p-3 space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[7px] font-mono text-slate-500 uppercase">Requests</div>
+            <div className="font-mono text-xs text-slate-200">{groqMetrics.length.toLocaleString()}</div>
+          </div>
+          <div className="rounded-lg bg-slate-800/30 p-2">
+            <div className="text-[7px] font-mono text-slate-500 uppercase">Circuit State</div>
+            <div className={`font-mono text-xs font-bold ${isQuotaSuspected ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {isQuotaSuspected ? 'ENGAGED' : 'READY'}
+            </div>
+          </div>
+        </div>
+
+        {isQuotaSuspected && (
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-2">
+            <div className="flex items-center justify-between text-[8px] font-mono">
+              <span className="text-rose-300">Cooldown (est.)</span>
+              <span className="text-rose-300">{cooldownRemaining}s remaining</span>
+            </div>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full bg-rose-500 animate-pulse" style={{ width: '60%' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface TriageItem {
   id: number;
   payload: unknown;
@@ -398,6 +452,7 @@ export function FirewallPanel() {
       <div className="space-y-5">
         <CircuitBreakerStatusCard />
         <RateLimitStatusCard />
+        <UpstashQuotaHealthCard />
       </div>
 
       {triageError && (
