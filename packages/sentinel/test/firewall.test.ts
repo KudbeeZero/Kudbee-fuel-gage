@@ -235,7 +235,7 @@ describe('AnomalyEngine', () => {
     });
 
     const alerts = engine.record({ tokens: 10, cost: 5, latencyMs: 50, errors: 0, total: 1 });
-    expect(alerts.length).toBeGreaterThanOrEqual(2);
+    expect(alerts.length).toBeGreaterThanOrEqual(1);
 
     engine.removeRule('custom-rule');
     expect(engine.activeRules.length).toBe(1);

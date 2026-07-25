@@ -86,7 +86,7 @@ export const useMobileTelemetryStore = create<MobileTelemetryState>((set) => ({
   snapshots: [],
   governanceItems: [],
   layoutPrefs: loadLayoutPrefs(),
-  online: navigator.onLine,
+  online: typeof navigator !== 'undefined' ? navigator.onLine ?? true : true,
   lastSyncAt: null,
 
   pushSnapshot: (snapshot) => {

@@ -1,5 +1,21 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { SqliteCache } from '../src/cache/sqliteCache';
+
+const _memoryStore: Record<string, string> = {};
+
+(globalThis as unknown as Record<string, unknown>).localStorage = {
+  getItem: (key: string) => _memoryStore[key] ?? null,
+  setItem: (key: string, value: string) => { _memoryStore[key] = value; },
+  removeItem: (key: string) => { delete _memoryStore[key]; },
+  clear: () => { Object.keys(_memoryStore).forEach((k) => delete _memoryStore[k]); },
+  get length() { return Object.keys(_memoryStore).length; },
+  key: (idx: number) => Object.keys(_memoryStore)[idx] ?? null
+} as Storage;
+
+(globalThis as unknown as Record<string, unknown>).navigator = {
+  onLine: true
+};
+
 import { useMobileTelemetryStore } from '../src/store/useMobileTelemetryStore';
 
 describe('SqliteCache (unmanaged memory fallback)', () => {
