@@ -160,6 +160,7 @@ export default evaluateAgentPayload;
  */
 
 import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getOrCreateInMemoryQueue } from '../lib/inMemoryQueue.ts';
 
 export interface TaskEnvelope {
   id: string;
@@ -355,6 +356,14 @@ export async function _tick() {
   const remainingBackoff = getRedisQuotaBackoffRemaining();
   if (remainingBackoff > 0) {
     console.warn(`[Worker] Quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+
+    const fallbackQueue = getOrCreateInMemoryQueue();
+    fallbackQueue.enqueue({
+      queue: 'kudbee:telemetry_buffer',
+      data: { event: 'worker_backoff', remainingMs: remainingBackoff, timestamp: Date.now() },
+      source: 'worker-backoff'
+    });
+
     await sleep(remainingBackoff);
     return false;
   }

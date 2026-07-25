@@ -362,7 +362,11 @@ export function getBlockingRedisClient(opts = {}) {
       console.warn(`[blocking-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
 
       const inMemoryQueue = getOrCreateInMemoryQueue();
-      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' });
+      inMemoryQueue.enqueue({
+        queue: 'kudbee:telemetry_buffer',
+        data: { error: msg, timestamp: new Date().toISOString(), source: 'blocking-redis' },
+        source: 'blocking-redis'
+      });
     }
     console.error('[blocking-redis] Error:', msg);
   });
@@ -414,7 +418,11 @@ export function getWorkerRedisClient(opts = {}) {
       console.warn(`[worker-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`);
 
       const inMemoryQueue = getOrCreateInMemoryQueue();
-      inMemoryQueue.enqueue({ error: msg, timestamp: new Date().toISOString(), source: 'worker-redis' });
+      inMemoryQueue.enqueue({
+        queue: 'kudbee:telemetry_buffer',
+        data: { error: msg, timestamp: new Date().toISOString(), source: 'worker-redis' },
+        source: 'worker-redis'
+      });
     }
     console.error('[worker-redis] Error:', msg);
   });
@@ -439,7 +447,10 @@ export function initRedisFallbackQueue() {
       }
       for (const item of items) {
         try {
-          await redis.publish('kudbee:telemetry_buffer', JSON.stringify(item.data));
+          const payload = item.data;
+          if (payload && typeof payload === 'object' && payload.queue && payload.data) {
+            await redis.lpush(payload.queue, JSON.stringify(payload.data));
+          }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           if (isRedisQuotaError(msg)) {
