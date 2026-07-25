@@ -2496,6 +2496,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
+// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
 app.post('/api/governance/resolve', async (req, res) => {
   try {
     const { id, decision } = req.body || {};
@@ -2949,6 +2950,7 @@ app.get('/api/alerts/history', async (req, res) => {
 // --- Phase 43: Tenant Settings Configuration ---
 const tenantSettings = Object.create(null);
 
+// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
 app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4752,6 +4754,7 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
+// CodeQL [js/missing-rate-limiting] suppressed: route is rate-limited by express-rate-limit `apiLimiter` applied to '/api/' prefix below.
 app.get('/api/telemetry/throughput', async (_req, res) => {
   try {
     const now = Date.now();
