@@ -12,9 +12,12 @@
 
 export const EMBEDDING_DIM = 1536;
 
+export const MAX_TOKEN_HASH_LENGTH = 100_000;
+
 function hashToken(token: string): number {
   let h = 2166136261 >>> 0;
-  for (let i = 0; i < token.length; i++) {
+  const len = Math.min(token.length, MAX_TOKEN_HASH_LENGTH);
+  for (let i = 0; i < len; i++) {
     h ^= token.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
   }
@@ -70,7 +73,7 @@ export async function embedTextRemote(text: string): Promise<number[] | null> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: { parts: [{ text }] } }),
-        signal: controller.signal
+        signal: controller.signal,
       }
     );
     if (!res.ok) return null;

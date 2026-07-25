@@ -65,6 +65,14 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
 
+const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isSafeKey(key) {
+  if (typeof key !== 'string' && typeof key !== 'number') return false;
+  const s = String(key);
+  return s.length > 0 && !PROTOTYPE_KEYS.has(s) && s !== '';
+}
+
 function sanitizeRedisUrl(url) {
   if (!url) return url;
   if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
@@ -2951,13 +2959,7 @@ const tenantSettings = {};
 app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      rateLimitWindow,
-      rateLimitMax,
-      receptorLockThreshold,
-      groqModel,
-      notificationsEnabled,
-    } = req.body || {};
+    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
     if (!tenantSettings[id]) tenantSettings[id] = {};
     if (typeof rateLimitWindow === 'number') tenantSettings[id].rateLimitWindow = rateLimitWindow;
     if (typeof rateLimitMax === 'number') tenantSettings[id].rateLimitMax = rateLimitMax;
@@ -4389,13 +4391,18 @@ app.get('/api/governance/policies', async (_req, res) => {
 app.post('/api/governance/policies', async (req, res) => {
   try {
     const { id, enabled, severity, config } = req.body || {};
+    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid policy id' });
     const policy = policyState[id];
     if (!policy) return res.status(404).json({ error: `unknown policy ${id}` });
     if (typeof enabled === 'boolean') policy.enabled = enabled;
     if (severity === 'PASS' || severity === 'WARN' || severity === 'BLOCK')
       policy.severity = severity;
     if (config && typeof config === 'object') {
-      policy.config = { ...policy.config, ...config };
+      const safeConfig = {};
+      for (const k of Object.keys(config)) {
+        if (isSafeKey(k)) safeConfig[k] = config[k];
+      }
+      policy.config = { ...policy.config, ...safeConfig };
     }
     publishEvent('policy', {
       id: policy.id,
@@ -4753,7 +4760,7 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-app.get('/api/telemetry/throughput', async (_req, res) => {
+app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
   try {
     const now = Date.now();
     const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();

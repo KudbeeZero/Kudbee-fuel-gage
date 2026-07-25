@@ -27,7 +27,11 @@ interface ParsedRepoPath {
 
 export type FetchFileResult =
   | { ok: true; content: string; cached: boolean }
-  | { ok: false; error: string; code: 'INVALID_PATH' | 'MISSING_PAT' | 'NOT_FOUND' | 'UPSTREAM' | 'UNKNOWN' };
+  | {
+      ok: false;
+      error: string;
+      code: 'INVALID_PATH' | 'MISSING_PAT' | 'NOT_FOUND' | 'UPSTREAM' | 'UNKNOWN';
+    };
 
 const fileCache = new Map<string, CacheEntry>();
 
@@ -37,7 +41,11 @@ const fileCache = new Map<string, CacheEntry>();
  * the file path.
  */
 export function parseRepoPath(repoPath: string): ParsedRepoPath | null {
-  const trimmed = repoPath.replace(/^\/+/, '').replace(/\/+$/, '');
+  let start = 0;
+  let end = repoPath.length;
+  while (start < end && repoPath.charCodeAt(start) === 47) start++;
+  while (end > start && repoPath.charCodeAt(end - 1) === 47) end--;
+  const trimmed = repoPath.slice(start, end);
   if (!trimmed) return null;
   const segments = trimmed.split('/');
   if (segments.length < 3) return null;
@@ -62,7 +70,7 @@ export async function fetchFile(repoPath: string): Promise<FetchFileResult> {
     return {
       ok: false,
       error: 'Invalid repoPath. Expected "owner/repo/path/to/file".',
-      code: 'INVALID_PATH'
+      code: 'INVALID_PATH',
     };
   }
 
@@ -77,7 +85,7 @@ export async function fetchFile(repoPath: string): Promise<FetchFileResult> {
     return {
       ok: false,
       error: 'GITHUB_PAT is not configured. GitHub file reads are unavailable.',
-      code: 'MISSING_PAT'
+      code: 'MISSING_PAT',
     };
   }
 
@@ -91,8 +99,8 @@ export async function fetchFile(repoPath: string): Promise<FetchFileResult> {
         Authorization: `Bearer ${pat}`,
         Accept: 'application/vnd.github.raw+json',
         'User-Agent': 'kudbee-agent-connector',
-        'X-GitHub-Api-Version': '2022-11-28'
-      }
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
     });
 
     if (res.status === 404) {
@@ -102,7 +110,7 @@ export async function fetchFile(repoPath: string): Promise<FetchFileResult> {
       return {
         ok: false,
         error: `GitHub API returned ${res.status} for ${cacheKey}`,
-        code: 'UPSTREAM'
+        code: 'UPSTREAM',
       };
     }
 
