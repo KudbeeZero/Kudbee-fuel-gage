@@ -1,5 +1,6 @@
-import { Brain, TrendingUp, Clock, Hash, Database } from 'lucide-react';
+import { Brain, TrendingUp, Clock, Hash, Database, Circle, CircleDot } from 'lucide-react';
 import { useControlTowerStore } from '../../store/useControlTowerStore';
+import { useMemoryEvents } from '../../hooks/useMemoryEvents';
 
 const CATEGORY_COLORS: Record<string, string> = {
   FACT: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
@@ -9,7 +10,29 @@ const CATEGORY_COLORS: Record<string, string> = {
   TOOL_CALL: 'border-amber-500/30 bg-amber-500/10 text-amber-400'
 };
 
+export function MemoryStatusBadge({ stored, recalled }: { stored: number; recalled: number }) {
+  const isLive = stored > 0;
+  return (
+    <div className="flex items-center gap-3 font-mono text-[10px]" id="memory-status-badge">
+      <span className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${
+        isLive ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-700 bg-slate-900 text-slate-500'
+      }`}>
+        {isLive ? <CircleDot className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
+        <span className="hidden sm:inline">{isLive ? 'MEMORY LIVE' : 'MEMORY IDLE'}</span>
+        <span className="sm:hidden">{isLive ? 'LIVE' : 'IDLE'}</span>
+      </span>
+      <span className="text-slate-400 hidden sm:inline">
+        {stored} stored · {recalled} recalled
+      </span>
+      <span className="text-slate-400 sm:hidden">
+        {stored}/{recalled}
+      </span>
+    </div>
+  );
+}
+
 export function MemoryPipelineView() {
+  useMemoryEvents();
   const activeMemories = useControlTowerStore((s) => s.activeMemories);
   const recallMetrics = useControlTowerStore((s) => s.recallMetrics);
 
@@ -26,6 +49,7 @@ export function MemoryPipelineView() {
           <Brain className="h-4 w-4 text-violet-400" />
           <h3 className="font-display text-sm font-semibold text-slate-200">Memory Pipeline</h3>
         </div>
+        <MemoryStatusBadge stored={totalStored} recalled={recallMetrics.totalRecalls} />
         <div className="flex items-center gap-3 font-mono text-[10px] text-slate-500">
           <span className="flex items-center gap-1"><Database className="h-3 w-3" />{totalStored} stored</span>
           <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />{recallMetrics.totalRecalls} recalls</span>
@@ -81,6 +105,12 @@ export function MemoryPipelineView() {
             {(recent[0]?.lastRecalledAt ? new Date(recent[0].lastRecalledAt).toLocaleTimeString() : 'never')}
           </span>
           <span className="text-slate-600">Similarity avg: {recallMetrics.avgSimilarity.toFixed(3)}</span>
+        </div>
+      )}
+
+      {totalStored === 0 && recallMetrics.totalRecalls === 0 && (
+        <div className="border-t border-slate-800/60 px-5 py-3 flex items-center justify-center text-[9px] font-mono text-slate-600">
+          Run seed-memory.ts to populate agent memories
         </div>
       )}
     </div>
