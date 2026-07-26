@@ -2492,56 +2492,59 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
-// lgtm[js/missing-rate-limiting]
-app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
-  try {
-    const { id, decision } = req.body || {};
-    if (!id) return res.status(400).json({ error: 'Missing required field: id' });
-    if (decision !== 'APPROVE' && decision !== 'REJECT') {
-      return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
-    }
-    if (decision === 'APPROVE') {
-      let proven = await approveActionAndBroadcast(String(id));
-      if (!proven && /^\d+$/.test(String(id))) {
-        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
-          Number(id),
-        ]);
-        if (rows.length > 0) {
-          const violation = rows[0];
-          const payload = safeParseJson(violation.payload);
-          const traceId = payload.trace_id || `triage-${id}`;
-          const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
-          const govRecord = {
-            id: govId,
-            trace_id: traceId,
-            action: 'VERIFY',
-            type: 'GOVERNANCE_ACTION',
-            agent_id: 'partner',
-            signature: 'signed',
-            signed_payload: JSON.stringify(payload),
-            value_score: 50,
-            note: `Approved triage #${id}`,
-            timestamp: Date.now(),
-          };
-          if (redis) {
-            await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
-          }
-          await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
-          proven = govRecord;
-          publishEvent('governance', { kind: 'approved', action: proven });
-        }
+app.post(
+  '/api/governance/resolve',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (req, res) => {
+    try {
+      const { id, decision } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing required field: id' });
+      if (decision !== 'APPROVE' && decision !== 'REJECT') {
+        return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
       }
-      if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
-      return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+      if (decision === 'APPROVE') {
+        let proven = await approveActionAndBroadcast(String(id));
+        if (!proven && /^\d+$/.test(String(id))) {
+          const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
+            Number(id),
+          ]);
+          if (rows.length > 0) {
+            const violation = rows[0];
+            const payload = safeParseJson(violation.payload);
+            const traceId = payload.trace_id || `triage-${id}`;
+            const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
+            const govRecord = {
+              id: govId,
+              trace_id: traceId,
+              action: 'VERIFY',
+              type: 'GOVERNANCE_ACTION',
+              agent_id: 'partner',
+              signature: 'signed',
+              signed_payload: JSON.stringify(payload),
+              value_score: 50,
+              note: `Approved triage #${id}`,
+              timestamp: Date.now(),
+            };
+            if (redis) {
+              await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
+            }
+            await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
+            proven = govRecord;
+            publishEvent('governance', { kind: 'approved', action: proven });
+          }
+        }
+        if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
+        return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+      }
+      const rejected = await rejectActionAndBroadcast(String(id));
+      if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
+      return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
+    } catch (err) {
+      console.error('[Governance] Resolve error:', err?.message);
+      return res.status(500).json({ error: 'Failed to resolve governance action' });
     }
-    const rejected = await rejectActionAndBroadcast(String(id));
-    if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
-  } catch (err) {
-    console.error('[Governance] Resolve error:', err?.message);
-    return res.status(500).json({ error: 'Failed to resolve governance action' });
   }
-});
+);
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
@@ -2997,17 +3000,21 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-app.get('/api/system/audit-history', async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
-    return res.status(200).json({
-      history: await getAuditHistory(limit),
-      count: (await getAuditHistory(limit)).length,
-    });
-  } catch {
-    return res.status(200).json({ history: [], count: 0 });
+app.get(
+  '/api/system/audit-history',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      return res.status(200).json({
+        history: await getAuditHistory(limit),
+        count: (await getAuditHistory(limit)).length,
+      });
+    } catch {
+      return res.status(200).json({ history: [], count: 0 });
+    }
   }
-});
+);
 app.post('/api/system/test-connections', async (req, res) => {
   try {
     const results = await testAllConnections();
@@ -4751,49 +4758,52 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-// lgtm[js/missing-rate-limiting]
-app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
-  try {
-    const now = Date.now();
-    const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
-    const rows = await runQuery(
-      `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
-      [sinceIso]
-    ).catch(() => []);
-    let inTok = 0;
-    let outTok = 0;
-    let ttftSamples = 0;
-    let ttftSum = 0;
-    for (const r of rows || []) {
-      inTok += Number(r.input_tokens) || 0;
-      outTok += Number(r.output_tokens) || 0;
+app.get(
+  '/api/telemetry/throughput',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (_req, res) => {
+    try {
+      const now = Date.now();
+      const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
+      const rows = await runQuery(
+        `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
+        [sinceIso]
+      ).catch(() => []);
+      let inTok = 0;
+      let outTok = 0;
+      let ttftSamples = 0;
+      let ttftSum = 0;
+      for (const r of rows || []) {
+        inTok += Number(r.input_tokens) || 0;
+        outTok += Number(r.output_tokens) || 0;
+      }
+      // Synthetic TTFT sample derived from output_tokens (deterministic stub
+      // so the UI has something to display even when no real latencies are
+      // captured yet). This is treated as an estimate, clearly labelled.
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const o = Number(rows[i].output_tokens) || 0;
+        const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
+        ttftSum += sample;
+        ttftSamples += 1;
+      }
+      const totalTokens = inTok + outTok;
+      const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
+      res.json({
+        windowMs: THROUGHPUT_WINDOW_MS,
+        inputTokens: inTok,
+        outputTokens: outTok,
+        totalTokens,
+        tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
+        ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
+        ttftSamples,
+        sampleCount: (rows || []).length,
+        asOf: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
-    // Synthetic TTFT sample derived from output_tokens (deterministic stub
-    // so the UI has something to display even when no real latencies are
-    // captured yet). This is treated as an estimate, clearly labelled.
-    for (let i = 0; i < Math.min(rows.length, 10); i++) {
-      const o = Number(rows[i].output_tokens) || 0;
-      const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
-      ttftSum += sample;
-      ttftSamples += 1;
-    }
-    const totalTokens = inTok + outTok;
-    const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
-    res.json({
-      windowMs: THROUGHPUT_WINDOW_MS,
-      inputTokens: inTok,
-      outputTokens: outTok,
-      totalTokens,
-      tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
-      ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
-      ttftSamples,
-      sampleCount: (rows || []).length,
-      asOf: new Date().toISOString(),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-});
+);
 
 // --- Phase 21: Cost Ledger Settlement --------------------------------------
 
