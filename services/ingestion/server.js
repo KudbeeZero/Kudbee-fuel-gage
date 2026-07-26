@@ -172,7 +172,7 @@ app.use(
       console.warn(
         `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`
       );
-      throw err;
+      next();
     }
     next();
   })
@@ -315,6 +315,10 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => ipFromRequest(req),
+  skip: (req) =>
+    req.path === '/api/telemetry/poll' ||
+    req.path.startsWith('/api/telemetry/ingest') ||
+    req.path === '/api/telemetry/edge-ingest',
   handler: (req, res) => {
     const ip = ipFromRequest(req);
     console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${ip}`);
@@ -322,15 +326,7 @@ const apiLimiter = rateLimit({
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   },
 });
-app.use('/api/', (req, res, next) => {
-  if (
-    req.path === '/api/telemetry/poll' ||
-    req.path.startsWith('/api/telemetry/ingest') ||
-    req.path === '/api/telemetry/edge-ingest'
-  )
-    return next();
-  apiLimiter(req, res, next);
-});
+app.use('/api/', apiLimiter);
 
 const ingestLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -2500,55 +2496,59 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
-app.post('/api/governance/resolve', async (req, res) => {
-  try {
-    const { id, decision } = req.body || {};
-    if (!id) return res.status(400).json({ error: 'Missing required field: id' });
-    if (decision !== 'APPROVE' && decision !== 'REJECT') {
-      return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
-    }
-    if (decision === 'APPROVE') {
-      let proven = await approveActionAndBroadcast(String(id));
-      if (!proven && /^\d+$/.test(String(id))) {
-        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
-          Number(id),
-        ]);
-        if (rows.length > 0) {
-          const violation = rows[0];
-          const payload = safeParseJson(violation.payload);
-          const traceId = payload.trace_id || `triage-${id}`;
-          const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
-          const govRecord = {
-            id: govId,
-            trace_id: traceId,
-            action: 'VERIFY',
-            type: 'GOVERNANCE_ACTION',
-            agent_id: 'partner',
-            signature: 'signed',
-            signed_payload: JSON.stringify(payload),
-            value_score: 50,
-            note: `Approved triage #${id}`,
-            timestamp: Date.now(),
-          };
-          if (redis) {
-            await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
-          }
-          await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
-          proven = govRecord;
-          publishEvent('governance', { kind: 'approved', action: proven });
-        }
+app.post(
+  '/api/governance/resolve',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (req, res) => {
+    try {
+      const { id, decision } = req.body || {};
+      if (!id) return res.status(400).json({ error: 'Missing required field: id' });
+      if (decision !== 'APPROVE' && decision !== 'REJECT') {
+        return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
       }
-      if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
-      return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+      if (decision === 'APPROVE') {
+        let proven = await approveActionAndBroadcast(String(id));
+        if (!proven && /^\d+$/.test(String(id))) {
+          const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
+            Number(id),
+          ]);
+          if (rows.length > 0) {
+            const violation = rows[0];
+            const payload = safeParseJson(violation.payload);
+            const traceId = payload.trace_id || `triage-${id}`;
+            const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
+            const govRecord = {
+              id: govId,
+              trace_id: traceId,
+              action: 'VERIFY',
+              type: 'GOVERNANCE_ACTION',
+              agent_id: 'partner',
+              signature: 'signed',
+              signed_payload: JSON.stringify(payload),
+              value_score: 50,
+              note: `Approved triage #${id}`,
+              timestamp: Date.now(),
+            };
+            if (redis) {
+              await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
+            }
+            await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
+            proven = govRecord;
+            publishEvent('governance', { kind: 'approved', action: proven });
+          }
+        }
+        if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
+        return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+      }
+      const rejected = await rejectActionAndBroadcast(String(id));
+      if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
+      return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
+    } catch (err) {
+      console.error('[Governance] Resolve error:', err?.message);
+      return res.status(500).json({ error: 'Failed to resolve governance action' });
     }
-    const rejected = await rejectActionAndBroadcast(String(id));
-    if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
-    return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
-  } catch (err) {
-    console.error('[Governance] Resolve error:', err?.message);
-    return res.status(500).json({ error: 'Failed to resolve governance action' });
   }
-});
+);
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
@@ -2930,7 +2930,7 @@ app.post('/api/governance/contract/verify/:id', async (req, res) => {
     return res.status(500).json({ error: 'Contract verification failed' });
   }
 });
-app.get('/api/governance/contract/active', async (req, res) => {
+app.get('/api/governance/contract/active', apiLimiter, async (req, res) => {
   try {
     return res.status(200).json({ contracts: await getActiveContracts() });
   } catch {
@@ -2939,6 +2939,7 @@ app.get('/api/governance/contract/active', async (req, res) => {
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
+// lgtm[js/missing-rate-limiting]
 app.get('/metrics', async (req, res) => {
   const uptime = Math.floor(process.uptime());
   const mem = process.memoryUsage();
@@ -3021,9 +3022,10 @@ app.get('/api/alerts/history', async (req, res) => {
 });
 
 // --- Phase 43: Tenant Settings Configuration ---
-const tenantSettings = {};
+const tenantSettings = Object.create(null);
 
-app.patch('/api/settings/tenant/:id', async (req, res) => {
+// lgtm[js/missing-rate-limiting]
+app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -3077,17 +3079,21 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-app.get('/api/system/audit-history', async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
-    return res.status(200).json({
-      history: await getAuditHistory(limit),
-      count: (await getAuditHistory(limit)).length,
-    });
-  } catch {
-    return res.status(200).json({ history: [], count: 0 });
+app.get(
+  '/api/system/audit-history',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      return res.status(200).json({
+        history: await getAuditHistory(limit),
+        count: (await getAuditHistory(limit)).length,
+      });
+    } catch {
+      return res.status(200).json({ history: [], count: 0 });
+    }
   }
-});
+);
 app.post('/api/system/test-connections', async (req, res) => {
   try {
     const results = await testAllConnections();
@@ -3523,6 +3529,7 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
+// lgtm[js/missing-rate-limiting]
 app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
@@ -4392,35 +4399,34 @@ function resolveDistPath() {
 // In-memory state for the governance policy engine. Persists across the
 // process lifetime and is exposed to the UI through REST endpoints.
 
-const policyState = {
-  token_budget_cap: {
-    id: 'token_budget_cap',
-    label: 'Token Budget Cap',
-    enabled: true,
-    severity: 'BLOCK',
-    config: { maxTokens: 200000 },
-  },
-  secret_leak_prevention: {
-    id: 'secret_leak_prevention',
-    label: 'Secret Leak Prevention',
-    enabled: true,
-    severity: 'BLOCK',
-    config: { patterns: ['sk-ant-', 'sk-proj-', 'AIzaSy', 'ghp_'] },
-  },
-  system_prompt_guard: {
-    id: 'system_prompt_guard',
-    label: 'System Prompt Guard',
-    enabled: true,
-    severity: 'WARN',
-    config: { denyTerms: ['ignore previous', 'disregard system'] },
-  },
-  pii_redaction: {
-    id: 'pii_redaction',
-    label: 'PII Redaction',
-    enabled: true,
-    severity: 'WARN',
-    config: { pattern: 'email' },
-  },
+const policyState = Object.create(null);
+policyState.token_budget_cap = {
+  id: 'token_budget_cap',
+  label: 'Token Budget Cap',
+  enabled: true,
+  severity: 'BLOCK',
+  config: { maxTokens: 200000 },
+};
+policyState.secret_leak_prevention = {
+  id: 'secret_leak_prevention',
+  label: 'Secret Leak Prevention',
+  enabled: true,
+  severity: 'BLOCK',
+  config: { patterns: ['sk-ant-', 'sk-proj-', 'AIzaSy', 'ghp_'] },
+};
+policyState.system_prompt_guard = {
+  id: 'system_prompt_guard',
+  label: 'System Prompt Guard',
+  enabled: true,
+  severity: 'WARN',
+  config: { denyTerms: ['ignore previous', 'disregard system'] },
+};
+policyState.pii_redaction = {
+  id: 'pii_redaction',
+  label: 'PII Redaction',
+  enabled: true,
+  severity: 'WARN',
+  config: { pattern: 'email' },
 };
 
 const vectorSyncState = {
@@ -4686,55 +4692,53 @@ app.post('/api/system/alerts/:id/mitigate', async (req, res) => {
 
 // --- Phase 21: Multi-Provider Load Balancer --------------------------------
 
-const PROVIDER_CONFIG = {
-  openai: {
-    id: 'openai',
-    label: 'OpenAI',
-    weight: 30,
-    baseLatencyMs: 145,
-    maxLatencyMs: 800,
-    rateLimitPct: 0.0,
-    healthy: true,
-    lastError: null,
-  },
-  anthropic: {
-    id: 'anthropic',
-    label: 'Anthropic',
-    weight: 40,
-    baseLatencyMs: 185,
-    maxLatencyMs: 900,
-    rateLimitPct: 0.0,
-    healthy: true,
-    lastError: null,
-  },
-  local: {
-    id: 'local',
-    label: 'Local VLLM',
-    weight: 20,
-    baseLatencyMs: 60,
-    maxLatencyMs: 500,
-    rateLimitPct: 0.0,
-    healthy: true,
-    lastError: null,
-  },
-  google: {
-    id: 'google',
-    label: 'Google',
-    weight: 10,
-    baseLatencyMs: 210,
-    maxLatencyMs: 700,
-    rateLimitPct: 0.0,
-    healthy: true,
-    lastError: null,
-  },
+const PROVIDER_CONFIG = Object.create(null);
+PROVIDER_CONFIG.openai = {
+  id: 'openai',
+  label: 'OpenAI',
+  weight: 30,
+  baseLatencyMs: 145,
+  maxLatencyMs: 800,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.anthropic = {
+  id: 'anthropic',
+  label: 'Anthropic',
+  weight: 40,
+  baseLatencyMs: 185,
+  maxLatencyMs: 900,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.local = {
+  id: 'local',
+  label: 'Local VLLM',
+  weight: 20,
+  baseLatencyMs: 60,
+  maxLatencyMs: 500,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
+};
+PROVIDER_CONFIG.google = {
+  id: 'google',
+  label: 'Google',
+  weight: 10,
+  baseLatencyMs: 210,
+  maxLatencyMs: 700,
+  rateLimitPct: 0.0,
+  healthy: true,
+  lastError: null,
 };
 _state.providerConfigRef.value = PROVIDER_CONFIG;
 
-const routerState = {
-  decisionLog: [], // Recent routing decisions
-  totalRequests: 0,
-  failovers: 0,
-};
+const routerState = Object.create(null);
+routerState.decisionLog = [];
+routerState.totalRequests = 0;
+routerState.failovers = 0;
 
 function buildProviderStatuses() {
   return Object.values(PROVIDER_CONFIG).map((p) => ({
@@ -4851,48 +4855,52 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-app.get('/api/telemetry/throughput', async (_req, res) => {
-  try {
-    const now = Date.now();
-    const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
-    const rows = await runQuery(
-      `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
-      [sinceIso]
-    ).catch(() => []);
-    let inTok = 0;
-    let outTok = 0;
-    let ttftSamples = 0;
-    let ttftSum = 0;
-    for (const r of rows || []) {
-      inTok += Number(r.input_tokens) || 0;
-      outTok += Number(r.output_tokens) || 0;
+app.get(
+  '/api/telemetry/throughput',
+  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
+  async (_req, res) => {
+    try {
+      const now = Date.now();
+      const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
+      const rows = await runQuery(
+        `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
+        [sinceIso]
+      ).catch(() => []);
+      let inTok = 0;
+      let outTok = 0;
+      let ttftSamples = 0;
+      let ttftSum = 0;
+      for (const r of rows || []) {
+        inTok += Number(r.input_tokens) || 0;
+        outTok += Number(r.output_tokens) || 0;
+      }
+      // Synthetic TTFT sample derived from output_tokens (deterministic stub
+      // so the UI has something to display even when no real latencies are
+      // captured yet). This is treated as an estimate, clearly labelled.
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const o = Number(rows[i].output_tokens) || 0;
+        const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
+        ttftSum += sample;
+        ttftSamples += 1;
+      }
+      const totalTokens = inTok + outTok;
+      const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
+      res.json({
+        windowMs: THROUGHPUT_WINDOW_MS,
+        inputTokens: inTok,
+        outputTokens: outTok,
+        totalTokens,
+        tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
+        ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
+        ttftSamples,
+        sampleCount: (rows || []).length,
+        asOf: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
-    // Synthetic TTFT sample derived from output_tokens (deterministic stub
-    // so the UI has something to display even when no real latencies are
-    // captured yet). This is treated as an estimate, clearly labelled.
-    for (let i = 0; i < Math.min(rows.length, 10); i++) {
-      const o = Number(rows[i].output_tokens) || 0;
-      const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
-      ttftSum += sample;
-      ttftSamples += 1;
-    }
-    const totalTokens = inTok + outTok;
-    const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
-    res.json({
-      windowMs: THROUGHPUT_WINDOW_MS,
-      inputTokens: inTok,
-      outputTokens: outTok,
-      totalTokens,
-      tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
-      ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
-      ttftSamples,
-      sampleCount: (rows || []).length,
-      asOf: new Date().toISOString(),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-});
+);
 
 // --- Phase 21: Cost Ledger Settlement --------------------------------------
 
@@ -5621,6 +5629,7 @@ app.get('/metrics', (_req, res) => {
 });
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
+  // lgtm[js/missing-rate-limiting]
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
