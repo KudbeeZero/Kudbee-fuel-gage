@@ -1,93 +1,76 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiGet } from '../lib/apiClient';
-import { useControlTowerStore } from '../store/useControlTowerStore';
 
-export interface ZoneStatus {
-  zoneId: string;
-  status: 'ACTIVE' | 'BREACHED' | 'LOCKED';
-  threatScore: number;
-  lastUpdate: string;
+interface ControlTowerRaw {
+  status: 'HEALTHY' | 'DEGRADED' | 'OFFLINE';
+  timestamp: string;
+  uptimeSeconds: number;
+  services: {
+    postgres: { status: string; latencyMs: number | null };
+    redis: { status: string; latencyMs: number | null };
+  };
+  routerProviders: Array<{ id: string; status: string; latencyMs: number | null; lastError: string | null }>;
+  governanceLedger: boolean;
+  vectorIndex: { detail: string };
+  logBuffer: { detail: string };
 }
 
-export interface ControlTowerState {
-  zones: ZoneStatus[];
-  loading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-  reconnectAttempt: number;
+export interface ControlTowerStatus {
+  status: 'HEALTHY' | 'DEGRADED' | 'OFFLINE';
+  timestamp: string;
+  uptimeSeconds: number;
+  postgres: { status: string; latencyMs: number | null };
+  redis: { status: string; latencyMs: number | null };
+  routerProviders: Array<{ id: string; status: string; latencyMs: number | null; lastError: string | null }>;
+  governanceLedger: boolean;
+  vectorIndex: { detail: string };
+  logBuffer: { detail: string };
 }
 
-const MAX_RECONNECT_ATTEMPTS = 8;
-const BASE_BACKOFF_MS = 1000;
+const DEFAULT_STATUS: ControlTowerStatus = {
+  status: 'OFFLINE',
+  timestamp: '',
+  uptimeSeconds: 0,
+  postgres: { status: 'OFFLINE', latencyMs: null },
+  redis: { status: 'OFFLINE', latencyMs: null },
+  routerProviders: [],
+  governanceLedger: false,
+  vectorIndex: { detail: 'no vector store' },
+  logBuffer: { detail: 'unknown' },
+};
 
-export function useControlTowerStatus(pollMs = 5000): ControlTowerState {
-  const [zones, setZones] = useState<ZoneStatus[]>([]);
+export function useControlTowerStatus(pollMs = 5000) {
+  const [status, setStatus] = useState<ControlTowerStatus>(DEFAULT_STATUS);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sseRef = useRef<EventSource | null>(null);
-
-  const pushTelemetryEvent = useControlTowerStore((s) => s.pushTelemetryEvent);
 
   const refresh = useCallback(async () => {
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    abortRef.current = new AbortController();
-
     try {
-      const data = await apiGet<{ zones?: ZoneStatus[] }>('/api/zones/status', {
-        signal: abortRef.current.signal
+      const data = await apiGet<ControlTowerRaw>('/api/system/diagnostics');
+      if (data?.status) setStatus({
+        status: data.status,
+        timestamp: data.timestamp || '',
+        uptimeSeconds: data.uptimeSeconds || 0,
+        postgres: data.services?.postgres || { status: 'OFFLINE', latencyMs: null },
+        redis: data.services?.redis || { status: 'OFFLINE', latencyMs: null },
+        routerProviders: Array.isArray(data.routerProviders) ? data.routerProviders : [],
+        governanceLedger: Boolean(data.governanceLedger),
+        vectorIndex: data.vectorIndex || { detail: 'no vector store' },
+        logBuffer: data.logBuffer || { detail: 'unknown' },
       });
-      const list = Array.isArray(data?.zones) ? data.zones : [];
-      setZones(list);
-      setError(null);
-      setReconnectAttempt(0);
-
-      for (const zone of list) {
-        pushTelemetryEvent({
-          kind: 'telemetry',
-          payload: {
-            zoneId: zone.zoneId,
-            status: zone.status,
-            threatScore: zone.threatScore,
-            lastUpdate: zone.lastUpdate
-          }
-        });
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'Failed to load Control Tower status');
-      setZones([]);
-
-      setReconnectAttempt((prev) => {
-        const next = Math.min(prev + 1, MAX_RECONNECT_ATTEMPTS);
-        const backoff = Math.min(BASE_BACKOFF_MS * Math.pow(2, next - 1), 30000);
-        const jitter = backoff + Math.random() * 1000;
-        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = setTimeout(() => { void refresh(); }, jitter);
-        return next;
-      });
+    } catch {
+      setStatus((prev) => ({ ...prev, status: 'OFFLINE' }));
     } finally {
       setLoading(false);
     }
-  }, [pushTelemetryEvent]);
+  }, []);
 
   useEffect(() => {
     void refresh();
     const id = setInterval(() => void refresh(), pollMs);
-    return () => {
-      clearInterval(id);
-      if (abortRef.current) {
-        abortRef.current.abort();
-        abortRef.current = null;
-      }
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
-    };
+    return () => clearInterval(id);
   }, [refresh, pollMs]);
 
-  return { zones, loading, error, refresh, reconnectAttempt };
+  return { status, loading, refresh };
 }
+
+export default useControlTowerStatus;

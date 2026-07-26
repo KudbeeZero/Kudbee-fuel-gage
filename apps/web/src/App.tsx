@@ -53,6 +53,7 @@ import { ThinkPage } from './pages/think';
 import { GovernancePage } from './pages/governance';
 import { HermesPage } from './pages/hermes';
 import { SentinelPage } from './pages/sentinel';
+import ControlTowerPanel from './components/dashboard/ControlTowerPanel';
 const FirewallPage = lazy(() => import('./pages/firewall').then((m) => ({ default: m.FirewallPage })));
 const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel })));
 const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
@@ -446,6 +447,7 @@ export default function App() {
     { icon: Activity, label: 'TELEMETRY' },
     { icon: Zap, label: 'THINK' },
     { icon: Scale, label: 'GOVERNANCE' },
+    { icon: Shield, label: 'CONTROL TOWER' },
     { icon: TerminalSquare, label: 'HERMES' },
     { icon: Radio, label: 'SENTINEL' },
     { icon: Calculator, label: 'PLAYGROUND' },
@@ -753,6 +755,10 @@ export default function App() {
 
           {activeTab === 'GOVERNANCE' && (
             <GovernancePage />
+          )}
+
+          {activeTab === 'CONTROL TOWER' && (
+            <ControlTowerPanel />
           )}
 
           {activeTab === 'HERMES' && (

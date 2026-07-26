@@ -1,10 +1,18 @@
-import { registerPlugin } from '../core/pluginRegistry';
-import AgenticRagPlugin from '../plugins/AgenticRag';
-import VectorStorePlugin from '../plugins/VectorStore';
-import LiveTelemetryPlugin from '../plugins/LiveTelemetry';
-import CommunityLedgerPlugin from '../plugins/CommunityLedger';
+import { registerPlugin, type OSPlugin } from '../core/pluginRegistry';
 
-registerPlugin(AgenticRagPlugin);
-registerPlugin(VectorStorePlugin);
-registerPlugin(LiveTelemetryPlugin);
-registerPlugin(CommunityLedgerPlugin);
+async function safeRegisterPlugin(pluginPromise: Promise<{ default: OSPlugin }>, fallbackId: string) {
+  try {
+    const mod = await pluginPromise.catch((err) => {
+      console.warn(`[PluginRegistry] Failed to load plugin ${fallbackId}:`, err instanceof Error ? err.message : String(err));
+      return null;
+    });
+    if (mod?.default) registerPlugin(mod.default);
+  } catch (err) {
+    console.warn(`[PluginRegistry] Error registering plugin ${fallbackId}:`, err instanceof Error ? err.message : String(err));
+  }
+}
+
+safeRegisterPlugin(import('../plugins/AgenticRag'), 'agentic-rag');
+safeRegisterPlugin(import('../plugins/VectorStore'), 'vector-store');
+safeRegisterPlugin(import('../plugins/LiveTelemetry'), 'live-telemetry');
+safeRegisterPlugin(import('../plugins/CommunityLedger'), 'community-ledger');
