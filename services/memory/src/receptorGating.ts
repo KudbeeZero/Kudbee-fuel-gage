@@ -68,10 +68,12 @@ function slotKey(slot: CellSlot): string {
   return `${slot.x},${slot.y},${slot.z}`;
 }
 
+const MAX_HASH_INPUT_LENGTH = 1_000_000;
+
 function computeAuditHash(event: Record<string, unknown>): string {
   const serialized = JSON.stringify(event);
   let hash = 0;
-  const len = Math.min(serialized.length, 1048576);
+  const len = Math.min(serialized.length, MAX_HASH_INPUT_LENGTH);
   for (let i = 0; i < len; i++) {
     const c = serialized.charCodeAt(i);
     hash = (hash << 5) - hash + c;

@@ -1,11 +1,12 @@
 const EMBEDDING_DIM = 256;
 
+const MAX_TOKEN_HASH_LENGTH = 100_000;
+
 function hashToken(token) {
   let h = 2166136261 >>> 0;
-  const s = String(token);
-  const len = Math.min(s.length, 1024);
+  const len = Math.min(token.length, MAX_TOKEN_HASH_LENGTH);
   for (let i = 0; i < len; i++) {
-    h ^= s.charCodeAt(i);
+    h ^= token.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
   }
   return h >>> 0;

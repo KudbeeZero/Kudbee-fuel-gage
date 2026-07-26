@@ -54,10 +54,6 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
-import {
-  synthesizeThinkToken as synthesizeInceptionThinkToken,
-  inceptionConfigured,
-} from '../lib/inceptionClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
@@ -68,6 +64,26 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
+
+const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isSafeKey(key) {
+  if (typeof key !== 'string' && typeof key !== 'number') return false;
+  const s = String(key);
+  return s.length > 0 && !PROTOTYPE_KEYS.has(s) && s !== '';
+}
+
+function sanitizeEvent(event) {
+  if (event === null || typeof event !== 'object') return event;
+  if (Array.isArray(event)) return event.map(sanitizeEvent);
+  const result = Object.create(null);
+  for (const key of Object.keys(event)) {
+    if (isSafeKey(key)) {
+      result[key] = sanitizeEvent(event[key]);
+    }
+  }
+  return result;
+}
 
 function sanitizeRedisUrl(url) {
   if (!url) return url;
@@ -82,7 +98,6 @@ function sanitizeRedisUrl(url) {
   }
   return url;
 }
-process.env.REDIS_RATE_LIMIT_URL = sanitizeRedisUrl(process.env.REDIS_RATE_LIMIT_URL);
 process.env.REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL);
 
 const middlewareGuard = new MiddlewareGuard('rate-limiter', 5, 30_000);
@@ -170,7 +185,7 @@ app.use(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(
-        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (Redis error: ${msg})`
+        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (rate limit error: ${msg})`
       );
       next();
     }
@@ -315,10 +330,6 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => ipFromRequest(req),
-  skip: (req) =>
-    req.path === '/api/telemetry/poll' ||
-    req.path.startsWith('/api/telemetry/ingest') ||
-    req.path === '/api/telemetry/edge-ingest',
   handler: (req, res) => {
     const ip = ipFromRequest(req);
     console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${ip}`);
@@ -326,7 +337,15 @@ const apiLimiter = rateLimit({
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   },
 });
-app.use('/api/', apiLimiter);
+app.use('/api/', (req, res, next) => {
+  if (
+    req.path === '/api/telemetry/poll' ||
+    req.path.startsWith('/api/telemetry/ingest') ||
+    req.path === '/api/telemetry/edge-ingest'
+  )
+    return next();
+  apiLimiter(req, res, next);
+});
 
 const ingestLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -2496,59 +2515,55 @@ app.post('/api/governance/reject', async (req, res) => {
 // Accepts { id, decision: 'APPROVE' | 'REJECT' } and routes to the matching
 // governance action. Also handles numeric triage item IDs from the interceptor
 // by creating a governance record on the fly.
-app.post(
-  '/api/governance/resolve',
-  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
-  async (req, res) => {
-    try {
-      const { id, decision } = req.body || {};
-      if (!id) return res.status(400).json({ error: 'Missing required field: id' });
-      if (decision !== 'APPROVE' && decision !== 'REJECT') {
-        return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
-      }
-      if (decision === 'APPROVE') {
-        let proven = await approveActionAndBroadcast(String(id));
-        if (!proven && /^\d+$/.test(String(id))) {
-          const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
-            Number(id),
-          ]);
-          if (rows.length > 0) {
-            const violation = rows[0];
-            const payload = safeParseJson(violation.payload);
-            const traceId = payload.trace_id || `triage-${id}`;
-            const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
-            const govRecord = {
-              id: govId,
-              trace_id: traceId,
-              action: 'VERIFY',
-              type: 'GOVERNANCE_ACTION',
-              agent_id: 'partner',
-              signature: 'signed',
-              signed_payload: JSON.stringify(payload),
-              value_score: 50,
-              note: `Approved triage #${id}`,
-              timestamp: Date.now(),
-            };
-            if (redis) {
-              await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
-            }
-            await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
-            proven = govRecord;
-            publishEvent('governance', { kind: 'approved', action: proven });
-          }
-        }
-        if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
-        return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
-      }
-      const rejected = await rejectActionAndBroadcast(String(id));
-      if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
-      return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
-    } catch (err) {
-      console.error('[Governance] Resolve error:', err?.message);
-      return res.status(500).json({ error: 'Failed to resolve governance action' });
+app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
+  try {
+    const { id, decision } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'Missing required field: id' });
+    if (decision !== 'APPROVE' && decision !== 'REJECT') {
+      return res.status(400).json({ error: "Invalid decision: must be 'APPROVE' or 'REJECT'" });
     }
+    if (decision === 'APPROVE') {
+      let proven = await approveActionAndBroadcast(String(id));
+      if (!proven && /^\d+$/.test(String(id))) {
+        const rows = await runQuery(`SELECT * FROM security_violations WHERE id = $1`, [
+          Number(id),
+        ]);
+        if (rows.length > 0) {
+          const violation = rows[0];
+          const payload = safeParseJson(violation.payload);
+          const traceId = payload.trace_id || `triage-${id}`;
+          const govId = redis ? await redis.incr('kudbee:governance_counter') : Date.now();
+          const govRecord = {
+            id: govId,
+            trace_id: traceId,
+            action: 'VERIFY',
+            type: 'GOVERNANCE_ACTION',
+            agent_id: 'partner',
+            signature: 'signed',
+            signed_payload: JSON.stringify(payload),
+            value_score: 50,
+            note: `Approved triage #${id}`,
+            timestamp: Date.now(),
+          };
+          if (redis) {
+            await redis.set(`governance:proven:${govId}`, JSON.stringify(govRecord));
+          }
+          await runQuery(`DELETE FROM security_violations WHERE id = $1`, [Number(id)]);
+          proven = govRecord;
+          publishEvent('governance', { kind: 'approved', action: proven });
+        }
+      }
+      if (!proven) return res.status(404).json({ error: 'Proposed action not found' });
+      return res.status(200).json({ success: true, decision: 'APPROVE', action: proven });
+    }
+    const rejected = await rejectActionAndBroadcast(String(id));
+    if (!rejected) return res.status(404).json({ error: 'Proposed action not found' });
+    return res.status(200).json({ success: true, decision: 'REJECT', action: rejected });
+  } catch (err) {
+    console.error('[Governance] Resolve error:', err?.message);
+    return res.status(500).json({ error: 'Failed to resolve governance action' });
   }
-);
+});
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
@@ -2702,74 +2717,6 @@ app.post('/api/think/synthesize', async (req, res) => {
   }
 });
 
-// --- Phase 65: Inception Labs Mercury-2 THINK Token Synthesis --------------
-app.post('/api/think/synthesize-inception', async (req, res) => {
-  try {
-    const {
-      taskContext,
-      correctionDelta,
-      confidenceScore,
-      temperature,
-      maxTokens,
-      reasoningEffort,
-    } = req.body || {};
-
-    if (!inceptionConfigured) {
-      return res
-        .status(503)
-        .json({ error: 'Inception Labs inference unavailable — INCEPTION_API_KEY not configured' });
-    }
-
-    if (!taskContext && !correctionDelta) {
-      return res
-        .status(400)
-        .json({ error: 'At least one of taskContext or correctionDelta is required' });
-    }
-
-    const result = await synthesizeInceptionThinkToken({
-      taskContext: String(taskContext || ''),
-      correctionDelta: String(correctionDelta || ''),
-      confidenceScore: typeof confidenceScore === 'number' ? confidenceScore : undefined,
-      temperature: typeof temperature === 'number' ? temperature : 0.1,
-      maxTokens: typeof maxTokens === 'number' ? maxTokens : 512,
-      reasoningEffort: reasoningEffort || undefined,
-    });
-
-    if (!result.ok) {
-      return res.status(502).json({ error: result.error || 'Inception synthesis failed' });
-    }
-
-    if (redis) {
-      try {
-        const entry = JSON.stringify({
-          taskContext: String(taskContext || '').slice(0, 200),
-          correctionDelta: String(correctionDelta || '').slice(0, 200),
-          reasoning: result.reasoning?.slice(0, 200),
-          tokensUsed: result.tokensUsed,
-          latencyMs: result.latencyMs,
-          provider: 'inception-mercury-2',
-          timestamp: new Date().toISOString(),
-        });
-        await redis.lpush('kudbee:inception:archives', entry);
-        await redis.ltrim('kudbee:inception:archives', 0, 99);
-      } catch {
-        /* non-fatal */
-      }
-    }
-
-    return res.status(200).json({
-      success: true,
-      reasoning: result.reasoning,
-      tokensUsed: result.tokensUsed,
-      latencyMs: result.latencyMs,
-      provider: 'inception-mercury-2',
-    });
-  } catch (err) {
-    console.error('[Inception] Synthesis error:', err?.message);
-    return res.status(500).json({ error: 'Inception synthesis failed' });
-  }
-});
-
 // --- Phase 40: Self-Boot Kernel Rollover — System Lifecycle ---------------
 app.post('/api/system/lifecycle', async (req, res) => {
   try {
@@ -2781,7 +2728,6 @@ app.post('/api/system/lifecycle', async (req, res) => {
       receptor: false,
       sentinel: null,
       groq: groqConfigured || null,
-      inception: inceptionConfigured || null,
     };
     let pgLatency = -1,
       redisLatency = -1;
@@ -2831,7 +2777,6 @@ app.post('/api/system/lifecycle', async (req, res) => {
         postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
         redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
         groq: { status: groqConfigured ? 'configured' : 'disabled' },
-        inception: { status: inceptionConfigured ? 'configured' : 'disabled' },
       },
       agent: { status: health.worker ? 'running' : 'idle' },
       timestamp: new Date().toISOString(),
@@ -2930,7 +2875,7 @@ app.post('/api/governance/contract/verify/:id', async (req, res) => {
     return res.status(500).json({ error: 'Contract verification failed' });
   }
 });
-app.get('/api/governance/contract/active', apiLimiter, async (req, res) => {
+app.get('/api/governance/contract/active', async (req, res) => {
   try {
     return res.status(200).json({ contracts: await getActiveContracts() });
   } catch {
@@ -2939,8 +2884,7 @@ app.get('/api/governance/contract/active', apiLimiter, async (req, res) => {
 });
 
 // --- Phase 45: Metrics endpoint (Prometheus-compatible) ---
-// lgtm[js/missing-rate-limiting]
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', apiLimiter, async (req, res) => {
   const uptime = Math.floor(process.uptime());
   const mem = process.memoryUsage();
   let pgHealthy = false,
@@ -3024,20 +2968,18 @@ app.get('/api/alerts/history', async (req, res) => {
 // --- Phase 43: Tenant Settings Configuration ---
 const tenantSettings = Object.create(null);
 
-// lgtm[js/missing-rate-limiting]
-app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
+app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
     const {
       rateLimitWindow,
       rateLimitMax,
       receptorLockThreshold,
       groqModel,
       notificationsEnabled,
-      inceptionModel,
-      inceptionReasoningEffort,
     } = req.body || {};
-    if (!tenantSettings[id]) tenantSettings[id] = {};
+    if (!tenantSettings[id]) tenantSettings[id] = Object.create(null);
     if (typeof rateLimitWindow === 'number') tenantSettings[id].rateLimitWindow = rateLimitWindow;
     if (typeof rateLimitMax === 'number') tenantSettings[id].rateLimitMax = rateLimitMax;
     if (typeof receptorLockThreshold === 'number')
@@ -3045,9 +2987,6 @@ app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
     if (typeof groqModel === 'string') tenantSettings[id].groqModel = groqModel;
     if (typeof notificationsEnabled === 'boolean')
       tenantSettings[id].notificationsEnabled = notificationsEnabled;
-    if (typeof inceptionModel === 'string') tenantSettings[id].inceptionModel = inceptionModel;
-    if (typeof inceptionReasoningEffort === 'string')
-      tenantSettings[id].inceptionReasoningEffort = inceptionReasoningEffort;
     tenantSettings[id].updatedAt = new Date().toISOString();
     return res.status(200).json({ success: true, settings: tenantSettings[id] });
   } catch (err) {
@@ -3056,7 +2995,9 @@ app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
 });
 
 app.get('/api/settings/tenant/:id', async (req, res) => {
-  return res.status(200).json({ settings: tenantSettings[req.params.id] || {} });
+  const { id } = req.params;
+  if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
+  return res.status(200).json({ settings: tenantSettings[id] || {} });
 });
 
 // --- Settings persistence via settingsStore.ts ---
@@ -3079,21 +3020,17 @@ app.get('/api/settings/preferences', async (req, res) => {
 });
 
 // --- Agent Audit Layer: history + connection tests ---
-app.get(
-  '/api/system/audit-history',
-  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
-  async (req, res) => {
-    try {
-      const limit = Math.min(Number(req.query.limit) || 50, 200);
-      return res.status(200).json({
-        history: await getAuditHistory(limit),
-        count: (await getAuditHistory(limit)).length,
-      });
-    } catch {
-      return res.status(200).json({ history: [], count: 0 });
-    }
+app.get('/api/system/audit-history', apiLimiter, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    return res.status(200).json({
+      history: await getAuditHistory(limit),
+      count: (await getAuditHistory(limit)).length,
+    });
+  } catch {
+    return res.status(200).json({ history: [], count: 0 });
   }
-);
+});
 app.post('/api/system/test-connections', async (req, res) => {
   try {
     const results = await testAllConnections();
@@ -3122,37 +3059,19 @@ app.get('/api/agents/fleet', async (req, res) => {
 app.post('/api/agents/fleet', async (req, res) => {
   try {
     const { id, status, task } = req.body || {};
-    if (!id) return res.status(400).json({ error: 'Agent id required' });
-    const state = {
+    if (!id || !isSafeKey(id)) return res.status(400).json({ error: 'Invalid agent id' });
+    const state = Object.assign(Object.create(null), {
       id,
       status: status || 'standby',
       task: task || 'idle',
       updatedAt: new Date().toISOString(),
-    };
+    });
     if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify(state));
     return res.status(200).json({ success: true, agent: state });
   } catch {
     return res.status(500).json({ error: 'Fleet update failed' });
   }
 });
-app.get('/api/inception/archives', async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const archives = redis
-      ? (await redis.lrange('kudbee:inception:archives', 0, limit - 1)).map((r) => {
-          try {
-            return JSON.parse(r);
-          } catch {
-            return { raw: r };
-          }
-        })
-      : [];
-    return res.status(200).json({ archives, count: archives.length });
-  } catch {
-    return res.status(200).json({ archives: [], count: 0 });
-  }
-});
-
 app.get('/api/groq/archives', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -3529,8 +3448,7 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
-// lgtm[js/missing-rate-limiting]
-app.get('/health', async (_req, res) => {
+app.get('/health', apiLimiter, async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
 
@@ -4103,7 +4021,7 @@ if (redis) {
     subClient.on('message', (_channel, message) => {
       try {
         const event = JSON.parse(message);
-        broadcast(event);
+        broadcast(sanitizeEvent(event));
       } catch {
         /* ignore malformed */
       }
@@ -4493,13 +4411,21 @@ app.get('/api/governance/policies', async (_req, res) => {
 app.post('/api/governance/policies', async (req, res) => {
   try {
     const { id, enabled, severity, config } = req.body || {};
+    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid policy id' });
     const policy = policyState[id];
     if (!policy) return res.status(404).json({ error: `unknown policy ${id}` });
     if (typeof enabled === 'boolean') policy.enabled = enabled;
-    if (severity === 'PASS' || severity === 'WARN' || severity === 'BLOCK')
+    if (severity === 'PASS' || severity === 'WARN' || severity === 'BLOCK') {
       policy.severity = severity;
+    }
     if (config && typeof config === 'object') {
-      policy.config = { ...policy.config, ...config };
+      const safeConfig = Object.create(null);
+      for (const k of Object.keys(config)) {
+        if (isSafeKey(k) && typeof config[k] !== 'object' && typeof config[k] !== 'function') {
+          safeConfig[k] = config[k];
+        }
+      }
+      policy.config = Object.assign(Object.create(null), policy.config, safeConfig);
     }
     publishEvent('policy', {
       id: policy.id,
@@ -4692,53 +4618,55 @@ app.post('/api/system/alerts/:id/mitigate', async (req, res) => {
 
 // --- Phase 21: Multi-Provider Load Balancer --------------------------------
 
-const PROVIDER_CONFIG = Object.create(null);
-PROVIDER_CONFIG.openai = {
-  id: 'openai',
-  label: 'OpenAI',
-  weight: 30,
-  baseLatencyMs: 145,
-  maxLatencyMs: 800,
-  rateLimitPct: 0.0,
-  healthy: true,
-  lastError: null,
-};
-PROVIDER_CONFIG.anthropic = {
-  id: 'anthropic',
-  label: 'Anthropic',
-  weight: 40,
-  baseLatencyMs: 185,
-  maxLatencyMs: 900,
-  rateLimitPct: 0.0,
-  healthy: true,
-  lastError: null,
-};
-PROVIDER_CONFIG.local = {
-  id: 'local',
-  label: 'Local VLLM',
-  weight: 20,
-  baseLatencyMs: 60,
-  maxLatencyMs: 500,
-  rateLimitPct: 0.0,
-  healthy: true,
-  lastError: null,
-};
-PROVIDER_CONFIG.google = {
-  id: 'google',
-  label: 'Google',
-  weight: 10,
-  baseLatencyMs: 210,
-  maxLatencyMs: 700,
-  rateLimitPct: 0.0,
-  healthy: true,
-  lastError: null,
+const PROVIDER_CONFIG = {
+  openai: {
+    id: 'openai',
+    label: 'OpenAI',
+    weight: 30,
+    baseLatencyMs: 145,
+    maxLatencyMs: 800,
+    rateLimitPct: 0.0,
+    healthy: true,
+    lastError: null,
+  },
+  anthropic: {
+    id: 'anthropic',
+    label: 'Anthropic',
+    weight: 40,
+    baseLatencyMs: 185,
+    maxLatencyMs: 900,
+    rateLimitPct: 0.0,
+    healthy: true,
+    lastError: null,
+  },
+  local: {
+    id: 'local',
+    label: 'Local VLLM',
+    weight: 20,
+    baseLatencyMs: 60,
+    maxLatencyMs: 500,
+    rateLimitPct: 0.0,
+    healthy: true,
+    lastError: null,
+  },
+  google: {
+    id: 'google',
+    label: 'Google',
+    weight: 10,
+    baseLatencyMs: 210,
+    maxLatencyMs: 700,
+    rateLimitPct: 0.0,
+    healthy: true,
+    lastError: null,
+  },
 };
 _state.providerConfigRef.value = PROVIDER_CONFIG;
 
-const routerState = Object.create(null);
-routerState.decisionLog = [];
-routerState.totalRequests = 0;
-routerState.failovers = 0;
+const routerState = {
+  decisionLog: [], // Recent routing decisions
+  totalRequests: 0,
+  failovers: 0,
+};
 
 function buildProviderStatuses() {
   return Object.values(PROVIDER_CONFIG).map((p) => ({
@@ -4758,7 +4686,7 @@ function buildProviderStatuses() {
 
 function pickProvider(preferred) {
   // Honour explicit preference if healthy.
-  if (preferred && PROVIDER_CONFIG[preferred]?.healthy) {
+  if (preferred && isSafeKey(preferred) && PROVIDER_CONFIG[preferred]?.healthy) {
     return { id: preferred, failover: false };
   }
   // Weighted random over healthy providers.
@@ -4773,6 +4701,9 @@ function pickProvider(preferred) {
 }
 
 function recordLatency(providerId, latencyMs) {
+  if (providerId === '__proto__' || providerId === 'constructor' || providerId === 'prototype')
+    return;
+  if (!isSafeKey(providerId)) return;
   const p = PROVIDER_CONFIG[providerId];
   if (!p) return;
   if (latencyMs > p.maxLatencyMs) {
@@ -4801,7 +4732,14 @@ app.get('/api/router/status', async (_req, res) => {
 app.post('/api/router/select', async (req, res) => {
   try {
     const { preferred, simulateLatencyMs, simulateRateLimit } = req.body || {};
-    if (simulateRateLimit && PROVIDER_CONFIG[preferred]) {
+    if (
+      simulateRateLimit &&
+      preferred !== '__proto__' &&
+      preferred !== 'constructor' &&
+      preferred !== 'prototype' &&
+      isSafeKey(preferred) &&
+      PROVIDER_CONFIG[preferred]
+    ) {
       PROVIDER_CONFIG[preferred].rateLimitPct = 0.95;
       PROVIDER_CONFIG[preferred].lastError = 'simulated 429 rate limit';
       PROVIDER_CONFIG[preferred].healthy = false;
@@ -4836,7 +4774,7 @@ app.post('/api/router/select', async (req, res) => {
   }
 });
 
-app.post('/api/router/reset', async (_req, res) => {
+app.post('/api/router/reset', apiLimiter, async (_req, res) => {
   try {
     for (const p of Object.values(PROVIDER_CONFIG)) {
       p.healthy = true;
@@ -4855,52 +4793,48 @@ app.post('/api/router/reset', async (_req, res) => {
 
 const THROUGHPUT_WINDOW_MS = 60_000;
 
-app.get(
-  '/api/telemetry/throughput',
-  rateLimit({ windowMs: 60000, max: process.env.NODE_ENV === 'test' ? 1000 : 100 }),
-  async (_req, res) => {
-    try {
-      const now = Date.now();
-      const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
-      const rows = await runQuery(
-        `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
-        [sinceIso]
-      ).catch(() => []);
-      let inTok = 0;
-      let outTok = 0;
-      let ttftSamples = 0;
-      let ttftSum = 0;
-      for (const r of rows || []) {
-        inTok += Number(r.input_tokens) || 0;
-        outTok += Number(r.output_tokens) || 0;
-      }
-      // Synthetic TTFT sample derived from output_tokens (deterministic stub
-      // so the UI has something to display even when no real latencies are
-      // captured yet). This is treated as an estimate, clearly labelled.
-      for (let i = 0; i < Math.min(rows.length, 10); i++) {
-        const o = Number(rows[i].output_tokens) || 0;
-        const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
-        ttftSum += sample;
-        ttftSamples += 1;
-      }
-      const totalTokens = inTok + outTok;
-      const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
-      res.json({
-        windowMs: THROUGHPUT_WINDOW_MS,
-        inputTokens: inTok,
-        outputTokens: outTok,
-        totalTokens,
-        tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
-        ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
-        ttftSamples,
-        sampleCount: (rows || []).length,
-        asOf: new Date().toISOString(),
-      });
-    } catch (err) {
-      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+app.get('/api/telemetry/throughput', apiLimiter, async (_req, res) => {
+  try {
+    const now = Date.now();
+    const sinceIso = new Date(now - THROUGHPUT_WINDOW_MS).toISOString();
+    const rows = await runQuery(
+      `SELECT tokens_in AS input_tokens, tokens_out AS output_tokens, created_at FROM telemetry_traces WHERE created_at >= $1 ORDER BY created_at DESC LIMIT 200`,
+      [sinceIso]
+    ).catch(() => []);
+    let inTok = 0;
+    let outTok = 0;
+    let ttftSamples = 0;
+    let ttftSum = 0;
+    for (const r of rows || []) {
+      inTok += Number(r.input_tokens) || 0;
+      outTok += Number(r.output_tokens) || 0;
     }
+    // Synthetic TTFT sample derived from output_tokens (deterministic stub
+    // so the UI has something to display even when no real latencies are
+    // captured yet). This is treated as an estimate, clearly labelled.
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const o = Number(rows[i].output_tokens) || 0;
+      const sample = Math.max(80, Math.min(900, 120 + Math.floor(o / 12)));
+      ttftSum += sample;
+      ttftSamples += 1;
+    }
+    const totalTokens = inTok + outTok;
+    const safeTokensPerSec = totalTokens / (THROUGHPUT_WINDOW_MS / 1000);
+    res.json({
+      windowMs: THROUGHPUT_WINDOW_MS,
+      inputTokens: inTok,
+      outputTokens: outTok,
+      totalTokens,
+      tokensPerSec: Number(safeTokensPerSec.toFixed(2)),
+      ttftAvgMs: ttftSamples ? Math.round(ttftSum / ttftSamples) : null,
+      ttftSamples,
+      sampleCount: (rows || []).length,
+      asOf: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-);
+});
 
 // --- Phase 21: Cost Ledger Settlement --------------------------------------
 
@@ -4927,7 +4861,7 @@ app.get('/api/metrics/cost-ledger', async (_req, res) => {
       totalCost = 0,
       total24hCost = 0,
       total7dCost = 0;
-    let byProvider = {};
+    let byProvider = Object.create(null);
     let sampleCount = 0;
 
     try {
@@ -5602,35 +5536,15 @@ app.get('/middleware/health', (_req, res) => {
 
 const distPath = resolveDistPath();
 
-// --- Middleware Health & Metrics endpoints ---
-app.get('/middleware/health', (_req, res) => {
-  res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
-});
-
-let _metricsRequestCount = 0;
-let _metricsRateLimitHits = 0;
-let _metricsRedisFallbackHits = 0;
-
-app.get('/metrics', (_req, res) => {
-  _metricsRequestCount += 1;
-  const uptime = (Date.now() - BOOT_TIME) / 1000;
-  const guards = getAllGuardStats();
-  const lines = [
-    '# HELP kudbee_uptime_seconds Time since server boot',
-    '# TYPE kudbee_uptime_seconds gauge',
-    `kudbee_uptime_seconds ${uptime.toFixed(1)}`,
-    `# HELP kudbee_middleware_healthy 1 if all middleware healthy`,
-    '# TYPE kudbee_middleware_healthy gauge',
-    `kudbee_middleware_healthy ${guards.every((g) => g.healthy) ? 1 : 0}`,
-    '',
-  ];
-  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
-  res.send(lines.join('\n'));
-});
 if (fs.existsSync(distPath)) {
+  const fileLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   app.use(express.static(distPath));
-  // lgtm[js/missing-rate-limiting]
-  app.get('*', (req, res) => {
+  app.get('*', fileLimiter, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
@@ -5710,9 +5624,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
   console.log(
     `[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`
-  );
-  console.log(
-    `[Server] Inception Labs: ${inceptionConfigured ? 'enabled (Mercury-2 reasoning)' : 'disabled (set INCEPTION_API_KEY)'}`
   );
 });
 
