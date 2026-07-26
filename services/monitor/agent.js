@@ -1,9 +1,9 @@
-import { getRedisClient, getBlockingRedisClient } from '../lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 import crypto from 'node:crypto';
 import { registerShutdown } from '../lib/shutdown.js';
 
 const redis = getRedisClient({ label: 'monitor-agent' });
-const blockingRedis = getBlockingRedisClient({ label: 'monitor-agent' });
+const workerRedis = getWorkerRedisClient({ label: 'monitor-agent' });
 
 registerShutdown('monitor-agent', redis);
 
@@ -158,14 +158,26 @@ async function processTelemetry(telemetry) {
   }
 }
 
+// BRPOP call site #1: services/monitor/agent.js:174
+// Queue: kudbee:telemetry_feed | Timeout: 5s | Client: getBlockingRedisClient
+// Procfile: monitor-worker
+// Worker consumes telemetry from ingestion feed; MUST survive Upstash quota errors.
 async function runLoop() {
   console.log('[Agent] Starting polling loop...');
   console.log('[Agent] Listening on kudbee:telemetry_feed');
 
   while (true) {
+    const remainingBackoff = getRedisQuotaBackoffRemaining();
+    if (remainingBackoff > 0) {
+      console.warn(`[Agent] Upstash quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+      await new Promise((resolve) => setTimeout(resolve, remainingBackoff));
+      continue;
+    }
+
     try {
-      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 0);
+      const result = await workerRedis.blpop('kudbee:telemetry_feed', 5);
       if (!result) continue;
+      resetRedisQuotaBackoff();
 
       const [, raw] = result;
       let telemetry;
@@ -178,8 +190,16 @@ async function runLoop() {
 
       await processTelemetry(telemetry);
     } catch (err) {
-      console.error('[Agent] Polling loop error:', err.message);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (isUpstashMaxRequestsError(err)) {
+        const backoff = applyRedisQuotaBackoff();
+        console.error(`[worker:monitor-agent] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        continue;
+      }
+      const sleepMs = isRedisQuotaError(msg) ? 15_000 : 2000;
+      console.error(`[Agent] Polling loop error (sleeping ${sleepMs}ms):`, msg);
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
     }
   }
 }
@@ -189,7 +209,13 @@ async function init() {
     await loadSystemContext();
     await runLoop();
   } catch (err) {
-    console.error('[Agent] Fatal initialization error:', err.message);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
+      console.error(`[worker:monitor-agent] Upstash quota error during init — retrying instead of exiting: ${msg}`);
+      setTimeout(init, applyRedisQuotaBackoff());
+      return;
+    }
+    console.error('[Agent] Fatal initialization error:', msg);
     process.exit(1);
   }
 }

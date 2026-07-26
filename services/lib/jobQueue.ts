@@ -1,4 +1,4 @@
-import { getRedisClient, getBlockingRedisClient } from './redis.js';
+import { getRedisClient, getWorkerRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, applyRedisQuotaBackoff } from './redis.js';
 import { agentLog } from './agentLogger.js';
 
 const JOB_PREFIX = 'kudbee:jobs:';
@@ -30,14 +30,24 @@ export async function enqueueJob(queue: string, type: string, payload: Record<st
 
 export async function dequeueJob(queue: string): Promise<Job | null> {
   try {
-    const redis = getBlockingRedisClient({ label: 'job-queue' });
+    const redis = getWorkerRedisClient({ label: 'job-queue' });
     if (!redis) return null;
+    // BRPOP call site #3: services/lib/jobQueue.ts:35
+    // Queue: kudbee:jobs:{queue} | Timeout: 5s | Client: getBlockingRedisClient
+    // Generic job dequeue; consumers MUST survive Upstash quota errors.
     const result = await redis.brpop(JOB_PREFIX + queue, 5);
     if (!result) return null;
     const raw = result[1];
     if (!raw) return null;
     return JSON.parse(raw) as Job;
-  } catch {
+  } catch (err) {
+    if (isUpstashMaxRequestsError(err as Error | string)) {
+      const backoff = applyRedisQuotaBackoff();
+      agentLog('job-queue', 'upstash-quota-exhausted', 'ERROR', { queue, backoffMs: backoff }, `[worker:job-queue] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+    } else if (isRedisQuotaError(err as Error | string)) {
+      applyRedisQuotaBackoff();
+      agentLog('job-queue', 'redis-quota-error', 'ERROR', { queue }, `[worker:job-queue] Redis quota error during dequeue: ${err instanceof Error ? err.message : String(err)}`);
+    }
     return null;
   }
 }

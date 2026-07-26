@@ -12,18 +12,25 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "bun test",
+    "format": "prettier --write .",
     "dev": "turbo run dev",
     "start": "turbo run start",
     "start:agent": "node services/monitor/agent.js",
     "sim:traffic": "node scripts/traffic-sim.mjs",
     "verify:flow": "node scripts/verify-flow.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
-    "ingest:topology": "tsx scripts/ingest-topology.ts"
+    "ingest:topology": "tsx scripts/ingest-topology.ts",
+    "heroku-postbuild": "npm run build"
   },
   "devDependencies": {
+    "prettier": "^3.9.6",
     "tsx": "^4.23.1",
     "turbo": "^2.3.3",
     "typescript": "^5.7.0"
+  },
+  "overrides": {
+    "brace-expansion": "^2.0.4"
   },
   "license": "Proprietary",
   "packageManager": "npm@10.9.8",

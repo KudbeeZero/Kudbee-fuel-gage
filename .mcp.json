@@ -1,16 +1,13 @@
 {
   "mcpServers": {
-    "neon": {
+    "upstash-redis": {
+      "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@neondatabase/mcp-server@latest"
-      ],
+      "args": ["-y", "@upstash/redis-mcp"],
       "env": {
-        "DATABASE_URL": "${DATABASE_URL}"
-      },
-      "type": "http",
-      "url": "https://mcp.neon.tech/mcp"
+        "UPSTASH_REDIS_REST_URL": "${UPSTASH_REDIS_REST_URL}",
+        "UPSTASH_REDIS_REST_TOKEN": "${UPSTASH_REDIS_REST_TOKEN}"
+      }
     }
   }
 }

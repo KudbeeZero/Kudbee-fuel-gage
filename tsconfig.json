@@ -8,5 +8,21 @@
       "@/*": ["./apps/web/src/*"]
     }
   },
-  "include": ["apps/web/src", "services/ingestion", "packages/types"]
+  "include": [
+    "apps/mobile",
+    "apps/web/src",
+    "packages/mobile",
+    "packages/opencode",
+    "packages/types",
+    "packages/utils",
+    "services/agent",
+    "services/agents",
+    "services/github",
+    "services/ingestion",
+    "services/lib",
+    "services/memory",
+    "services/sentinel",
+    "services/skillz-library",
+    "services/telemetry"
+  ]
 }

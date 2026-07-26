@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { BarChart } from 'lucide-react';
 import { GatewayLog } from '../../hooks/useRoutingRules';
 import { useTopologyEvents } from '../../hooks/useTopologyEvents';
+import { useControlTowerStore, type GroqRouteMetric } from '../../store/useControlTowerStore';
 import { NODE_POSITIONS, EDGES, type TopologyNode } from './topologyNodes';
 
 interface RoutingVisualizerProps {
@@ -32,6 +34,81 @@ function nodeGlowColor(status: string): string {
   return 'rgba(244,63,94,0.4)';
 }
 
+function LatencyHistogram({ metrics }: { metrics: GroqRouteMetric[] }) {
+  if (metrics.length === 0) return null;
+
+  const bins = [50, 100, 200, 500, 1000, 2000, 5000];
+  const histogram = bins.map((threshold, idx) => {
+    const prev = idx === 0 ? 0 : bins[idx - 1];
+    const count = metrics.filter((m) => m.latencyMs >= prev && m.latencyMs < threshold).length;
+    return { label: prev === 0 ? `<${threshold}ms` : `${prev}-${threshold}ms`, count, threshold };
+  });
+  const over = metrics.filter((m) => m.latencyMs >= 5000).length;
+  if (over > 0) histogram.push({ label: '≥5000ms', count: over, threshold: 9999 });
+  const maxCount = Math.max(...histogram.map((h) => h.count), 1);
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart className="h-3.5 w-3.5 text-cyan-400" />
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-400">GROQ Latency Histogram</span>
+        <span className="ml-auto text-[9px] font-mono text-slate-500">{metrics.length} samples</span>
+      </div>
+      <div className="grid grid-cols-7 gap-1 items-end" style={{ height: 80 }}>
+        {histogram.map((h) => (
+          <div key={h.label} className="flex flex-col items-center justify-end h-full">
+            <span className="text-[7px] font-mono text-slate-500 mb-0.5">{h.count}</span>
+            <div
+              className="w-full min-w-[24px] rounded-t"
+              style={{
+                height: `${Math.max(4, (h.count / maxCount) * 100)}%`,
+                backgroundColor: h.count === 0 ? 'transparent' : h.threshold < 200 ? '#34d399' : h.threshold < 500 ? '#fbbf24' : '#f43f5e',
+                opacity: h.count === 0 ? 0 : 0.8
+              }}
+            />
+            <span className="text-[6px] font-mono text-slate-600 mt-1 leading-tight text-center">{h.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProviderHealthBanner({ metrics }: { metrics: GroqRouteMetric[] }) {
+  if (metrics.length === 0) return null;
+
+  const total = metrics.length;
+  const ok = metrics.filter((m) => m.status === 'OK').length;
+  const errors = metrics.filter((m) => m.status === 'ERROR').length;
+  const timeouts = metrics.filter((m) => m.status === 'TIMEOUT').length;
+  const healthPct = Math.round((ok / total) * 100);
+
+  const avgLatency = Math.round(metrics.reduce((s, m) => s + m.latencyMs, 0) / total);
+  const totalTokens = metrics.reduce((s, m) => s + m.tokensIn + m.tokensOut, 0);
+  const totalCost = metrics.reduce((s, m) => s + m.cost, 0);
+
+  return (
+    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+      <div className="rounded-lg bg-slate-800/30 p-2">
+        <div className="text-[8px] font-mono text-slate-500 uppercase">Health</div>
+        <div className={`font-mono text-sm font-bold ${healthPct >= 90 ? 'text-emerald-400' : healthPct >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>{healthPct}%</div>
+      </div>
+      <div className="rounded-lg bg-slate-800/30 p-2">
+        <div className="text-[8px] font-mono text-slate-500 uppercase">Avg Lat</div>
+        <div className="font-mono text-sm font-bold text-slate-300">{avgLatency}ms</div>
+      </div>
+      <div className="rounded-lg bg-slate-800/30 p-2">
+        <div className="text-[8px] font-mono text-slate-500 uppercase">Tokens</div>
+        <div className="font-mono text-sm font-bold text-slate-300">{totalTokens.toLocaleString()}</div>
+      </div>
+      <div className="rounded-lg bg-slate-800/30 p-2">
+        <div className="text-[8px] font-mono text-slate-500 uppercase">Cost</div>
+        <div className="font-mono text-sm font-bold text-slate-300">${totalCost.toFixed(4)}</div>
+      </div>
+    </div>
+  );
+}
+
 export function RoutingVisualizer({ activeRoute, gatewayLogs, onTestRoute }: RoutingVisualizerProps) {
   const [packets, setPackets] = useState<Packet[]>([]);
   const [agentStatuses, setAgentStatuses] = useState<Record<string, string>>({
@@ -39,6 +116,7 @@ export function RoutingVisualizer({ activeRoute, gatewayLogs, onTestRoute }: Rou
   });
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef(0);
+  const groqMetrics = useControlTowerStore((s) => s.groqMetrics);
 
   const spawnPacket = useCallback((from: number, to: number, color: string) => {
     setPackets((prev) => [...prev.slice(-40), {
@@ -204,6 +282,9 @@ export function RoutingVisualizer({ activeRoute, gatewayLogs, onTestRoute }: Rou
             );
           })}
         </div>
+
+        <ProviderHealthBanner metrics={groqMetrics} />
+        <LatencyHistogram metrics={groqMetrics} />
 
         <div className="mt-4 bg-black rounded-lg border border-slate-800 p-4 h-40 overflow-y-auto">
           <h4 className="font-mono text-[10px] text-slate-500 tracking-widest uppercase mb-3 border-b border-slate-800 pb-2">Packet Log</h4>

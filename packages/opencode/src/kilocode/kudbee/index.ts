@@ -6,6 +6,17 @@ import { EngineBus, EngineEventType } from './events';
 import { KudbeeNativeRegistry, Tool, type NativeToolEntry } from './tools';
 import { TelemetryEventSchema, type TelemetryEvent, type MintedToken } from './schema';
 
+let _globalMemoryVault: unknown = null;
+
+function getMemoryVault(): unknown {
+  if (_globalMemoryVault) return _globalMemoryVault;
+  return null;
+}
+
+export function injectMemoryVault(vault: unknown): void {
+  _globalMemoryVault = vault;
+}
+
 function uuidv4(): string {
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -80,6 +91,20 @@ export class SafeZoneEngine {
     const gateway = new ControlTowerGateway();
     this.bus.emit('TRAJECTORY_UPDATE', { workspaceRoot, status: 'BOOTSTRAPPED' });
 
+    const vault = getMemoryVault() as { store: (chunk: Record<string, unknown>) => { id: string; content: string; category: string } } | null;
+    if (vault) {
+      vault.store({
+        agentId: 'safe-zone-engine',
+        content: 'SafeZoneEngine bootstrapped for workspace: ' + workspaceRoot,
+        category: 'OBSERVATION',
+        importance: 0.8,
+        embedding: [],
+        metadata: { workspace_root: workspaceRoot },
+        ttlMs: 7 * 86400_000
+      });
+      this.bus.emit('MEMORY_STORED', { workspaceRoot, status: 'BOOTSTRAPPED' });
+    }
+
     this.registry.register(Tool.define({
       name: 'safe_zone.query',
       description: 'Query active safe zones',
@@ -91,6 +116,50 @@ export class SafeZoneEngine {
   }
 }
 
+export namespace Kudbee {
+  let engine: SafeZoneEngine | null = null;
+
+  export function Instance(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
+    if (!engine) {
+      engine = new SafeZoneEngine(cfg);
+    }
+    return engine;
+  }
+
+  export function state() {
+    const inst = Instance();
+    return inst.getState();
+  }
+
+  export function reset() {
+    engine = null;
+  }
+}
+
 export function createSafeZoneEngine(cfg?: Partial<SafeZoneEngineConfig>): SafeZoneEngine {
   return new SafeZoneEngine(cfg);
 }
+
+export { EngineBus, KudbeeEvents } from './events';
+export { mintToken, ThinkTokenMinter } from './mint';
+export { publishTelemetry, publishTelemetryUpstash, setupTelemetryListeners } from './telemetry';
+export { ControlTowerGateway } from './gateway';
+export {
+  SafeZoneConfigSchema,
+  SafeZoneEngineConfigSchema,
+  TelemetryEventSchema,
+  GovernanceProposalSchema,
+  type SafeZoneConfig,
+  type SafeZoneEngineConfig,
+  type TelemetryEvent,
+  type GovernanceProposal,
+  type MintedToken,
+  type MintOptions
+} from './schema';
+export {
+  KudbeeNativeRegistry,
+  Tool,
+  registerKudbeeNativeTools,
+  registerKudbeeRecallAndMintTools,
+  registerKudbeeGovernanceTools
+} from './tools';

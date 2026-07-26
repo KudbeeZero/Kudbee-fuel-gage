@@ -1,4 +1,4 @@
-import { Radio, Wifi, WifiOff, Pause, Play } from 'lucide-react';
+import { Radio, Wifi, WifiOff, Pause, Play, Database } from 'lucide-react';
 import type { StreamMode } from '../hooks/useTelemetryStream';
 
 interface StreamModeBadgeProps {
@@ -6,11 +6,12 @@ interface StreamModeBadgeProps {
   paused: boolean;
   onTogglePause: () => void;
   onReconnect: () => void;
+  memoryFallbackActive?: boolean;
 }
 
-export function StreamModeBadge({ mode, paused, onTogglePause, onReconnect }: StreamModeBadgeProps) {
+export function StreamModeBadge({ mode, paused, onTogglePause, onReconnect, memoryFallbackActive }: StreamModeBadgeProps) {
   const effective = paused ? 'DISCONNECTED' : mode;
-  const BAG = {
+  const BAG: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
     SSE: {
       color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
       label: 'STREAM · SSE',
@@ -27,7 +28,7 @@ export function StreamModeBadge({ mode, paused, onTogglePause, onReconnect }: St
       icon: <WifiOff className="h-3 w-3" />
     }
   };
-  const config = (BAG as any)[effective] || { color: 'text-slate-400 border-slate-700 bg-slate-900', label: 'STREAM · UNKNOWN', icon: <WifiOff className="h-3 w-3" /> };
+  const config = BAG[effective] || { color: 'text-slate-400 border-slate-700 bg-slate-900', label: 'STREAM · UNKNOWN', icon: <WifiOff className="h-3 w-3" /> };
 
   return (
     <div className="flex items-center gap-1.5">
@@ -41,6 +42,16 @@ export function StreamModeBadge({ mode, paused, onTogglePause, onReconnect }: St
         {config.icon}
         {config.label}
       </button>
+      {memoryFallbackActive && (
+        <span
+          id="memory-fallback-badge"
+          className="flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-violet-300"
+          title="Redis is rate-limited — events buffered in memory"
+        >
+          <Database className="h-3 w-3" />
+          IN-MEMORY
+        </span>
+      )}
       <button
         id="stream-pause-toggle"
         type="button"

@@ -159,7 +159,8 @@ export default evaluateAgentPayload;
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient } from '../lib/redis.js';
+import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getOrCreateInMemoryQueue } from '../lib/inMemoryQueue.ts';
 
 export interface TaskEnvelope {
   id: string;
@@ -351,13 +352,39 @@ export async function processTask(task: unknown) {
 
 export async function _tick() {
   if (shuttingDown) return false;
-  const redis = getRedisClient();
+
+  const remainingBackoff = getRedisQuotaBackoffRemaining();
+  if (remainingBackoff > 0) {
+    console.warn(`[Worker] Quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+
+    const fallbackQueue = getOrCreateInMemoryQueue();
+    fallbackQueue.enqueue({
+      queue: 'kudbee:telemetry_buffer',
+      data: { event: 'worker_backoff', remainingMs: remainingBackoff, timestamp: Date.now() },
+      source: 'worker-backoff'
+    });
+
+    await sleep(remainingBackoff);
+    return false;
+  }
+
+  const redis = getWorkerRedisClient();
   if (!redis) return false;
+  // BRPOP call site #2: services/agents/worker.ts:364
+  // Queue: kudbee-governance-tasks | Timeout: 5s | Client: getRedisClient
+  // Started from ingestion server at boot; MUST survive Upstash quota errors.
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
     const msg = e.message;
-    if (msg.includes('MAX_REQUESTS_LIMIT') || msg.includes('rate limit') || msg.includes('429')) {
+    if (isUpstashMaxRequestsError(e)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.error(`[worker:governance] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+      backoffMs = Math.min(backoff, MAX_BACKOFF_MS);
+    } else if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[Worker] Quota exceeded — backing off ${backoff}ms (consecutive: ${(backoffMs / BASE_BACKOFF_MS).toFixed(0)})`);
+    } else if (msg.includes('Command timed out') || msg.includes('timeout')) {
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
-      console.warn(`[Worker] Rate limited, backing off for ${backoffMs}ms`);
+      console.warn(`[Worker] Command timeout — backing off for ${backoffMs}ms`);
     }
     console.warn('[Worker] redis brpop failed:', msg);
     return null;
@@ -365,6 +392,7 @@ export async function _tick() {
 
   if (!result) return false;
   backoffMs = BASE_BACKOFF_MS;
+  resetRedisQuotaBackoff();
   const raw = result[1];
   if (!raw) return false;
   let task = parse(raw);

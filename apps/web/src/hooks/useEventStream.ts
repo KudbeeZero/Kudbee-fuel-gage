@@ -80,7 +80,7 @@ async function ensureConnection() {
     try { const parsed = JSON.parse(ev.data); dispatch('message', parsed); } catch {}
   };
 
-  const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes', 'ask', 'storage_metrics', 'os_telemetry'];
+  const namedTypes = ['snapshot', 'telemetry', 'triage', 'governance', 'slow_brain', 'hermes_suggestion', 'hermes', 'ask', 'storage_metrics', 'os_telemetry', 'memory.ingested', 'memory.stored', 'memory.recalled'];
   for (const type of namedTypes) {
     const fn = (ev: MessageEvent) => {
       let data: any = ev.data;

@@ -26,6 +26,23 @@ async function sha256(input: string): Promise<string> {
   return Math.abs(hash).toString(16).padStart(64, '0').slice(0, 64);
 }
 
+export class ThinkTokenMinter {
+  async mint(opts: MintOptions): Promise<MintedToken> {
+    return mintToken(opts);
+  }
+
+  async packageTrajectory(token: MintedToken): Promise<string> {
+    return JSON.stringify({
+      id: token.id,
+      hash: token.token_hash,
+      kd: token.kd,
+      efficacy: token.efficacy,
+      coordinates: token.spatial_coordinates,
+      timestamp: token.created_at
+    });
+  }
+}
+
 export async function mintToken(opts: MintOptions): Promise<MintedToken> {
   const parsed = MintOptionsSchema.parse(opts);
   const [x, y, z] = parsed.spatial_coordinates;
