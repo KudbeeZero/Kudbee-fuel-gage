@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
@@ -16,11 +16,7 @@ export default defineConfig(() => {
       port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      allowedHosts: [
-        '.cloudspaces.litng.ai',
-        '.lightning.ai',
-        'localhost',
-      ],
+      allowedHosts: ['.cloudspaces.litng.ai', '.lightning.ai', 'localhost'],
       proxy: {
         '/api': 'http://127.0.0.1:3000',
         '/health': 'http://127.0.0.1:3000',
@@ -31,7 +27,7 @@ export default defineConfig(() => {
           timeout: 120000,
           rewrite: (path) => path.replace(/^\/ollama/, ''),
         },
-      }
+      },
     },
     build: {
       outDir: 'dist',
@@ -43,7 +39,7 @@ export default defineConfig(() => {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom'],
-            'vendor-router': ['react-router-dom'],
+            'vendor-router': ['react-router'],
             'vendor-lucide': ['lucide-react'],
             'vendor-recharts': ['recharts'],
             'vendor-d3': ['d3'],

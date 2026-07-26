@@ -47,7 +47,9 @@ async function waitForServer(url, timeoutMs = 20000) {
     try {
       const res = await fetch(url);
       if (res.ok) return;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     await delay(200);
   }
   throw new Error(`Server did not become ready within ${timeoutMs}ms`);
@@ -57,22 +59,33 @@ async function startServer() {
   try {
     const Redis = (await import('ioredis')).default;
     const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-    const isUpstash = url.startsWith('rediss://') || url.includes('upstash.io');
+    const isUpstash =
+      url.startsWith('rediss://') ||
+      (() => {
+        try {
+          const h = new URL(url).hostname;
+          return h === 'upstash.io' || h.endsWith('.upstash.io');
+        } catch {
+          return false;
+        }
+      })();
     const config = { lazyConnect: false, enableOfflineQueue: true };
     if (isUpstash) config.tls = { rejectUnauthorized: false };
     const redis = new Redis(url, config);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
     await redis.del('kudbee:receptor:locks');
     await redis.quit();
     console.log('[Adversarial] Cleared stale locks.');
-  } catch { /* degrade */ }
+  } catch {
+    /* degrade */
+  }
 
   console.log('[Adversarial] Starting server...');
   const tsxPath = require.resolve('tsx/cli');
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
   serverProcess.stdout.on('data', (d) => {
     const s = d.toString();
@@ -109,8 +122,8 @@ async function mintToken(opts = {}) {
       kd: opts.kd ?? 0,
       efficacy: opts.efficacy ?? 0,
       tokenType: opts.tokenType ?? undefined,
-      spatial_coordinates: opts.coords ?? [1, 1, 1]
-    })
+      spatial_coordinates: opts.coords ?? [1, 1, 1],
+    }),
   });
   const data = await res.json();
   return { status: res.status, data };
@@ -124,9 +137,9 @@ async function scenario1_RaceToLock() {
     mintToken({
       traceId: `race-${i}`,
       delta: `Race token ${i}`,
-      kd: 0.01 + (i * 0.0001),
+      kd: 0.01 + i * 0.0001,
       efficacy: 0.0,
-      coords: COORDS
+      coords: COORDS,
     })
   );
   const results = await Promise.all(promises);
@@ -136,9 +149,11 @@ async function scenario1_RaceToLock() {
 
   const admittedCount = admitted.length;
   const rejectedCount = rejected.length;
-  const totalLocked = results.filter((r) =>
-    r.status === 201 && r.data?.receptor?.admitted === true &&
-    r.data.receptor.reason?.includes('locked')
+  const totalLocked = results.filter(
+    (r) =>
+      r.status === 201 &&
+      r.data?.receptor?.admitted === true &&
+      r.data.receptor.reason?.includes('locked')
   ).length;
 
   console.log(`  admitted: ${admittedCount}, rejected: ${rejectedCount}`);
@@ -157,17 +172,27 @@ async function scenario2_ExactThreshold() {
   const coords89 = [4, 4, 4];
 
   const guard90 = await mintToken({
-    traceId: 'threshold-90', delta: 'Guard at 0.90', kd: 0.10, efficacy: 0.0, coords: coords90
+    traceId: 'threshold-90',
+    delta: 'Guard at 0.90',
+    kd: 0.1,
+    efficacy: 0.0,
+    coords: coords90,
   });
   const locked90 = guard90.status === 201 && guard90.data?.receptor?.reason?.includes('locked');
   assert(locked90, 'Affinity 0.90 (Kd=0.10) Guard Token locks the slot');
 
   const guard89 = await mintToken({
-    traceId: 'threshold-89', delta: 'Guard at 0.899', kd: 0.101, efficacy: 0.0, coords: coords89
+    traceId: 'threshold-89',
+    delta: 'Guard at 0.899',
+    kd: 0.101,
+    efficacy: 0.0,
+    coords: coords89,
   });
   const locked89 = guard89.status === 201 && guard89.data?.receptor?.reason?.includes('locked');
-  assert(!locked89 || guard89.data?.receptor?.reason?.includes('unlocked'),
-    'Affinity 0.899 (Kd=0.101) does NOT lock — admitted as unlocked');
+  assert(
+    !locked89 || guard89.data?.receptor?.reason?.includes('unlocked'),
+    'Affinity 0.899 (Kd=0.101) does NOT lock — admitted as unlocked'
+  );
 }
 
 // --- Scenario 3: CHALLENGE_TOKEN Fairness ---
@@ -179,14 +204,22 @@ async function scenario3_ChallengeFairness() {
   console.log('  Guard Token locked slot.');
 
   const weak = await mintToken({
-    traceId: 'weak-challenge', delta: 'Weak challenge',
-    kd: 0.04, efficacy: 0.0, tokenType: 'CHALLENGE_TOKEN', coords
+    traceId: 'weak-challenge',
+    delta: 'Weak challenge',
+    kd: 0.04,
+    efficacy: 0.0,
+    tokenType: 'CHALLENGE_TOKEN',
+    coords,
   });
   assert(weak.status === 423, 'CHALLENGE_TOKEN with inferior Kd (0.04 > 0.03) rejected');
 
   const strong = await mintToken({
-    traceId: 'strong-challenge', delta: 'Strong challenge',
-    kd: 0.005, efficacy: 0.0, tokenType: 'CHALLENGE_TOKEN', coords
+    traceId: 'strong-challenge',
+    delta: 'Strong challenge',
+    kd: 0.005,
+    efficacy: 0.0,
+    tokenType: 'CHALLENGE_TOKEN',
+    coords,
   });
   assert(strong.status === 201, 'CHALLENGE_TOKEN with superior Kd (0.005 < 0.03) overrides');
 }
@@ -200,23 +233,39 @@ async function scenario4_DegradedRecovery() {
   const coords = [6, 6, 6];
 
   const guard = await mintToken({
-    traceId: 'degrade-guard', delta: 'Degrade guard', kd: 0.008, efficacy: 0.0, coords
+    traceId: 'degrade-guard',
+    delta: 'Degrade guard',
+    kd: 0.008,
+    efficacy: 0.0,
+    coords,
   });
   assert(guard.status === 201 && guard.data?.receptor?.admitted, 'Guard Token admitted');
 
   const ordinary = await mintToken({
-    traceId: 'degrade-ordinary', delta: 'Degrade ordinary', kd: 0.5, efficacy: 0.5, coords
+    traceId: 'degrade-ordinary',
+    delta: 'Degrade ordinary',
+    kd: 0.5,
+    efficacy: 0.5,
+    coords,
   });
   assert(ordinary.status === 423, 'Lock persists — ordinary token rejected');
 
   const admin = await mintToken({
-    traceId: 'degrade-admin', delta: 'Degrade admin',
-    kd: 0, efficacy: 0, tokenType: 'ADMIN', coords
+    traceId: 'degrade-admin',
+    delta: 'Degrade admin',
+    kd: 0,
+    efficacy: 0,
+    tokenType: 'ADMIN',
+    coords,
   });
   assert(admin.status === 201, 'ADMIN token admitted — lock released');
 
   const afterAdmin = await mintToken({
-    traceId: 'degrade-after', delta: 'After admin', kd: 0.5, efficacy: 0.5, coords
+    traceId: 'degrade-after',
+    delta: 'After admin',
+    kd: 0.5,
+    efficacy: 0.5,
+    coords,
   });
   assert(afterAdmin.status === 201, 'After ADMIN bypass, ordinary token accepted');
 }
@@ -229,25 +278,40 @@ async function scenario5_ConcurrentChallengeRaces() {
   await mintToken({ traceId: 'race-guard', delta: 'Race guard', kd: 0.02, efficacy: 0.0, coords });
   console.log('  Guard Token locked at Kd=0.02.');
 
-  const challenges = await Promise.all(Array.from({ length: 5 }, (_, i) =>
-    mintToken({
-      traceId: `race-challenge-${i}`,
-      delta: `Challenge ${i}`,
-      kd: 0.005 + (i * 0.003),
-      efficacy: 0.0,
-      tokenType: 'CHALLENGE_TOKEN',
-      coords
-    })
-  ));
+  const challenges = await Promise.all(
+    Array.from({ length: 5 }, (_, i) =>
+      mintToken({
+        traceId: `race-challenge-${i}`,
+        delta: `Challenge ${i}`,
+        kd: 0.005 + i * 0.003,
+        efficacy: 0.0,
+        tokenType: 'CHALLENGE_TOKEN',
+        coords,
+      })
+    )
+  );
 
   const succeeded = challenges.filter((r) => r.status === 201);
   const failed = challenges.filter((r) => r.status === 423);
 
-  const winnerKd = succeeded.length > 0
-    ? Math.min(...challenges.filter(r => r.status === 201)
-        .map(r => { try { return JSON.parse(JSON.stringify(r.data)).receptor?.reason?.match(/Kd=([\d.]+)/)?.[1]; } catch { return Infinity; } })
-        .filter(Boolean).map(Number))
-    : null;
+  const winnerKd =
+    succeeded.length > 0
+      ? Math.min(
+          ...challenges
+            .filter((r) => r.status === 201)
+            .map((r) => {
+              try {
+                return JSON.parse(JSON.stringify(r.data)).receptor?.reason?.match(
+                  /Kd=([\d.]+)/
+                )?.[1];
+              } catch {
+                return Infinity;
+              }
+            })
+            .filter(Boolean)
+            .map(Number)
+        )
+      : null;
 
   console.log(`  ${succeeded.length} challenges succeeded, ${failed.length} failed`);
   assert(failed.length === 4, '4 of 5 concurrent challenges rejected — only the best Kd wins');
@@ -265,7 +329,9 @@ async function run() {
     await scenario5_ConcurrentChallengeRaces();
 
     console.log('\n========================================');
-    console.log(`Adversarial Challenge Results: ${passed} passed, ${failed} failed out of ${passed + failed}`);
+    console.log(
+      `Adversarial Challenge Results: ${passed} passed, ${failed} failed out of ${passed + failed}`
+    );
     console.log('========================================');
 
     if (failed > 0) {

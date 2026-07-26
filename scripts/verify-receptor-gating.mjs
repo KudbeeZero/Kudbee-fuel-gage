@@ -42,7 +42,9 @@ async function waitForServer(url, timeoutMs = 15000) {
     try {
       const res = await fetch(url);
       if (res.ok) return;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     await delay(200);
   }
   throw new Error(`Server did not become ready within ${timeoutMs}ms`);
@@ -53,26 +55,39 @@ async function startServer() {
   try {
     const Redis = (await import('ioredis')).default;
     const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-    const isUpstash = url.startsWith('rediss://') || url.includes('upstash.io');
+    const isUpstash =
+      url.startsWith('rediss://') ||
+      (() => {
+        try {
+          const h = new URL(url).hostname;
+          return h === 'upstash.io' || h.endsWith('.upstash.io');
+        } catch {
+          return false;
+        }
+      })();
     const config = { lazyConnect: false, enableOfflineQueue: true };
     if (isUpstash) config.tls = { rejectUnauthorized: false };
     const redis = new Redis(url, config);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
     await redis.del('kudbee:receptor:locks');
     await redis.quit();
     console.log('[ReceptorE2E] Cleared stale receptor locks from Redis.');
-  } catch { /* degrade gracefully — Redis may be unavailable */ }
+  } catch {
+    /* degrade gracefully — Redis may be unavailable */
+  }
 
   console.log('[ReceptorE2E] Starting ingestion server...');
   const tsxPath = require.resolve('tsx/cli');
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 
   serverProcess.stdout.on('data', (d) => process.stdout.write(`[server] ${d.toString().trim()}\n`));
-  serverProcess.stderr.on('data', (d) => process.stderr.write(`[server-err] ${d.toString().trim()}\n`));
+  serverProcess.stderr.on('data', (d) =>
+    process.stderr.write(`[server-err] ${d.toString().trim()}\n`)
+  );
 
   await waitForServer(`${BASE}/health`, 20000);
   console.log('[ReceptorE2E] Server ready.\n');
@@ -98,8 +113,8 @@ async function check1_GuardTokenLocksSlot() {
       correctionDelta: 'Guard Token — high-affinity antagonist',
       kd: 0.02,
       efficacy: 0.0,
-      spatial_coordinates: [1, 1, 1]
-    })
+      spatial_coordinates: [1, 1, 1],
+    }),
   });
   const data = await res.json();
   console.log(`  response status: ${res.status}`);
@@ -123,8 +138,8 @@ async function check2_OrdinaryTokenRejected() {
       correctionDelta: 'Ordinary token — should be blocked',
       kd: 0.3,
       efficacy: 0.5,
-      spatial_coordinates: [1, 1, 1]
-    })
+      spatial_coordinates: [1, 1, 1],
+    }),
   });
   const data = await res.json();
   console.log(`  response status: ${res.status}`);
@@ -148,8 +163,8 @@ async function check3_ChallengeTokenOverrides() {
       kd: 0.005,
       efficacy: 0.0,
       tokenType: 'CHALLENGE_TOKEN',
-      spatial_coordinates: [1, 1, 1]
-    })
+      spatial_coordinates: [1, 1, 1],
+    }),
   });
   const data = await res.json();
   console.log(`  response status: ${res.status}`);

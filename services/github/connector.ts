@@ -41,9 +41,11 @@ const fileCache = new Map<string, CacheEntry>();
  * the file path.
  */
 export function parseRepoPath(repoPath: string): ParsedRepoPath | null {
-  let trimmed = repoPath;
-  while (trimmed.startsWith('/')) trimmed = trimmed.slice(1);
-  while (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
+  let start = 0;
+  let end = repoPath.length;
+  while (start < end && repoPath.charCodeAt(start) === 47) start++;
+  while (end > start && repoPath.charCodeAt(end - 1) === 47) end--;
+  const trimmed = repoPath.slice(start, end);
   if (!trimmed) return null;
   const segments = trimmed.split('/');
   if (segments.length < 3) return null;
