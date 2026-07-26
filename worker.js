@@ -20,12 +20,20 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getRedisClient, getWorkerRedisClient, isUpstashMaxRequestsError, isRedisQuotaError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from './services/lib/redis.js';
+import {
+  getRedisClient,
+  getWorkerRedisClient,
+  isUpstashMaxRequestsError,
+  isRedisQuotaError,
+  getRedisQuotaBackoffRemaining,
+  applyRedisQuotaBackoff,
+  resetRedisQuotaBackoff,
+} from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
 import { registerShutdown } from './services/lib/shutdown.js';
-import { agentLog, broadcastAgentState } from './services/lib/agentLogger.js';
-import { geminiBreaker } from './services/lib/circuitBreaker.js';
+import { agentLog, broadcastAgentState } from './services/lib/agentLogger.ts';
+import { geminiBreaker } from './services/lib/circuitBreaker.ts';
 import { runSystemPruner } from './services/lib/pruner.ts';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
@@ -60,16 +68,27 @@ async function slowBrainReason(prompt) {
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
     return {
       model: 'hermes-heuristic',
-      trace: `Heuristic audit of "${String(prompt).slice(0, 120)}": no LLM key configured — ` +
+      trace:
+        `Heuristic audit of "${String(prompt).slice(0, 120)}": no LLM key configured — ` +
         `proposing governance action for human review.`,
-      provider: 'fallback'
+      provider: 'fallback',
     };
   }
 
   const circuitOpen = await geminiBreaker.isOpen();
   if (circuitOpen) {
-    agentLog('hermes', 'gemini-circuit-open', 'CIRCUIT_OPEN', { task: prompt.slice(0, 80) }, 'Gemini circuit breaker is OPEN — using heuristic fallback');
-    return { model: 'hermes-heuristic-circuit', trace: `Circuit breaker open — heuristic audit of task.`, provider: 'fallback' };
+    agentLog(
+      'hermes',
+      'gemini-circuit-open',
+      'CIRCUIT_OPEN',
+      { task: prompt.slice(0, 80) },
+      'Gemini circuit breaker is OPEN — using heuristic fallback'
+    );
+    return {
+      model: 'hermes-heuristic-circuit',
+      trace: `Circuit breaker open — heuristic audit of task.`,
+      provider: 'fallback',
+    };
   }
 
   try {
@@ -81,12 +100,20 @@ async function slowBrainReason(prompt) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `As the Kudbee Governance Slow Brain, analyze this task and return a concise reasoning trace plus a recommended action.\n\nTask: ${prompt}` }] }]
+          contents: [
+            {
+              parts: [
+                {
+                  text: `As the Kudbee Governance Slow Brain, analyze this task and return a concise reasoning trace plus a recommended action.\n\nTask: ${prompt}`,
+                },
+              ],
+            },
+          ],
         }),
-        signal: controller.signal
+        signal: controller.signal,
       }
     );
     clearTimeout(timer);
@@ -97,7 +124,11 @@ async function slowBrainReason(prompt) {
     return { model: 'gemini-1.5-flash', trace, provider: 'gemini' };
   } catch (err) {
     await geminiBreaker.recordFailure();
-    return { model: 'hermes-fallback', trace: `LLM call failed (${err.message}) — proposing for review.`, provider: 'fallback' };
+    return {
+      model: 'hermes-fallback',
+      trace: `LLM call failed (${err.message}) — proposing for review.`,
+      provider: 'fallback',
+    };
   }
 }
 
@@ -125,7 +156,7 @@ async function handleTask(task) {
     action: task.action || 'GOVERN_SLOW_BRAIN',
     tags: Array.isArray(task.tags) ? task.tags.concat('slow-brain') : ['slow-brain'],
     prompt,
-    id: `gw-${task.id || Date.now()}`
+    id: `gw-${task.id || Date.now()}`,
   });
 
   hermes.log.audit(
@@ -140,7 +171,7 @@ async function handleTask(task) {
     tags: proposed.tags,
     prompt: proposed.prompt,
     detail: `Slow-Brain reasoning captured (${provider}). Promote to PROVEN index?`,
-    proposed_at: proposed.created_at
+    proposed_at: proposed.created_at,
   });
   await emitEvent('slow_brain', { state: 'stop', task_id: task.id || null });
 
@@ -156,7 +187,7 @@ async function handleTask(task) {
         model,
         provider,
         trace,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     );
     await redis.ltrim('kudbee:session_history', 0, 9999);
@@ -172,7 +203,9 @@ async function pollTasks() {
   while (true) {
     const remainingBackoff = getRedisQuotaBackoffRemaining();
     if (remainingBackoff > 0) {
-      console.warn(`[worker:hermes] Upstash quota backoff active — sleeping ${remainingBackoff}ms before next poll`);
+      console.warn(
+        `[worker:hermes] Upstash quota backoff active — sleeping ${remainingBackoff}ms before next poll`
+      );
       await new Promise((r) => setTimeout(r, remainingBackoff));
       continue;
     }
@@ -192,14 +225,14 @@ async function pollTasks() {
         hermes.log.error('failed to parse task payload — skipping');
         continue;
       }
-      await handleTask(task).catch((err) =>
-        hermes.log.error('task handling failed:', err.message)
-      );
+      await handleTask(task).catch((err) => hermes.log.error('task handling failed:', err.message));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (isUpstashMaxRequestsError(err)) {
         const backoff = applyRedisQuotaBackoff();
-        console.error(`[worker:hermes] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
+        console.error(
+          `[worker:hermes] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`
+        );
         await new Promise((r) => setTimeout(r, backoff));
         continue;
       }
@@ -271,7 +304,11 @@ async function init() {
   registerShutdown('hermes-worker', redis);
 
   // Broadcast initial state to SSE stream so INTELLIGENCE tab can render vitals
-  broadcastAgentState('hermes', { status: 'booting', queue: 'kudbee:governance:tasks', pid: process.pid });
+  broadcastAgentState('hermes', {
+    status: 'booting',
+    queue: 'kudbee:governance:tasks',
+    pid: process.pid,
+  });
   // Wait briefly for the shared client to be ready before we start popping.
   try {
     await redis.ping();
@@ -284,8 +321,12 @@ async function init() {
 
   // Periodic DLQ/pruner sweep every 6 hours (shared with ingestion server)
   const PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
-  setTimeout(() => { void runSystemPruner(); }, 120_000);
-  setInterval(() => { void runSystemPruner(); }, PRUNE_INTERVAL_MS);
+  setTimeout(() => {
+    void runSystemPruner();
+  }, 120_000);
+  setInterval(() => {
+    void runSystemPruner();
+  }, PRUNE_INTERVAL_MS);
 
   hermes.log.info('System pruner scheduled (every 6h)');
   await pollTasks();
@@ -294,7 +335,9 @@ async function init() {
 init().catch((err) => {
   const msg = err instanceof Error ? err.message : String(err);
   if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
-    console.error(`[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`);
+    console.error(
+      `[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`
+    );
     setTimeout(init, applyRedisQuotaBackoff());
     return;
   }

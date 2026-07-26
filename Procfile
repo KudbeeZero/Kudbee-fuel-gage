@@ -2,5 +2,5 @@
 release: node --max-old-space-size=256 scripts/boot-verify.mjs
 web: npx tsx --max-old-space-size=512 services/ingestion/server.js
 monitor-worker: node --max-old-space-size=256 services/monitor/agent.js
-hermes-worker: node --max-old-space-size=256 worker.js
+hermes-worker: npx tsx --max-old-space-size=256 worker.js
 sentinel: npx tsx --max-old-space-size=256 services/sentinel/src/index.ts
