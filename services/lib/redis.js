@@ -18,7 +18,7 @@
 
 import Redis from 'ioredis';
 
-function resolveRedisUrl(): string | null {
+function resolveRedisUrl() {
   const explicit = process.env.REDIS_URL;
   if (explicit && explicit.trim()) {
     return explicit.trim();
