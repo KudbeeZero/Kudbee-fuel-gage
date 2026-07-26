@@ -54,6 +54,10 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
+import {
+  synthesizeThinkToken as synthesizeInceptionThinkToken,
+  inceptionConfigured,
+} from '../lib/inceptionClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
@@ -2698,6 +2702,74 @@ app.post('/api/think/synthesize', async (req, res) => {
   }
 });
 
+// --- Phase 65: Inception Labs Mercury-2 THINK Token Synthesis --------------
+app.post('/api/think/synthesize-inception', async (req, res) => {
+  try {
+    const {
+      taskContext,
+      correctionDelta,
+      confidenceScore,
+      temperature,
+      maxTokens,
+      reasoningEffort,
+    } = req.body || {};
+
+    if (!inceptionConfigured) {
+      return res
+        .status(503)
+        .json({ error: 'Inception Labs inference unavailable — INCEPTION_API_KEY not configured' });
+    }
+
+    if (!taskContext && !correctionDelta) {
+      return res
+        .status(400)
+        .json({ error: 'At least one of taskContext or correctionDelta is required' });
+    }
+
+    const result = await synthesizeInceptionThinkToken({
+      taskContext: String(taskContext || ''),
+      correctionDelta: String(correctionDelta || ''),
+      confidenceScore: typeof confidenceScore === 'number' ? confidenceScore : undefined,
+      temperature: typeof temperature === 'number' ? temperature : 0.1,
+      maxTokens: typeof maxTokens === 'number' ? maxTokens : 512,
+      reasoningEffort: reasoningEffort || undefined,
+    });
+
+    if (!result.ok) {
+      return res.status(502).json({ error: result.error || 'Inception synthesis failed' });
+    }
+
+    if (redis) {
+      try {
+        const entry = JSON.stringify({
+          taskContext: String(taskContext || '').slice(0, 200),
+          correctionDelta: String(correctionDelta || '').slice(0, 200),
+          reasoning: result.reasoning?.slice(0, 200),
+          tokensUsed: result.tokensUsed,
+          latencyMs: result.latencyMs,
+          provider: 'inception-mercury-2',
+          timestamp: new Date().toISOString(),
+        });
+        await redis.lpush('kudbee:inception:archives', entry);
+        await redis.ltrim('kudbee:inception:archives', 0, 99);
+      } catch {
+        /* non-fatal */
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      reasoning: result.reasoning,
+      tokensUsed: result.tokensUsed,
+      latencyMs: result.latencyMs,
+      provider: 'inception-mercury-2',
+    });
+  } catch (err) {
+    console.error('[Inception] Synthesis error:', err?.message);
+    return res.status(500).json({ error: 'Inception synthesis failed' });
+  }
+});
+
 // --- Phase 40: Self-Boot Kernel Rollover — System Lifecycle ---------------
 app.post('/api/system/lifecycle', async (req, res) => {
   try {
@@ -2709,6 +2781,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
       receptor: false,
       sentinel: null,
       groq: groqConfigured || null,
+      inception: inceptionConfigured || null,
     };
     let pgLatency = -1,
       redisLatency = -1;
@@ -2758,6 +2831,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
         postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
         redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
         groq: { status: groqConfigured ? 'configured' : 'disabled' },
+        inception: { status: inceptionConfigured ? 'configured' : 'disabled' },
       },
       agent: { status: health.worker ? 'running' : 'idle' },
       timestamp: new Date().toISOString(),
@@ -2960,6 +3034,8 @@ app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
       receptorLockThreshold,
       groqModel,
       notificationsEnabled,
+      inceptionModel,
+      inceptionReasoningEffort,
     } = req.body || {};
     if (!tenantSettings[id]) tenantSettings[id] = {};
     if (typeof rateLimitWindow === 'number') tenantSettings[id].rateLimitWindow = rateLimitWindow;
@@ -2969,6 +3045,9 @@ app.patch('/api/settings/tenant/:id', apiLimiter, async (req, res) => {
     if (typeof groqModel === 'string') tenantSettings[id].groqModel = groqModel;
     if (typeof notificationsEnabled === 'boolean')
       tenantSettings[id].notificationsEnabled = notificationsEnabled;
+    if (typeof inceptionModel === 'string') tenantSettings[id].inceptionModel = inceptionModel;
+    if (typeof inceptionReasoningEffort === 'string')
+      tenantSettings[id].inceptionReasoningEffort = inceptionReasoningEffort;
     tenantSettings[id].updatedAt = new Date().toISOString();
     return res.status(200).json({ success: true, settings: tenantSettings[id] });
   } catch (err) {
@@ -3056,6 +3135,24 @@ app.post('/api/agents/fleet', async (req, res) => {
     return res.status(500).json({ error: 'Fleet update failed' });
   }
 });
+app.get('/api/inception/archives', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const archives = redis
+      ? (await redis.lrange('kudbee:inception:archives', 0, limit - 1)).map((r) => {
+          try {
+            return JSON.parse(r);
+          } catch {
+            return { raw: r };
+          }
+        })
+      : [];
+    return res.status(200).json({ archives, count: archives.length });
+  } catch {
+    return res.status(200).json({ archives: [], count: 0 });
+  }
+});
+
 app.get('/api/groq/archives', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -5613,6 +5710,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
   console.log(
     `[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`
+  );
+  console.log(
+    `[Server] Inception Labs: ${inceptionConfigured ? 'enabled (Mercury-2 reasoning)' : 'disabled (set INCEPTION_API_KEY)'}`
   );
 });
 
