@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785175237802-0b51d28e",
+  "agentId": "pipeline-guardian",
+  "decision": "run:scan all middleware",
+  "context": {
+    "action": "execute",
+    "task": "scan all middleware",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-27T18:00:37.802Z",
+  "decoded": false
+}

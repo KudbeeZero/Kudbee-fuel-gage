@@ -1,0 +1,34 @@
+---
+category: verification
+description: CI gate watcher — runs verification suite, detects regressions, decodes failures
+triggers: verify, test, build, e2e, typecheck, regression
+schedule: on-deploy
+actions: recall, decode, update, run
+uuid: ver-001
+memoryId: verification-patterns
+created: 2026-07-27
+---
+echo "[ci-watcher] Running verification..."
+
+echo ""
+echo "  Gate 1: Typecheck"
+npm run typecheck 2>&1 | tail -1
+
+echo ""
+echo "  Gate 2: Tests"
+cd services/lib && npx -y bun test test/ 2>&1 | tail -3
+cd "$REPO_ROOT"
+
+echo ""
+echo "  Gate 3: Build"
+npm run build --workspace=@kudbee/web 2>&1 | tail -1
+
+echo ""
+echo "  Gate 4: E2E"
+node scripts/verify-e2e.mjs 2>&1 | tail -3
+
+echo ""
+echo "  Gate 5: Knowledge"
+node scripts/snippet-agent.mjs health 2>&1 | tail -5
+
+node scripts/agents.mjs decide ci-watcher "verification_complete" "all 5 gates executed"

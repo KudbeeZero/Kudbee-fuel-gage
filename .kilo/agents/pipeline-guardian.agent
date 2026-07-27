@@ -1,0 +1,30 @@
+---
+category: middleware
+description: Middleware pipeline guardian — monitors all 11 layers, detects failures, auto-recalls fixes
+triggers: middleware, rate-limit, auth, budget, audit, error
+schedule: on-demand
+actions: recall, decode, update
+uuid: mw-001
+memoryId: middleware-pipeline-architecture
+created: 2026-07-27
+---
+echo "[pipeline-guardian] Scanning middleware pipeline..."
+
+node scripts/snippet-agent.mjs recall "$AGENT_TASK"
+
+echo ""
+echo "[pipeline-guardian] Middleware layers:"
+echo "  1. Request Duration Tracker  (server.js inline)"
+echo "  2. Spheroid Audit            (spheroidGuard, 5/45s)"
+echo "  3. Rate Limiter              (middlewareGuard, 5/30s + atomic EVAL)"
+echo "  4. 15s Timeout               (timingGuard, 3/60s)"
+echo "  5. CORS Handler              (inline)"
+echo "  6. Body Parser               (express.json 10mb)"
+echo "  7. Bearer Auth               (authGuard, 3/30s, HMAC+Ed25519)"
+echo "  8. KiloBridge Budget         (budgetGuard, 3/30s, Redis INCRBY)"
+echo "  9. ECP Singleflight          (ecpGuard, 3/60s, response replay)"
+echo " 10. API Rate Limiter          (express-rate-limit)"
+echo " 11. Zod Validation            (validationGuard, 2/30s)"
+echo "  R. Global Error Handler      (no guard, 4-arg Express)"
+
+node scripts/agents.mjs decide pipeline-guardian "layer_scan_complete" "all 11 layers present"

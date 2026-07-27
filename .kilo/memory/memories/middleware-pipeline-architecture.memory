@@ -5,8 +5,13 @@
       "query": "rate limit redis middleware",
       "timestamp": "2026-07-27T17:57:31.137Z",
       "score": 18
+    },
+    {
+      "query": "scan all middleware",
+      "timestamp": "2026-07-27T18:00:37.844Z",
+      "score": 11
     }
   ],
-  "lastRecall": "2026-07-27T17:57:31.137Z",
-  "recallCount": 1
+  "lastRecall": "2026-07-27T18:00:37.844Z",
+  "recallCount": 2
 }

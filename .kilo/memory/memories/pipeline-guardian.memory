@@ -1,0 +1,13 @@
+{
+  "id": "pipeline-guardian",
+  "recalls": [],
+  "decisions": [
+    {
+      "id": "dec-1785175237883-28fe1663",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-27T18:00:37.883Z"
+    }
+  ],
+  "lastAction": "2026-07-27T18:00:37.883Z",
+  "totalActions": 2
+}
