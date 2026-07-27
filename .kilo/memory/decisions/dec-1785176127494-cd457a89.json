@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785176127494-cd457a89",
+  "agentId": "knowledge-curator",
+  "decision": "run:verify knowledge graph health",
+  "context": {
+    "action": "execute",
+    "task": "verify knowledge graph health",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-27T18:15:27.494Z",
+  "decoded": false
+}

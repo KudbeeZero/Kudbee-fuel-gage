@@ -29,7 +29,22 @@
       "type": "sibling",
       "timestamp": "2026-07-27T18:11:15.496Z",
       "routed": true
+    },
+    {
+      "id": "call-1785176127759-2f7299",
+      "from": "ci-watcher",
+      "to": "pipeline-guardian",
+      "message": "Typecheck passed — ready for integration",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-27T18:15:27.759Z",
+      "routed": true
     }
   ],
-  "totalCalls": 2
+  "totalCalls": 3
 }

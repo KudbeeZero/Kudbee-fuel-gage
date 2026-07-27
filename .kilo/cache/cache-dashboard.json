@@ -1,0 +1,13 @@
+{
+  "ts": 1785176118070,
+  "val": {
+    "agents": 3,
+    "snippets": 8,
+    "decisions": 2,
+    "rateUse": "0/3",
+    "queueDepth": 0,
+    "status": "READY",
+    "timestamp": "2026-07-27T18:15:18.069Z"
+  },
+  "ttl": 5000
+}

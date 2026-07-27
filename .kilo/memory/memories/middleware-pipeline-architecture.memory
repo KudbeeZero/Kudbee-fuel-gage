@@ -10,8 +10,13 @@
       "query": "scan all middleware",
       "timestamp": "2026-07-27T18:00:37.844Z",
       "score": 11
+    },
+    {
+      "query": "postgres database schema pgvector",
+      "timestamp": "2026-07-27T18:15:18.272Z",
+      "score": 3
     }
   ],
-  "lastRecall": "2026-07-27T18:00:37.844Z",
-  "recallCount": 2
+  "lastRecall": "2026-07-27T18:15:18.272Z",
+  "recallCount": 3
 }

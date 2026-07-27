@@ -13,11 +13,14 @@ Last updated: 2026-07-27T18:07:31Z | Session: ses_05b7dc575feb07buxiDZIsOOuU
 │                   CONTROL TOWER UI                       │
 │  OBSERVABILITY tab → polls /api/system/agent-status     │
 │  Shows: agent fleet, rate limits, decisions, snippets    │
+│         middleware guards, route latencies               │
 └──────────────────────┬──────────────────────────────────┘
                        │ GET /api/system/agent-status (8s)
+                       │ GET /api/system/route-latencies (5s)
 ┌──────────────────────┴──────────────────────────────────┐
-│              EXPRESS MIDDLEWARE LAYER                     │
-│  routes/system.ts → agent-bridge.mjs state → JSON       │
+│              EXPRESS MIDDLEWARE LAYER (11 layers)         │
+│  routes/system.ts → agent-bridge.mjs → JSON              │
+│  routes/system.ts → route-latency buffer → JSON          │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────┴──────────────────────────────────┐
@@ -26,10 +29,17 @@ Last updated: 2026-07-27T18:07:31Z | Session: ses_05b7dc575feb07buxiDZIsOOuU
 │  .kilo/memory/rate-limits.json  ← concurrency control   │
 │  .kilo/memory/wait-queue.json   ← overflow queue        │
 │  scripts/agent-bridge.mjs                                │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────────────┐
-│              TERMINAL AGENT FLEET                         │
+└───┬──────────────┬──────────────┬───────────────────────┘
+    │              │              │
+┌───┴───┐  ┌──────┴──────┐  ┌───┴──────────┐
+│ CACHE │  │ SERIAL BUS  │  │ PHONE TREE   │
+│ L1/L2 │  │ 7 events    │  │ 4 nodes      │
+│ 8s-60s│  │ pub/sub     │  │ 2 calls      │
+│ TTL   │  │ replayable  │  │ tree routed  │
+└───┬───┘  └──────┬──────┘  └───┬──────────┘
+    │              │              │
+┌───┴──────────────┴──────────────┴───────────────────────┐
+│              TERMINAL AGENT FLEET (3 agents)              │
 │  .kilo/agents/{id}.agent  ← script agents               │
 │  scripts/agents.mjs       ← management CLI              │
 │  scripts/snippet-agent.mjs ← recall + graph             │
@@ -145,6 +155,46 @@ node scripts/snippet-manager.mjs list        # ├── Legacy snippet list
 node scripts/snippet-manager.mjs verify      # ├── Legacy health
 ```
 
+### Serial Bus (Event System)
+
+```bash
+node scripts/serial-bus.mjs listen           # ├── Watch live bus activity
+node scripts/serial-bus.mjs history           # ├── Recent events
+node scripts/serial-bus.mjs stats             # ├── Bus statistics + topics
+node scripts/serial-bus.mjs publish <t> <d>   # ├── Emit event
+node scripts/serial-bus.mjs replay            # ├── Replay all events
+```
+
+**Topics:** `agent:{run|complete|error|decide|recall}`, `cache:{warm|flush}`, `knowledge:{inject|relate}`, `middleware:{degrade|recover}`, `session:{bootstrap|end}`, `system:{health|error}`
+
+**Events persist** in `.kilo/memory/bus/` (max 500, FIFO eviction). Wildcard subscription via `*` topic. Agent success rate tracked per topic.
+
+### Phone Tree (Inter-Agent Calls)
+
+```bash
+node scripts/phone-tree.mjs tree              # ├── Show call tree hierarchy
+node scripts/phone-tree.mjs call <from> <to>  # ├── Route a call through tree
+node scripts/phone-tree.mjs ring [from]       # ├── Broadcast to all agents
+node scripts/phone-tree.mjs history            # ├── Call log
+node scripts/phone-tree.mjs route <agent>     # ├── Show reachable agents
+node scripts/phone-tree.mjs stats             # ├── Call statistics
+node scripts/phone-tree.mjs setup             # ├── Rebuild tree from agents/
+```
+
+**Tree:** dispatcher (root) → all agents as children. Agents call parent, children, or siblings (2-hop routed through dispatcher). Calls logged in `.kilo/memory/call-log.json`.
+
+### Terminal Cache (L1 + L2)
+
+```bash
+node scripts/terminal-cache.mjs warm          # ├── Pre-warm all caches
+node scripts/terminal-cache.mjs flush         # ├── Clear all caches
+node scripts/terminal-cache.mjs stats         # ├── L1 entries + L2 files/size
+node scripts/terminal-cache.mjs get <key>     # ├── Read cached value
+node scripts/terminal-cache.mjs prune         # ├── Remove expired entries
+```
+
+**Tiers:** L1 (in-memory, process lifetime) + L2 (`.kilo/cache/`, persists across restart). TTLs: agent-state 8s, snippets 30s, decisions 8s, journal 60s, rate-limits 5s. Auto-prune on expiry.
+
 ---
 
 ## Middleware Pipeline (11 layers)
@@ -204,10 +254,14 @@ All layers use `MiddlewareGuard` fail-open. Observability via `/api/system/route
 |:---|:---|
 | Typecheck (lib) | Pass (12/12 tasks) |
 | Tests (bun) | 46 pass, 0 fail |
-| Build (web) | 290 kB main chunk |
-| E2E (38 checks) | 38/38 passed |
+| Build (web) | Pending (`@tailwindcss/vite` dependency) |
+| E2E (38 checks) | Pending (build dependency) |
 | Snippets | 8 agents, 7 relations, 12,583B |
 | Agent fleet | 3 agents, 2 decisions, 2 actions |
+| Serial bus | 7 events, 7 topics, 100% agent success |
+| Phone tree | 4 nodes, 2 calls, 2 sibling routes |
+| Cache | L1: active, L2: `.kilo/cache/` |
+| PRs | 0 open, all merged |
 
 ---
 
@@ -222,6 +276,9 @@ scripts/snippet-agent.mjs              Knowledge agent system
 scripts/snippet-manager.mjs            Legacy snippet manager
 scripts/extract-codebase-knowledge.mjs Knowledge extraction
 scripts/inject-knowledge-tokens.mjs    Think Token Forge injection
+scripts/serial-bus.mjs                 Serial event bus (CNS)
+scripts/phone-tree.mjs                 Inter-agent call system
+scripts/terminal-cache.mjs             L1/L2 cache with TTL
 apps/web/src/pages/observability.tsx   Observability dashboard
 apps/web/src/components/observability/MiddlewareInspector.tsx
 apps/web/src/components/observability/RouteLatencyMonitor.tsx
@@ -236,10 +293,19 @@ apps/web/src/lib/focusTrap.ts          Accessibility utility
 .kilo/agents/pipeline-guardian.agent   Terminal agent
 .kilo/agents/ci-watcher.agent          Terminal agent
 .kilo/agents/knowledge-curator.agent   Terminal agent
+.kilo/cache/                           L2 cache storage
 .kilo/memory/journal.json              Session memory
 .kilo/memory/relations.json            Knowledge graph
+.kilo/memory/phone-tree.json           Agent call tree
+.kilo/memory/call-log.json             Inter-agent call history
+.kilo/memory/bus/                      Serial bus event store
+.kilo/memory/bus/index.json            Bus event index
 .kilo/memory/snippets/ (8 files)       Knowledge snippets
 .kilo/memory/memories/ (5 files)       Agent recall logs
 .kilo/memory/tokens/ (8 files)         Injectable tokens
+.kilo/memory/decisions/ (2 files)      Decision audit trail
+.kilo/memory/rate-limits.json          Concurrency state
+.kilo/memory/wait-queue.json           Agent wait queue
+.kilo/memory/agent-state.json          Live agent state
 TERMINAL.md                            This file — living documentation
 ```

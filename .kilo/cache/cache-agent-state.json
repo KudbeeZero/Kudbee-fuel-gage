@@ -1,0 +1,134 @@
+{
+  "ts": 1785176118070,
+  "val": {
+    "timestamp": "2026-07-27T18:15:18.069Z",
+    "agents": [
+      {
+        "id": "ci-watcher",
+        "category": "verification",
+        "schedule": "on-deploy",
+        "description": "CI gate watcher — runs verification suite, detects regressions, decodes failures",
+        "status": "idle",
+        "memory": {
+          "totalActions": 0,
+          "recallCount": 0
+        }
+      },
+      {
+        "id": "knowledge-curator",
+        "category": "memory",
+        "schedule": "daily",
+        "description": "Knowledge curator — maintains snippet store, cross-references, prunes stale entries",
+        "status": "active",
+        "memory": {
+          "totalActions": 0,
+          "recallCount": 0
+        }
+      },
+      {
+        "id": "pipeline-guardian",
+        "category": "middleware",
+        "schedule": "on-demand",
+        "description": "Middleware pipeline guardian — monitors all 11 layers, detects failures, auto-recalls fixes",
+        "status": "active",
+        "memory": {
+          "totalActions": 2,
+          "lastAction": "2026-07-27T18:00:37.883Z",
+          "recallCount": 0
+        }
+      }
+    ],
+    "snippets": {
+      "total": 8,
+      "totalSize": 12583,
+      "topRecalled": [
+        {
+          "id": "agent-ecosystem",
+          "size": 1498,
+          "recallCount": 2
+        },
+        {
+          "id": "frontend-patterns",
+          "size": 1483,
+          "recallCount": 2
+        },
+        {
+          "id": "middleware-patterns",
+          "size": 1458,
+          "recallCount": 2
+        },
+        {
+          "id": "middleware-pipeline-architecture",
+          "size": 2274,
+          "recallCount": 2
+        },
+        {
+          "id": "database-schema",
+          "size": 1754,
+          "recallCount": 1
+        }
+      ]
+    },
+    "decisions": {
+      "total": 2,
+      "recent": [
+        {
+          "id": "dec-1785175237883-28fe1663",
+          "agentId": "pipeline-guardian",
+          "decision": "layer_scan_complete",
+          "context": {
+            "context": "all 11 layers present",
+            "source": "terminal"
+          },
+          "timestamp": "2026-07-27T18:00:37.883Z",
+          "decoded": false
+        },
+        {
+          "id": "dec-1785175237802-0b51d28e",
+          "agentId": "pipeline-guardian",
+          "decision": "run:scan all middleware",
+          "context": {
+            "action": "execute",
+            "task": "scan all middleware",
+            "triggeredBy": "manual"
+          },
+          "timestamp": "2026-07-27T18:00:37.802Z",
+          "decoded": false
+        }
+      ]
+    },
+    "knowledgeGraph": {
+      "nodes": 8,
+      "edges": 7
+    },
+    "rateLimits": {
+      "global": {
+        "maxConcurrent": 3,
+        "currentRunning": 0,
+        "waitQueue": []
+      }
+    },
+    "waitQueue": {
+      "queued": [],
+      "processed": 0
+    },
+    "journal": {
+      "sessions": 3,
+      "lastEntry": {
+        "session": "ses-1785176117997-a756e92e",
+        "date": "2026-07-27T18:15:18.000Z",
+        "type": "bootstrap",
+        "agentsActive": 3,
+        "snippetsAvailable": 8,
+        "decisionsTotal": 2
+      }
+    },
+    "cache": {
+      "l1Entries": 0,
+      "l2Files": 0,
+      "l2Bytes": 0,
+      "keys": []
+    }
+  },
+  "ttl": 8000
+}

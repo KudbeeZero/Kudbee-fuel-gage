@@ -130,6 +130,26 @@ describe('ecpMiddleware', () => {
     ecpSingleflight = mod.ecpSingleflight;
   });
 
+  function mockRes() {
+    const res: any = {};
+    res.headers = {};
+    res.statusCode = 200;
+    const setHeader = mock(function (this: any, name: string, value: string) { this.headers[name] = value; return this; });
+    setHeader.bind = () => setHeader;
+    const status = mock(function (this: any, code: number) { this.statusCode = code; return this; });
+    status.bind = () => status;
+    const json = mock(function (this: any, data: unknown) { this.body = data; return this; });
+    json.bind = () => json;
+    const end = mock(function (this: any, ...args: unknown[]) { this.ended = true; return this as any; });
+    end.bind = () => end;
+    res.setHeader = setHeader;
+    res.status = status;
+    res.json = json;
+    res.end = end;
+    res.on = mock(() => res);
+    return res;
+  }
+
   it('should pass through for non-GET requests', async () => {
     const middleware = ecpSingleflight();
     const req: any = {
@@ -138,12 +158,7 @@ describe('ecpMiddleware', () => {
       body: {},
       headers: {},
     };
-    const res: any = {
-      headers: {},
-      setHeader: mock(() => {}),
-      end: mock(() => {}),
-      on: mock(() => {}),
-    };
+    const res = mockRes();
     let called = false;
 
     await middleware(req, res, () => { called = true; });
@@ -159,12 +174,7 @@ describe('ecpMiddleware', () => {
       body: {},
       headers: {},
     };
-    const res: any = {
-      headers: {},
-      setHeader: mock(() => {}),
-      end: mock(() => {}),
-      on: mock(() => {}),
-    };
+    const res = mockRes();
     let called = false;
 
     await middleware(req, res, () => { called = true; });
