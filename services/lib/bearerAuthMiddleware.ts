@@ -12,10 +12,11 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { deserializePass, verifyAgentPass, verifySignature, AGENT_PASS_MAX_AGE_MS } from '@kudbee/utils';
 import { MiddlewareGuard } from './middlewareGuard.ts';
 
-const STREAM_SECRET = process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex');
+const STREAM_SECRET = process.env.STREAM_SECRET || 'kudbee-default-fallback-secret';
 
 interface AgentIdentity {
   agentId: string;
@@ -33,7 +34,6 @@ function loadAgentRegistry(): Map<string, string> {
   try {
     const registryPath = process.env.AGENT_REGISTRY_PATH || '';
     if (!registryPath) return new Map();
-    const fs = require('node:fs');
     const raw = fs.readFileSync(registryPath, 'utf8');
     const parsed = JSON.parse(raw);
     const map = new Map<string, string>();

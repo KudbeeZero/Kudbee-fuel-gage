@@ -12,9 +12,6 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { logBreadcrumb } from './breadcrumbs.ts';
-import { MiddlewareGuard } from './middlewareGuard.ts';
-
-export const errorGuard = new MiddlewareGuard('global-error-handler', 10, 60_000);
 
 interface StructuredError {
   error: string;
@@ -27,15 +24,6 @@ interface StructuredError {
 
 function generateTraceId(): string {
   return `err-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function isOperationalError(err: unknown): boolean {
-  if (err instanceof SyntaxError && 'body' in err) return true;
-  if (err instanceof TypeError) return true;
-  if (err && typeof err === 'object' && 'type' in err) {
-    return (err as any).type === 'entity.parse.failed' || (err as any).type === 'entity.too.large';
-  }
-  return true;
 }
 
 export function globalErrorHandler() {
@@ -84,8 +72,4 @@ export function globalErrorHandler() {
       });
     }
   };
-}
-
-export function getGlobalErrorStats() {
-  return errorGuard.stats();
 }

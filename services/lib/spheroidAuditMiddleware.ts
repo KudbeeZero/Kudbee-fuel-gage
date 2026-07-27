@@ -22,6 +22,7 @@ export const spheroidGuard = new MiddlewareGuard('spheroid-audit', 5, 45_000);
 const STREAM_KEY = 'kudbee:spheroid:audit';
 const MAX_STREAM_LEN = 10000;
 const PAYLOAD_TRUNCATE_BYTES = 4096;
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 interface SpheroidAuditEntry {
   agentId: string;
@@ -64,8 +65,7 @@ async function writeAuditEntry(redis: any, entry: SpheroidAuditEntry): Promise<v
 
 export function spheroidAudit() {
   return spheroidGuard.wrap(async (req: Request, res: Response, next: NextFunction) => {
-    const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-    if (!mutatingMethods.has(req.method)) return next();
+    if (!MUTATING_METHODS.has(req.method)) return next();
 
     const start = Date.now();
 

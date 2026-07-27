@@ -69,7 +69,7 @@ import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts'
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
 import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
-import { globalErrorHandler, errorGuard } from '../lib/globalErrorMiddleware.ts';
+import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -115,7 +115,6 @@ registerGuard(validationGuard);
 registerGuard(ecpGuard);
 registerGuard(budgetGuard);
 registerGuard(spheroidGuard);
-registerGuard(errorGuard);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
