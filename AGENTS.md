@@ -12,6 +12,16 @@ node scripts/session-bootstrap.mjs
 
 This wakes up the terminal agent fleet, loads the memory journal, recalls top snippets, checks rate limits, and surfaces recent decisions. The output is injected into the agent's working context so it knows exactly where to start.
 
+### Integration Pipelines (5 implemented)
+
+| # | Pipeline | File | Purpose |
+|:--|:---|:---|:---|
+| 1 | Session Checkpointing | `scripts/session-checkpoint.mjs` | Auto-commits `.kilo/memory/` state to git on session end (object permanence) |
+| 2 | Agent Auto-Registration | `scripts/session-bootstrap.mjs` | Glob-discovers `.kilo/agents/*.agent` files with fault isolation (plug-and-play swarm) |
+| 3 | BUS→CACHE Bridge | `scripts/bus-to-cache.mjs` | Event-driven cache invalidation — bus events invalidate L1/L2 cache (self-regulating nervous system) |
+| 4 | Think Forge Live Feed | `scripts/think-forge-bridge.mjs` | Auto-streams snippet recalls into `think_tokens` pgvector table (continuous context injection) |
+| 5 | Skill Auto-Import | `scripts/skill-auto-import.mjs` | Terminal agents export learnings as `.kilo/skill/` entries consumed by Kilo CLI agents (knowledge flywheel) |
+
 ### Terminal Agent System Architecture
 
 The system has **three layers** that work together:
