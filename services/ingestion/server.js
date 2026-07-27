@@ -5418,6 +5418,21 @@ app.get('/api/think/ranks', async (_req, res) => {
   return res.status(200).json({ ranks: RANKS });
 });
 
+// --- Phase 47: CI Pipeline Health endpoint ---------------------------------
+app.get('/api/ci/health', async (req, res) => {
+  try {
+    const { getCIHealth, recordCIThink } = await import('../../scripts/ci-monitor.mjs');
+    const health = getCIHealth();
+    if (req.query.record !== 'false') {
+      try { recordCIThink(health); } catch {}
+    }
+    return res.status(200).json(health);
+  } catch (err) {
+    console.error('[CIHealth] Error:', err?.message);
+    return res.status(503).json({ error: 'CI health unavailable', detail: err?.message });
+  }
+});
+
 const distPath = resolveDistPath();
 
 if (fs.existsSync(distPath)) {
