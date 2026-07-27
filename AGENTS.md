@@ -2,6 +2,61 @@
 
 > **Head file** — first file read on session start. See `.kilo/agent/AGENTS.kilo.md` for the canonical global agent guide (architecture, contracts, patterns, anti-patterns). This file holds session-level instructions only.
 
+## Session Bootstrap — Terminal Agent System
+
+On every session start, run the bootstrap to load full system context:
+
+```bash
+node scripts/session-bootstrap.mjs
+```
+
+This wakes up the terminal agent fleet, loads the memory journal, recalls top snippets, checks rate limits, and surfaces recent decisions. The output is injected into the agent's working context so it knows exactly where to start.
+
+### Terminal Agent System Architecture
+
+The system has **three layers** that work together:
+
+| Layer | Location | Purpose |
+|:---|:---|---|
+| **Terminal Agents** | `.kilo/agents/*.agent` | Script-based automation agents with memories, schedules, and decision logs |
+| **CLI Agents** | `.kilo/agent/*.md` | Kilo subagent personalities (LLM-driven, tool-using) — e.g. `middleware.md` |
+| **Knowledge Store** | `.kilo/memory/snippets/` | Semantic knowledge snippets with recall tracking, relationships, and identity |
+
+**Key distinction:** Terminal agents execute scripts and produce decisions. CLI agents interpret natural language and use Kilo tools (read, edit, bash, etc.). Both share the same knowledge store via the snippet-agent recall system.
+
+### Management Commands
+
+```bash
+node scripts/agents.mjs status              # Agent fleet dashboard
+node scripts/agents.mjs run <id> <task>     # Execute terminal agent
+node scripts/agents.mjs recall <id> <query> # Agent-specific recall
+node scripts/agents.mjs decode <id>         # Audit decisions
+node scripts/snippet-agent.mjs recall <q>   # Cross-agent knowledge search
+node scripts/snippet-agent.mjs graph <id>   # Knowledge graph walk
+node scripts/snippet-agent.mjs health       # Knowledge store health
+```
+
+### Rate Limit Propagation
+
+Terminal agents respect a global concurrency cap (default: 3 concurrent). The agent-bridge tracks running agents and queues overflow. Rate limits propagate from the Express middleware layers through to terminal agent execution.
+
+```bash
+node scripts/agent-bridge.mjs rate          # View current rate limit state
+node scripts/agent-bridge.mjs acquire <id>  # Acquire execution slot
+node scripts/agent-bridge.mjs release <id>  # Release slot
+```
+
+### UI Integration
+
+The **OBSERVABILITY** tab (`/tower/observability`) shows live agent fleet status:
+- Agent cards with status, schedule, actions, recalls
+- Rate limit usage (concurrent/running)
+- Wait queue depth
+- Recent decisions feed
+- Top recalled knowledge snippets
+
+Backend endpoint: `GET /api/system/agent-status` (polls `agent-bridge.mjs` every 8s)
+
 ## Worker Polling Strategy
 
 The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP BRPOP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **5-second blocking timeout** before the worker loops again. When a task is consumed it is processed serially in a single background loop.

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785175818373-259265",
+  "topic": "cache:warm",
+  "source": "cli",
+  "data": {
+    "entries": 2
+  },
+  "timestamp": "2026-07-27T18:10:18.373Z",
+  "sequence": 6
+}

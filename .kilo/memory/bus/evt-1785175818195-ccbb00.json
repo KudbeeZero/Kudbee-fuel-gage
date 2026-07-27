@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785175818195-ccbb00",
+  "topic": "agent:run",
+  "source": "cli",
+  "data": {
+    "agent": "pipeline-guardian",
+    "task": "middleware scan"
+  },
+  "timestamp": "2026-07-27T18:10:18.195Z",
+  "sequence": 2
+}

@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785175818235-69c502",
+  "topic": "agent:complete",
+  "source": "cli",
+  "data": {
+    "agent": "pipeline-guardian",
+    "duration": "234ms"
+  },
+  "timestamp": "2026-07-27T18:10:18.235Z",
+  "sequence": 3
+}

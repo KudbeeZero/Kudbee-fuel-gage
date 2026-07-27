@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785175818279-84296d",
+  "topic": "agent:decide",
+  "source": "cli",
+  "data": {
+    "agent": "pipeline-guardian",
+    "decision": "layer_scan_complete"
+  },
+  "timestamp": "2026-07-27T18:10:18.279Z",
+  "sequence": 4
+}

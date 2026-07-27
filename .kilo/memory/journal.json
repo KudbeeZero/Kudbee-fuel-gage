@@ -27,10 +27,18 @@
         "e2e": "38/38"
       },
       "commitsAhead": 3
+    },
+    {
+      "session": "ses-1785175580974-2b6f999f",
+      "date": "2026-07-27T18:06:20.976Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 2
     }
   ],
   "trends": {
-    "sessions": 1,
+    "sessions": 2,
     "ciPassRate": "100%"
   },
   "health": {

@@ -1,11 +1,14 @@
 import { Gauge, RefreshCw, AlertCircle } from 'lucide-react';
 import { useMiddlewareStatus } from '../hooks/useMiddlewareStatus';
+import { useAgentStatus } from '../hooks/useAgentStatus';
 import { MiddlewareInspector } from '../components/observability/MiddlewareInspector';
 import { RouteLatencyMonitor } from '../components/observability/RouteLatencyMonitor';
+import { AgentFleetMonitor } from '../components/observability/AgentFleetMonitor';
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 
 export function ObservabilityPage() {
   const { guards, routes, timestamp, loading, error, refresh } = useMiddlewareStatus();
+  const { data: agentData, loading: agentLoading, error: agentError, refresh: agentRefresh } = useAgentStatus();
 
   return (
     <PanelErrorBoundary panel="Observability">
@@ -51,6 +54,12 @@ export function ObservabilityPage() {
           <div className="xl:col-span-3">
             <PanelErrorBoundary panel="Middleware Inspector">
               <MiddlewareInspector guards={guards} />
+            </PanelErrorBoundary>
+          </div>
+
+          <div className="xl:col-span-3">
+            <PanelErrorBoundary panel="Agent Fleet">
+              <AgentFleetMonitor data={agentData} loading={agentLoading} error={agentError ?? null} />
             </PanelErrorBoundary>
           </div>
 

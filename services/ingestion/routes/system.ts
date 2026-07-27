@@ -127,5 +127,23 @@ export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listPr
     }
   });
 
+  router.get('/agent-status', async (_req, res) => {
+    try {
+      const { execSync } = await import('node:child_process');
+      const result = execSync('node scripts/agent-bridge.mjs state', {
+        cwd: process.cwd(),
+        timeout: 5000,
+        encoding: 'utf8',
+      });
+      const state = JSON.parse(result);
+      res.json(state);
+    } catch (err) {
+      res.status(500).json({
+        error: 'agent_status_failed',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
   return router;
 }
