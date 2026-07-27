@@ -1,4 +1,4 @@
-# Kudbee Agentic Rack System — AGENTS.md
+# Kudbee AGENTS.md
 
 ## ⚠️ CRITICAL: Run this FIRST — before reading any other files
 
@@ -147,12 +147,60 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 | `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis |
 | `services/agents/worker.ts` | Governance worker with exponential backoff |
 
-### Verification Status
+## Key Commands
 
-- `bun run typecheck` — passes in `packages/opencode`
-- `bun test` — 46/46 passes (services/lib)
-- `npm run build` (apps/web) — passes, main chunk 290 kB
-- `node scripts/verify-e2e.mjs` — 38/38 checks passed
+```bash
+npm ci                              # install at repo root (never inside workspace packages)
+npm run typecheck                   # Turbo-routed TS strict check
+npm run lint                        # Turbo-routed linting
+node scripts/verify-e2e.mjs         # 38-check E2E suite (needs REDIS_URL + DATABASE_URL)
+npm run build                       # Turbo build (dependsOn typecheck + lint)
+cd apps/web && npm run build        # Vite prod build for Control Tower
+cd apps/mobile && npx tsc --noEmit  # Mobile type-check
+```
+
+`packages/opencode` uses **bun** (not npm):
+```bash
+cd packages/opencode && bun run typecheck && bun test
+```
+
+## Terminal Entrypoints
+
+- **CLI orchestrator:** `npx tsx services/agent/cli.ts "your prompt"` — Kudbee Group 7 Multi-Agent Orchestrator.
+- **Web terminal:** served at `/terminal.html` by the Vite dev server — "KUDBEE Terminal — Ollama Chat" SPA.
+- **AgentTerminal:** collapsible in-studio dock (`apps/web/src/components/studio/AgentTerminal.tsx`) with `kudbee@studio:~$` prompt.
+
+## Architecture (facts not obvious from filenames)
+
+- **Canonical server entrypoint:** `services/ingestion/server.js` — **do not create** `server.ts` or duplicate entrypoints.
+- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*`. All `npm install` must run at root.
+- **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`.
+- **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
+- **Redis:** `REDIS_URL` (Fast Brain: telemetry) and `REDIS_WORKER_URL` (Slow Brain: workers, falls back to `REDIS_URL`).
+
+## Critical Gotchas
+
+- **groqClient.ts import extension:** Must import `./budgetGate.ts` (`.ts` extension). The `.js` counterpart does not exist.
+- **agent registry is loaded at boot:** Modify `config/agents.json` before spawning the server, not after.
+- **.env loading in scripts:** Standalone `.mjs` scripts must call `try { process.loadEnvFile('.env'); } catch {}` at the top.
+- **`think_tokens` ≠ `vector_memory`:** Minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
+- **NODE_ENV=test** relaxes rate limits but NOT auth. Authenticated endpoints still require `X-Agent-Pass`.
+- **.env* is gitignored** with exceptions: `.env.example`, `config/template.env`, `config/.env.example`.
+
+## Code Style
+
+- **Prettier:** single quotes, trailing commas (es5), printWidth 100, LF line endings.
+- **Imports:** `server.js` and lib files use `node:` prefix for Node builtins.
+- **`// kilocode_change` markers:** Required when modifying `apps/web/src/hooks/useToolInterceptor.ts` or `services/agent/cli.ts`.
+
+## Verifiers
+
+| Script | Port | Purpose |
+|:---|---:|:---|
+| `scripts/verify-e2e.mjs` | 9876 | Full 38-check suite (must pass all) |
+| `scripts/verify-think-loop.mjs` | 9878 | Think token mint + vector retrieval |
+| `scripts/verify-governance-loop.mjs` | 9877 | Governance promotion + recycling |
+| `scripts/verify-agents.mjs` | — | Agent identity + pass verification |
 
 ## New Session Checklist (every cloud agent MUST verify)
 
