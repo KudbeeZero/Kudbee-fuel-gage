@@ -41,7 +41,13 @@
       "type": "human:handoff",
       "agentId": "system",
       "timestamp": "2026-07-27T19:47:06.937Z"
+    },
+    {
+      "id": "a366025f-28a5-48a9-b6b7-fbd6af862c6a",
+      "type": "system:sync",
+      "agentId": "system",
+      "timestamp": "2026-07-27T20:03:15.070Z"
     }
   ],
-  "totalEntries": 7
+  "totalEntries": 8
 }
