@@ -43,27 +43,85 @@ try { if (existsSync(JOURNAL_PATH)) journal = JSON.parse(readFileSync(JOURNAL_PA
 
 const lastEntry = journal.journal.length > 0 ? journal.journal[journal.journal.length - 1] : null;
 
-// ─── Step 2: Agent health check ─────────────────────────────────────────────
+// ─── Step 2: Auto-discover agents (Pipeline 2 — Plug-and-Play Swarm) ────
 
-const agentFiles = existsSync(AGENTS_DIR) ? readdirSync(AGENTS_DIR).filter(f => f.endsWith('.agent')).map(f => {
-  const raw = readFileSync(join(AGENTS_DIR, f), 'utf8');
-  const meta = {};
-  if (raw.startsWith('---')) {
-    const end = raw.indexOf('---', 3);
-    if (end !== -1) {
-      for (const line of raw.slice(3, end).trim().split('\n')) {
-        const ci = line.indexOf(':');
-        if (ci !== -1) meta[line.slice(0, ci).trim()] = line.slice(ci + 1).trim();
+function discoverAgents() {
+  if (!existsSync(AGENTS_DIR)) return { agents: [], newAgents: [], warnings: [] };
+
+  const warnings = [];
+  const discovered = [];
+  const newAgents = [];
+
+  for (const f of readdirSync(AGENTS_DIR).filter(x => x.endsWith('.agent'))) {
+    try {
+      const raw = readFileSync(join(AGENTS_DIR, f), 'utf8');
+      const meta = {};
+      if (raw.startsWith('---')) {
+        const end = raw.indexOf('---', 3);
+        if (end !== -1) {
+          for (const line of raw.slice(3, end).trim().split('\n')) {
+            const ci = line.indexOf(':');
+            if (ci !== -1) meta[line.slice(0, ci).trim()] = line.slice(ci + 1).trim();
+          }
+        }
       }
+      const id = f.replace('.agent', '');
+
+      // Validate required fields
+      if (!meta.category) {
+        warnings.push(`[warn] Agent "${id}" missing category — using "general"`);
+        meta.category = 'general';
+      }
+
+      const memPath = join(MEMORIES_DIR, `${id}.memory`);
+      let mem = { totalActions: 0, lastAction: null, recalls: [] };
+      try { if (existsSync(memPath)) mem = JSON.parse(readFileSync(memPath, 'utf8')); } catch {}
+
+      const isNew = !existsSync(memPath);
+      if (isNew) {
+        newAgents.push(id);
+        writeFileSync(memPath, JSON.stringify({ id, recalls: [], decisions: [], totalActions: 0, lastAction: null, discoveredAt: new Date().toISOString() }, null, 2), 'utf8');
+      }
+
+      discovered.push({
+        id, category: meta.category, schedule: meta.schedule || 'manual',
+        description: meta.description || id, triggers: meta.triggers || '',
+        actions: meta.actions || '', memory: mem, isNew,
+      });
+    } catch (err) {
+      warnings.push(`[warn] Agent "${f}" parse failed: ${err.message} — skipping`);
     }
   }
-  const id = f.replace('.agent', '');
-  const memPath = join(MEMORIES_DIR, `${id}.memory`);
-  let mem = { totalActions: 0, lastAction: null };
-  try { if (existsSync(memPath)) mem = JSON.parse(readFileSync(memPath, 'utf8')); } catch {}
-  return { id, category: meta.category || 'unknown', schedule: meta.schedule || 'manual',
-    actions: meta.actions || '', memory: mem };
-}) : [];
+
+  return { agents: discovered, newAgents, warnings };
+}
+
+const { agents: agentFiles, newAgents, warnings: agentWarnings } = discoverAgents();
+
+// ─── Step 2b: Report discovery ────────────────────────────────────────────
+
+if (newAgents.length > 0) {
+  console.log(`[discovery] New agents found: ${newAgents.join(', ')}`);
+  for (const id of newAgents) {
+    try {
+      const busPath = join(MEMORY_DIR, 'bus');
+      mkdirSync(busPath, { recursive: true });
+      const event = {
+        id: `evt-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+        topic: 'agent:registered',
+        source: 'session-bootstrap',
+        data: { agentId: id, discovered: true },
+        timestamp: new Date().toISOString(),
+        sequence: Date.now(),
+      };
+      writeFileSync(join(busPath, `${event.id}.json`), JSON.stringify(event, null, 2), 'utf8');
+    } catch {}
+  }
+}
+
+for (const w of agentWarnings) {
+  console.log(w);
+}
 
 // ─── Step 3: Recall top snippets ───────────────────────────────────────────
 
