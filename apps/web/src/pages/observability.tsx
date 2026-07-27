@@ -1,14 +1,17 @@
 import { Gauge, RefreshCw, AlertCircle } from 'lucide-react';
 import { useMiddlewareStatus } from '../hooks/useMiddlewareStatus';
 import { useAgentStatus } from '../hooks/useAgentStatus';
+import { useTerminalMirror } from '../hooks/useTerminalMirror';
 import { MiddlewareInspector } from '../components/observability/MiddlewareInspector';
 import { RouteLatencyMonitor } from '../components/observability/RouteLatencyMonitor';
 import { AgentFleetMonitor } from '../components/observability/AgentFleetMonitor';
+import { TerminalMirror } from '../components/observability/TerminalMirror';
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 
 export function ObservabilityPage() {
   const { guards, routes, timestamp, loading, error, refresh } = useMiddlewareStatus();
   const { data: agentData, loading: agentLoading, error: agentError, refresh: agentRefresh } = useAgentStatus();
+  const { data: terminalData, loading: terminalLoading, error: terminalError } = useTerminalMirror();
 
   return (
     <PanelErrorBoundary panel="Observability">
@@ -66,6 +69,12 @@ export function ObservabilityPage() {
           <div className="xl:col-span-3">
             <PanelErrorBoundary panel="Route Latency Monitor">
               <RouteLatencyMonitor routes={routes} />
+            </PanelErrorBoundary>
+          </div>
+
+          <div className="xl:col-span-3">
+            <PanelErrorBoundary panel="Terminal Mirror">
+              <TerminalMirror data={terminalData} loading={terminalLoading} error={terminalError ?? null} />
             </PanelErrorBoundary>
           </div>
         </div>
