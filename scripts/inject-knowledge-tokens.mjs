@@ -22,7 +22,7 @@ const REPO_ROOT = join(__dirname, '..');
 const TOKENS_DIR = join(REPO_ROOT, '.kilo', 'memory', 'tokens');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-const files = readdirSync(TOKENS_DIR).filter(f => f.endsWith('.token'));
+const files = existsSync(TOKENS_DIR) ? readdirSync(TOKENS_DIR).filter(f => f.endsWith('.token')) : [];
 console.log(`Found ${files.length} knowledge tokens\n`);
 
 if (DRY_RUN) {

@@ -22,7 +22,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -123,10 +123,13 @@ function commitCheckpoint() {
   }
 
   try {
-    execSync(`git commit --allow-empty -m "${message.replace(/"/g, '\\"')}"`, {
+    const tempFile = join(REPO_ROOT, '.kilo', 'memory', '.commit-message.tmp');
+    writeFileSync(tempFile, message, 'utf8');
+    execSync(`git commit --allow-empty -F "${tempFile}"`, {
       cwd: REPO_ROOT, encoding: 'utf8', timeout: 10000,
       env: { ...process.env, GIT_AUTHOR_NAME: 'Kudbee Agent', GIT_AUTHOR_EMAIL: 'agent@kudbee.internal', GIT_COMMITTER_NAME: 'Kudbee Agent', GIT_COMMITTER_EMAIL: 'agent@kudbee.internal' },
     });
+    try { unlinkSync(tempFile); } catch {}
     console.log(`[checkpoint] ✓ Committed: ${summary.agents} agents, ${summary.decisions} decisions, ${summary.busEvents} bus events, ${summary.calls} calls`);
     return true;
   } catch (err) {

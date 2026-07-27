@@ -110,9 +110,7 @@ export function kiloBridgeBudget() {
       const newUsage = used + tokenCount;
       const pipeline = redis.pipeline();
       pipeline.incrby(dailyKey, tokenCount);
-      if (used === 0) {
-        pipeline.expire(dailyKey, 86400);
-      }
+      pipeline.expire(dailyKey, 86400);
       const results = await pipeline.exec();
       const actualNewUsage = results?.[0]?.[1] ? parseInt(String(results[0][1]), 10) : newUsage;
 

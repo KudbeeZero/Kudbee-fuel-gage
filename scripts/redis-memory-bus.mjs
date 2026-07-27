@@ -148,11 +148,11 @@ export async function recordAction(action, data = {}) {
     id: `act-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
     agentId,
     action,
-    data,
+    data: typeof data === 'object' ? JSON.stringify(data) : String(data),
     timestamp: new Date().toISOString(),
   };
   await redisPipeline([
-    ['XADD', 'kudbee:agent:memory', '*', ...Object.entries(event).flat()],
+    ['XADD', 'kudbee:agent:memory', '*', 'id', event.id, 'agentId', event.agentId, 'action', event.action, 'data', event.data, 'timestamp', event.timestamp],
     ['XTRIMM', 'kudbee:agent:memory', 'MAXLEN', '~', '1000'],
   ]);
   await redisCommand(['PUBLISH', 'kudbee:agent:bus', JSON.stringify(event)]);
@@ -167,7 +167,7 @@ export async function recordRecall(query, snippetId, score) {
     timestamp: new Date().toISOString(),
   };
   await redisPipeline([
-    ['XADD', 'kudbee:agent:knowledge', '*', ...Object.entries(event).flat()],
+    ['XADD', 'kudbee:agent:knowledge', '*', 'id', event.id, 'agentId', event.agentId, 'query', event.query, 'snippetId', event.snippetId, 'score', String(event.score ?? ''), 'timestamp', event.timestamp],
     ['XTRIMM', 'kudbee:agent:knowledge', 'MAXLEN', '~', '1000'],
   ]);
   await redisCommand(['PUBLISH', 'kudbee:agent:bus', JSON.stringify({ ...event, action: 'recall' })]);
