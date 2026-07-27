@@ -1,0 +1,12 @@
+[
+  {
+    "id": "vm_8ac611c3-8bc0-40a8-abb5-77567fee468a",
+    "callerId": "agent1-e2e-test",
+    "timestamp": "2026-07-27T19:23:52.860Z",
+    "urgency": "CRITICAL",
+    "transcript": "E2E voicemail test message — priority interrupt",
+    "requiredAction": "RESPOND",
+    "read": true,
+    "deliveredAt": "2026-07-27T19:23:52.864Z"
+  }
+]

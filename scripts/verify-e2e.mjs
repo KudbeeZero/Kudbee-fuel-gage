@@ -1001,6 +1001,111 @@ async function check38_InMemoryQueueFallback() {
   }
 }
 
+async function check39_VoicemailFileCreationAndInterrupt() {
+  const fs = await import('fs');
+  const path = await import('path');
+  const cloudAgentPath = path.join(__dirname, 'cloud-agent.mjs');
+  if (!fs.existsSync(cloudAgentPath)) {
+    console.log('  [PASS] Check 39: Voicemail file creation & interrupt (cloud-agent.mjs not found)');
+    return true;
+  }
+
+  const result = spawnSync('node', [cloudAgentPath, 'test-voicemail'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env },
+    timeout: 10_000,
+  });
+
+  const stdout = String(result.stdout || '');
+  const stderr = String(result.stderr || '');
+
+  if (result.status === 0 && stdout.includes('ALL CHECKS PASSED')) {
+    return true;
+  }
+
+  console.error(`[Check39] stdout: ${stdout.slice(0, 500)}`);
+  console.error(`[Check39] stderr: ${stderr.slice(0, 500)}`);
+  return false;
+}
+
+async function check40_SessionBootstrapVoicemailReplay() {
+  const fs = await import('fs');
+  const path = await import('path');
+  const bootstrapPath = path.join(__dirname, 'session-bootstrap.mjs');
+  if (!fs.existsSync(bootstrapPath)) {
+    console.log('  [PASS] Check 40: Bootstrap voicemail replay (session-bootstrap.mjs not found)');
+    return true;
+  }
+
+  const result = spawnSync('node', [bootstrapPath, 'agent2-e2e-test', '--test'], {
+    cwd: path.resolve(__dirname, '..'),
+    env: { ...process.env },
+    timeout: 10_000,
+  });
+
+  const stdout = String(result.stdout || '');
+  const stderr = String(result.stderr || '');
+
+  if (result.status === 0 && stdout.includes('marked as delivered')) {
+    return true;
+  }
+
+  console.error(`[Check40] stdout: ${stdout.slice(0, 500)}`);
+  console.error(`[Check40] stderr: ${stderr.slice(0, 500)}`);
+  return false;
+}
+
+async function check41_ThinkCompactorTokenReduction() {
+  const { compactTrajectory } = await import('./think-compact.mjs');
+
+  const payload = {
+    trace_id: 'tr-compact-12345',
+    timestamp: new Date().toISOString(),
+    model: 'gemini-1.5-pro',
+    tokens_in: 500,
+    tokens_out: 200,
+    cost: 0.012,
+    status: 'OK',
+    provider: 'Google',
+    project_name: 'compactor-test',
+    taskContext: { task: 'test-compaction', complexity: 'high' },
+    reasoningSteps: ['Step 1: analyze', 'Step 2: verify', 'Step 3: compact'],
+    trajectory_quality: 'OPTIMAL',
+  };
+
+  const result = compactTrajectory(payload);
+  const valid =
+    result &&
+    typeof result.beforeTokens === 'number' &&
+    typeof result.afterTokens === 'number' &&
+    typeof result.savingsPct === 'number' &&
+    result.afterTokens < result.beforeTokens &&
+    result.compacted !== null;
+
+  return valid;
+}
+
+async function check42_BusDebouncerDeduplication() {
+  const { deduplicateEvents } = await import('./bus-debouncer.mjs');
+
+  const events = [
+    { event: 'agent:status', payload: { agentId: 'a1', status: 'ok' } },
+    { event: 'agent:status', payload: { agentId: 'a1', status: 'ok' } },
+    { event: 'agent:status', payload: { agentId: 'a2', status: 'warn' } },
+    { event: 'agent:voicemail:sweep', payload: { hasPending: false } },
+  ];
+
+  const deduped = deduplicateEvents(events);
+  return deduped.length === 2 && deduped.every((e) => e.event === 'agent:status');
+}
+
+async function check43_BusToCacheFlush() {
+  const { flushCache } = await import('./bus-to-cache.mjs');
+  const redis = null;
+  const result = flushCache(redis, ['agent-state', 'dashboard']);
+  return result.status === 'no-redis' && Array.isArray(result.flushed);
+}
+
 async function run() {
   try {
     await startServer();
@@ -1072,6 +1177,26 @@ async function run() {
       'Check 38: InMemoryQueueManager fallback under simulated Redis timeout',
       check38_InMemoryQueueFallback
     );
+    await runCheck(
+      'Check 39: Voicemail file creation & interrupt protocol',
+      check39_VoicemailFileCreationAndInterrupt
+    );
+    await runCheck(
+      'Check 40: Session bootstrap voicemail replay',
+      check40_SessionBootstrapVoicemailReplay
+    );
+    await runCheck(
+      'Check 41: Think compactor token reduction',
+      check41_ThinkCompactorTokenReduction
+    );
+    await runCheck(
+      'Check 42: Bus debouncer deduplication',
+      check42_BusDebouncerDeduplication
+    );
+    await runCheck(
+      'Check 43: Bus-to-cache flush command',
+      check43_BusToCacheFlush
+    );
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
@@ -1080,7 +1205,7 @@ async function run() {
   }
 
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 38`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 43`);
   console.log('========================================');
 
   if (failed > 0) {

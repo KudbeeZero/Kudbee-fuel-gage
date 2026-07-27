@@ -1,0 +1,17 @@
+{
+  "compacted": {
+    "tid": "tr-compact-12345",
+    "ts": 1279979,
+    "m": "gemini-1.5-pro",
+    "ti": 500,
+    "to": 200,
+    "c": 0.012,
+    "st": "OK",
+    "pv": "Google",
+    "pn": "compactor-test",
+    "tq": "OPTIMAL"
+  },
+  "beforeTokens": 234,
+  "afterTokens": 149,
+  "savingsPct": 36.3
+}

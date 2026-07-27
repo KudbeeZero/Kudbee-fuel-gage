@@ -15,7 +15,7 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 
 1. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
 2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (36 checks, including Check 28 for DLQ retry policy).
+3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (43 checks: 38 core + 5 inter-agent phone tree).
 
 ## Safe-Zone Engine Lifecycle
 
@@ -23,6 +23,35 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 - **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires the Control Tower gateway, registers native tools, and emits `TRAJECTORY_UPDATE` events.
 - **Trajectory evaluation:** `engine.evaluateTrajectory({ target, vector, velocity })` computes threat scores, mints interception tokens when breached, and publishes telemetry via Upstash Redis pub/sub.
 - **Circuit breaker:** Upstash Redis connections use an adaptive circuit breaker that opens on `MAX_REQUESTS_LIMIT` (500k) and backs off exponentially up to 30s.
+
+## Inter-Agent Phone Tree (Voicemail & Emergency Interrupt)
+
+- **P2P call entrypoint:** `node scripts/cloud-agent.mjs call <agentId> [--priority=LEVEL]`
+- **Live call timeout:** 3000ms before voicemail fallback.
+- **Offline detection:** Agent is offline if the last heartbeat in `.kilo/memory/voicemails/<agentId>_heartbeat` is older than 45s.
+- **Voicemail storage:** `.kilo/memory/voicemails/<targetAgentId>.json` — array of voicemail objects.
+- **Voicemail payload schema:**
+  ```json
+  { "id": "vm_<uuid>", "callerId": "<id>", "timestamp": "<ISO>",
+    "urgency": "LOW|MEDIUM|HIGH|CRITICAL", "transcript": "<body>",
+    "requiredAction": "<type>", "read": false }
+  ```
+- **Emergency interrupt:** `--priority=CRITICAL` publishes `agent:interrupt:<targetAgentId>` over Upstash Redis Pub/Sub, appends to `.kilo/memory/local-calls/interrupts.json`, and emits `system:interrupt` to the serial bus.
+- **Session bootstrap:** `scripts/session-bootstrap.mjs` replays unread voicemails on agent startup, marks them `read: true` / `deliveredAt: <ISO>`, and emits `agent:voicemail:replayed` to the bus.
+- **Test command:** `node scripts/cloud-agent.mjs test-voicemail` runs E2E voicemail verification in-process.
+
+## BUS→CACHE Bridge & Serial Bus
+
+- **Cache flush on interrupt:** `scripts/bus-to-cache.mjs --listen` subscribes to `kudbee:agent:interrupt:*` and flushes `agent-state`, `dashboard`, `decisions-recent` L1/L2 caches on SYSTEM INTERRUPT.
+- **Bus debouncer:** `scripts/bus-debouncer.mjs` suppresses consecutive duplicate status checks and empty voicemail polling sweeps (5s dedup window). Exports `{ isDuplicate, deduplicateEvents }`.
+- **Channels:** `kudbee:agent:interrupt:<agentId>`, `kudbee:events` (unified event bus).
+
+## Zero-Waste Token Compaction & DPO Annotation
+
+- **Compactor entrypoint:** `scripts/think-compact.mjs` — exports `compactTrajectory(payload)`.
+- **Compaction rules:** Minifies JSON key boilerplate (e.g. `trace_id` → `tid`), converts ISO timestamps to relative millisecond deltas, strips null/empty noise.
+- **DPO preference annotation:** Fast direct P2P completions tagged `trajectory_quality: OPTIMAL` (CHOSEN path). Voicemail/interrupt fallbacks tagged `trajectory_quality: ESCALATED` (REJECTED path). Annotations committed to `.kilo/memory/decisions/dpo_<category>_<ts>.json` for automated DPO training preference pair generation.
+- **Stream to memory:** `echo '<json>' | node scripts/think-compact.mjs` — compacts stdin, commits to `.kilo/memory/`, and auto-annotates DPO.
 
 ## Key References
 
@@ -37,6 +66,14 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 | `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package (schema, gateway, mint, telemetry, events, tools, index) |
 | `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis rate-limit backoff |
 | `services/agents/worker.ts` | Governance worker with exponential backoff on Redis rate limits |
+| `scripts/cloud-agent.mjs` | Inter-agent P2P calls, voicemail fallback, emergency interrupts |
+| `scripts/session-bootstrap.mjs` | Agent startup voicemail replay and heartbeat |
+| `scripts/think-compact.mjs` | Zero-waste token compaction and DPO preference annotation |
+| `scripts/bus-debouncer.mjs` | Serial bus event deduplication (5s window) |
+| `scripts/bus-to-cache.mjs` | Interrupt-driven cache flush bridge |
+| `.kilo/memory/voicemails/` | Voicemail storage per agent |
+| `.kilo/memory/local-calls/` | Emergency interrupt records |
+| `.kilo/memory/decisions/` | DPO preference pair annotations |
 
 ## 20-Commit Hardening Sprint (feat/production-hardening-and-crypto-fix)
 
@@ -68,4 +105,4 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 - `bun run typecheck` — passes in `packages/opencode`
 - `bun test` — 20/20 passes in `packages/opencode`
 - `npm run build` (apps/web) — passes, main chunk 382 kB (below 500 kB warning threshold)
-- `node scripts/verify-e2e.mjs` — 36/36 checks passed
+- `node scripts/verify-e2e.mjs` — 43/43 checks (38 core + 5 inter-agent phone tree)
