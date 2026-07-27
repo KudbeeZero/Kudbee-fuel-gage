@@ -33,6 +33,17 @@ When activated, present this numbered menu to the user at the start of the sessi
 ║  [D] Run CI + create PR in one shot     ║
 ║  [E] Merge PR and cleanup               ║
 ║                                         ║
+║  COMMANDS (terminal↔UI bridge)          ║
+║  [/sync]     Real-time terminal↔UI sync ║
+║  [/report]   Standardized agent report  ║
+║  [/handoff]  Human-in-the-loop procedur ║
+║  [/broadcast] Multi-agent bus broadcast ║
+║  [/patch]    Live UI state patch        ║
+║  [/memory]   Full memory recall         ║
+║  [/continue] Full session resume        ║
+║  [/verify]   All CI gates               ║
+║  [/pr]       PR lifecycle               ║
+║                                         ║
 ║  [0] Full health check (all of above)   ║
 ╚══════════════════════════════════════════╝
 ```
