@@ -1,17 +1,17 @@
 {
   "started": null,
-  "totalInvalidations": 4,
-  "totalEventsSeen": 8,
+  "totalInvalidations": 6,
+  "totalEventsSeen": 12,
   "byTopic": {
-    "system:health": 2,
-    "agent:decide": 2,
-    "knowledge:relate": 2,
-    "session:end": 2
+    "system:health": 3,
+    "agent:decide": 3,
+    "knowledge:relate": 3,
+    "session:end": 3
   },
   "lastEvent": {
     "topic": "session:end",
     "data": "{}",
-    "timestamp": "2026-07-27T20:03:14.946Z",
+    "timestamp": "2026-07-27T20:47:06.063Z",
     "keysInvalidated": [
       "agent-state",
       "dashboard",
