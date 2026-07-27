@@ -1,4 +1,4 @@
-import { apiGet } from '../../lib/apiClient';
+import { apiGet } from '../lib/apiClient';
 
 export interface AgentStatus {
   id: string;
