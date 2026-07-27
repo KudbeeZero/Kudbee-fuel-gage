@@ -23,10 +23,14 @@ const TelemetryPanel = lazy(() =>
 const FirewallPanel = lazy(() =>
   import('../components/studio/FirewallPanel').then((m) => ({ default: m.FirewallPanel }))
 );
+const ChallengePanel = lazy(() =>
+  import('../components/studio/ChallengePanel').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   governance: '/tower/governance',
   tokens: '/tower/tokens',
+  challenge: '/tower/challenge',
   telemetry: '/tower/telemetry',
   firewall: '/tower/firewall',
 };
@@ -34,6 +38,7 @@ const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
 const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
   '/tower/governance': 'governance',
   '/tower/tokens': 'tokens',
+  '/tower/challenge': 'challenge',
   '/tower/telemetry': 'telemetry',
   '/tower/firewall': 'firewall',
 };
@@ -79,6 +84,7 @@ function StudioShell() {
             <Route path="/" element={<GovernancePanel />} />
             <Route path="/governance" element={<GovernancePanel />} />
             <Route path="/tokens" element={<ThinkTokensPanel />} />
+            <Route path="/challenge" element={<ChallengePanel />} />
             <Route path="/telemetry" element={<TelemetryPanel />} />
             <Route path="/firewall" element={<FirewallPanel />} />
           </Routes>

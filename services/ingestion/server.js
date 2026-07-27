@@ -5534,6 +5534,64 @@ app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
 });
 
+// --- Phase 46: Think Token Challenge & Seniority Protocol -------------------
+app.post('/api/think/challenge', apiLimiter, async (req, res) => {
+  try {
+    const { tokenId, query } = req.body || {};
+    if (!tokenId || typeof tokenId !== 'string' || !query || typeof query !== 'string') {
+      return res.status(400).json({ error: 'Missing tokenId or query' });
+    }
+    const { challengeOne } = await import('../../scripts/challenge-agent.mjs');
+    const result = await challengeOne(tokenId, query);
+    if (result.error) {
+      return res.status(404).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[Challenge] Error:', err?.message);
+    return res.status(500).json({ error: 'Challenge evaluation failed' });
+  }
+});
+
+app.get('/api/think/seniority/:tokenId', async (req, res) => {
+  try {
+    const { getSeniority } = await import('../../scripts/challenge-agent.mjs');
+    const entry = getSeniority(req.params.tokenId);
+    if (!entry || !entry.challenges) {
+      return res.status(200).json({
+        tokenId: req.params.tokenId,
+        score: 0,
+        challenges: 0,
+        wins: 0,
+        losses: 0,
+        rank: 'ROOKIE',
+        badge: '○',
+      });
+    }
+    return res.status(200).json(entry);
+  } catch (err) {
+    console.error('[Seniority] Error:', err?.message);
+    return res.status(500).json({ error: 'Seniority lookup failed' });
+  }
+});
+
+app.get('/api/think/leaderboard', async (req, res) => {
+  try {
+    const { getLeaderboard } = await import('../../scripts/challenge-agent.mjs');
+    const limit = Math.min(parseInt(req.query.limit) || 25, 100);
+    const board = getLeaderboard();
+    return res.status(200).json({ leaderboard: board.slice(0, limit), total: board.length });
+  } catch (err) {
+    console.error('[Leaderboard] Error:', err?.message);
+    return res.status(500).json({ error: 'Leaderboard retrieval failed' });
+  }
+});
+
+app.get('/api/think/ranks', async (_req, res) => {
+  const { RANKS } = await import('../../scripts/challenge-agent.mjs');
+  return res.status(200).json({ ranks: RANKS });
+});
+
 const distPath = resolveDistPath();
 
 if (fs.existsSync(distPath)) {

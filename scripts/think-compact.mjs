@@ -98,6 +98,7 @@ function stripNoise(obj) {
 }
 
 function estimateTokenCount(obj) {
+  if (obj == null) return 0;
   return JSON.stringify(obj).length;
 }
 

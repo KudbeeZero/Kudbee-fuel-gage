@@ -26,6 +26,7 @@ export function createStudioContext(): StudioContextValue | null {
 const STUDIO_TABS = [
   { id: 'governance', label: 'GOVERNANCE', icon: Shield, description: 'HITL approval gates & policy engine' },
   { id: 'tokens', label: 'TOKENS', icon: Brain, description: 'Think token lifecycle & vector trajectories' },
+  { id: 'challenge', label: 'CHALLENGE', icon: Terminal, description: 'Challenge arena & seniority protocol' },
   { id: 'telemetry', label: 'TELEMETRY', icon: Activity, description: 'Live metrics, model matrix & circuit breaker' },
   { id: 'firewall', label: 'FIREWALL', icon: AlertTriangle, description: 'Interceptor guardrails & triage hold' }
 ] as const;
