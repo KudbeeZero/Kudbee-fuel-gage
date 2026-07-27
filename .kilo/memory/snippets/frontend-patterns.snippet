@@ -1,0 +1,35 @@
+---
+category: token
+tags: imported, token
+imported: 2026-07-27T17:55:22.432Z
+source: .kilo/memory/tokens/frontend-patterns.token
+---
+## Frontend Component Patterns
+
+TAB ARCHITECTURE (17 tabs):
+  App.tsx sidebar -> activeTab state -> conditional rendering
+  Primary nav: STUDIO, TELEMETRY, OBSERVABILITY, THINK, GOVERNANCE, CONTROL TOWER, HERMES, SENTINEL, PLAYGROUND
+  Secondary nav: TERMINAL, FIREWALL, GATEWAY, INTERCEPTOR, HISTORY, ALERTS, INTELLIGENCE, SETTINGS
+
+HOOK PATTERNS:
+  useSystemDiagnostics() -> GET /api/system/diagnostics every 15s
+  useMiddlewareStatus()  -> GET /api/system/route-latencies every 5s
+  useOsSnapshot()        -> OsStreamProvider context (SSE os:snapshot)
+  useGovernanceHealth()  -> GET /api/governance/health
+
+API CLIENT:
+  apiGet<T>(path)        -> 15s timeout, exponential backoff on 429/503
+  apiPost<T>(path, body) -> 30s timeout
+  NetworkError class     -> status + isRateLimit flag
+
+ACCESSIBILITY (a11y):
+  useFocusTrap(active)   -> traps Tab within container, restores focus
+  All drawers: role="dialog", aria-modal="true", aria-label
+  Escape key handlers on all modals
+  Null guards (?? []) on all async data reads
+
+OBSERVABILITY PAGE:
+  File: apps/web/src/pages/observability.tsx
+  Components: MiddlewareInspector, RouteLatencyMonitor
+  Hook: useMiddlewareStatus() polling /api/system/route-latencies
+  Shows: 11 guard status cards + per-route latency percentile table

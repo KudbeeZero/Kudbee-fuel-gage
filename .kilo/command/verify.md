@@ -23,14 +23,17 @@ Run: `node scripts/verify-e2e.mjs`
 If passed: log breadcrumb `[verify] e2e PASS 38/38`
 If failed: log breadcrumb `[verify] e2e FAIL` with failed check details, STOP
 
-## Gate 5: Lint (optional)
-Run: `npm run lint`
-If passed: log breadcrumb `[verify] lint PASS`
-If failed: log breadcrumb `[verify] lint WARN` (non-blocking)
+## Gate 5: Knowledge Extraction
+Run: `node scripts/extract-codebase-knowledge.mjs`
+Run: `node scripts/snippet-manager.mjs verify`
+If passed: log breadcrumb `[verify] knowledge PASS (X tokens, Y snippets)`
+If failed: log breadcrumb `[verify] knowledge WARN` (non-blocking)
+Purpose: Ensures Think Token Forge has fresh codebase context for future agent sessions.
 
 ## Summary
 After all gates pass, log breadcrumb `[verify] ALL_GATES_PASS` with a trace ID.
-Report the trace ID so the user can replay verification history via `getBreadcrumbs(traceId)`.
+Update `.kilo/memory/journal.json` with breadcrumb trace ID and CI status.
+Report the trace ID — replayable via `getBreadcrumbs(traceId)` in HERMES audit panel.
 
 ## Breadcrumb Format
 Each gate result is a breadcrumb with:

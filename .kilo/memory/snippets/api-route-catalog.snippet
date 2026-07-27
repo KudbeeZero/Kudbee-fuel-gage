@@ -1,0 +1,34 @@
+---
+category: token
+tags: imported, token
+imported: 2026-07-27T17:55:22.341Z
+source: .kilo/memory/tokens/api-route-catalog.token
+---
+## API Route Catalog
+All routes are mounted in services/ingestion/server.js.
+
+SUB-ROUTERS:
+  /api/audit       -> services/ingestion/routes/audit.ts
+  /api/governance  -> services/ingestion/routes/governance.ts
+  /api/telemetry   -> services/ingestion/routes/telemetry.ts
+  /api/system      -> services/ingestion/routes/system.ts
+  /api/agents      -> inline in server.js
+
+KEY ENDPOINTS:
+  GET  /health                          -> Health check
+  GET  /api/system/health-deep          -> Deep dependency probes (PG + Redis latency)
+  GET  /api/system/diagnostics          -> Full system diagnostics rollup
+  GET  /api/system/route-latencies      -> Middleware guard stats + per-route percentiles
+  POST /api/telemetry/ingest            -> Primary telemetry ingestion (batch up to 100)
+  GET  /api/os-stream                   -> SSE event stream (os:snapshot every 5s)
+  POST /api/governance/mint-think-token -> Token Forge minting
+  GET  /api/governance/hermes-logs      -> HERMES audit log retrieval
+  POST /api/agents/verify               -> Agent payload verification
+  POST /api/interceptor/verify          -> Payload interception verification
+
+RATE LIMITS:
+  General API: 100 req/min
+  Ingest:      25 req/min
+  UI polling:  600 req/min
+  Global IP:   300 req/min
+  Token budget: 1,000,000/day per tenant

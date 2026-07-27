@@ -1,0 +1,62 @@
+---
+category: token
+tags: imported, token
+imported: 2026-07-27T17:55:22.524Z
+source: .kilo/memory/tokens/middleware-pipeline-architecture.token
+---
+## Middleware Pipeline Architecture (11 layers)
+All middleware in kudbee uses the MiddlewareGuard fail-open pattern.
+The pipeline runs sequentially in services/ingestion/server.js.
+
+LAYER 1: Request Duration Tracker
+  File: services/ingestion/server.js (inline)
+  Records per-route latency. Feeds route-latency buffer for observability.
+
+LAYER 2: Spheroid Audit
+  File: services/lib/spheroidAuditMiddleware.ts
+  Guard: spheroid-audit (5 failures, 45s cooldown)
+  Logs all POST/PUT/PATCH/DELETE to Redis stream kudbee:spheroid:audit
+
+LAYER 3: Rate Limiter
+  File: services/lib/rateLimiter.ts
+  Guard: rate-limiter (5 failures, 30s cooldown)
+  In-memory sliding-window Map. Atomic fallback via Redis EVAL Lua ZADD/ZCARD.
+
+LAYER 4: 15s Timeout
+  Guard: timeout (3 failures, 60s cooldown)
+  Returns 503 on timeout. Prevents Heroku H27.
+
+LAYER 5: CORS Handler
+  Sets Access-Control-Allow-Origin from CORS_ALLOW_ORIGINS env.
+
+LAYER 6: Body Parser
+  express.json({ limit: '10mb' })
+
+LAYER 7: Bearer Auth
+  File: services/lib/bearerAuthMiddleware.ts
+  Guard: bearer-auth (3 failures, 30s cooldown)
+  HMAC SHA-256 + Ed25519 agent pass + x-agent-pass header.
+  Sets req.agentId, req.authenticated, req.agentRoles.
+
+LAYER 8: KiloBridge Budget
+  File: services/lib/kiloBridgeMiddleware.ts
+  Guard: kilo-bridge (3 failures, 30s cooldown)
+  Per-tenant token budget via Redis INCRBY. Daily cap default 1M tokens.
+
+LAYER 9: ECP Singleflight
+  File: services/lib/ecpMiddleware.ts
+  Guard: ecp-singleflight (3 failures, 60s cooldown)
+  Deduplicates concurrent GETs. Captures and replays responses.
+  5s TTL, periodic 30s sweep.
+
+LAYER 10: API Rate Limiter
+  express-rate-limit: 100 req/min general, 25 req/min ingest.
+
+LAYER 11: Zod Validation
+  File: services/lib/zodValidationMiddleware.ts
+  Guard: zod-validator (2 failures, 30s cooldown)
+  Per-route schema validation. Returns 400 with structured field errors.
+
+GLOBAL: Error Handler
+  File: services/lib/globalErrorMiddleware.ts
+  4-arg Express error handler. Structured JSON with traceId + breadcrumbs.
