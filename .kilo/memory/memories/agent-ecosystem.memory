@@ -1,0 +1,12 @@
+{
+  "id": "agent-ecosystem",
+  "recalls": [
+    {
+      "query": "rate limit redis middleware",
+      "timestamp": "2026-07-27T17:57:31.138Z",
+      "score": 4
+    }
+  ],
+  "lastRecall": "2026-07-27T17:57:31.138Z",
+  "recallCount": 1
+}

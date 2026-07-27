@@ -1,0 +1,12 @@
+{
+  "id": "redis-patterns",
+  "recalls": [
+    {
+      "query": "rate limit redis middleware",
+      "timestamp": "2026-07-27T17:57:31.137Z",
+      "score": 8
+    }
+  ],
+  "lastRecall": "2026-07-27T17:57:31.137Z",
+  "recallCount": 1
+}

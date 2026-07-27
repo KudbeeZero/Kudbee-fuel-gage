@@ -1,0 +1,12 @@
+{
+  "id": "middleware-pipeline-architecture",
+  "recalls": [
+    {
+      "query": "rate limit redis middleware",
+      "timestamp": "2026-07-27T17:57:31.137Z",
+      "score": 18
+    }
+  ],
+  "lastRecall": "2026-07-27T17:57:31.137Z",
+  "recallCount": 1
+}
