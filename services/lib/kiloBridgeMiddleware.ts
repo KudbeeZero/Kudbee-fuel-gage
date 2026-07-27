@@ -109,13 +109,16 @@ export function kiloBridgeBudget() {
 
       const newUsage = used + tokenCount;
       const pipeline = redis.pipeline();
-      pipeline.set(dailyKey, String(newUsage));
-      pipeline.expire(dailyKey, 86400);
-      await pipeline.exec();
+      pipeline.incrby(dailyKey, tokenCount);
+      if (used === 0) {
+        pipeline.expire(dailyKey, 86400);
+      }
+      const results = await pipeline.exec();
+      const actualNewUsage = results?.[0]?.[1] ? parseInt(String(results[0][1]), 10) : newUsage;
 
       res.setHeader('X-Token-Budget-Limit', String(dailyBudget));
-      res.setHeader('X-Token-Budget-Used', String(newUsage));
-      res.setHeader('X-Token-Budget-Remaining', String(Math.max(0, dailyBudget - newUsage)));
+      res.setHeader('X-Token-Budget-Used', String(actualNewUsage));
+      res.setHeader('X-Token-Budget-Remaining', String(Math.max(0, dailyBudget - actualNewUsage)));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[kilo-bridge] FAIL-OPEN: budget check failed — ${msg}`);

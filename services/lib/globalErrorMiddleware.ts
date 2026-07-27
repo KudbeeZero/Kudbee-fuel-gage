@@ -29,39 +29,39 @@ function generateTraceId(): string {
 export function globalErrorHandler() {
   return async (err: unknown, req: Request, res: Response, _next: NextFunction) => {
     try {
-    const traceId = generateTraceId();
-    const statusCode = (err && typeof err === 'object' && 'statusCode' in err)
-      ? (err as any).statusCode
-      : (err && typeof err === 'object' && 'status' in err)
-        ? (err as any).status
-        : 500;
+      const traceId = generateTraceId();
+      const statusCode = (err && typeof err === 'object' && 'statusCode' in err)
+        ? (err as any).statusCode
+        : (err && typeof err === 'object' && 'status' in err)
+          ? (err as any).status
+          : 500;
 
-    const message = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
 
-    if (process.env.NODE_ENV !== 'test') {
-      logBreadcrumb('global-error-handler', err instanceof Error ? err : new Error(message), traceId)
-        .catch(() => {});
-    }
+      if (process.env.NODE_ENV !== 'test') {
+        logBreadcrumb('global-error-handler', err instanceof Error ? err : new Error(message), traceId)
+          .catch(() => {});
+      }
 
-    console.error(
-      `[GlobalError] ${req.method} ${req.path} → ${statusCode} [${traceId}]: ${message}`
-    );
+      console.error(
+        `[GlobalError] ${req.method} ${req.path} → ${statusCode} [${traceId}]: ${message}`
+      );
 
-    if (res.headersSent) return;
+      if (res.headersSent) return;
 
-    const body: StructuredError = {
-      error: statusCode >= 500 ? 'internal_server_error' : 'request_error',
-      message,
-      statusCode,
-      traceId,
-      timestamp: new Date().toISOString(),
-    };
+      const body: StructuredError = {
+        error: statusCode >= 500 ? 'internal_server_error' : 'request_error',
+        message,
+        statusCode,
+        traceId,
+        timestamp: new Date().toISOString(),
+      };
 
-    if (process.env.NODE_ENV !== 'production' && err instanceof Error) {
-      body.stack = err.stack?.split('\n').slice(0, 5).join('\n');
-    }
+      if (process.env.NODE_ENV !== 'production' && err instanceof Error) {
+        body.stack = err.stack?.split('\n').slice(0, 5).join('\n');
+      }
 
-    return res.status(statusCode).json(body);
+      return res.status(statusCode).json(body);
     } catch {
       return res.status(500).json({
         error: 'internal_server_error',

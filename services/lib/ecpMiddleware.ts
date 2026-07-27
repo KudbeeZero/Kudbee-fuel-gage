@@ -3,12 +3,12 @@
  * ---------------------------------------------------------------------------
  * Phase 66 — ECP Singleflight Cache middleware.
  *
- * Deduplicates concurrent identical requests. If N identical requests
- * arrive simultaneously, only 1 executes the handler; the other N-1
- * await the same Promise and receive the identical response.
+ * Deduplicates concurrent identical GET requests. If N identical requests
+ * arrive simultaneously, only 1 executes; the other N-1 receive the
+ * identical response replayed from the original.
  *
  * Cache key: `${method}:${path}:${hash(body)}`
- * TTL: 5s per in-flight promise (evicted on resolution or timeout)
+ * TTL: 5s per entry (evicted on resolution, timeout, or periodic sweep)
  * ---------------------------------------------------------------------------
  */
 
@@ -20,9 +20,16 @@ export const ecpGuard = new MiddlewareGuard('ecp-singleflight', 3, 60_000);
 
 const IN_FLIGHT_TTL_MS = 5_000;
 const MAX_CACHE_ENTRIES = 500;
+const PERIODIC_SWEEP_MS = 30_000;
+
+interface CachedResponse {
+  statusCode: number;
+  headers: Record<string, string | string[] | undefined>;
+  body: unknown;
+}
 
 interface CacheEntry {
-  promise: Promise<void>;
+  promise: Promise<CachedResponse | null>;
   createdAt: number;
   key: string;
 }
@@ -44,22 +51,27 @@ function buildCacheKey(req: Request): string {
   return `${req.method}:${req.path}:${bodyHash}`;
 }
 
-function pruneStaleEntries(): void {
-  const now = Date.now();
-  if (inFlight.size > MAX_CACHE_ENTRIES) {
-    for (const [key, entry] of inFlight.entries()) {
-      if (now - entry.createdAt > IN_FLIGHT_TTL_MS) {
-        inFlight.delete(key);
-      }
+function replayResponse(res: Response, cached: CachedResponse): void {
+  for (const [name, value] of Object.entries(cached.headers)) {
+    if (value !== undefined && name.toLowerCase() !== 'content-length') {
+      res.setHeader(name, value as any);
     }
   }
+  res.status(cached.statusCode).json(cached.body);
 }
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of inFlight.entries()) {
+    if (now - entry.createdAt > IN_FLIGHT_TTL_MS) {
+      inFlight.delete(key);
+    }
+  }
+}, PERIODIC_SWEEP_MS);
 
 export function ecpSingleflight() {
   return ecpGuard.wrap(async (req: Request, res: Response, next: NextFunction) => {
     if (req.method !== 'GET') return next();
-
-    pruneStaleEntries();
 
     const key = buildCacheKey(req);
 
@@ -67,14 +79,18 @@ export function ecpSingleflight() {
     if (existing) {
       const elapsed = Date.now() - existing.createdAt;
       if (elapsed < IN_FLIGHT_TTL_MS) {
+        let cached: CachedResponse | null = null;
         try {
-          await existing.promise;
+          cached = await existing.promise;
         } catch {
-          // If the in-flight request errored, proceed normally
           inFlight.delete(key);
           return next();
         }
-        return;
+        if (cached) {
+          replayResponse(res, cached);
+          return;
+        }
+        return next();
       }
       inFlight.delete(key);
     }
@@ -83,39 +99,64 @@ export function ecpSingleflight() {
       return next();
     }
 
-    let resolvePromise: () => void;
-    let rejectPromise: (err: Error) => void;
-    const promise = new Promise<void>((resolve, reject) => {
+    const capturedHeaders: Record<string, string | string[] | undefined> = {};
+    let capturedStatusCode = 200;
+    let capturedBody: unknown = null;
+
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = function (name: string, value: any) {
+      capturedHeaders[name.toLowerCase()] = value;
+      return originalSetHeader(name, value);
+    };
+
+    const originalStatus = res.status.bind(res);
+    res.status = function (code: number) {
+      capturedStatusCode = code;
+      return originalStatus(code);
+    };
+
+    const originalJson = res.json.bind(res);
+    res.json = function (body: unknown) {
+      capturedBody = body;
+      return originalJson(body);
+    };
+
+    let resolvePromise: (result: CachedResponse | null) => void = () => {};
+    let settled = false;
+
+    const promise = new Promise<CachedResponse | null>((resolve) => {
       resolvePromise = resolve;
-      rejectPromise = reject;
     });
 
-    const entry: CacheEntry = {
-      promise,
-      createdAt: Date.now(),
-      key,
-    };
+    const entry: CacheEntry = { promise, createdAt: Date.now(), key };
     inFlight.set(key, entry);
 
-    const originalEnd = res.end.bind(res);
-    res.end = function (...args: any[]) {
-      resolvePromise!();
-      return originalEnd(...args);
-    } as any;
-
-    res.on('close', () => {
-      resolvePromise!();
-      inFlight.delete(key);
+    res.on('finish', () => {
+      if (!settled) {
+        settled = true;
+        resolvePromise({
+          statusCode: capturedStatusCode,
+          headers: capturedHeaders,
+          body: capturedBody,
+        });
+        inFlight.delete(key);
+      }
     });
 
-    res.on('error', () => {
-      rejectPromise!(new Error('Response error'));
-      inFlight.delete(key);
+    res.on('close', () => {
+      if (!settled) {
+        settled = true;
+        resolvePromise(null);
+        inFlight.delete(key);
+      }
     });
 
     setTimeout(() => {
-      rejectPromise!(new Error('ECP timeout'));
-      inFlight.delete(key);
+      if (!settled) {
+        settled = true;
+        resolvePromise(null);
+        inFlight.delete(key);
+      }
     }, IN_FLIGHT_TTL_MS);
 
     return next();
