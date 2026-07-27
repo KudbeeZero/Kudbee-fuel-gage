@@ -1,7 +1,7 @@
 {
-  "ts": 1785176118070,
+  "ts": 1785176275615,
   "val": {
-    "timestamp": "2026-07-27T18:15:18.069Z",
+    "timestamp": "2026-07-27T18:17:55.614Z",
     "agents": [
       {
         "id": "ci-watcher",
@@ -21,7 +21,8 @@
         "description": "Knowledge curator — maintains snippet store, cross-references, prunes stale entries",
         "status": "active",
         "memory": {
-          "totalActions": 0,
+          "totalActions": 2,
+          "lastAction": "2026-07-27T18:15:27.705Z",
           "recallCount": 0
         }
       },
@@ -45,33 +46,56 @@
         {
           "id": "agent-ecosystem",
           "size": 1498,
-          "recallCount": 2
-        },
-        {
-          "id": "frontend-patterns",
-          "size": 1483,
-          "recallCount": 2
-        },
-        {
-          "id": "middleware-patterns",
-          "size": 1458,
-          "recallCount": 2
-        },
-        {
-          "id": "middleware-pipeline-architecture",
-          "size": 2274,
-          "recallCount": 2
+          "recallCount": 3
         },
         {
           "id": "database-schema",
           "size": 1754,
-          "recallCount": 1
+          "recallCount": 3
+        },
+        {
+          "id": "frontend-patterns",
+          "size": 1483,
+          "recallCount": 3
+        },
+        {
+          "id": "middleware-patterns",
+          "size": 1458,
+          "recallCount": 3
+        },
+        {
+          "id": "middleware-pipeline-architecture",
+          "size": 2274,
+          "recallCount": 3
         }
       ]
     },
     "decisions": {
-      "total": 2,
+      "total": 4,
       "recent": [
+        {
+          "id": "dec-1785176127705-cd5d0cc1",
+          "agentId": "knowledge-curator",
+          "decision": "curation_complete",
+          "context": {
+            "context": "knowledge graph healthy",
+            "source": "terminal"
+          },
+          "timestamp": "2026-07-27T18:15:27.705Z",
+          "decoded": false
+        },
+        {
+          "id": "dec-1785176127494-cd457a89",
+          "agentId": "knowledge-curator",
+          "decision": "run:verify knowledge graph health",
+          "context": {
+            "action": "execute",
+            "task": "verify knowledge graph health",
+            "triggeredBy": "manual"
+          },
+          "timestamp": "2026-07-27T18:15:27.494Z",
+          "decoded": false
+        },
         {
           "id": "dec-1785175237883-28fe1663",
           "agentId": "pipeline-guardian",
@@ -113,20 +137,20 @@
       "processed": 0
     },
     "journal": {
-      "sessions": 3,
+      "sessions": 4,
       "lastEntry": {
-        "session": "ses-1785176117997-a756e92e",
-        "date": "2026-07-27T18:15:18.000Z",
+        "session": "ses-1785176275524-a5b617e4",
+        "date": "2026-07-27T18:17:55.527Z",
         "type": "bootstrap",
         "agentsActive": 3,
         "snippetsAvailable": 8,
-        "decisionsTotal": 2
+        "decisionsTotal": 4
       }
     },
     "cache": {
       "l1Entries": 0,
-      "l2Files": 0,
-      "l2Bytes": 0,
+      "l2Files": 2,
+      "l2Bytes": 3531,
       "keys": []
     }
   },
