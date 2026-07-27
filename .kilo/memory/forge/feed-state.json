@@ -1,0 +1,19 @@
+{
+  "started": null,
+  "totalInjected": 1,
+  "lastInjection": {
+    "snippetId": "middleware-pipeline-architecture",
+    "at": "2026-07-27T18:36:19.642Z"
+  },
+  "bySnippet": {
+    "middleware-pipeline-architecture": 1
+  },
+  "injections": [
+    {
+      "id": "tk-1785177379641-81817a25",
+      "snippetId": "middleware-pipeline-architecture",
+      "timestamp": "2026-07-27T18:36:19.642Z"
+    }
+  ],
+  "processed": 1
+}

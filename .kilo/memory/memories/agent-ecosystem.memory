@@ -1,0 +1,22 @@
+{
+  "id": "agent-ecosystem",
+  "recalls": [
+    {
+      "query": "rate limit redis middleware",
+      "timestamp": "2026-07-27T17:57:31.138Z",
+      "score": 4
+    },
+    {
+      "query": "scan all middleware",
+      "timestamp": "2026-07-27T18:00:37.845Z",
+      "score": 2
+    },
+    {
+      "query": "postgres database schema pgvector",
+      "timestamp": "2026-07-27T18:15:18.272Z",
+      "score": 3
+    }
+  ],
+  "lastRecall": "2026-07-27T18:15:18.272Z",
+  "recallCount": 3
+}

@@ -1,0 +1,13 @@
+{
+  "id": "evt-1785177912560-4bd7ad",
+  "topic": "system:interrupt",
+  "source": "cloud-agent",
+  "data": {
+    "interruptId": "int-1785177912560-b66229",
+    "targetAgentId": "curator-57cd",
+    "priority": "HIGH",
+    "callerId": "guardian-a03d"
+  },
+  "timestamp": "2026-07-27T18:45:12.560Z",
+  "sequence": 1785177912561
+}

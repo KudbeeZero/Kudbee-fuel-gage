@@ -1,0 +1,33 @@
+---
+uuid: 830bcdb1-0c33-4128-9644-ee02eb0a391c
+category: token
+meaning: Verification Patterns
+tags: imported, token
+imported: 2026-07-27T17:55:22.602Z
+source: .kilo/memory/tokens/verification-patterns.token
+---
+## CI Verification Patterns
+
+GATES (run sequentially):
+  1. npm run typecheck         -> 12 Turbo tasks, must be zero errors
+  2. bun test test/            -> 46 tests, services/lib
+  3. npm run build             -> Vite build, chunk < 500 kB
+  4. node scripts/verify-e2e.mjs -> 38 checks
+
+BREADCRUMBS:
+  Each gate drops a breadcrumb (services/lib/breadcrumbs.ts)
+  Trace ID: verify-{date}-{run} (shared across all gates)
+  Stream: kudbee:breadcrumbs MAXLEN 500
+  Replay: getBreadcrumbs(traceId) for Groq diagnosis
+
+SESSION MEMORY:
+  File: .kilo/memory/journal.json
+  Tracks: session, date, actions, ciStatus, bugsFixed, breadcrumbTraceId
+  Read at session start for context resumption
+  Updated after each significant action
+
+TOKEN INJECTION:
+  Knowledge extraction writes .token files to .kilo/memory/tokens/
+  Each token: ID, pattern signature, file location, usage context, dependencies
+  Injected into Think Token Forge via pgvector embedding
+  Semantic search: getRelevantThinkTokens(query) returns top matches

@@ -1,0 +1,12 @@
+{
+  "id": "evt-1785175818158-0e2057",
+  "topic": "session:bootstrap",
+  "source": "cli",
+  "data": {
+    "version": "1.0",
+    "agents": 3,
+    "snippets": 8
+  },
+  "timestamp": "2026-07-27T18:10:18.158Z",
+  "sequence": 1
+}

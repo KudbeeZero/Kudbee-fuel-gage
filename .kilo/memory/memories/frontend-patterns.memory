@@ -1,0 +1,22 @@
+{
+  "id": "frontend-patterns",
+  "recalls": [
+    {
+      "query": "rate limit redis middleware",
+      "timestamp": "2026-07-27T17:57:31.138Z",
+      "score": 5
+    },
+    {
+      "query": "scan all middleware",
+      "timestamp": "2026-07-27T18:00:37.845Z",
+      "score": 8
+    },
+    {
+      "query": "postgres database schema pgvector",
+      "timestamp": "2026-07-27T18:15:18.272Z",
+      "score": 2
+    }
+  ],
+  "lastRecall": "2026-07-27T18:15:18.272Z",
+  "recallCount": 3
+}

@@ -1,0 +1,10 @@
+{
+  "id": "act-1785176567289-9a3483",
+  "agentId": "guardian-28d6",
+  "action": "scan:pipeline",
+  "data": {
+    "layers": 11,
+    "status": "healthy"
+  },
+  "timestamp": "2026-07-27T18:22:47.289Z"
+}

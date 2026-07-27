@@ -1,0 +1,59 @@
+{
+  "entries": [
+    {
+      "id": "8456b9c2-2fcd-483d-ae31-0c88d187479f",
+      "type": "system:init",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:46:57.503Z"
+    },
+    {
+      "id": "205e8d06-a5a7-4ffa-92d2-96899130000c",
+      "type": "command:exec",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.718Z"
+    },
+    {
+      "id": "8456bf2e-21ae-40e2-ace4-94988afb4f0e",
+      "type": "agent:action",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.760Z"
+    },
+    {
+      "id": "611e0f5d-e0c7-4895-9222-78acaa8c890e",
+      "type": "agent:decision",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.808Z"
+    },
+    {
+      "id": "70ae54f9-69e0-4ed7-9e9f-eab7d9b9c858",
+      "type": "agent:call",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.846Z"
+    },
+    {
+      "id": "90e897ff-91f2-4f8e-aa2c-19a779eb4baa",
+      "type": "system:health",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.892Z"
+    },
+    {
+      "id": "bee72de5-91ac-4c33-9fea-78ad2320b708",
+      "type": "human:handoff",
+      "agentId": "system",
+      "timestamp": "2026-07-27T19:47:06.937Z"
+    },
+    {
+      "id": "a366025f-28a5-48a9-b6b7-fbd6af862c6a",
+      "type": "system:sync",
+      "agentId": "system",
+      "timestamp": "2026-07-27T20:03:15.070Z"
+    },
+    {
+      "id": "ed736718-f429-4147-9899-5f25f6967dfa",
+      "type": "system:sync",
+      "agentId": "system",
+      "timestamp": "2026-07-27T20:47:06.233Z"
+    }
+  ],
+  "totalEntries": 9
+}

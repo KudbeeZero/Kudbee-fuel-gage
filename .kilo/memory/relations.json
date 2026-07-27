@@ -1,0 +1,103 @@
+{
+  "nodes": {
+    "middleware-pipeline-architecture": {
+      "id": "middleware-pipeline-architecture",
+      "meaning": "Middleware Pipeline Architecture",
+      "edges": [
+        "middleware-patterns",
+        "api-route-catalog",
+        "redis-patterns"
+      ]
+    },
+    "middleware-patterns": {
+      "id": "middleware-patterns",
+      "meaning": "Middleware Patterns",
+      "edges": [
+        "middleware-pipeline-architecture"
+      ]
+    },
+    "api-route-catalog": {
+      "id": "api-route-catalog",
+      "meaning": "Api Route Catalog",
+      "edges": [
+        "middleware-pipeline-architecture",
+        "frontend-patterns"
+      ]
+    },
+    "redis-patterns": {
+      "id": "redis-patterns",
+      "meaning": "Redis Patterns",
+      "edges": [
+        "middleware-pipeline-architecture",
+        "database-schema",
+        "agent-ecosystem"
+      ]
+    },
+    "database-schema": {
+      "id": "database-schema",
+      "meaning": "Database Schema",
+      "edges": [
+        "redis-patterns"
+      ]
+    },
+    "frontend-patterns": {
+      "id": "frontend-patterns",
+      "meaning": "Frontend Patterns",
+      "edges": [
+        "api-route-catalog"
+      ]
+    },
+    "agent-ecosystem": {
+      "id": "agent-ecosystem",
+      "meaning": "Agent Ecosystem",
+      "edges": [
+        "redis-patterns",
+        "verification-patterns"
+      ]
+    },
+    "verification-patterns": {
+      "id": "verification-patterns",
+      "meaning": "Verification Patterns",
+      "edges": [
+        "agent-ecosystem"
+      ]
+    }
+  },
+  "edges": [
+    {
+      "from": "middleware-pipeline-architecture",
+      "to": "middleware-patterns",
+      "created": "2026-07-27T17:57:24.814Z"
+    },
+    {
+      "from": "middleware-pipeline-architecture",
+      "to": "api-route-catalog",
+      "created": "2026-07-27T17:57:24.869Z"
+    },
+    {
+      "from": "middleware-pipeline-architecture",
+      "to": "redis-patterns",
+      "created": "2026-07-27T17:57:24.919Z"
+    },
+    {
+      "from": "database-schema",
+      "to": "redis-patterns",
+      "created": "2026-07-27T17:57:24.992Z"
+    },
+    {
+      "from": "frontend-patterns",
+      "to": "api-route-catalog",
+      "created": "2026-07-27T17:57:25.043Z"
+    },
+    {
+      "from": "agent-ecosystem",
+      "to": "redis-patterns",
+      "created": "2026-07-27T17:57:25.093Z"
+    },
+    {
+      "from": "verification-patterns",
+      "to": "agent-ecosystem",
+      "created": "2026-07-27T17:57:25.141Z"
+    }
+  ]
+}

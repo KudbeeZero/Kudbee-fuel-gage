@@ -1,71 +1,173 @@
 # Kudbee Agentic Rack System — AGENTS.md
 
-> **Head file** — first file read on session start. See `.kilo/agent/AGENTS.kilo.md` for the canonical global agent guide (architecture, contracts, patterns, anti-patterns). This file holds session-level instructions only.
+## ⚠️ CRITICAL: Run this FIRST — before reading any other files
 
-## Worker Polling Strategy
+```bash
+node scripts/session-bootstrap.mjs
+```
 
-The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP BRPOP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **5-second blocking timeout** before the worker loops again. When a task is consumed it is processed serially in a single background loop.
+**This is mandatory.** It loads:
+- 6 integration pipelines (checkpoint, auto-registration, BUS→CACHE, Think Forge, skill import, voicemail)
+- 3 terminal agents with decision history and recall logs
+- 8 knowledge snippets with semantic recall tracking
+- 9 serial bus events (replayable audit trail)
+- Phone tree with 3 inter-agent calls logged
+- Current CI status: **GREEN** (46/46 tests, 290kB build, 38/38 e2e)
+- Memory journal with session history
 
-## Retry & DLQ Policy
+**Without this, you are blind.** The bootstrap output becomes your working context.
+If the command fails, the TERMINAL.md reference document and `.kilo/skill/kudbee/SKILL.md` contain fallback instructions.
 
-- **MAX_ATTEMPTS:** 3. A task that throws 3 consecutive times is atomically moved to the **Dead Letter Queue** `kudbee-governance-tasks-failed` (aliased as `TASK_DLQ` in code) for operator review.
-- State transitions (`QUEUED` → `PROCESSING` → `SUCCESS` / `FAILED` / `DEAD_LETTERED` / `RETRY_QUEUED` / `DISCARDED`) are broadcast over the shared `kudbee:events` Redis pub/sub channel.
+## Plugin Arsenal (14 slash commands + 4 skills + 2 subagents)
 
-## CI Gates
+After bootstrap, ALL of these are available. The agent MUST load them into its working context:
+
+### Slash Commands (`.kilo/command/*.md`)
+Used via `/name` in the terminal. Full list: `ls .kilo/command/`
+
+| Command | What it loads |
+|:---|:---|
+| `/load` | Master bootstrap — 8-phase enterprise sequence (session, fleet, context, plugins, routing, escalation, spin-up, report) |
+| `/status` | 7-phase diagnostic — memory layers, tools, gaps, Think Forge, other agents |
+| `/think` | DTHINK console — problem audit, challenge audit, state verification |
+| `/sync` | Terminal→UI bridge — pushes state to web app via agent-bridge |
+| `/report` | Standardized standby report — all agents use identical format |
+| `/handoff` | Human-in-the-loop — escalation, audit trail, operator routing |
+| `/broadcast` | Multi-agent bus broadcast — publish to all cloud agents |
+| `/patch` | Live UI update — terminal work reflected in web app in <8s |
+| `/memory` | Interactive recall — phone tree, voicemails, decisions, HITL check |
+| `/continue` | Session resume — 7-step: bootstrap, voicemails, fleet, forge, mirror, verify |
+| `/stream` | Stream Lab — Cache↔BUS↔Frontend↔DTHINK flow |
+| `/verify` | CI gates — typecheck + tests + build + e2e + knowledge extraction |
+| `/pr` | PR lifecycle — status, review, create, verify+PR, merge |
+| `/help` | Interactive terminal launch — phone tree, fleet, knowledge, bus, DTHINK + full reference |
+
+### Skills (`.kilo/skill/*/SKILL.md`)
+Loaded automatically by Kilo. Available in the skill menu:
+
+| Skill | Source | What it provides |
+|:---|:---|:---|
+| `kudbee` | Project skill | Interactive 10-action Control Tower menu with full architecture docs |
+| `ci-watcher` | Terminal agent | CI verification — typecheck, tests, build, e2e |
+| `knowledge-curator` | Terminal agent | Memory curation — snippet health, knowledge graph |
+| `pipeline-guardian` | Terminal agent | Middleware pipeline — 11 layer scan, guard status |
+
+### Subagents (`.kilo/agent/*.md`)
+Loaded by Kilo's agent system. Available via Task tool:
+
+| Agent | File | Purpose |
+|:---|:---|:---|
+| `AGENTS.kilo` | `.kilo/agent/AGENTS.kilo.md` | Canonical global agent guide — architecture, contracts, patterns |
+| `middleware` | `.kilo/agent/middleware.md` | Middleware specialist — 7-layer pipeline, fail-open semantics |
+| `session_checkpoint` | `.kilo/agent/session_checkpoint.md` | Session persistence — checkpoint + recovery |
+
+### Terminal Agents (`.kilo/agents/*.agent`)
+Executable script agents with memories and decision logs:
+
+| Agent | Schedule | Purpose |
+|:---|:---|:---|
+| `pipeline-guardian` | on-demand | Scans 11 middleware layers, detects failures |
+| `ci-watcher` | on-deploy | Runs verification suite, checks CI gates |
+| `knowledge-curator` | daily | Curates snippets, cross-references, prunes stale entries |
+
+---
+
+## Session-Level Instructions
+
+> **Head file** — first file read on session start.
+> **Last verified:** 2026-07-27T18:59:28Z | CI: GREEN | Tests: 46/46 | Build: 290kB | E2E: 38/38 | Pipelines: 6/6 | Agents: 3 | PRs: 2
+
+### Integration Pipelines (6 implemented)
+
+| # | Pipeline | File | Purpose |
+|:--|:---|:---|:---|
+| 1 | Session Checkpointing | `scripts/session-checkpoint.mjs` | Auto-commits `.kilo/memory/` to git on session end (object permanence) |
+| 2 | Agent Auto-Registration | `scripts/session-bootstrap.mjs` | Glob-discovers `.kilo/agents/*.agent` with fault isolation (plug-and-play swarm) |
+| 3 | BUS→CACHE Bridge | `scripts/bus-to-cache.mjs` | Event-driven cache invalidation — bus events invalidate L1/L2 cache (self-regulating nervous system) |
+| 4 | Think Forge Live Feed | `scripts/think-forge-bridge.mjs` | Auto-streams snippet recalls into `think_tokens` pgvector (continuous context injection) |
+| 5 | Skill Auto-Import | `scripts/skill-auto-import.mjs` | Terminal agents export learnings as `.kilo/skill/` entries (knowledge flywheel) |
+| 6 | Voicemail & Interrupts | `scripts/cloud-agent.mjs` | 3s timeout, offline voicemail, CRITICAL priority interrupts with BUS→CACHE flush |
+
+### Rate Limit Propagation
+
+Terminal agents respect a global concurrency cap (default: 3 concurrent). The agent-bridge tracks running agents and queues overflow. Rate limits propagate from the Express middleware layers through to terminal agent execution.
+
+```bash
+node scripts/agent-bridge.mjs rate          # Current rate limit state
+node scripts/agent-bridge.mjs acquire <id>  # Acquire execution slot
+node scripts/agent-bridge.mjs release <id>  # Release slot
+```
+
+### Management Commands
+
+```bash
+node scripts/agents.mjs status              # Agent fleet dashboard
+node scripts/agents.mjs run <id> <task>     # Execute terminal agent
+node scripts/agents.mjs recall <id> <query> # Agent-specific recall
+node scripts/agents.mjs decode <id>         # Audit decisions
+node scripts/snippet-agent.mjs recall <q>   # Cross-agent knowledge search
+node scripts/snippet-agent.mjs graph <id>   # Knowledge graph walk
+node scripts/snippet-agent.mjs health       # Knowledge store health
+```
+
+### Worker Polling Strategy
+
+The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP BRPOP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **5-second blocking timeout** before the worker loops again.
+
+### Retry & DLQ Policy
+
+- **MAX_ATTEMPTS:** 3. Task that throws 3 consecutive times moves to **DLQ** `kudbee-governance-tasks-failed`.
+- State transitions broadcast over `kudbee:events` Redis pub/sub channel.
+
+### CI Gates
 
 1. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
 2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (36 checks, including Check 28 for DLQ retry policy).
+3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (38 checks).
 
-## Safe-Zone Engine Lifecycle
+### Safe-Zone Engine Lifecycle
 
-- **Singleton pattern:** `SafeZoneEngine` is instantiated once per process (CLI, web hook) and reused for the session lifetime.
-- **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires the Control Tower gateway, registers native tools, and emits `TRAJECTORY_UPDATE` events.
-- **Trajectory evaluation:** `engine.evaluateTrajectory({ target, vector, velocity })` computes threat scores, mints interception tokens when breached, and publishes telemetry via Upstash Redis pub/sub.
-- **Circuit breaker:** Upstash Redis connections use an adaptive circuit breaker that opens on `MAX_REQUESTS_LIMIT` (500k) and backs off exponentially up to 30s.
+- **Singleton pattern:** `SafeZoneEngine` instantiated once per process.
+- **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires Control Tower gateway.
+- **Trajectory evaluation:** `engine.evaluateTrajectory()` computes threat scores.
+- **Circuit breaker:** Upstash Redis adaptive breaker opens at `MAX_REQUESTS_LIMIT` (500k).
 
-## Key References
+### Key References
 
 | File | What It Contains |
 |:---|:---|
+| `TERMINAL.md` | Full terminal agent system documentation (living document) |
 | `.kilo/agent/AGENTS.kilo.md` | Canonical global agent guide (all architecture, contracts, patterns) |
-| `README.md` → **Documentation Scan** | Full `.md` inventory, work notes, project status |
+| `.kilo/skill/kudbee/SKILL.md` | Interactive project skill with 10-action menu |
+| `BUILD.md` | Build architecture, tab layout, verification |
+| `README.md` | Documentation scan, work notes, project status |
 | `OUTING_PLAN.md` | 20-phase enterprise hardening plan |
 | `STATE_OF_THE_OS.md` | 25 documented production fixes |
-| `.kilo/plans/PRODUCTION_AUDIT.md` | 263 audit findings |
-| `BUILD.md` | Current architecture state, tab layout, codebase simplification |
-| `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package (schema, gateway, mint, telemetry, events, tools, index) |
-| `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis rate-limit backoff |
-| `services/agents/worker.ts` | Governance worker with exponential backoff on Redis rate limits |
-
-## 20-Commit Hardening Sprint (feat/production-hardening-and-crypto-fix)
-
-| Commit | Scope | Summary |
-|:---|:---|:---|
-| 1 | fix(mint) | Replace Node crypto with isomorphic `globalThis.crypto.randomUUID` + fallback sha256 |
-| 2 | fix(redis) | Adaptive circuit breaker in `getRedisClient` for Upstash `MAX_REQUESTS_LIMIT` backoff |
-| 3 | fix(monitor) | Exponential backoff in worker BRPOP loop on Redis rate-limit errors |
-| 4 | feat(schema) | Strict Zod schema for `SafeZoneTelemetryMetadata` in opencode |
-| 5 | feat(gateway) | Strict-typed `RequestOptions` wrapper in `ControlTowerGateway` |
-| 6 | feat(minter) | Trajectory persistence via Upstash HTTP in `mintToken` |
-| 7 | feat(telemetry) | Upstash Redis pub/sub dispatcher in `publishTelemetryUpstash` |
-| 8 | feat(events) | `KudbeeEvents.trajectory` and `KudbeeEvents.governance_lock` via `BusEvent.define` |
-| 9 | feat(tools) | `Tool.define` pattern for native tool registry handlers |
-| 10 | refactor(opencode) | Export `createSafeZoneEngine` factory + singleton-safe `SafeZoneEngine` |
-| 11 | fix(web) | `useToolInterceptor` evaluates safe-zone trajectory before tool execution |
-| 12 | fix(cli) | CLI bootstraps `SafeZoneEngine` before orchestrator dispatch |
-| 13 | test(opencode) | 20 passing unit tests covering schema, gateway, mint, events, tools, engine, telemetry |
-| 14 | docs(kudbee) | AGENTS.md + AGENTS.kilo.md updated with safe-zone lifecycle and hardening contracts |
-| 15 | ci(workflows) | `alpha-tango-kilo/gha-artifact-name@v1.2.0` verified in verify.yml |
-| 16 | fix(groq) | `process.loadEnvFile('.env')` + dual `GROQ_API_KEY`/`GROQ_API` lookup |
-| 17 | security(auth) | `STREAM_SECRET` HMAC fallback enforced in SSE ticket-granting endpoints |
-| 18 | test(e2e) | Check 28 DLQ polling timeout bumped to 30000ms |
-| 19 | refactor(web) | Vite `manualChunks` split: vendor-react, vendor-router, vendor-motion, vendor-zustand, vendor-crypto |
-| 20 | chore(docs) | Final status logs, lockfile sync, workspace hygiene verified |
+| `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package |
+| `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis |
+| `services/agents/worker.ts` | Governance worker with exponential backoff |
 
 ### Verification Status
 
 - `bun run typecheck` — passes in `packages/opencode`
-- `bun test` — 20/20 passes in `packages/opencode`
-- `npm run build` (apps/web) — passes, main chunk 382 kB (below 500 kB warning threshold)
-- `node scripts/verify-e2e.mjs` — 36/36 checks passed
+- `bun test` — 46/46 passes (services/lib)
+- `npm run build` (apps/web) — passes, main chunk 290 kB
+- `node scripts/verify-e2e.mjs` — 38/38 checks passed
+
+## New Session Checklist (every cloud agent MUST verify)
+
+After running bootstrap, confirm ALL of these are loaded:
+
+- [ ] Memory journal loaded (run `node scripts/session-bootstrap.mjs`)
+- [ ] Agent fleet visible (`node scripts/agents.mjs status`)
+- [ ] Knowledge store healthy (`node scripts/snippet-agent.mjs health`)
+- [ ] Serial bus replayable (`node scripts/serial-bus.mjs history 5`)
+- [ ] Phone tree active (`node scripts/phone-tree.mjs tree`)
+- [ ] DTHINK pipeline recording (`node scripts/dthink-pipeline.mjs stats`)
+- [ ] 14 slash commands available (`ls .kilo/command/`)
+- [ ] 4 skills loaded (kudbee, ci-watcher, knowledge-curator, pipeline-guardian)
+- [ ] 3 terminal agents online (pipeline-guardian, ci-watcher, knowledge-curator)
+- [ ] Frontend synced (`node scripts/agent-bridge.mjs state`)
+- [ ] CI GREEN (`node scripts/system-status.mjs check`)
+
+If ANY checkbox fails, run `/load` for the full enterprise bootstrap sequence.

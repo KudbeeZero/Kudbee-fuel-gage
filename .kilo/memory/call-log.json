@@ -1,0 +1,65 @@
+{
+  "calls": [
+    {
+      "id": "call-1785175875452-5fa5b7",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "Middleware scan complete — ready for CI verification",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-27T18:11:15.452Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785175875496-d80f9a",
+      "from": "knowledge-curator",
+      "to": "pipeline-guardian",
+      "message": "New snippet available: redis-patterns",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-27T18:11:15.496Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785176127759-2f7299",
+      "from": "ci-watcher",
+      "to": "pipeline-guardian",
+      "message": "Typecheck passed — ready for integration",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-27T18:15:27.759Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785185672489-c9ca99",
+      "from": "pipeline-guardian",
+      "to": "operator",
+      "message": "HANDOFF ASSESSMENT: No escalation required — system healthy, 46/46 tests, 0 critical alerts, all guards active",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "operator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-27T20:54:32.489Z",
+      "routed": true
+    }
+  ],
+  "totalCalls": 4
+}

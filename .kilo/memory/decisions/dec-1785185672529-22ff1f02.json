@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785185672529-22ff1f02",
+  "agentId": "pipeline-guardian",
+  "decision": "handoff:resolved",
+  "context": {
+    "context": "resolution=NO_ACTION — human operator confirmed system is healthy, continue standby",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-27T20:54:32.530Z",
+  "decoded": false
+}

@@ -1,0 +1,14 @@
+{
+  "agentId": "knowledge-curator",
+  "category": "memory",
+  "exportedAt": "2026-07-27T18:36:19.730Z",
+  "patterns": {
+    "totalActions": 2,
+    "totalRecalls": 0,
+    "totalDecisions": 2,
+    "topRecalled": []
+  },
+  "capabilities": [
+    "memory"
+  ]
+}

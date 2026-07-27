@@ -1,0 +1,12 @@
+{
+  "id": "act-1785177912561-5aa465",
+  "agentId": "guardian-a03d",
+  "action": "phone:voicemail",
+  "data": {
+    "to": "curator-57cd",
+    "message": "EMERGENCY: middleware layer degradation detected — requires immediate response",
+    "urgency": "CRITICAL",
+    "voicemailId": "vm-d0e5ce20"
+  },
+  "timestamp": "2026-07-27T18:45:12.561Z"
+}

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSearch, Loader2, Server, ChevronRight, Database } from 'lucide-react';
+import { useFocusTrap } from '../../lib/focusTrap';
 import type { RetrievedChunk, VectorSyncStatus } from '../../hooks/useVectorSync';
 
 interface RagContextDrawerProps {
@@ -16,7 +17,7 @@ interface RagContextDrawerProps {
 export function RagContextDrawer({
   open,
   onClose,
-  chunks,
+  chunks = [],
   recalling,
   recallError,
   syncStatus,
@@ -31,11 +32,17 @@ export function RagContextDrawer({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  const trapRef = useFocusTrap(open);
+
   return (
     <AnimatePresence>
       {open && (
         <motion.div
           id="rag-context-drawer"
+          ref={trapRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="RAG Context Drawer"
           className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -56,7 +63,7 @@ export function RagContextDrawer({
                 <FileSearch className="h-4 w-4 text-cyan-400" />
                 <h2 className="font-display text-sm font-semibold text-slate-200">RAG Context</h2>
                 <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-cyan-300">
-                  {syncStatus.state}
+                  {syncStatus.state ?? 'UNKNOWN'}
                 </span>
               </div>
               <button
@@ -82,11 +89,11 @@ export function RagContextDrawer({
                 <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
                   <div>
                     <div className="text-slate-500">Chunks</div>
-                    <div className="font-bold text-cyan-300">{syncStatus.totalChunks}</div>
+                    <div className="font-bold text-cyan-300">{syncStatus.totalChunks ?? 0}</div>
                   </div>
                   <div>
                     <div className="text-slate-500">Vectors</div>
-                    <div className="font-bold text-cyan-300">{syncStatus.totalVectors}</div>
+                    <div className="font-bold text-cyan-300">{syncStatus.totalVectors ?? 0}</div>
                   </div>
                   <div>
                     <div className="text-slate-500">Last Sync</div>

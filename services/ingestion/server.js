@@ -64,6 +64,12 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
+import { bearerAuth, authGuard } from '../lib/bearerAuthMiddleware.ts';
+import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
+import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
+import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
+import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
+import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -104,6 +110,11 @@ const middlewareGuard = new MiddlewareGuard('rate-limiter', 5, 30_000);
 const timingGuard = new MiddlewareGuard('timeout', 3, 60_000);
 registerGuard(middlewareGuard);
 registerGuard(timingGuard);
+registerGuard(authGuard);
+registerGuard(validationGuard);
+registerGuard(ecpGuard);
+registerGuard(budgetGuard);
+registerGuard(spheroidGuard);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,10 +122,53 @@ const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 
 // --- Phase 45: Request duration tracking and structured logging ---
+// Also records per-route latencies for the Middleware Inspector console.
+const ROUTE_LATENCY_BUFFER = new Map();
+const ROUTE_LATENCY_MAX = 1000;
+
+function recordRouteLatency(method, path, durationMs, statusCode) {
+  const routeKey = `${method}:${path}`;
+  let entries = ROUTE_LATENCY_BUFFER.get(routeKey);
+  if (!entries) {
+    entries = [];
+    ROUTE_LATENCY_BUFFER.set(routeKey, entries);
+  }
+  entries.push({ timestamp: Date.now(), durationMs, statusCode });
+  if (entries.length > ROUTE_LATENCY_MAX) {
+    entries.splice(0, entries.length - ROUTE_LATENCY_MAX);
+  }
+  if (ROUTE_LATENCY_BUFFER.size > 200) {
+    const oldest = [...ROUTE_LATENCY_BUFFER.keys()].slice(0, 50);
+    oldest.forEach((k) => ROUTE_LATENCY_BUFFER.delete(k));
+  }
+}
+
+function getRouteLatencies() {
+  const result = {};
+  for (const [routeKey, entries] of ROUTE_LATENCY_BUFFER.entries()) {
+    if (entries.length < 2) continue;
+    const durations = entries.map((e) => e.durationMs).sort((a, b) => a - b);
+    const p50 = durations[Math.floor(durations.length * 0.5)];
+    const p95 = durations[Math.floor(durations.length * 0.95)];
+    const p99 = durations[Math.floor(durations.length * 0.99)];
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+    result[routeKey] = {
+      count: entries.length,
+      avgMs: Math.round(avg),
+      p50Ms: p50,
+      p95Ms: p95,
+      p99Ms: p99 || p95,
+      lastStatusCode: entries[entries.length - 1].statusCode,
+    };
+  }
+  return result;
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const durationMs = Date.now() - start;
+    recordRouteLatency(req.method, req.path, durationMs, res.statusCode);
     if (durationMs > 3000) {
       console.warn(`[PERF_WARN] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
     } else if (durationMs > 1000 || res.statusCode >= 400) {
@@ -123,6 +177,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// --- Phase 66: Spheroid Audit Ledger — logs all mutating requests ---
+app.use(spheroidAudit());
 
 // --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
 // FAIL-OPEN: If Redis is unreachable, the rate-limit check is skipped
@@ -315,6 +372,15 @@ function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
 
 app.use(express.json({ limit: '10mb' }));
 
+// --- Phase 66: Bearer Auth — centralized authentication guard (optional for public routes) ---
+app.use(bearerAuth({ required: false }));
+
+// --- Phase 66: KiloBridge Token Budget Gate — enforces per-tenant token caps ---
+app.use(kiloBridgeBudget());
+
+// --- Phase 66: ECP Singleflight Cache — deduplicates concurrent GET requests ---
+app.use(ecpSingleflight());
+
 const ipFromRequest = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
   const ip =
@@ -397,6 +463,8 @@ const systemRouter = createSystemRouter({
   getPool: () => _state.poolRef.value,
   getProviderConfig: () => _state.providerConfigRef.value,
   getAlertsState: () => _state.alertsState,
+  getRouteLatencies: () => getRouteLatencies(),
+  getMiddlewareStats: () => getAllGuardStats(),
 });
 app.use('/api/system', systemRouter);
 
@@ -5592,28 +5660,8 @@ if (globalThis.__KUBEE_STATE__) {
   globalThis.__KUBEE_STATE__.evaluatePolicies = evaluatePolicies;
 }
 
-// --- Global error boundary: degrade gracefully, never crash the process ---
-app.use((err, req, res, next) => {
-  const message = err instanceof Error ? err.message : String(err);
-  const isTimeout = message.includes('timed out') || message.includes('timeout');
-  const status = isTimeout ? 503 : 500;
-  console.error(
-    `[Resilience] Unhandled error on ${req.method} ${req.path} (${status}): ${message}`
-  );
-  if (!res.headersSent) {
-    return res.status(status).json({
-      status: 'degraded',
-      fallback: true,
-      error:
-        process.env.NODE_ENV === 'production'
-          ? status === 503
-            ? 'Service Unavailable'
-            : 'Internal error'
-          : message,
-    });
-  }
-  next(err);
-});
+// --- Phase 66: Global error handler — structured JSON with trace IDs + breadcrumbs ---
+app.use(globalErrorHandler());
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);

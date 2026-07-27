@@ -53,9 +53,9 @@ export class MiddlewareGuard {
    * recovery. Never throws — always calls next().
    */
   wrap(
-    fn: (req: Record<string, unknown>, res: Record<string, unknown>, next: () => void) => Promise<void> | void
+    fn: (req: any, res: any, next: () => void) => any
   ) {
-    return async (req: Record<string, unknown>, res: Record<string, unknown>, next: () => void) => {
+    return async (req: any, res: any, next: () => void) => {
       if (!this.healthy && Date.now() < this.cooldownUntil) {
         this.bypassed += 1;
         return next();

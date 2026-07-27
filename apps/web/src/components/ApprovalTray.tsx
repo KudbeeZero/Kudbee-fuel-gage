@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Check, X, ChevronRight, Shield } from 'lucide-react';
+import { useFocusTrap } from '../lib/focusTrap';
 
 export interface PendingItem {
   id: string;
@@ -40,6 +41,17 @@ export function ApprovalTray({ items, onApprove, onDeny, onApproveAll }: Approva
     return `${Math.floor(diff / 3600)}h ago`;
   };
 
+  const trapRef = useFocusTrap(open);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open]);
+
   return (
     <>
       <button
@@ -66,6 +78,10 @@ export function ApprovalTray({ items, onApprove, onDeny, onApproveAll }: Approva
               onClick={() => setOpen(false)}
             />
             <motion.div
+              ref={trapRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Approval Queue"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}

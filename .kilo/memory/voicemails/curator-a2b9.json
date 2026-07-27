@@ -1,0 +1,32 @@
+[
+  {
+    "id": "vm-79fc58ad",
+    "callerId": "guardian-d95e",
+    "timestamp": "2026-07-27T18:44:38.511Z",
+    "urgency": "MEDIUM",
+    "transcript": "Routine middleware status check",
+    "requiredAction": "STANDARD_REVIEW",
+    "read": true,
+    "deliveredAt": "2026-07-27T18:44:38.515Z"
+  },
+  {
+    "id": "vm-f53432aa",
+    "callerId": "guardian-d95e",
+    "timestamp": "2026-07-27T18:44:38.512Z",
+    "urgency": "HIGH",
+    "transcript": "Urgent: database schema mismatch detected",
+    "requiredAction": "PRIORITY_RESPONSE",
+    "read": true,
+    "deliveredAt": "2026-07-27T18:44:38.515Z"
+  },
+  {
+    "id": "vm-a8b0d718",
+    "callerId": "guardian-d95e",
+    "timestamp": "2026-07-27T18:44:38.513Z",
+    "urgency": "CRITICAL",
+    "transcript": "EMERGENCY: middleware layer degradation detected — requires immediate response",
+    "requiredAction": "IMMEDIATE_ATTENTION",
+    "read": true,
+    "deliveredAt": "2026-07-27T18:44:38.515Z"
+  }
+]

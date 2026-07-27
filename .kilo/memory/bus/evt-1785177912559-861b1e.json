@@ -1,0 +1,13 @@
+{
+  "id": "evt-1785177912559-861b1e",
+  "topic": "agent:voicemail",
+  "source": "cloud-agent",
+  "data": {
+    "voicemailId": "vm-273c5a4d",
+    "from": "guardian-a03d",
+    "to": "curator-57cd",
+    "urgency": "HIGH"
+  },
+  "timestamp": "2026-07-27T18:45:12.559Z",
+  "sequence": 1785177912559
+}

@@ -36,7 +36,8 @@ import {
   X,
   Maximize2,
   Radio,
-  Monitor
+  Monitor,
+  Gauge
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
@@ -59,6 +60,7 @@ const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({
 const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
 const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
 import { OllamaChat } from './pages/OllamaChat';
+import { ObservabilityPage } from './pages/observability';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
@@ -445,6 +447,7 @@ export default function App() {
   const primaryNavItems = [
     { icon: Monitor, label: 'STUDIO' },
     { icon: Activity, label: 'TELEMETRY' },
+    { icon: Gauge, label: 'OBSERVABILITY' },
     { icon: Zap, label: 'THINK' },
     { icon: Scale, label: 'GOVERNANCE' },
     { icon: Shield, label: 'CONTROL TOWER' },
@@ -737,7 +740,9 @@ export default function App() {
           </div>
 
           {/* ACTIVE VIEW ROUTER */}
-          {activeTab === 'STUDIO' && <StudioRouter />}
+          {activeTab === 'OBSERVABILITY' && <ObservabilityPage />}
+
+        {activeTab === 'STUDIO' && <StudioRouter />}
 
           {activeTab === 'TELEMETRY' && (
             <TelemetryPage
@@ -897,6 +902,9 @@ export default function App() {
 
       {/* 1. THE GLASSMORPHIC TRACE DRAWER (Slide-Up Sheet) */}
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trace Payload Explorer"
         className={`fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-300 ease-out h-[75vh] flex flex-col bg-slate-950/95 backdrop-blur-md border-t border-slate-800 rounded-t-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.6)] ${
           selectedTraceForDrawer ? 'translate-y-0' : 'translate-y-full'
         }`}
@@ -1011,6 +1019,9 @@ export default function App() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Secondary Navigation"
               className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-slate-800 bg-slate-950/95 backdrop-blur-md p-5 pb-8 md:hidden"
             >
               <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-700" />

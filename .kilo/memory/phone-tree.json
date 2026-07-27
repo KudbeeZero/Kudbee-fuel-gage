@@ -1,0 +1,32 @@
+{
+  "root": "dispatcher",
+  "nodes": {
+    "dispatcher": {
+      "id": "dispatcher",
+      "parent": null,
+      "children": [
+        "ci-watcher",
+        "knowledge-curator",
+        "pipeline-guardian"
+      ]
+    },
+    "ci-watcher": {
+      "id": "ci-watcher",
+      "parent": "dispatcher",
+      "children": [],
+      "category": "verification"
+    },
+    "knowledge-curator": {
+      "id": "knowledge-curator",
+      "parent": "dispatcher",
+      "children": [],
+      "category": "memory"
+    },
+    "pipeline-guardian": {
+      "id": "pipeline-guardian",
+      "parent": "dispatcher",
+      "children": [],
+      "category": "middleware"
+    }
+  }
+}

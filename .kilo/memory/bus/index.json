@@ -1,0 +1,92 @@
+{
+  "sequence": 11,
+  "events": [
+    {
+      "id": "evt-1785175818158-0e2057",
+      "topic": "session:bootstrap",
+      "source": "cli",
+      "sequence": 1,
+      "timestamp": "2026-07-27T18:10:18.158Z"
+    },
+    {
+      "id": "evt-1785175818195-ccbb00",
+      "topic": "agent:run",
+      "source": "cli",
+      "sequence": 2,
+      "timestamp": "2026-07-27T18:10:18.195Z"
+    },
+    {
+      "id": "evt-1785175818235-69c502",
+      "topic": "agent:complete",
+      "source": "cli",
+      "sequence": 3,
+      "timestamp": "2026-07-27T18:10:18.235Z"
+    },
+    {
+      "id": "evt-1785175818279-84296d",
+      "topic": "agent:decide",
+      "source": "cli",
+      "sequence": 4,
+      "timestamp": "2026-07-27T18:10:18.279Z"
+    },
+    {
+      "id": "evt-1785175818335-cea31d",
+      "topic": "knowledge:relate",
+      "source": "cli",
+      "sequence": 5,
+      "timestamp": "2026-07-27T18:10:18.335Z"
+    },
+    {
+      "id": "evt-1785175818373-259265",
+      "topic": "cache:warm",
+      "source": "cli",
+      "sequence": 6,
+      "timestamp": "2026-07-27T18:10:18.373Z"
+    },
+    {
+      "id": "evt-1785175818410-0322b0",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 7,
+      "timestamp": "2026-07-27T18:10:18.410Z"
+    },
+    {
+      "id": "evt-1785176118118-03aa40",
+      "topic": "agent:recall",
+      "source": "cli",
+      "sequence": 8,
+      "timestamp": "2026-07-27T18:15:18.118Z"
+    },
+    {
+      "id": "evt-1785176118166-76ea8a",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 9,
+      "timestamp": "2026-07-27T18:15:18.166Z"
+    },
+    {
+      "id": "evt-1785182594901-10460a",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 10,
+      "timestamp": "2026-07-27T20:03:14.902Z"
+    },
+    {
+      "id": "evt-1785185226007-c544a8",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 11,
+      "timestamp": "2026-07-27T20:47:06.007Z"
+    }
+  ],
+  "topicCounts": {
+    "session:bootstrap": 1,
+    "agent:run": 1,
+    "agent:complete": 1,
+    "agent:decide": 1,
+    "knowledge:relate": 1,
+    "cache:warm": 1,
+    "system:health": 4,
+    "agent:recall": 1
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "act-1785177878511-525f0a",
+  "agentId": "guardian-d95e",
+  "action": "phone:voicemail",
+  "data": {
+    "to": "curator-a2b9",
+    "message": "Routine middleware status check",
+    "urgency": "MEDIUM",
+    "voicemailId": "vm-79fc58ad"
+  },
+  "timestamp": "2026-07-27T18:44:38.511Z"
+}

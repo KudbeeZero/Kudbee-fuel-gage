@@ -1,0 +1,23 @@
+{
+  "id": "pipeline-guardian",
+  "recalls": [],
+  "decisions": [
+    {
+      "id": "dec-1785175237883-28fe1663",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-27T18:00:37.883Z"
+    },
+    {
+      "id": "dec-1785185672442-d29cb9eb",
+      "decision": "handoff:no_action_required",
+      "timestamp": "2026-07-27T20:54:32.442Z"
+    },
+    {
+      "id": "dec-1785185672529-22ff1f02",
+      "decision": "handoff:resolved",
+      "timestamp": "2026-07-27T20:54:32.530Z"
+    }
+  ],
+  "lastAction": "2026-07-27T20:54:32.530Z",
+  "totalActions": 4
+}

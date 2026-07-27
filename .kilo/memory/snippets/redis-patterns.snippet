@@ -1,0 +1,36 @@
+---
+uuid: c0874bd2-e0d0-4b04-ba38-4eba85ee47e0
+category: token
+meaning: Redis Patterns
+tags: imported, token
+imported: 2026-07-27T17:55:22.563Z
+source: .kilo/memory/tokens/redis-patterns.token
+---
+## Redis Patterns (Upstash Redis)
+
+CONNECTION:
+  getRedisClient(opts)  -> shared ioredis client (TLS if Upstash)
+  getBlockingRedisClient() -> for BRPOP/BLPOP loops
+  getSubscriberClient() -> dedicated pub/sub connection
+  Adaptive circuit breaker: opens at 500k requests, 30s backoff
+
+CLIENTS:
+  _client            -> general command client
+  _subClient         -> pub/sub subscriber
+  _blockingClient    -> BRPOP/BLPOP polling
+  _workerClient      -> dedicated worker REDIS_WORKER_URL
+
+KEY PATTERNS:
+  kudbee:ratelimit:{key}            -> ZSET sliding window
+  kudbee:budget:{tenant}:daily:{d}  -> STRING INCRBY token counter
+  kudbee:spheroid:audit             -> STREAM MAXLEN 10000
+  kudbee:breadcrumbs                -> STREAM MAXLEN 500
+  kudbee-governance-tasks           -> LIST BRPOP (worker polling)
+  kudbee-governance-tasks-failed    -> LIST (DLQ)
+  kudbee:events                     -> PUB/SUB general channel
+
+ERROR HANDLING:
+  isRedisQuotaError(err) -> detects MAX_REQUESTS_LIMIT / 429
+  applyRedisQuotaBackoff() -> exponential (2s base, 30s max)
+  resetRedisQuotaBackoff() -> reset on success
+  quotaBackoffState -> enabled, backoffMs, untilTs, consecutiveErrors

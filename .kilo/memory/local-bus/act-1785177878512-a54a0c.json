@@ -1,0 +1,12 @@
+{
+  "id": "act-1785177878512-a54a0c",
+  "agentId": "guardian-d95e",
+  "action": "phone:voicemail",
+  "data": {
+    "to": "curator-a2b9",
+    "message": "Urgent: database schema mismatch detected",
+    "urgency": "HIGH",
+    "voicemailId": "vm-f53432aa"
+  },
+  "timestamp": "2026-07-27T18:44:38.512Z"
+}

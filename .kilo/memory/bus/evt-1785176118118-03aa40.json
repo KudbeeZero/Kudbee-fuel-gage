@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785176118118-03aa40",
+  "topic": "agent:recall",
+  "source": "cli",
+  "data": {
+    "agent": "knowledge-curator",
+    "query": "database schema"
+  },
+  "timestamp": "2026-07-27T18:15:18.118Z",
+  "sequence": 8
+}

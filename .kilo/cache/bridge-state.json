@@ -1,0 +1,29 @@
+{
+  "started": null,
+  "totalInvalidations": 6,
+  "totalEventsSeen": 12,
+  "byTopic": {
+    "system:health": 3,
+    "agent:decide": 3,
+    "knowledge:relate": 3,
+    "session:end": 3
+  },
+  "lastEvent": {
+    "topic": "session:end",
+    "data": "{}",
+    "timestamp": "2026-07-27T20:47:06.063Z",
+    "keysInvalidated": [
+      "agent-state",
+      "dashboard",
+      "decisions-recent",
+      "snippet-list",
+      "snippet-recall",
+      "knowledge-graph",
+      "agent-memories",
+      "rate-limits",
+      "wait-queue",
+      "journal"
+    ],
+    "count": 0
+  }
+}

@@ -25,9 +25,11 @@ type Deps = {
   getPool: () => any;
   getProviderConfig: () => Record<string, any>;
   getAlertsState: () => { alerts: any[] };
+  getRouteLatencies: () => Record<string, any>;
+  getMiddlewareStats: () => Array<{ name: string; healthy: boolean; state: string; failureCount: number; successCount: number; bypassedCount: number; lastFailureAt: string | null; cooldownUntil: string | null }>;
 };
 
-export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listProposed, getBootTime, getRedis, getPool, getProviderConfig, getAlertsState }: Deps) {
+export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listProposed, getBootTime, getRedis, getPool, getProviderConfig, getAlertsState, getRouteLatencies, getMiddlewareStats }: Deps) {
   const router = express.Router();
 
   router.get('/health-deep', async (_req, res) => {
@@ -99,6 +101,52 @@ export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listPr
       res.json(alertsState.alerts);
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/route-latencies', async (_req, res) => {
+    try {
+      const latencies = getRouteLatencies();
+      const middlewareStats = getMiddlewareStats();
+      res.json({
+        timestamp: new Date().toISOString(),
+        routes: latencies,
+        middleware: middlewareStats.map((s) => ({
+          name: s.name,
+          healthy: s.healthy,
+          state: s.state,
+          failures: s.failureCount,
+          successes: s.successCount,
+          bypassed: s.bypassedCount,
+          lastFailure: s.lastFailureAt,
+          cooldownUntil: s.cooldownUntil,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/agent-status', async (_req, res) => {
+    try {
+      const { exec } = await import('node:child_process');
+      const result = await new Promise<string>((resolve, reject) => {
+        exec('node scripts/agent-bridge.mjs state', {
+          cwd: process.cwd(),
+          timeout: 5000,
+          encoding: 'utf8',
+        }, (error, stdout) => {
+          if (error) reject(error);
+          else resolve(stdout);
+        });
+      });
+      const state = JSON.parse(result);
+      res.json(state);
+    } catch (err) {
+      res.status(500).json({
+        error: 'agent_status_failed',
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   });
 

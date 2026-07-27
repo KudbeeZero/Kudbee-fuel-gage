@@ -1,0 +1,23 @@
+---
+category: memory
+description: Knowledge curator — maintains snippet store, cross-references, prunes stale entries
+triggers: knowledge, snippet, token, recall, memory, forget
+schedule: daily
+actions: recall, update, decode
+uuid: mem-001
+memoryId: agent-ecosystem
+created: 2026-07-27
+---
+echo "[knowledge-curator] Curating knowledge store..."
+
+node scripts/snippet-agent.mjs health
+
+echo ""
+echo "[knowledge-curator] Top recalled snippets:"
+node scripts/snippet-agent.mjs health 2>&1 | tail -10
+
+echo ""
+echo "[knowledge-curator] Knowledge graph status:"
+node scripts/snippet-agent.mjs graph middleware-pipeline-architecture 1 2>&1
+
+node scripts/agents.mjs decide knowledge-curator "curation_complete" "knowledge graph healthy"

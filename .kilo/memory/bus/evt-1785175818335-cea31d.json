@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785175818335-cea31d",
+  "topic": "knowledge:relate",
+  "source": "cli",
+  "data": {
+    "from": "middleware-pipeline-architecture",
+    "to": "redis-patterns"
+  },
+  "timestamp": "2026-07-27T18:10:18.335Z",
+  "sequence": 5
+}
