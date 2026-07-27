@@ -29,6 +29,7 @@ const JOURNAL_PATH = join(REPO_ROOT, '.kilo', 'memory', 'journal.json');
 const AGENTS_DIR = join(REPO_ROOT, '.kilo', 'agents');
 const SNIPPETS_DIR = join(REPO_ROOT, '.kilo', 'memory', 'snippets');
 const MEMORIES_DIR = join(REPO_ROOT, '.kilo', 'memory', 'memories');
+const MEMORY_DIR = join(REPO_ROOT, '.kilo', 'memory');
 const RATE_LIMIT_STATE_PATH = join(REPO_ROOT, '.kilo', 'memory', 'rate-limits.json');
 
 const sessionId = `ses-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
@@ -173,7 +174,49 @@ if (!reportOnly) {
   writeFileSync(JOURNAL_PATH, JSON.stringify(journal, null, 2), 'utf8');
 }
 
-// ─── Step 8: Report ─────────────────────────────────────────────────────────
+// ─── Step 8: Voicemail replay ───────────────────────────────────────────────
+// On every agent boot, check for pending voicemails and replay them.
+
+const VOICEMAIL_DIR = join(MEMORY_DIR, 'voicemails');
+let voicemailsReplayed = 0;
+
+if (existsSync(VOICEMAIL_DIR)) {
+  for (const f of readdirSync(VOICEMAIL_DIR).filter(f => f.endsWith('.json'))) {
+    const agentId = f.replace('.json', '');
+    try {
+      const vms = JSON.parse(readFileSync(join(VOICEMAIL_DIR, f), 'utf8'));
+      const unread = vms.filter(v => !v.read);
+      if (unread.length > 0) {
+        console.log(`  ✉  Voicemail for ${agentId}: ${unread.length} unread`);
+        for (const vm of unread) {
+          const icon = vm.urgency === 'CRITICAL' ? '⚡' : vm.urgency === 'HIGH' ? '🔴' : vm.urgency === 'MEDIUM' ? '🟡' : '🟢';
+          console.log(`    ${icon} [${vm.urgency}] ${vm.callerId}: "${(vm.transcript || '').slice(0, 60)}..."`);
+          voicemailsReplayed++;
+
+          // Emit bus event for voicemail replay
+          try {
+            const busDir = join(MEMORY_DIR, 'bus');
+            mkdirSync(busDir, { recursive: true });
+            const event = {
+              id: `evt-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+              topic: 'agent:voicemail:replayed',
+              source: 'session-bootstrap',
+              data: { voicemailId: vm.id, to: agentId, from: vm.callerId, urgency: vm.urgency },
+              timestamp: new Date().toISOString(),
+              sequence: Date.now(),
+            };
+            writeFileSync(join(busDir, `${event.id}.json`), JSON.stringify(event, null, 2), 'utf8');
+          } catch {}
+        }
+        // Mark all as read
+        vms.forEach(v => { v.read = true; v.deliveredAt = new Date().toISOString(); });
+        writeFileSync(join(VOICEMAIL_DIR, f), JSON.stringify(vms, null, 2), 'utf8');
+      }
+    } catch {}
+  }
+}
+
+// ─── Step 9: Report ─────────────────────────────────────────────────────────
 
 const totalActions = agentFiles.reduce((a, ag) => a + (ag.memory.totalActions || 0), 0);
 const totalRecalls = snippetFiles.reduce((a, s) => a + s.recallCount, 0);
@@ -184,6 +227,8 @@ console.log(`
 ║          TERMINAL AGENT SYSTEM — SESSION BOOTSTRAP          ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  SESSION: ${sessionId}
+╠══════════════════════════════════════════════════════════════╣
+║  VOICEMAIL: ${voicemailsReplayed} replayed
 ╠══════════════════════════════════════════════════════════════╣
 ║  LAST SESSION:`);
 
@@ -235,6 +280,13 @@ console.log(`╠═════════════════════�
     node scripts/agents.mjs status        — view agent fleet
     node scripts/snippet-agent.mjs recall — search knowledge
     node scripts/snippet-agent.mjs health — snippet system health
+
+  ⚡ Self-check: bootstrap loaded ${agentFiles.length} agents, ${snippetFiles.length} snippets, ${relations.edges.length} relations
+  ⚠  If you didn't run this bootstrap, you are missing:
+     - 6 pipeline statuses + 3 terminal agents + 8 knowledge snippets
+     - Current CI status + session history + decision audit trail
+     - Phone tree with 3 logged calls + serial bus with 9 events
+  Run: node scripts/session-bootstrap.mjs
 `);
 
 // Return signal for AGENTS.md context injection

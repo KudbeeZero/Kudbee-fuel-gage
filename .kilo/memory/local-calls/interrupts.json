@@ -1,0 +1,38 @@
+[
+  {
+    "id": "int-1785177878512-71eacc",
+    "targetAgentId": "curator-a2b9",
+    "priority": "HIGH",
+    "message": "Urgent: database schema mismatch detected",
+    "callerId": "guardian-d95e",
+    "timestamp": "2026-07-27T18:44:38.512Z",
+    "type": "EMERGENCY_INTERRUPT"
+  },
+  {
+    "id": "int-1785177878513-ee31ba",
+    "targetAgentId": "curator-a2b9",
+    "priority": "CRITICAL",
+    "message": "EMERGENCY: middleware layer degradation detected — requires immediate response",
+    "callerId": "guardian-d95e",
+    "timestamp": "2026-07-27T18:44:38.513Z",
+    "type": "EMERGENCY_INTERRUPT"
+  },
+  {
+    "id": "int-1785177912560-b66229",
+    "targetAgentId": "curator-57cd",
+    "priority": "HIGH",
+    "message": "Urgent: database schema mismatch detected",
+    "callerId": "guardian-a03d",
+    "timestamp": "2026-07-27T18:45:12.560Z",
+    "type": "EMERGENCY_INTERRUPT"
+  },
+  {
+    "id": "int-1785177912561-2806e2",
+    "targetAgentId": "curator-57cd",
+    "priority": "CRITICAL",
+    "message": "EMERGENCY: middleware layer degradation detected — requires immediate response",
+    "callerId": "guardian-a03d",
+    "timestamp": "2026-07-27T18:45:12.561Z",
+    "type": "EMERGENCY_INTERRUPT"
+  }
+]

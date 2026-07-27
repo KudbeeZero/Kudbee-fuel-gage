@@ -51,10 +51,26 @@
       "agentsActive": 3,
       "snippetsAvailable": 8,
       "decisionsTotal": 4
+    },
+    {
+      "session": "ses-1785177878562-960ed2cb",
+      "date": "2026-07-27T18:44:38.568Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 4
+    },
+    {
+      "session": "ses-1785177912600-04a6f3d6",
+      "date": "2026-07-27T18:45:12.602Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 4
     }
   ],
   "trends": {
-    "sessions": 4,
+    "sessions": 6,
     "ciPassRate": "100%"
   },
   "health": {

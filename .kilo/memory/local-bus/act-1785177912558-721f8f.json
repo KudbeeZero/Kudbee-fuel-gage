@@ -1,0 +1,9 @@
+{
+  "id": "act-1785177912558-721f8f",
+  "agentId": "guardian-a03d",
+  "action": "test:scenario-start",
+  "data": {
+    "test": "voicemail-priority"
+  },
+  "timestamp": "2026-07-27T18:45:12.558Z"
+}
