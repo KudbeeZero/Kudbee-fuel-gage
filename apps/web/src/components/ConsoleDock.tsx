@@ -8,7 +8,7 @@ import type { ConsoleLog } from '../store/terminalStore';
 export function ConsoleDock() {
   const isConsoleExpanded = useUIStore((state) => state.isConsoleExpanded);
   const toggleConsole = useUIStore((state) => state.toggleConsole);
-  const externalLogs = useTerminalStore((state) => state.externalLogs);
+  const externalLogs = useTerminalStore((state) => state.externalLogs ?? []);
 
   const [renderedLogs, setRenderedLogs] = useState<ConsoleLog[]>([
     { id: 'initial-1', type: 'info', label: 'BOOT', message: 'Control Tower initialized. Neon Postgres pool (max 10), Upstash Redis connected.', time: new Date().toLocaleTimeString() },

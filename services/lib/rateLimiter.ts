@@ -101,6 +101,92 @@ export function resetRateLimiterStats(): void {
   _maxWindowMs = 0;
 }
 
+const ATOMIC_RATE_LIMIT_LUA = `
+local key = KEYS[1]
+local window_ms = tonumber(ARGV[1])
+local max_requests = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window_ms)
+
+local count = redis.call('ZCARD', key)
+if count < max_requests then
+  redis.call('ZADD', key, now, now .. ':' .. math.random(1000000))
+  redis.call('PEXPIRE', key, window_ms)
+  return {1, max_requests - count - 1, now + window_ms, max_requests}
+end
+
+return {0, 0, now + window_ms, max_requests}
+`;
+
+const ATOMIC_RATE_LIMIT_SHA: { value: string | null } = { value: null };
+
+async function loadAtomicLuaScript(redis: any): Promise<string | null> {
+  if (ATOMIC_RATE_LIMIT_SHA.value) return ATOMIC_RATE_LIMIT_SHA.value;
+  try {
+    ATOMIC_RATE_LIMIT_SHA.value = await redis.script('LOAD', ATOMIC_RATE_LIMIT_LUA);
+    return ATOMIC_RATE_LIMIT_SHA.value;
+  } catch {
+    return null;
+  }
+}
+
+export async function rateLimitAtomicCheck(
+  key: string,
+  config: RateLimitConfig,
+  redis?: any
+): Promise<RateLimitResult> {
+  const now = Date.now();
+  const windowCeiling = Math.ceil(now / config.windowMs) * config.windowMs;
+  stats.totalRequests += 1;
+
+  if (!redis) {
+    try {
+      const { getRedisClient } = await import('./redis.js');
+      redis = getRedisClient({ label: 'atomic-rate-limiter' });
+    } catch {
+      return rateLimitCheck(key, config);
+    }
+  }
+
+  if (!redis) return rateLimitCheck(key, config);
+
+  try {
+    const sha = await loadAtomicLuaScript(redis);
+    if (!sha) return rateLimitCheck(key, config);
+
+    const windowKey = RL_PREFIX + key;
+    const result = await redis.evalsha(
+      sha, 1, windowKey,
+      String(config.windowMs), String(config.maxRequests), String(now)
+    );
+
+    const [allowed, remaining, , limit] = result.map(Number);
+
+    if (!allowed) {
+      stats.blockedRequests += 1;
+    }
+
+    return {
+      allowed: allowed === 1,
+      remaining: Math.max(0, remaining),
+      resetAtMs: windowCeiling,
+      limit,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('NOSCRIPT')) {
+      ATOMIC_RATE_LIMIT_SHA.value = null;
+    }
+    console.warn(`[rate-limiter] Atomic EVAL failed, falling back to in-memory: ${msg}`);
+    return rateLimitCheck(key, config);
+  }
+}
+
+export function resetAtomicRateLimitScript(): void {
+  ATOMIC_RATE_LIMIT_SHA.value = null;
+}
+
 export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
   windowMs: 60_000,
   maxRequests: 300,
