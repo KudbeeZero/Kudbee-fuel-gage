@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-27T19:32:52.440Z",
+  "recommendation": "REJECTED",
+  "trajectory_quality": "ESCALATED",
+  "agentId": "agent2-e2e-test",
+  "agent": {
+    "online": false,
+    "lastSeen": "2026-07-27T19:23:52.908Z",
+    "voicemails": 0,
+    "totalVoicemails": 1
+  },
+  "metadata": {
+    "source": "agent-monitor",
+    "category": "ESCALATED"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-27T19:32:22.433Z",
+  "recommendation": "CHOSEN",
+  "trajectory_quality": "OPTIMAL",
+  "agentId": "monitor-daemon",
+  "agent": {
+    "online": true,
+    "lastSeen": "2026-07-27T19:32:22.431Z",
+    "voicemails": 0,
+    "totalVoicemails": 0
+  },
+  "metadata": {
+    "source": "agent-monitor",
+    "category": "OPTIMAL"
+  }
+}
