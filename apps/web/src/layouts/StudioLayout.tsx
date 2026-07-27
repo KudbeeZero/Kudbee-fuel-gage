@@ -25,6 +25,7 @@ export function createStudioContext(): StudioContextValue | null {
 
 const STUDIO_TABS = [
   { id: 'monitor', label: 'MONITOR', icon: Radio, description: 'Live agent heartbeat grid & fleet status' },
+  { id: 'ci', label: 'CI', icon: Terminal, description: 'Pipeline health, pass rates & failure log' },
   { id: 'governance', label: 'GOVERNANCE', icon: Shield, description: 'HITL approval gates & policy engine' },
   { id: 'tokens', label: 'TOKENS', icon: Brain, description: 'Think token lifecycle & vector trajectories' },
   { id: 'challenge', label: 'CHALLENGE', icon: Terminal, description: 'Challenge arena & seniority protocol' },

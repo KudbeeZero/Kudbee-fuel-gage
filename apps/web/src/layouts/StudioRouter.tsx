@@ -29,9 +29,13 @@ const ChallengePanel = lazy(() =>
 const MonitorPanel = lazy(() =>
   import('../components/studio/MonitorPanel').then((m) => ({ default: m.default ?? m }))
 );
+const CIHealthPanel = lazy(() =>
+  import('../components/studio/CIHealthPanel').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   monitor: '/tower/monitor',
+  ci: '/tower/ci',
   governance: '/tower/governance',
   tokens: '/tower/tokens',
   challenge: '/tower/challenge',
@@ -41,6 +45,7 @@ const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
 
 const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
   '/tower/monitor': 'monitor',
+  '/tower/ci': 'ci',
   '/tower/governance': 'governance',
   '/tower/tokens': 'tokens',
   '/tower/challenge': 'challenge',
@@ -88,6 +93,7 @@ function StudioShell() {
           <Routes>
             <Route path="/" element={<MonitorPanel />} />
             <Route path="/monitor" element={<MonitorPanel />} />
+            <Route path="/ci" element={<CIHealthPanel />} />
             <Route path="/governance" element={<GovernancePanel />} />
             <Route path="/tokens" element={<ThinkTokensPanel />} />
             <Route path="/challenge" element={<ChallengePanel />} />
