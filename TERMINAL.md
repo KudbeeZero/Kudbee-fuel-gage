@@ -2,7 +2,7 @@
 
 > **Living document** — updated on every session. Single source of truth for the terminal agent ecosystem.
 
-Last updated: 2026-07-27T18:07:31Z | Session: ses_05b7dc575feb07buxiDZIsOOuU
+Last updated: 2026-07-27T18:26:31Z | Session: ses_05b7dc575feb07buxiDZIsOOuU | Mode: LOCAL
 
 ---
 

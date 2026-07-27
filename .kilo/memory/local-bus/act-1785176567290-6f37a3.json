@@ -1,0 +1,10 @@
+{
+  "id": "act-1785176567290-6f37a3",
+  "agentId": "curator-6e82",
+  "action": "received:call",
+  "data": {
+    "from": "guardian-28d6",
+    "messages": 1
+  },
+  "timestamp": "2026-07-27T18:22:47.290Z"
+}
