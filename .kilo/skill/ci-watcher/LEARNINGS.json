@@ -1,0 +1,14 @@
+{
+  "agentId": "ci-watcher",
+  "category": "verification",
+  "exportedAt": "2026-07-27T18:36:19.725Z",
+  "patterns": {
+    "totalActions": 0,
+    "totalRecalls": 0,
+    "totalDecisions": 0,
+    "topRecalled": []
+  },
+  "capabilities": [
+    "verification"
+  ]
+}
