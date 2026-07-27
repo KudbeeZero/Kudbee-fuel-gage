@@ -75,10 +75,18 @@
       "agentsActive": 3,
       "snippetsAvailable": 8,
       "decisionsTotal": 4
+    },
+    {
+      "session": "ses-1785183880071-7ae8eb0a",
+      "date": "2026-07-27T20:24:40.322Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 4
     }
   ],
   "trends": {
-    "sessions": 7,
+    "sessions": 8,
     "ciPassRate": "100%"
   },
   "health": {
