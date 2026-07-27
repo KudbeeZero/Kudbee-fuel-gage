@@ -44,7 +44,22 @@
       "type": "sibling",
       "timestamp": "2026-07-27T18:15:27.759Z",
       "routed": true
+    },
+    {
+      "id": "call-1785185672489-c9ca99",
+      "from": "pipeline-guardian",
+      "to": "operator",
+      "message": "HANDOFF ASSESSMENT: No escalation required — system healthy, 46/46 tests, 0 critical alerts, all guards active",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "operator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-27T20:54:32.489Z",
+      "routed": true
     }
   ],
-  "totalCalls": 3
+  "totalCalls": 4
 }

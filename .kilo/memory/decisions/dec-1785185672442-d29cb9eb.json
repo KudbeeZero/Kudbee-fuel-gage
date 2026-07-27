@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785185672442-d29cb9eb",
+  "agentId": "pipeline-guardian",
+  "decision": "handoff:no_action_required",
+  "context": {
+    "context": "severity=LOW — system healthy, all guards active, CI green",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-27T20:54:32.442Z",
+  "decoded": false
+}
