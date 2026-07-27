@@ -11,7 +11,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const MEMORY_ROOT = path.resolve(__dirname, '..', '.kilo', 'memory');
 const VOICEMAIL_DIR = path.join(MEMORY_ROOT, 'voicemails');
+const DECISIONS_DIR = path.join(MEMORY_ROOT, 'decisions');
 const INTERVAL_MS = 5000;
+const COMPACT_INTERVAL_MS = 30000;
+const DEBOUNCE_CACHE = new Map();
+
+let { compactTrajectory } = await import('./think-compact.mjs');
+let { isDuplicate } = await import('./bus-debouncer.mjs');
+
+if (!compactTrajectory) compactTrajectory = (p) => ({ compacted: p, beforeTokens: JSON.stringify(p).length, afterTokens: JSON.stringify(p).length, savingsPct: 0 });
 
 function getRedisClient() {
   try {
@@ -100,6 +108,52 @@ function publishStatus(redis, status) {
   } catch {}
 }
 
+let _lastCompactTs = 0;
+let _lastStateFingerprint = '';
+
+function commitThinkDump(status) {
+  const now = Date.now();
+  if (now - _lastCompactTs < COMPACT_INTERVAL_MS) return null;
+
+  const dupEvent = { event: 'agent:monitor:think', payload: status };
+  if (isDuplicate(dupEvent)) return null;
+
+  const result = compactTrajectory(status);
+  _lastCompactTs = now;
+  _lastStateFingerprint = JSON.stringify(result.compacted).slice(0, 80);
+
+  const thinkFile = path.join(MEMORY_ROOT, `think_monitor_${now}.json`);
+  try {
+    fs.mkdirSync(path.dirname(thinkFile), { recursive: true });
+    fs.writeFileSync(thinkFile, JSON.stringify(result, null, 2));
+    console.log(`[think-compact] Monitor snapshot → ${result.savingsPct}% savings (${result.afterTokens} tokens)`);
+  } catch (e) {
+    console.warn(`[think-compact] Write failed: ${e.message}`);
+  }
+
+  for (const [agentId, agent] of Object.entries(status.agents || {})) {
+    const quality = agent.online ? 'OPTIMAL' : 'ESCALATED';
+    const dpoFile = path.join(DECISIONS_DIR, `dpo_monitor_${quality.toLowerCase()}_${now}_${agentId}.json`);
+    try {
+      fs.mkdirSync(path.dirname(dpoFile), { recursive: true });
+      const dpoEntry = {
+        timestamp: new Date().toISOString(),
+        recommendation: quality === 'OPTIMAL' ? 'CHOSEN' : 'REJECTED',
+        trajectory_quality: quality,
+        agentId,
+        agent: result.compacted?.agents?.[agentId] || agent,
+        metadata: { source: 'agent-monitor', category: quality },
+      };
+      fs.writeFileSync(dpoFile, JSON.stringify(dpoEntry, null, 2));
+      if (quality === 'ESCALATED') {
+        console.log(`[dpo] ESCALATED preference annotated: ${agentId} offline`);
+      }
+    } catch {}
+  }
+
+  return result;
+}
+
 function run() {
   const agentId = process.env.AGENT_ID || 'monitor-daemon';
   const redis = getRedisClient();
@@ -138,6 +192,7 @@ function run() {
     console.log(`[${now.slice(11, 19)}] Agents: ${Object.keys(status.agents).length} | Online: ${Object.values(status.agents).filter((a) => a.online).length} | Interrupts: ${ints.count} | Unread VMs: ${Object.values(status.agents).reduce((s, a) => s + a.voicemails, 0)}`);
 
     publishStatus(redis, status);
+    commitThinkDump(status);
   };
 
   tick();
