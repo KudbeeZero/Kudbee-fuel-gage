@@ -37,6 +37,26 @@ const reportOnly = process.argv.includes('--report');
 
 [MEMORIES_DIR, join(REPO_ROOT, '.kilo', 'memory', 'decisions')].forEach(d => mkdirSync(d, { recursive: true }));
 
+// ─── Step 0: Sync from other agents (cross-container memory sharing) ────────
+// Pull latest git state so we see what other cloud agents have checkpointed.
+// This is the ONLY way agents in different containers share memory.
+
+let gitSynced = false;
+try {
+  const { execSync } = await import('node:child_process');
+  const result = execSync('git pull origin main --no-edit 2>&1 || echo "no-remote"', {
+    cwd: REPO_ROOT, encoding: 'utf8', timeout: 10000,
+  });
+  if (result.includes('Already up to date') || result.includes('no-remote')) {
+    // No changes from other agents — nothing to sync
+  } else if (result.includes('Fast-forward') || result.includes('Updating')) {
+    console.log(`[bootstrap] Synced from other agents: ${result.split('\n').slice(0, 2).join(' ')}`);
+    gitSynced = true;
+  }
+} catch {
+  // Non-critical — proceed with local state
+}
+
 // ─── Step 1: Read last session journal ─────────────────────────────────────
 
 let journal = { journal: [], trends: { sessions: 0 }, health: { overall: 'UNKNOWN' } };
@@ -227,6 +247,8 @@ console.log(`
 ║          TERMINAL AGENT SYSTEM — SESSION BOOTSTRAP          ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  SESSION: ${sessionId}
+╠══════════════════════════════════════════════════════════════╣
+║  GIT SYNC: ${gitSynced ? 'New state from other agents' : 'Already current'}
 ╠══════════════════════════════════════════════════════════════╣
 ║  VOICEMAIL: ${voicemailsReplayed} replayed
 ╠══════════════════════════════════════════════════════════════╣
