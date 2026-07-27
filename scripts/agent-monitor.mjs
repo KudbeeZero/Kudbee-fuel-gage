@@ -108,6 +108,22 @@ function publishStatus(redis, status) {
   } catch {}
 }
 
+function pushFleetState(redis, status) {
+  if (!redis) return;
+  try {
+    for (const [agentId, agent] of Object.entries(status.agents || {})) {
+      const state = {
+        id: agentId,
+        status: agent.online ? 'active' : 'offline',
+        task: agent.voicemails > 0 ? 'pending' : 'idle',
+        updatedAt: agent.lastSeen || new Date().toISOString(),
+        voicemailsPending: agent.voicemails || 0,
+      };
+      redis.hset('kudbee:agent:state', agentId, JSON.stringify(state)).catch(() => {});
+    }
+  } catch {}
+}
+
 let _lastCompactTs = 0;
 let _lastStateFingerprint = '';
 
@@ -192,6 +208,7 @@ function run() {
     console.log(`[${now.slice(11, 19)}] Agents: ${Object.keys(status.agents).length} | Online: ${Object.values(status.agents).filter((a) => a.online).length} | Interrupts: ${ints.count} | Unread VMs: ${Object.values(status.agents).reduce((s, a) => s + a.voicemails, 0)}`);
 
     publishStatus(redis, status);
+    pushFleetState(redis, status);
     commitThinkDump(status);
   };
 

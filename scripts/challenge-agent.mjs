@@ -223,7 +223,9 @@ async function challengeInteractive() {
 
   console.log('\n=== KUDBEE THINK TOKEN CHALLENGE TERMINAL ===');
   console.log(`Tokens in memory: ${tokens.length}`);
-  console.log('Type a challenge to test the pipeline, or "leaderboard" to see rankings.\n');
+  showAgentRoster();
+  console.log('Commands: "leaderboard" "tokens" "agents" "exit"');
+  console.log('Or type any challenge query to test the pipeline.\n');
 
   while (true) {
     const query = (await ask('>>> ')).trim();
@@ -235,6 +237,10 @@ async function challengeInteractive() {
     }
     if (query === 'tokens') {
       listTokens(tokens);
+      continue;
+    }
+    if (query === 'agents' || query === 'fleet') {
+      showAgentRoster();
       continue;
     }
 
@@ -306,6 +312,83 @@ function showLeaderboard() {
     const e = entries[i];
     const id = e.tokenId.slice(0, 24).padEnd(24);
     console.log(`  #${i + 1}   ${e.badge}    ${id}  ${String(e.score).padStart(4)}   ${e.wins}/${e.losses}      ${e.challenges}`);
+  }
+  console.log('');
+}
+
+function showAgentRoster() {
+  const heartbeatFiles = [];
+  const voicemailFiles = {};
+  try {
+    const voicemailDir = path.join(MEMORY_ROOT, 'voicemails');
+    if (fs.existsSync(voicemailDir)) {
+      const files = fs.readdirSync(voicemailDir);
+      for (const f of files) {
+        if (f.endsWith('_heartbeat')) {
+          const agentId = f.replace('_heartbeat', '');
+          try {
+            const raw = JSON.parse(fs.readFileSync(path.join(voicemailDir, f), 'utf-8'));
+            heartbeatFiles.push({ agentId, ...raw });
+          } catch {}
+        } else if (f.endsWith('.json')) {
+          const agentId = f.replace('.json', '');
+          try {
+            const raw = JSON.parse(fs.readFileSync(path.join(voicemailDir, f), 'utf-8'));
+            const vms = Array.isArray(raw) ? raw : [];
+            voicemailFiles[agentId] = {
+              total: vms.length,
+              unread: vms.filter((v) => !v.read).length,
+            };
+          } catch {}
+        }
+      }
+    }
+  } catch {}
+
+  const now = Date.now();
+  const agents = {};
+  for (const hb of heartbeatFiles) {
+    const ageMs = now - new Date(hb.timestamp).getTime();
+    agents[hb.agentId] = {
+      id: hb.agentId,
+      online: ageMs < 45000,
+      ageSec: Math.round(ageMs / 1000),
+      voicemails: voicemailFiles[hb.agentId]?.unread || 0,
+      totalVoicemails: voicemailFiles[hb.agentId]?.total || 0,
+    };
+  }
+
+  for (const [agentId, vm] of Object.entries(voicemailFiles)) {
+    if (!agents[agentId]) {
+      agents[agentId] = {
+        id: agentId,
+        online: false,
+        ageSec: null,
+        voicemails: vm.unread,
+        totalVoicemails: vm.total,
+      };
+    }
+  }
+
+  const list = Object.values(agents).sort((a, b) => {
+    if (a.online !== b.online) return a.online ? -1 : 1;
+    return (a.ageSec || 999) - (b.ageSec || 999);
+  });
+
+  if (list.length === 0) {
+    console.log('\n  No agents detected. Start the monitor daemon or register an agent.\n');
+    return;
+  }
+
+  console.log('\n=== AGENT ROSTER ===');
+  console.log('Status  Agent ID                    Age       VMs  Rank');
+  console.log('─'.repeat(70));
+  for (const a of list) {
+    const status = a.online ? 'ONLINE' : 'OFFLINE';
+    const id = a.id.slice(0, 26).padEnd(26);
+    const age = a.ageSec != null ? `${a.ageSec}s`.padStart(6) : '   —  ';
+    const vms = String(a.voicemails).padStart(3);
+    console.log(`  ${status.padEnd(7)} ${id}  ${age}   ${vms}`);
   }
   console.log('');
 }

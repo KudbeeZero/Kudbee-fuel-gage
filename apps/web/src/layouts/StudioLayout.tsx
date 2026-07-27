@@ -7,7 +7,7 @@ import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBounda
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
-  Database, RefreshCw, Shield, Terminal
+  Database, RefreshCw, Shield, Terminal, Radio
 } from 'lucide-react';
 
 interface StudioContextValue {
@@ -24,6 +24,7 @@ export function createStudioContext(): StudioContextValue | null {
 }
 
 const STUDIO_TABS = [
+  { id: 'monitor', label: 'MONITOR', icon: Radio, description: 'Live agent heartbeat grid & fleet status' },
   { id: 'governance', label: 'GOVERNANCE', icon: Shield, description: 'HITL approval gates & policy engine' },
   { id: 'tokens', label: 'TOKENS', icon: Brain, description: 'Think token lifecycle & vector trajectories' },
   { id: 'challenge', label: 'CHALLENGE', icon: Terminal, description: 'Challenge arena & seniority protocol' },

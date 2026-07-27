@@ -26,8 +26,12 @@ const FirewallPanel = lazy(() =>
 const ChallengePanel = lazy(() =>
   import('../components/studio/ChallengePanel').then((m) => ({ default: m.default ?? m }))
 );
+const MonitorPanel = lazy(() =>
+  import('../components/studio/MonitorPanel').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
+  monitor: '/tower/monitor',
   governance: '/tower/governance',
   tokens: '/tower/tokens',
   challenge: '/tower/challenge',
@@ -36,6 +40,7 @@ const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
 };
 
 const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
+  '/tower/monitor': 'monitor',
   '/tower/governance': 'governance',
   '/tower/tokens': 'tokens',
   '/tower/challenge': 'challenge',
@@ -57,7 +62,7 @@ function StudioShell() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const currentPath = location.pathname;
-  const activeTab: StudioTabId = PATH_TO_TAB_ID[currentPath] ?? 'telemetry';
+  const activeTab: StudioTabId = PATH_TO_TAB_ID[currentPath] ?? 'monitor';
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -81,7 +86,8 @@ function StudioShell() {
       <StudioLayout activeTab={activeTab} onTabChange={handleTabChange}>
         <Suspense fallback={<PanelFallback />}>
           <Routes>
-            <Route path="/" element={<GovernancePanel />} />
+            <Route path="/" element={<MonitorPanel />} />
+            <Route path="/monitor" element={<MonitorPanel />} />
             <Route path="/governance" element={<GovernancePanel />} />
             <Route path="/tokens" element={<ThinkTokensPanel />} />
             <Route path="/challenge" element={<ChallengePanel />} />
