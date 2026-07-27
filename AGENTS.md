@@ -18,6 +18,58 @@ node scripts/session-bootstrap.mjs
 **Without this, you are blind.** The bootstrap output becomes your working context.
 If the command fails, the TERMINAL.md reference document and `.kilo/skill/kudbee/SKILL.md` contain fallback instructions.
 
+## Plugin Arsenal (14 slash commands + 4 skills + 2 subagents)
+
+After bootstrap, ALL of these are available. The agent MUST load them into its working context:
+
+### Slash Commands (`.kilo/command/*.md`)
+Used via `/name` in the terminal. Full list: `ls .kilo/command/`
+
+| Command | What it loads |
+|:---|:---|
+| `/load` | Master bootstrap — 8-phase enterprise sequence (session, fleet, context, plugins, routing, escalation, spin-up, report) |
+| `/status` | 7-phase diagnostic — memory layers, tools, gaps, Think Forge, other agents |
+| `/think` | DTHINK console — problem audit, challenge audit, state verification |
+| `/sync` | Terminal→UI bridge — pushes state to web app via agent-bridge |
+| `/report` | Standardized standby report — all agents use identical format |
+| `/handoff` | Human-in-the-loop — escalation, audit trail, operator routing |
+| `/broadcast` | Multi-agent bus broadcast — publish to all cloud agents |
+| `/patch` | Live UI update — terminal work reflected in web app in <8s |
+| `/memory` | Interactive recall — phone tree, voicemails, decisions, HITL check |
+| `/continue` | Session resume — 7-step: bootstrap, voicemails, fleet, forge, mirror, verify |
+| `/stream` | Stream Lab — Cache↔BUS↔Frontend↔DTHINK flow |
+| `/verify` | CI gates — typecheck + tests + build + e2e + knowledge extraction |
+| `/pr` | PR lifecycle — status, review, create, verify+PR, merge |
+| `/help` | Interactive terminal launch — phone tree, fleet, knowledge, bus, DTHINK + full reference |
+
+### Skills (`.kilo/skill/*/SKILL.md`)
+Loaded automatically by Kilo. Available in the skill menu:
+
+| Skill | Source | What it provides |
+|:---|:---|:---|
+| `kudbee` | Project skill | Interactive 10-action Control Tower menu with full architecture docs |
+| `ci-watcher` | Terminal agent | CI verification — typecheck, tests, build, e2e |
+| `knowledge-curator` | Terminal agent | Memory curation — snippet health, knowledge graph |
+| `pipeline-guardian` | Terminal agent | Middleware pipeline — 11 layer scan, guard status |
+
+### Subagents (`.kilo/agent/*.md`)
+Loaded by Kilo's agent system. Available via Task tool:
+
+| Agent | File | Purpose |
+|:---|:---|:---|
+| `AGENTS.kilo` | `.kilo/agent/AGENTS.kilo.md` | Canonical global agent guide — architecture, contracts, patterns |
+| `middleware` | `.kilo/agent/middleware.md` | Middleware specialist — 7-layer pipeline, fail-open semantics |
+| `session_checkpoint` | `.kilo/agent/session_checkpoint.md` | Session persistence — checkpoint + recovery |
+
+### Terminal Agents (`.kilo/agents/*.agent`)
+Executable script agents with memories and decision logs:
+
+| Agent | Schedule | Purpose |
+|:---|:---|:---|
+| `pipeline-guardian` | on-demand | Scans 11 middleware layers, detects failures |
+| `ci-watcher` | on-deploy | Runs verification suite, checks CI gates |
+| `knowledge-curator` | daily | Curates snippets, cross-references, prunes stale entries |
+
 ---
 
 ## Session-Level Instructions
@@ -101,3 +153,21 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 - `bun test` — 46/46 passes (services/lib)
 - `npm run build` (apps/web) — passes, main chunk 290 kB
 - `node scripts/verify-e2e.mjs` — 38/38 checks passed
+
+## New Session Checklist (every cloud agent MUST verify)
+
+After running bootstrap, confirm ALL of these are loaded:
+
+- [ ] Memory journal loaded (run `node scripts/session-bootstrap.mjs`)
+- [ ] Agent fleet visible (`node scripts/agents.mjs status`)
+- [ ] Knowledge store healthy (`node scripts/snippet-agent.mjs health`)
+- [ ] Serial bus replayable (`node scripts/serial-bus.mjs history 5`)
+- [ ] Phone tree active (`node scripts/phone-tree.mjs tree`)
+- [ ] DTHINK pipeline recording (`node scripts/dthink-pipeline.mjs stats`)
+- [ ] 14 slash commands available (`ls .kilo/command/`)
+- [ ] 4 skills loaded (kudbee, ci-watcher, knowledge-curator, pipeline-guardian)
+- [ ] 3 terminal agents online (pipeline-guardian, ci-watcher, knowledge-curator)
+- [ ] Frontend synced (`node scripts/agent-bridge.mjs state`)
+- [ ] CI GREEN (`node scripts/system-status.mjs check`)
+
+If ANY checkbox fails, run `/load` for the full enterprise bootstrap sequence.
