@@ -25,8 +25,20 @@
       "query": "scan middleware layers for frontend serving issues",
       "timestamp": "2026-07-28T19:56:50.556Z",
       "score": 9
+<<<<<<< ours
     }
   ],
   "lastRecall": "2026-07-28T19:56:50.556Z",
   "recallCount": 5
+=======
+    },
+    {
+      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
+      "timestamp": "2026-07-28T21:18:16.639Z",
+      "score": 7
+    }
+  ],
+  "lastRecall": "2026-07-28T21:18:16.639Z",
+  "recallCount": 6
+>>>>>>> theirs
 }

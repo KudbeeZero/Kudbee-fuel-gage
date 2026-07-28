@@ -134,7 +134,28 @@
       "type": "sibling",
       "timestamp": "2026-07-28T20:40:46.027Z",
       "routed": true
+<<<<<<< ours
     }
   ],
   "totalCalls": 9
+=======
+    },
+    {
+      "id": "call-1785273496731-304e87",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "Adversarial simulator deployed — 3 attack vectors, SOR router live, PR #213 open",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T21:18:16.731Z",
+      "routed": true
+    }
+  ],
+  "totalCalls": 10
+>>>>>>> theirs
 }

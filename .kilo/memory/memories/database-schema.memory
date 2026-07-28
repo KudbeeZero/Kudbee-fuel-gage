@@ -30,8 +30,20 @@
       "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
       "timestamp": "2026-07-28T20:40:01.826Z",
       "score": 11
+<<<<<<< ours
     }
   ],
   "lastRecall": "2026-07-28T20:40:01.826Z",
   "recallCount": 6
+=======
+    },
+    {
+      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
+      "timestamp": "2026-07-28T21:18:16.639Z",
+      "score": 6
+    }
+  ],
+  "lastRecall": "2026-07-28T21:18:16.639Z",
+  "recallCount": 7
+>>>>>>> theirs
 }
