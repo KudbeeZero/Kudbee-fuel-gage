@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785268087635-ab2e22",
+  "topic": "agent:persistence",
+  "source": "cli",
+  "data": {
+    "message": "Redis agent persistence layer built: 3 agents @72h TTL, expiry-guard + session-bootstrap auto-renew"
+  },
+  "timestamp": "2026-07-28T19:48:07.636Z",
+  "sequence": 14
+}

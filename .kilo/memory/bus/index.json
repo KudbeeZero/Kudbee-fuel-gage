@@ -1,5 +1,5 @@
 {
-  "sequence": 13,
+  "sequence": 17,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -91,6 +91,34 @@
       "source": "cli",
       "sequence": 13,
       "timestamp": "2026-07-28T19:42:59.590Z"
+    },
+    {
+      "id": "evt-1785268087635-ab2e22",
+      "topic": "agent:persistence",
+      "source": "cli",
+      "sequence": 14,
+      "timestamp": "2026-07-28T19:48:07.636Z"
+    },
+    {
+      "id": "evt-1785268087693-a5b8cf",
+      "topic": "system:redis",
+      "source": "cli",
+      "sequence": 15,
+      "timestamp": "2026-07-28T19:48:07.693Z"
+    },
+    {
+      "id": "evt-1785268087740-5d60bc",
+      "topic": "agent:script",
+      "source": "cli",
+      "sequence": 16,
+      "timestamp": "2026-07-28T19:48:07.740Z"
+    },
+    {
+      "id": "evt-1785268223377-67b8b6",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 17,
+      "timestamp": "2026-07-28T19:50:23.377Z"
     }
   ],
   "topicCounts": {
@@ -100,8 +128,11 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 5,
+    "system:health": 6,
     "agent:recall": 1,
-    "agent:report": 1
+    "agent:report": 1,
+    "agent:persistence": 1,
+    "system:redis": 1,
+    "agent:script": 1
   }
 }

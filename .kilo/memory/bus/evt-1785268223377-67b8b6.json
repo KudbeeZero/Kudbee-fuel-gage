@@ -1,0 +1,14 @@
+{
+  "id": "evt-1785268223377-67b8b6",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "redis": "3-agents-72h-ttl",
+    "bootstrap": "ses-1785268213365",
+    "expiry-guard": "71.9h-remaining",
+    "agents": "ci-watcher,knowledge-curator,pipeline-guardian"
+  },
+  "timestamp": "2026-07-28T19:50:23.377Z",
+  "sequence": 17
+}

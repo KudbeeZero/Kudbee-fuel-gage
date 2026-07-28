@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785268087740-5d60bc",
+  "topic": "agent:script",
+  "source": "cli",
+  "data": {
+    "message": "New script: agent-expiry-guard.mjs — check|renew|repop|full"
+  },
+  "timestamp": "2026-07-28T19:48:07.740Z",
+  "sequence": 16
+}
