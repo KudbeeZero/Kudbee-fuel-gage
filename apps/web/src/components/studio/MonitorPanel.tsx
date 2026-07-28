@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
 import {
   Radio,
-  WifiOff,
-  Mail,
   Clock,
   RefreshCw,
   Terminal,
-  ShieldAlert,
 } from 'lucide-react';
 import { useAgentStatus } from '../../hooks/useAgentStatus';
 
