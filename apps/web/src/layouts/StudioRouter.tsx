@@ -32,6 +32,9 @@ const MonitorPanel = lazy(() =>
 const CIHealthPanel = lazy(() =>
   import('../components/studio/CIHealthPanel').then((m) => ({ default: m.default ?? m }))
 );
+const LocalDbStatus = lazy(() =>
+  import('../components/studio/LocalDbStatus').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   monitor: '/tower/monitor',
@@ -39,6 +42,7 @@ const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   governance: '/tower/governance',
   tokens: '/tower/tokens',
   challenge: '/tower/challenge',
+  localdb: '/tower/localdb',
   telemetry: '/tower/telemetry',
   firewall: '/tower/firewall',
 };
@@ -49,6 +53,7 @@ const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
   '/tower/governance': 'governance',
   '/tower/tokens': 'tokens',
   '/tower/challenge': 'challenge',
+  '/tower/localdb': 'localdb',
   '/tower/telemetry': 'telemetry',
   '/tower/firewall': 'firewall',
 };
@@ -97,6 +102,7 @@ function StudioShell() {
             <Route path="/governance" element={<GovernancePanel />} />
             <Route path="/tokens" element={<ThinkTokensPanel />} />
             <Route path="/challenge" element={<ChallengePanel />} />
+            <Route path="/localdb" element={<LocalDbStatus />} />
             <Route path="/telemetry" element={<TelemetryPanel />} />
             <Route path="/firewall" element={<FirewallPanel />} />
           </Routes>
