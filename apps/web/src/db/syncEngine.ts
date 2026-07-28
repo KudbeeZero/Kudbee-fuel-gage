@@ -59,7 +59,6 @@ async function processSyncQueue(): Promise<void> {
           lastError: errorMsg,
         });
         syncError = `Sync failed: ${errorMsg}`;
-        break;
       }
     }
 
