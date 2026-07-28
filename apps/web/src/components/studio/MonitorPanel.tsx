@@ -25,7 +25,6 @@ export default function MonitorPanel() {
 
   const online = agents.filter((a) => a.online).length;
   const total = agents.length;
-  const unreadVms = 0;
   const timestamp = data?.timestamp ?? '';
 
   return (
@@ -52,7 +51,7 @@ export default function MonitorPanel() {
       )}
 
       {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-center">
           <div className="text-xs text-zinc-500 mb-1">Online</div>
           <div className="text-lg font-bold text-emerald-400">{online}</div>
@@ -64,12 +63,6 @@ export default function MonitorPanel() {
         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-center">
           <div className="text-xs text-zinc-500 mb-1">Offline</div>
           <div className="text-lg font-bold text-red-400">{total - online}</div>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-center">
-          <div className="text-xs text-zinc-500 mb-1">Alerts</div>
-          <div className={`text-lg font-bold ${unreadVms > 0 ? 'text-yellow-400' : 'text-zinc-200'}`}>
-            {unreadVms}
-          </div>
         </div>
       </div>
 
