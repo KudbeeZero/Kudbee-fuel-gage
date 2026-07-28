@@ -1,5 +1,5 @@
 {
-  "sequence": 26,
+  "sequence": 27,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -182,6 +182,13 @@
       "source": "cli",
       "sequence": 26,
       "timestamp": "2026-07-28T21:04:30.860Z"
+    },
+    {
+      "id": "evt-1785281112547-828ed4",
+      "topic": "think:training",
+      "source": "cli",
+      "sequence": 27,
+      "timestamp": "2026-07-28T23:25:12.548Z"
     }
   ],
   "topicCounts": {
@@ -202,6 +209,7 @@
     "knowledge:snippet": 1,
     "deployment:complete": 1,
     "agent:collaboration": 1,
-    "sentinel:integration": 1
+    "sentinel:integration": 1,
+    "think:training": 1
   }
 }

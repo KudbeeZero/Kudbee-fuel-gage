@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-28T23:24:49.916Z",
+  "trajectory_quality": "ESCALATED",
+  "recommendation": "REJECTED",
+  "tokenId": "think_ci_1785211891960.json",
+  "score": 0,
+  "verdict": "FAIL",
+  "rank": "ROOKIE",
+  "badge": "○",
+  "challengeQuery": "challenge tk-error-boundary-004: stress-test with DELAY, SCALING, and INVISIBLE_NOISE attack vectors",
+  "tokenSnippet": "{\"ts\":3,\"overall\":\"DEGRADED\",\"latestRun\":{\"name\":\"Kudbee CI\",\"conclusion\":\"failure\",\"branch\":\"salvage/pr208-phone-tree-harden\",\"event\":\"pull_request\"},\"stats\":{\"total\":10,\"passed\":8,\"failed\":2,\"passRa",
+  "metadata": {
+    "source": "challenge-agent",
+    "category": "challenge_outcome"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785281112547-828ed4",
+  "topic": "think:training",
+  "source": "cli",
+  "data": {
+    "message": "Token training complete: 10 VERIFIED, 4 CHALLENGED, 0 PRUNED — 18 tokens, DTHINK 33 entries"
+  },
+  "timestamp": "2026-07-28T23:25:12.548Z",
+  "sequence": 27
+}

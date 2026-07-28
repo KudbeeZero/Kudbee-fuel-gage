@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785281081296-fed7c436",
+  "agentId": "pipeline-guardian",
+  "decision": "run:challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. Verify SOR routing promotes healthy tokens and prunes Byzantine ones.",
+  "context": {
+    "action": "execute",
+    "task": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. Verify SOR routing promotes healthy tokens and prunes Byzantine ones.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T23:24:41.296Z",
+  "decoded": false
+}

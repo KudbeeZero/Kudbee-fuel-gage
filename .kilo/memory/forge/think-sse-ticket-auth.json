@@ -1,1 +1,23 @@
-{"traceId":"tk-sse-ticket-010","taskContext":"Enforced HMAC-SHA256 stream ticket validation on /api/events and /api/os-stream — 401 on missing/invalid tickets. Previously tickets were issued but never validated at SSE connection time.","kd":99,"efficacy":1.0,"status":"CHALLENGED","reasoningSteps":["identified gap: validateStreamTicket() existed but was never called in SSE handlers","added ticket extraction from query param or URL parsing","rejects with 401 Unauthorized before SSE headers are written","applied to /api/events and /api/os-stream endpoints"],"keywords":["SSE","ticket","HMAC-SHA256","authentication","security","zero-trust"],"createdAt":"2026-07-28T21:04:21Z"}
+{
+  "traceId": "tk-sse-ticket-010",
+  "taskContext": "Enforced HMAC-SHA256 stream ticket validation on /api/events and /api/os-stream — 401 on missing/invalid tickets. Previously tickets were issued but never validated at SSE connection time.",
+  "kd": 99,
+  "efficacy": 1,
+  "status": "VERIFIED",
+  "reasoningSteps": [
+    "identified gap: validateStreamTicket() existed but was never called in SSE handlers",
+    "added ticket extraction from query param or URL parsing",
+    "rejects with 401 Unauthorized before SSE headers are written",
+    "applied to /api/events and /api/os-stream endpoints"
+  ],
+  "keywords": [
+    "SSE",
+    "ticket",
+    "HMAC-SHA256",
+    "authentication",
+    "security",
+    "zero-trust"
+  ],
+  "createdAt": "2026-07-28T21:04:21Z",
+  "sorVerdict": "PROMOTE"
+}
