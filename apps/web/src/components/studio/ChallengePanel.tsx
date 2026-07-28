@@ -78,6 +78,8 @@ export default function ChallengePanel() {
       setLeaderboard(lb.leaderboard);
       setTotalTokens(lb.total);
     } catch {
+      setLeaderboard([]);
+      setTotalTokens(0);
     }
   }, []);
 
@@ -87,6 +89,7 @@ export default function ChallengePanel() {
       const r = data as { ranks: RankInfo[] };
       if (Array.isArray(r.ranks)) setRanks(r.ranks);
     } catch {
+      setRanks([]);
     }
   }, []);
 
