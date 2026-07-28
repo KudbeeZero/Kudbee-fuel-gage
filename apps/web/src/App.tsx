@@ -150,12 +150,13 @@ export interface DashboardSummary {
 // --- MAIN APPLICATION ENTRY WITH SIDEBAR ROUTING ---
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('kudbee_session') === 'authenticated'
+  );
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('kudbee_session') === 'authenticated') {
-      setIsAuthenticated(true);
-    }
+    setAuthChecked(true);
   }, []);
 
   const [activeTab, setActiveTab] = useState('TELEMETRY');
@@ -478,6 +479,17 @@ export default function App() {
     { name: "Llama 3.1 70B", org: "Meta", costIn: "0.70", costOut: "0.90", speed: 95, quality: 4, status: "STANDBY" },
     { name: "Mistral Large 2", org: "Mistral", costIn: "3.00", costOut: "9.00", speed: 82, quality: 4.5, status: "STANDBY" }
   ];
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+          <span className="font-mono text-xs text-slate-400">Initializing Kudbee Control Tower…</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
