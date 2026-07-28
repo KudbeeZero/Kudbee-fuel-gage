@@ -40,8 +40,13 @@
       "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
       "timestamp": "2026-07-28T21:09:44.334Z",
       "score": 16
+    },
+    {
+      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
+      "timestamp": "2026-07-28T23:24:41.348Z",
+      "score": 21
     }
   ],
-  "lastRecall": "2026-07-28T21:09:44.334Z",
-  "recallCount": 8
+  "lastRecall": "2026-07-28T23:24:41.348Z",
+  "recallCount": 9
 }

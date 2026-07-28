@@ -164,7 +164,37 @@
       "type": "sibling",
       "timestamp": "2026-07-28T21:04:30.775Z",
       "routed": true
+    },
+    {
+      "id": "call-1785281030568-2f3f5b",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "v263 deployed: splash screen live, mobile loading fixed, PR #213 e2e CI patched",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T23:23:50.568Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785281112613-48341e",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "Token training complete: 10 promoted to VERIFIED, 4 remain CHALLENGED (KD 88-93), 0 Byzantine",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T23:25:12.613Z",
+      "routed": true
     }
   ],
-  "totalCalls": 11
+  "totalCalls": 13
 }

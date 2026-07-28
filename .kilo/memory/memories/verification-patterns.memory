@@ -1,0 +1,12 @@
+{
+  "id": "verification-patterns",
+  "recalls": [
+    {
+      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
+      "timestamp": "2026-07-28T23:24:41.348Z",
+      "score": 18
+    }
+  ],
+  "lastRecall": "2026-07-28T23:24:41.348Z",
+  "recallCount": 1
+}
