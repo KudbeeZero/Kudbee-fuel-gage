@@ -59,7 +59,37 @@
       "type": "routed",
       "timestamp": "2026-07-27T20:54:32.489Z",
       "routed": true
+    },
+    {
+      "id": "call-1785269689255-8fd28a",
+      "from": "ci-watcher",
+      "to": "pipeline-guardian",
+      "message": "Deployment v254 verified — title fix live, 6 think tokens forged, boot-verify patched",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T20:14:49.255Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785269689304-534c9d",
+      "from": "knowledge-curator",
+      "to": "ci-watcher",
+      "message": "Record deployment: 6 tokens, PR #211 merged, v254 live, black screen resolved",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T20:14:49.304Z",
+      "routed": true
     }
   ],
-  "totalCalls": 4
+  "totalCalls": 6
 }

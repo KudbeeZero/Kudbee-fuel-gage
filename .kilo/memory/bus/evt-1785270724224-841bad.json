@@ -1,0 +1,14 @@
+{
+  "id": "evt-1785270724224-841bad",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "diagnostic": "complete",
+    "deployment": "v254",
+    "title": "confirmed",
+    "think_tokens": 6
+  },
+  "timestamp": "2026-07-28T20:32:04.224Z",
+  "sequence": 22
+}

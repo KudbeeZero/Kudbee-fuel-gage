@@ -1,5 +1,5 @@
 {
-  "sequence": 20,
+  "sequence": 22,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -140,6 +140,20 @@
       "source": "cli",
       "sequence": 20,
       "timestamp": "2026-07-28T20:00:00.408Z"
+    },
+    {
+      "id": "evt-1785269689369-6b05d4",
+      "topic": "deployment:complete",
+      "source": "cli",
+      "sequence": 21,
+      "timestamp": "2026-07-28T20:14:49.370Z"
+    },
+    {
+      "id": "evt-1785270724224-841bad",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 22,
+      "timestamp": "2026-07-28T20:32:04.224Z"
     }
   ],
   "topicCounts": {
@@ -149,7 +163,7 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 6,
+    "system:health": 7,
     "agent:recall": 1,
     "agent:report": 1,
     "agent:persistence": 1,
@@ -157,6 +171,7 @@
     "agent:script": 1,
     "think:token": 1,
     "system:prevention": 1,
-    "knowledge:snippet": 1
+    "knowledge:snippet": 1,
+    "deployment:complete": 1
   }
 }

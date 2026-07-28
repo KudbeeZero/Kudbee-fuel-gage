@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785269689369-6b05d4",
+  "topic": "deployment:complete",
+  "source": "cli",
+  "data": {
+    "message": "v254 live — Kudbee Fuel Gauge title confirmed, 6 think tokens, PR #211 merged"
+  },
+  "timestamp": "2026-07-28T20:14:49.370Z",
+  "sequence": 21
+}
