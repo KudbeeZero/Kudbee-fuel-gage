@@ -21,7 +21,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const APP_LOAD_TIMEOUT = 10000;
+const APP_LOAD_TIMEOUT = 8000;
 
 const App = React.lazy(() => {
   const loadPromise = import('./App.tsx');
@@ -47,14 +47,7 @@ const App = React.lazy(() => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <Suspense fallback={
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-3 border-emerald-400 border-t-transparent" />
-            <span className="font-mono text-sm text-emerald-300 font-semibold">Loading Control Tower…</span>
-          </div>
-        </div>
-      }>
+      <Suspense fallback={<></>}>
         <OsStreamProvider>
           <App />
         </OsStreamProvider>

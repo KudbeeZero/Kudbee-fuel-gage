@@ -483,14 +483,7 @@ export default function App() {
   ];
 
   if (!authChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="flex items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-3 border-emerald-400 border-t-transparent" />
-          <span className="font-mono text-sm text-emerald-300 font-semibold">Initializing Kudbee…</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!isAuthenticated) {
