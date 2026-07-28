@@ -157,6 +157,8 @@ export default function App() {
 
   useEffect(() => {
     setAuthChecked(true);
+    const t = setTimeout(() => setAuthChecked(true), 6000);
+    return () => clearTimeout(t);
   }, []);
 
   const [activeTab, setActiveTab] = useState('TELEMETRY');

@@ -21,8 +21,14 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const App = React.lazy(() => 
-  import('./App.tsx').catch((err) => {
+const APP_LOAD_TIMEOUT = 10000;
+
+const App = React.lazy(() => {
+  const loadPromise = import('./App.tsx');
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('App module load timed out after ' + APP_LOAD_TIMEOUT + 'ms')), APP_LOAD_TIMEOUT)
+  );
+  return Promise.race([loadPromise, timeoutPromise]).catch((err) => {
     console.error('[main] Failed to load App module:', err);
     return { default: () => (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
@@ -31,11 +37,12 @@ const App = React.lazy(() =>
           <pre className="mt-4 max-h-48 overflow-auto rounded border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-rose-400 text-left">
             {err instanceof Error ? err.message : String(err)}
           </pre>
+          <button className="mt-4 rounded bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300" onClick={() => window.location.reload()}>Retry</button>
         </div>
       </div>
     )};
-  }) as Promise<{ default: React.ComponentType<object> }>
-);
+  }) as Promise<{ default: React.ComponentType<object> }>;
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
