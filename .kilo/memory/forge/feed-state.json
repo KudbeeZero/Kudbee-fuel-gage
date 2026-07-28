@@ -1,19 +1,61 @@
 {
-  "started": null,
-  "totalInjected": 1,
+  "started": "2026-07-28T19:39:50.053Z",
+  "totalInjected": 8,
   "lastInjection": {
-    "snippetId": "middleware-pipeline-architecture",
-    "at": "2026-07-27T18:36:19.642Z"
+    "snippetId": "verification-patterns",
+    "at": "2026-07-28T19:39:50.063Z"
   },
   "bySnippet": {
-    "middleware-pipeline-architecture": 1
+    "middleware-pipeline-architecture": 1,
+    "agent-ecosystem": 1,
+    "api-route-catalog": 1,
+    "database-schema": 1,
+    "frontend-patterns": 1,
+    "middleware-patterns": 1,
+    "redis-patterns": 1,
+    "verification-patterns": 1
   },
   "injections": [
     {
       "id": "tk-1785177379641-81817a25",
       "snippetId": "middleware-pipeline-architecture",
       "timestamp": "2026-07-27T18:36:19.642Z"
+    },
+    {
+      "id": "tk-1785267590059-f1509f72",
+      "snippetId": "agent-ecosystem",
+      "timestamp": "2026-07-28T19:39:50.059Z"
+    },
+    {
+      "id": "tk-1785267590060-f4c16a00",
+      "snippetId": "api-route-catalog",
+      "timestamp": "2026-07-28T19:39:50.060Z"
+    },
+    {
+      "id": "tk-1785267590060-42b1354f",
+      "snippetId": "database-schema",
+      "timestamp": "2026-07-28T19:39:50.061Z"
+    },
+    {
+      "id": "tk-1785267590061-d9fde7e5",
+      "snippetId": "frontend-patterns",
+      "timestamp": "2026-07-28T19:39:50.061Z"
+    },
+    {
+      "id": "tk-1785267590062-dda34333",
+      "snippetId": "middleware-patterns",
+      "timestamp": "2026-07-28T19:39:50.062Z"
+    },
+    {
+      "id": "tk-1785267590063-e1d447ac",
+      "snippetId": "redis-patterns",
+      "timestamp": "2026-07-28T19:39:50.063Z"
+    },
+    {
+      "id": "tk-1785267590063-27eab010",
+      "snippetId": "verification-patterns",
+      "timestamp": "2026-07-28T19:39:50.063Z"
     }
   ],
-  "processed": 1
+  "processed": 8
 }

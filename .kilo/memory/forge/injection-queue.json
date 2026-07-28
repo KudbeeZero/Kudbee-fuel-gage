@@ -6,6 +6,48 @@
       "snippetId": "middleware-pipeline-architecture",
       "processedAt": "2026-07-27T18:36:19.645Z",
       "status": "injected"
+    },
+    {
+      "id": "tk-1785267590059-f1509f72",
+      "snippetId": "agent-ecosystem",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590060-f4c16a00",
+      "snippetId": "api-route-catalog",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590060-42b1354f",
+      "snippetId": "database-schema",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590061-d9fde7e5",
+      "snippetId": "frontend-patterns",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590062-dda34333",
+      "snippetId": "middleware-patterns",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590063-e1d447ac",
+      "snippetId": "redis-patterns",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
+    },
+    {
+      "id": "tk-1785267590063-27eab010",
+      "snippetId": "verification-patterns",
+      "processedAt": "2026-07-28T19:39:50.066Z",
+      "status": "injected"
     }
   ],
   "failed": []
