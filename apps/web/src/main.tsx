@@ -43,8 +43,8 @@ createRoot(document.getElementById('root')!).render(
       <Suspense fallback={
         <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
           <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-            <span className="font-mono text-xs text-slate-400">Booting Control Tower…</span>
+            <div className="h-6 w-6 animate-spin rounded-full border-3 border-emerald-400 border-t-transparent" />
+            <span className="font-mono text-sm text-emerald-300 font-semibold">Loading Control Tower…</span>
           </div>
         </div>
       }>
