@@ -61,6 +61,15 @@
       "edges": [
         "agent-ecosystem"
       ]
+    },
+    "redis-agent-persistence": {
+      "type": "snippet",
+      "category": "infrastructure",
+      "connectedTo": [
+        "agent-ecosystem",
+        "middleware-pipeline-architecture",
+        "database-schema"
+      ]
     }
   },
   "edges": [
@@ -98,6 +107,24 @@
       "from": "verification-patterns",
       "to": "agent-ecosystem",
       "created": "2026-07-27T17:57:25.141Z"
+    },
+    {
+      "from": "redis-agent-persistence",
+      "to": "agent-ecosystem",
+      "type": "implements",
+      "weight": 1
+    },
+    {
+      "from": "redis-agent-persistence",
+      "to": "middleware-pipeline-architecture",
+      "type": "extends",
+      "weight": 0.9
+    },
+    {
+      "from": "redis-agent-persistence",
+      "to": "database-schema",
+      "type": "depends_on",
+      "weight": 0.8
     }
   ]
 }

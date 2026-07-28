@@ -131,13 +131,49 @@
       "agentsActive": 3,
       "snippetsAvailable": 8,
       "decisionsTotal": 7
+    },
+    {
+      "date": "2026-07-28T19:47:00Z",
+      "type": "redis-agent-persistence",
+      "summary": "Built Redis agent persistence layer: 3 agents registered with 72h TTL, auto-renewal via session-bootstrap, expiry-guard script for repopulation",
+      "ciStatus": {
+        "typecheck": "12/12",
+        "lint": "0 errors",
+        "e2e": "43/43"
+      },
+      "agentsRegistered": 3,
+      "redisKeys": 24,
+      "newScripts": [
+        "agent-expiry-guard.mjs"
+      ],
+      "newSnippets": [
+        "redis-agent-persistence"
+      ]
+    },
+    {
+      "session": "ses-1785268129306-acdfaadd",
+      "date": "2026-07-28T19:48:49.861Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785268213365-d5ed64b8",
+      "date": "2026-07-28T19:50:13.914Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 14,
+    "sessions": 17,
     "ciPassRate": "100%"
   },
   "health": {
-    "overall": "GREEN"
+    "overall": "GREEN",
+    "redis": "healthy",
+    "agents": "3/3 registered"
   }
 }
