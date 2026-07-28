@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785281030428-a6762fbb",
+  "agentId": "pipeline-guardian",
+  "decision": "run:verify v263 deployed, splash screen live, mobile loading states, CI e2e fix",
+  "context": {
+    "action": "execute",
+    "task": "verify v263 deployed, splash screen live, mobile loading states, CI e2e fix",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T23:23:50.428Z",
+  "decoded": false
+}
