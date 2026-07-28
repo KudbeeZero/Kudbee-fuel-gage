@@ -101,8 +101,10 @@ async function pullTelemetry(): Promise<void> {
         timestamp: String(item.timestamp ?? new Date().toISOString()),
         cachedAt: Date.now(),
       }));
-      await db.telemetry.clear();
-      await db.telemetry.bulkAdd(records);
+      await db.transaction('rw', db.telemetry, async () => {
+        await db.telemetry.clear();
+        await db.telemetry.bulkAdd(records);
+      });
     }
     lastPullTime = Date.now();
   } catch {
