@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785268085515-48a8ab2a",
+  "agentId": "ci-watcher",
+  "decision": "redis_persistence_layer_built",
+  "context": {
+    "context": "severity=INFO,redis_agents=3,ttl=259200s,scripts=agent-expiry-guard,auto_renew=session-bootstrap",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-28T19:48:05.516Z",
+  "decoded": false
+}

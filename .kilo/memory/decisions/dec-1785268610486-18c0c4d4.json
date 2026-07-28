@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785268610486-18c0c4d4",
+  "agentId": "pipeline-guardian",
+  "decision": "run:scan middleware layers for frontend serving issues",
+  "context": {
+    "action": "execute",
+    "task": "scan middleware layers for frontend serving issues",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T19:56:50.487Z",
+  "decoded": false
+}

@@ -6,8 +6,18 @@
       "id": "dec-1785176127705-cd5d0cc1",
       "decision": "curation_complete",
       "timestamp": "2026-07-27T18:15:27.705Z"
+    },
+    {
+      "id": "dec-1785268085449-f1f62fd8",
+      "decision": "redis_persistence_layer_built",
+      "timestamp": "2026-07-28T19:48:05.449Z"
+    },
+    {
+      "id": "dec-1785268806995-1354c08c",
+      "decision": "frontend_crash_prevention_deployed",
+      "timestamp": "2026-07-28T20:00:06.995Z"
     }
   ],
-  "lastAction": "2026-07-27T18:15:27.705Z",
-  "totalActions": 2
+  "lastAction": "2026-07-28T20:00:06.995Z",
+  "totalActions": 4
 }

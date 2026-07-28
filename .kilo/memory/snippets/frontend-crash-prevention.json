@@ -1,0 +1,11 @@
+{
+  "id": "frontend-crash-prevention",
+  "title": "Frontend Crash Prevention — Never-Again Checklist",
+  "content": "## Black Screen Prevention Checklist\n\n### GATES (must pass before deployment):\n1. HTML title tag — must be the app name, not scaffold boilerplate\n2. Auth check — read localStorage SYNCHRONOUSLY via useState initializer, never async useEffect\n3. Loading state — render a spinner/indicator before auth resolution so users never see blank page\n4. Error boundaries — root-level (ErrorBoundary) + per-route (PanelErrorBoundary) for isolation\n5. Static file serving — server.js must have express.static(distPath) with SPA catch-all `app.get('*', ...)`\n6. Build verification — `npm run build` must succeed; dist folder must exist at deploy time\n7. Asset paths — Vite base config matches deployment URL path\n\n### DIAGNOSTIC PROTOCOL (when black screen detected):\n1. curl /health — check backend alive\n2. curl / — check HTML renders with correct title\n3. Check browser console for JS errors\n4. Verify dist folder exists and contains index.html + hashed assets\n5. Check env vars: VITE_API_URL, DATABASE_URL, REDIS_URL\n6. Run pipeline-guardian middleware scan\n\n### ROOT CAUSES FIXED (2026-07-28):\n- Title: My Google AI Studio App → Kudbee Fuel Gauge — AI Cost Intelligence\n- Auth: async useEffect flash → synchronous useState(() => localStorage.getItem(...))\n- Loading: no indicator → spinner with 'Initializing Kudbee Control Tower…'\n- Error isolation: 15 per-route PanelErrorBoundary wrappers in App.tsx",
+  "keywords": ["black screen", "frontend", "crash", "prevention", "checklist", "auth", "loading", "error boundary", "title", "deployment"],
+  "category": "frontend",
+  "recallCount": 0,
+  "createdAt": "2026-07-28T19:58:00Z",
+  "size": 1100,
+  "relations": ["frontend-patterns", "middleware-pipeline-architecture", "verification-patterns"]
+}

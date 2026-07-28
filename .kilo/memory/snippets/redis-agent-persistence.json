@@ -1,0 +1,11 @@
+{
+  "id": "redis-agent-persistence",
+  "title": "Redis Agent Persistence Layer — 72h TTL with Auto-Renewal",
+  "content": "Agents persist in Upstash Redis via kudbee:agents:{id} hash keys with 259200s (72h) TTL. The kudbee:agents:index SET tracks all registered agents. Three defense layers prevent expiry: (1) session-bootstrap.mjs renews all agent TTLs on every session start, (2) agent-expiry-guard.mjs runs check/renew/repop on-demand or via cron, (3) local .kilo/agents/*.agent files serve as golden source for re-registration if Redis keys vanish. Use UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to access the REST API. Commands: node scripts/agent-expiry-guard.mjs check|renew|repop|full.",
+  "keywords": ["redis", "agent", "persistence", "ttl", "expiry", "upstash", "renew", "74-hour", "database"],
+  "category": "infrastructure",
+  "recallCount": 0,
+  "createdAt": "2026-07-28T19:47:00Z",
+  "size": 520,
+  "relations": ["agent-ecosystem", "middleware-pipeline-architecture", "database-schema"]
+}

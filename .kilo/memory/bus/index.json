@@ -1,5 +1,5 @@
 {
-  "sequence": 11,
+  "sequence": 20,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -77,6 +77,69 @@
       "source": "cli",
       "sequence": 11,
       "timestamp": "2026-07-27T20:47:06.007Z"
+    },
+    {
+      "id": "evt-1785267594342-20c27b",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 12,
+      "timestamp": "2026-07-28T19:39:54.342Z"
+    },
+    {
+      "id": "evt-1785267779590-961b41",
+      "topic": "agent:report",
+      "source": "cli",
+      "sequence": 13,
+      "timestamp": "2026-07-28T19:42:59.590Z"
+    },
+    {
+      "id": "evt-1785268087635-ab2e22",
+      "topic": "agent:persistence",
+      "source": "cli",
+      "sequence": 14,
+      "timestamp": "2026-07-28T19:48:07.636Z"
+    },
+    {
+      "id": "evt-1785268087693-a5b8cf",
+      "topic": "system:redis",
+      "source": "cli",
+      "sequence": 15,
+      "timestamp": "2026-07-28T19:48:07.693Z"
+    },
+    {
+      "id": "evt-1785268087740-5d60bc",
+      "topic": "agent:script",
+      "source": "cli",
+      "sequence": 16,
+      "timestamp": "2026-07-28T19:48:07.740Z"
+    },
+    {
+      "id": "evt-1785268223377-67b8b6",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 17,
+      "timestamp": "2026-07-28T19:50:23.377Z"
+    },
+    {
+      "id": "evt-1785268800256-369439",
+      "topic": "think:token",
+      "source": "cli",
+      "sequence": 18,
+      "timestamp": "2026-07-28T20:00:00.256Z"
+    },
+    {
+      "id": "evt-1785268800323-f66395",
+      "topic": "system:prevention",
+      "source": "cli",
+      "sequence": 19,
+      "timestamp": "2026-07-28T20:00:00.323Z"
+    },
+    {
+      "id": "evt-1785268800408-8b9d1b",
+      "topic": "knowledge:snippet",
+      "source": "cli",
+      "sequence": 20,
+      "timestamp": "2026-07-28T20:00:00.408Z"
     }
   ],
   "topicCounts": {
@@ -86,7 +149,14 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 4,
-    "agent:recall": 1
+    "system:health": 6,
+    "agent:recall": 1,
+    "agent:report": 1,
+    "agent:persistence": 1,
+    "system:redis": 1,
+    "agent:script": 1,
+    "think:token": 1,
+    "system:prevention": 1,
+    "knowledge:snippet": 1
   }
 }

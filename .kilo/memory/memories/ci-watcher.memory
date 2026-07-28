@@ -1,8 +1,19 @@
 {
   "id": "ci-watcher",
   "recalls": [],
-  "decisions": [],
-  "totalActions": 0,
-  "lastAction": null,
+  "decisions": [
+    {
+      "id": "dec-1785268085515-48a8ab2a",
+      "decision": "redis_persistence_layer_built",
+      "timestamp": "2026-07-28T19:48:05.516Z"
+    },
+    {
+      "id": "dec-1785268807066-0f88825b",
+      "decision": "frontend_crash_prevention_deployed",
+      "timestamp": "2026-07-28T20:00:07.066Z"
+    }
+  ],
+  "totalActions": 2,
+  "lastAction": "2026-07-28T20:00:07.066Z",
   "discoveredAt": "2026-07-27T18:44:38.562Z"
 }

@@ -238,6 +238,60 @@ if (existsSync(VOICEMAIL_DIR)) {
 
 // ─── Step 9: Report ─────────────────────────────────────────────────────────
 
+// ─── Step 8.5: Renew agent state in Redis (agent expiry guard) ────────────
+let redisAgentsRenewed = 0;
+const REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const AGENT_TTL = 259200; // 72 hours
+
+if (REDIS_REST_URL && REDIS_REST_TOKEN) {
+  try {
+    const idxRes = await fetch(REDIS_REST_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+      },
+      body: JSON.stringify(['SMEMBERS', 'kudbee:agents:index']),
+    });
+    if (idxRes.ok) {
+      const idxData = await idxRes.json();
+      const ids = idxData?.result || [];
+      for (const id of ids) {
+        await fetch(REDIS_REST_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+          },
+          body: JSON.stringify(['HSET', `kudbee:agents:${id}`, 'heartbeat', String(Date.now()), 'last_renewed', new Date().toISOString()]),
+        });
+        await fetch(REDIS_REST_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+          },
+          body: JSON.stringify(['EXPIRE', `kudbee:agents:${id}`, String(AGENT_TTL)]),
+        });
+        redisAgentsRenewed++;
+      }
+      if (redisAgentsRenewed > 0) {
+        await fetch(REDIS_REST_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+          },
+          body: JSON.stringify(['EXPIRE', 'kudbee:agents:index', String(AGENT_TTL)]),
+        });
+      }
+    }
+  } catch { /* Redis offline — local mode already active */ }
+}
+
+// ─── Step 9: Report ─────────────────────────────────────────────────────────
+
 const totalActions = agentFiles.reduce((a, ag) => a + (ag.memory.totalActions || 0), 0);
 const totalRecalls = snippetFiles.reduce((a, s) => a + s.recallCount, 0);
 const totalKnowledge = snippetFiles.reduce((a, s) => a + s.size, 0);
@@ -251,6 +305,7 @@ console.log(`
 ║  GIT SYNC: ${gitSynced ? 'New state from other agents' : 'Already current'}
 ╠══════════════════════════════════════════════════════════════╣
 ║  VOICEMAIL: ${voicemailsReplayed} replayed
+║  REDIS:     ${redisAgentsRenewed} agents renewed (72h TTL)
 ╠══════════════════════════════════════════════════════════════╣
 ║  LAST SESSION:`);
 

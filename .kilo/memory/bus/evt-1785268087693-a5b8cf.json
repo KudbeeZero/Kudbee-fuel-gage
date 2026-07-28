@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785268087693-a5b8cf",
+  "topic": "system:redis",
+  "source": "cli",
+  "data": {
+    "message": "Redis now stores agent state — 3 hashes, 1 index SET, 24 total keys, 72h TTL, auto-renew on bootstrap"
+  },
+  "timestamp": "2026-07-28T19:48:07.693Z",
+  "sequence": 15
+}

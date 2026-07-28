@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785268800323-f66395",
+  "topic": "system:prevention",
+  "source": "cli",
+  "data": {
+    "message": "Frontend crash prevention checklist created: 7 gates + 6 diagnostic steps"
+  },
+  "timestamp": "2026-07-28T20:00:00.323Z",
+  "sequence": 19
+}
