@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785273496595-1f027014",
+  "agentId": "pipeline-guardian",
+  "decision": "run:scan adversarial simulator POST route, verify sorRouter sink accumulator integration, check simulate-attack audit channel wiring",
+  "context": {
+    "action": "execute",
+    "task": "scan adversarial simulator POST route, verify sorRouter sink accumulator integration, check simulate-attack audit channel wiring",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:18:16.596Z",
+  "decoded": false
+}
