@@ -4086,10 +4086,18 @@ if (redis) {
       if (err) console.error('[SSE] Failed to subscribe to events channel:', err.message);
       else console.log('[SSE] Subscribed to', EVENTS_CHANNEL);
     });
-    subClient.on('message', (_channel, message) => {
+    subClient.subscribe('kudbee:stream:audit', (err) => {
+      if (err) console.error('[SSE] Failed to subscribe to audit channel:', err.message);
+      else console.log('[SSE] Subscribed to kudbee:stream:audit');
+    });
+    subClient.on('message', (channel, message) => {
       try {
         const event = JSON.parse(message);
-        broadcast(sanitizeEvent(event));
+        if (channel === 'kudbee:stream:audit') {
+          broadcast({ type: 'sentinel.audit', data: { ...event, source: 'sentinel' } });
+        } else {
+          broadcast(sanitizeEvent(event));
+        }
       } catch {
         /* ignore malformed */
       }
@@ -5618,6 +5626,39 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
+});
+
+// --- Edge Sentinel: anomaly detection feed (consumed by EdgeSentinelPlugin) ---
+let edgeAnomaliesCache = { totalAlerts: 0, unacknowledged: 0, rules: 4, lastDetected: null };
+let edgeThroughputCache = { ingressCount: 0, egressCount: 0, requestRate: 0, windowSec: 60 };
+
+app.get('/api/edge/anomalies/count', (_req, res) => {
+  res.json({ ...edgeAnomaliesCache, timestamp: new Date().toISOString() });
+});
+
+app.get('/api/edge/throughput', (_req, res) => {
+  res.json({ ...edgeThroughputCache, timestamp: new Date().toISOString() });
+});
+
+app.post('/api/edge/anomalies/update', (req, res) => {
+  const { alerts, throughput } = req.body || {};
+  if (alerts !== undefined) {
+    edgeAnomaliesCache = {
+      totalAlerts: alerts.totalAlerts || edgeAnomaliesCache.totalAlerts,
+      unacknowledged: alerts.unacknowledged ?? edgeAnomaliesCache.unacknowledged,
+      rules: alerts.rules || edgeAnomaliesCache.rules,
+      lastDetected: alerts.lastDetected || new Date().toISOString(),
+    };
+  }
+  if (throughput !== undefined) {
+    edgeThroughputCache = {
+      ingressCount: throughput.ingressCount || edgeThroughputCache.ingressCount,
+      egressCount: throughput.egressCount || edgeThroughputCache.egressCount,
+      requestRate: throughput.requestRate || edgeThroughputCache.requestRate,
+      windowSec: throughput.windowSec || edgeThroughputCache.windowSec,
+    };
+  }
+  res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
 const distPath = resolveDistPath();
