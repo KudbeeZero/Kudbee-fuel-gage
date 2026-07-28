@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785272984289-f479b3f1",
+  "agentId": "pipeline-guardian",
+  "decision": "run:full pipeline audit: scan all middleware, check SSE ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+  "context": {
+    "action": "execute",
+    "task": "full pipeline audit: scan all middleware, check SSE ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:09:44.290Z",
+  "decoded": false
+}

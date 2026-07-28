@@ -134,7 +134,37 @@
       "type": "sibling",
       "timestamp": "2026-07-28T20:40:46.027Z",
       "routed": true
+    },
+    {
+      "id": "call-1785272670728-bbf34a",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "SSE ticket auth enforced — 401 on invalid tickets. kudbee:stream:audit subscribed. All 11 middleware layers healthy.",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T21:04:30.729Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785272670775-e48389",
+      "from": "knowledge-curator",
+      "to": "ci-watcher",
+      "message": "Sentinel IQR pipeline indexed: 5 tokens forged, AnomalyFeedPlugin built, Redis publisher created.",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T21:04:30.775Z",
+      "routed": true
     }
   ],
-  "totalCalls": 9
+  "totalCalls": 11
 }

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785272644395-e0ca2bda",
+  "agentId": "knowledge-curator",
+  "decision": "run:index Sentinel IQR SSE pipeline: HMAC-SHA256 tickets, Redis pub/sub audit channel, AnomalyFeedPlugin, wireFirewallEvents",
+  "context": {
+    "action": "execute",
+    "task": "index Sentinel IQR SSE pipeline: HMAC-SHA256 tickets, Redis pub/sub audit channel, AnomalyFeedPlugin, wireFirewallEvents",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:04:04.395Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785272985813-5b40d652",
+  "agentId": "ci-watcher",
+  "decision": "run:verify typecheck, lint, e2e — confirm PR #212 CI green, validate sentinel pipeline code quality",
+  "context": {
+    "action": "execute",
+    "task": "verify typecheck, lint, e2e — confirm PR #212 CI green, validate sentinel pipeline code quality",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:09:45.814Z",
+  "decoded": false
+}

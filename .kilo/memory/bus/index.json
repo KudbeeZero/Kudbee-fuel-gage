@@ -1,5 +1,5 @@
 {
-  "sequence": 24,
+  "sequence": 26,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -168,6 +168,20 @@
       "source": "cli",
       "sequence": 24,
       "timestamp": "2026-07-28T20:40:49.157Z"
+    },
+    {
+      "id": "evt-1785272670821-72a942",
+      "topic": "sentinel:integration",
+      "source": "cli",
+      "sequence": 25,
+      "timestamp": "2026-07-28T21:04:30.821Z"
+    },
+    {
+      "id": "evt-1785272670860-a28e27",
+      "topic": "think:token",
+      "source": "cli",
+      "sequence": 26,
+      "timestamp": "2026-07-28T21:04:30.860Z"
     }
   ],
   "topicCounts": {
@@ -183,10 +197,11 @@
     "agent:persistence": 1,
     "system:redis": 1,
     "agent:script": 1,
-    "think:token": 2,
+    "think:token": 3,
     "system:prevention": 1,
     "knowledge:snippet": 1,
     "deployment:complete": 1,
-    "agent:collaboration": 1
+    "agent:collaboration": 1,
+    "sentinel:integration": 1
   }
 }

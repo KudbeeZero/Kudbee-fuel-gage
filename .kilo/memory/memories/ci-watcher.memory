@@ -11,9 +11,14 @@
       "id": "dec-1785268807066-0f88825b",
       "decision": "frontend_crash_prevention_deployed",
       "timestamp": "2026-07-28T20:00:07.066Z"
+    },
+    {
+      "id": "dec-1785273028225-399df462",
+      "decision": "verification_complete",
+      "timestamp": "2026-07-28T21:10:28.225Z"
     }
   ],
-  "totalActions": 3,
-  "lastAction": "2026-07-28T20:40:03.772Z",
+  "totalActions": 6,
+  "lastAction": "2026-07-28T21:10:28.225Z",
   "discoveredAt": "2026-07-27T18:44:38.562Z"
 }

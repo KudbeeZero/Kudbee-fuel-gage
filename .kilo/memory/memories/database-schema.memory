@@ -30,8 +30,13 @@
       "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
       "timestamp": "2026-07-28T20:40:01.826Z",
       "score": 11
+    },
+    {
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.335Z",
+      "score": 10
     }
   ],
-  "lastRecall": "2026-07-28T20:40:01.826Z",
-  "recallCount": 6
+  "lastRecall": "2026-07-28T21:09:44.335Z",
+  "recallCount": 7
 }
