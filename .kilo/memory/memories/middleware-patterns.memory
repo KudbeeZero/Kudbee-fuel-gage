@@ -25,8 +25,13 @@
       "query": "scan middleware layers for frontend serving issues",
       "timestamp": "2026-07-28T19:56:50.556Z",
       "score": 9
+    },
+    {
+      "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
+      "timestamp": "2026-07-28T20:40:01.826Z",
+      "score": 13
     }
   ],
-  "lastRecall": "2026-07-28T19:56:50.556Z",
-  "recallCount": 5
+  "lastRecall": "2026-07-28T20:40:01.826Z",
+  "recallCount": 6
 }

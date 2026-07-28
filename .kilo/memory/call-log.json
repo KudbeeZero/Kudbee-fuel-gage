@@ -89,7 +89,52 @@
       "type": "sibling",
       "timestamp": "2026-07-28T20:14:49.304Z",
       "routed": true
+    },
+    {
+      "id": "call-1785271245902-1aa138",
+      "from": "knowledge-curator",
+      "to": "pipeline-guardian",
+      "message": "Curation complete: 10 nodes, 13 relations indexed. Redis and crash-prevention snippets searchable.",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T20:40:45.902Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785271245967-940458",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "All 11 middleware layers healthy. Static serving verified. Release phase boot-verify patched.",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T20:40:45.967Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785271246027-97bc1e",
+      "from": "ci-watcher",
+      "to": "knowledge-curator",
+      "message": "Verification initiated. Typecheck/lint/e2e in progress for v255 deployment.",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T20:40:46.027Z",
+      "routed": true
     }
   ],
-  "totalCalls": 6
+  "totalCalls": 9
 }

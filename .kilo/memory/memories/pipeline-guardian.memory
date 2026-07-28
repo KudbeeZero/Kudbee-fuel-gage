@@ -31,8 +31,13 @@
       "id": "dec-1785268806932-6c0eaf00",
       "decision": "frontend_crash_prevention_deployed",
       "timestamp": "2026-07-28T20:00:06.932Z"
+    },
+    {
+      "id": "dec-1785271201885-bba7bf2b",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-28T20:40:01.885Z"
     }
   ],
-  "lastAction": "2026-07-28T20:00:06.932Z",
-  "totalActions": 8
+  "lastAction": "2026-07-28T20:40:01.885Z",
+  "totalActions": 10
 }

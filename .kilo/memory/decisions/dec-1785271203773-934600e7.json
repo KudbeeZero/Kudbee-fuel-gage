@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785271203773-934600e7",
+  "agentId": "ci-watcher",
+  "decision": "run:verify typecheck, lint, e2e, builds — confirm production deployment v255 healthy",
+  "context": {
+    "action": "execute",
+    "task": "verify typecheck, lint, e2e, builds — confirm production deployment v255 healthy",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T20:40:03.774Z",
+  "decoded": false
+}
