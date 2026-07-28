@@ -1213,8 +1213,6 @@ async function run() {
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
-  } finally {
-    await stopServer();
   }
 
   // --- Adversarial Simulator & SOR routing ---
@@ -1230,14 +1228,14 @@ async function run() {
     assert(data.ok === true, 'Simulate-attack response has ok: true');
     assert(Array.isArray(data.attackResults) && data.attackResults.length > 0, 'Attack results array has entries');
     assert(Array.isArray(data.sorDecisions) && data.sorDecisions.length > 0, 'SOR decisions array has entries');
-
-    // Verify at least one attack reached SOR routing
     const pruned = data.sorDecisions.filter((d) => d.verdict === 'PRUNE');
     const promoted = data.sorDecisions.filter((d) => d.verdict === 'PROMOTE');
     assert(pruned.length + promoted.length > 0, 'SOR routing produced at least one PROMOTE or PRUNE decision');
   }
 
   await testAdversarialSimulator();
+
+  await stopServer();
 
   console.log('\n========================================');
   console.log(`Results: ${passed} passed, ${failed} failed out of 44`);
