@@ -21,8 +21,18 @@
       "id": "dec-1785268085385-678a7c83",
       "decision": "redis_persistence_layer_built",
       "timestamp": "2026-07-28T19:48:05.385Z"
+    },
+    {
+      "id": "dec-1785268610619-f9218bf9",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-28T19:56:50.620Z"
+    },
+    {
+      "id": "dec-1785268806932-6c0eaf00",
+      "decision": "frontend_crash_prevention_deployed",
+      "timestamp": "2026-07-28T20:00:06.932Z"
     }
   ],
-  "lastAction": "2026-07-28T19:48:05.385Z",
-  "totalActions": 5
+  "lastAction": "2026-07-28T20:00:06.932Z",
+  "totalActions": 8
 }

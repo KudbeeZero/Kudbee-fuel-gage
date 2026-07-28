@@ -1,5 +1,5 @@
 {
-  "sequence": 17,
+  "sequence": 20,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -119,6 +119,27 @@
       "source": "cli",
       "sequence": 17,
       "timestamp": "2026-07-28T19:50:23.377Z"
+    },
+    {
+      "id": "evt-1785268800256-369439",
+      "topic": "think:token",
+      "source": "cli",
+      "sequence": 18,
+      "timestamp": "2026-07-28T20:00:00.256Z"
+    },
+    {
+      "id": "evt-1785268800323-f66395",
+      "topic": "system:prevention",
+      "source": "cli",
+      "sequence": 19,
+      "timestamp": "2026-07-28T20:00:00.323Z"
+    },
+    {
+      "id": "evt-1785268800408-8b9d1b",
+      "topic": "knowledge:snippet",
+      "source": "cli",
+      "sequence": 20,
+      "timestamp": "2026-07-28T20:00:00.408Z"
     }
   ],
   "topicCounts": {
@@ -133,6 +154,9 @@
     "agent:report": 1,
     "agent:persistence": 1,
     "system:redis": 1,
-    "agent:script": 1
+    "agent:script": 1,
+    "think:token": 1,
+    "system:prevention": 1,
+    "knowledge:snippet": 1
   }
 }

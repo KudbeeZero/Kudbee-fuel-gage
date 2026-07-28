@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785268800408-8b9d1b",
+  "topic": "knowledge:snippet",
+  "source": "cli",
+  "data": {
+    "message": "New snippet: frontend-crash-prevention (7 gates, 6 diagnostic steps, 3 root causes documented)"
+  },
+  "timestamp": "2026-07-28T20:00:00.408Z",
+  "sequence": 20
+}

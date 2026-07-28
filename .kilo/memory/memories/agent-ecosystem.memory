@@ -15,8 +15,18 @@
       "query": "postgres database schema pgvector",
       "timestamp": "2026-07-27T18:15:18.272Z",
       "score": 3
+    },
+    {
+      "query": "black screen frontend crash web app deployment",
+      "timestamp": "2026-07-28T19:56:49.609Z",
+      "score": 3
+    },
+    {
+      "query": "scan middleware layers for frontend serving issues",
+      "timestamp": "2026-07-28T19:56:50.556Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-27T18:15:18.272Z",
-  "recallCount": 3
+  "lastRecall": "2026-07-28T19:56:50.556Z",
+  "recallCount": 5
 }

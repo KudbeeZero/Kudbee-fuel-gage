@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785268806932-6c0eaf00",
+  "agentId": "pipeline-guardian",
+  "decision": "frontend_crash_prevention_deployed",
+  "context": {
+    "context": "severity=HIGH,think_tokens=4,snippet=frontend-crash-prevention,gates=7,root_causes=3",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-28T20:00:06.932Z",
+  "decoded": false
+}
