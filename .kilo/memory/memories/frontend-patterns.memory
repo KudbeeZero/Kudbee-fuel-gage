@@ -30,8 +30,13 @@
       "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
       "timestamp": "2026-07-28T20:40:01.824Z",
       "score": 15
+    },
+    {
+      "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+      "timestamp": "2026-07-28T21:04:02.643Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-28T20:40:01.824Z",
-  "recallCount": 6
+  "lastRecall": "2026-07-28T21:04:02.643Z",
+  "recallCount": 7
 }
