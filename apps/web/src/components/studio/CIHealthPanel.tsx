@@ -53,9 +53,12 @@ export default function CIHealthPanel() {
   }, [reload]);
 
   const color = health ? COLOR_MAP[health.overall] || 'slate' : 'slate';
-  const bgColor = `bg-${color}-900/20`;
-  const borderColor = `border-${color}-700`;
-  const textColor = `text-${color}-400`;
+  const styles = {
+    emerald: { bg: 'bg-emerald-900/20', border: 'border-emerald-700', text: 'text-emerald-400' },
+    yellow: { bg: 'bg-yellow-900/20', border: 'border-yellow-700', text: 'text-yellow-400' },
+    red: { bg: 'bg-red-900/20', border: 'border-red-700', text: 'text-red-400' },
+    slate: { bg: 'bg-slate-900/20', border: 'border-slate-700', text: 'text-slate-400' },
+  }[color] || { bg: 'bg-slate-900/20', border: 'border-slate-700', text: 'text-slate-400' };
 
   return (
     <div className="space-y-4 p-4 text-sm font-mono">
@@ -82,17 +85,17 @@ export default function CIHealthPanel() {
 
       {/* Status Banner */}
       {health && (
-        <div className={`${bgColor} ${borderColor} border rounded-lg p-4`}>
+        <div className={`${styles.bg} ${styles.border} border rounded-lg p-4`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {health.overall === 'HEALTHY' ? (
-                <CheckCircle2 className={`w-5 h-5 ${textColor}`} />
+                <CheckCircle2 className={`w-5 h-5 ${styles.text}`} />
               ) : health.overall === 'DEGRADED' ? (
-                <AlertTriangle className={`w-5 h-5 ${textColor}`} />
+                <AlertTriangle className={`w-5 h-5 ${styles.text}`} />
               ) : (
-                <XCircle className={`w-5 h-5 ${textColor}`} />
+                <XCircle className={`w-5 h-5 ${styles.text}`} />
               )}
-              <span className={`text-base font-bold ${textColor}`}>
+              <span className={`text-base font-bold ${styles.text}`}>
                 {health.overall}
               </span>
             </div>
