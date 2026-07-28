@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785271249073-4a93d2",
+  "topic": "agent:collaboration",
+  "source": "cli",
+  "data": {
+    "message": "3 agents collaborated — knowledge-curator + pipeline-guardian + ci-watcher — 9 tokens forged, v255 verified"
+  },
+  "timestamp": "2026-07-28T20:40:49.073Z",
+  "sequence": 23
+}

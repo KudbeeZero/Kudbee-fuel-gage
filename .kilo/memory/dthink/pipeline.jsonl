@@ -4,3 +4,6 @@
 {"type":"token:forged","source":"think-forge-bridge","tokenId":"tk-black-screen-error-boundary","severity":"HIGH","timestamp":"2026-07-28T19:59:56Z"}
 {"type":"token:forged","source":"deployment-workflow","tokenId":"tk-boot-verify","severity":"HIGH","timestamp":"2026-07-28T20:14:49Z"}
 {"type":"token:forged","source":"deployment-workflow","tokenId":"tk-deployment","severity":"HIGH","timestamp":"2026-07-28T20:14:49Z"}
+{"type":"token:forged","source":"interactive-agents","tokenId":"tk-curation","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}
+{"type":"token:forged","source":"interactive-agents","tokenId":"tk-guardian-scan","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}
+{"type":"token:forged","source":"interactive-agents","tokenId":"tk-agent-collab","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}

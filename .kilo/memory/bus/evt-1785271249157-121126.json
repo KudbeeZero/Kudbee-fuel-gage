@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785271249157-121126",
+  "topic": "think:token",
+  "source": "cli",
+  "data": {
+    "message": "9 think tokens minted across session — 7 VERIFIED, deployment v255 confirmed"
+  },
+  "timestamp": "2026-07-28T20:40:49.157Z",
+  "sequence": 24
+}
