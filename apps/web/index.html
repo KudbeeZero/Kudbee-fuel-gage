@@ -15,21 +15,30 @@
       .boot-done #boot-splash{display:none}
     </style>
     <script>
-      document.addEventListener('DOMContentLoaded',function(){
-        var r=document.getElementById('root');
-        if(!r)return;
-        var o=new MutationObserver(function(){
-          if(r.children.length>0||r.textContent.trim().length>0){
+      (function(){
+        var t0=Date.now();
+        document.addEventListener('DOMContentLoaded',function(){
+          var root=document.getElementById('root');
+          if(!root)return;
+          var done=false;
+          function hideSplash(){
+            if(done)return;
+            done=true;
             document.documentElement.classList.add('boot-done');
-            o.disconnect();
           }
+          var obs=new MutationObserver(function(){
+            if(root.children.length>0||root.textContent.trim().length>0)hideSplash();
+          });
+          if(root)obs.observe(root,{childList:true,subtree:true,characterData:true});
+
+          setTimeout(function(){
+            if(!done){
+              hideSplash();
+              root.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;color:#e2e8f0;font-family:ui-monospace,monospace;text-align:center;padding:1rem"><h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><p style="color:#64748b;font-size:.75rem;margin-bottom:2rem">AI Cost Intelligence Platform</p><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.5rem;max-width:20rem"><p style="color:#f87171;font-size:.875rem;font-weight:600;margin-bottom:.5rem">App failed to load</p><p style="color:#94a3b8;font-size:.75rem;margin-bottom:1rem">The application module could not be initialized. This may be caused by a slow connection or restricted browser settings.</p><button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-size:.875rem;font-weight:600;cursor:pointer">Tap to Retry</button><p style="color:#475569;font-size:.625rem;margin-top:1rem">Elapsed: '+Math.round((Date.now()-t0)/1000)+'s</p></div></div>';
+            }
+          },10000);
         });
-        o.observe(r,{childList:true,subtree:true,characterData:true});
-        setTimeout(function(){
-          if(!document.documentElement.classList.contains('boot-done'))
-            document.documentElement.classList.add('boot-done');
-        },15000);
-      });
+      })();
     </script>
   </head>
   <body>
@@ -42,4 +51,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
