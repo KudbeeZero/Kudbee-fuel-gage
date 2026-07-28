@@ -35,8 +35,6 @@ export function mintSyncThinkToken(
 }
 
 async function flushThinkTokens(): Promise<void> {
-  flushTimer = null;
-
   while (thinkTokenQueue.length > 0) {
     const batch = thinkTokenQueue.splice(0, 5);
     for (const payload of batch) {
@@ -55,6 +53,11 @@ async function flushThinkTokens(): Promise<void> {
         // think token mint is best-effort
       }
     }
+  }
+
+  flushTimer = null;
+  if (thinkTokenQueue.length > 0) {
+    flushTimer = setTimeout(flushThinkTokens, FLUSH_INTERVAL_MS);
   }
 }
 
