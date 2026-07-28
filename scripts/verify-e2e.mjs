@@ -1217,8 +1217,30 @@ async function run() {
     await stopServer();
   }
 
+  // --- Adversarial Simulator & SOR routing ---
+  async function testAdversarialSimulator() {
+    // Test Invisible Noise attack through simulate-attack endpoint
+    const res = await fetch(`${BASE}/api/system/simulate-attack`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vectors: ['INVISIBLE_NOISE'], iterations: 2 }),
+    });
+    const data = await res.json();
+    assert(res.status === 200, 'POST /api/system/simulate-attack returns 200');
+    assert(data.ok === true, 'Simulate-attack response has ok: true');
+    assert(Array.isArray(data.attackResults) && data.attackResults.length > 0, 'Attack results array has entries');
+    assert(Array.isArray(data.sorDecisions) && data.sorDecisions.length > 0, 'SOR decisions array has entries');
+
+    // Verify at least one attack reached SOR routing
+    const pruned = data.sorDecisions.filter((d) => d.verdict === 'PRUNE');
+    const promoted = data.sorDecisions.filter((d) => d.verdict === 'PROMOTE');
+    assert(pruned.length + promoted.length > 0, 'SOR routing produced at least one PROMOTE or PRUNE decision');
+  }
+
+  await testAdversarialSimulator();
+
   console.log('\n========================================');
-  console.log(`Results: ${passed} passed, ${failed} failed out of 43`);
+  console.log(`Results: ${passed} passed, ${failed} failed out of 44`);
   console.log('========================================');
 
   if (failed > 0) {

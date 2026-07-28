@@ -5597,6 +5597,102 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
   });
 });
 
+// --- Adversarial Challenge Simulator Trigger ---
+app.post('/api/system/simulate-attack', async (req, res) => {
+  try {
+    const { vectors, iterations } = req.body || {};
+    const simVectors = vectors || ['DELAY', 'SCALING', 'INVISIBLE_NOISE'];
+    const count = Math.min(iterations || 1, 10);
+    const attackResults = [];
+
+    // Inline simulation without dynamic imports (production-safe)
+    const kFactors = [1.45, 1.49, 1.52];
+    for (let i = 0; i < count; i++) {
+      for (const vt of simVectors) {
+        const attackId = `sim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        let energyScore = 0;
+
+        switch (vt) {
+          case 'DELAY':
+            energyScore = 0.35 + Math.random() * 0.3;
+            break;
+          case 'SCALING':
+            energyScore = 0.6 + Math.random() * 0.3;
+            break;
+          case 'INVISIBLE_NOISE': {
+            const k = kFactors[Math.floor(Math.random() * kFactors.length)];
+            energyScore = k >= 1.52 ? 0.55 : k >= 1.46 ? 0.35 : 0.15;
+            break;
+          }
+        }
+
+        const verdict = energyScore > 0.5 ? 'DETECTED' : energyScore > 0.25 ? 'BOUNDARY' : 'MISSED';
+
+        attackResults.push({
+          attackId,
+          attackType: vt,
+          energyScore: Math.round(energyScore * 1000) / 1000,
+          sentinelVerdict: verdict,
+        });
+
+        // Publish to audit channel for live SSE monitoring
+        if (redis) {
+          try {
+            redis.publish('kudbee:stream:audit', JSON.stringify({
+              type: 'sentinel.attack',
+              attackId,
+              attackType: vt,
+              energyScore,
+              sentinelVerdict: verdict,
+              timestamp: new Date().toISOString(),
+            }));
+          } catch {}
+        }
+      }
+    }
+
+    // SOR routing: evaluate detected attacks → recycle sink
+    const sorDecisions = [];
+    for (const atk of attackResults) {
+      const E = atk.energyScore;
+      let sorVerdict = 'HOLD';
+      if (E < 0.3) sorVerdict = 'PROMOTE';
+      else if (E > 0.5) sorVerdict = 'PRUNE';
+
+      if (sorVerdict === 'PRUNE' && redis) {
+        try {
+          redis.publish('kudbee:stream:audit', JSON.stringify({
+            type: 'sor.prune',
+            tokenId: atk.attackId,
+            energyScore: E,
+            reason: `SOR auto-prune: energy ${E} exceeds Byzantine boundary`,
+            timestamp: new Date().toISOString(),
+          }));
+        } catch {}
+      }
+
+      sorDecisions.push({
+        tokenId: atk.attackId,
+        verdict: sorVerdict,
+        energyScore: E,
+      });
+    }
+
+    res.json({
+      ok: true,
+      attacksSimulated: attackResults.length,
+      attackResults,
+      sorDecisions,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: 'simulation_failed',
+      details: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
