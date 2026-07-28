@@ -22,6 +22,7 @@ export function useLocalFirst<T>(
   const [stale, setStale] = useState(false);
   const [syncPending, setSyncPending] = useState(0);
   const mountedRef = useRef(true);
+  const writeVersionRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!mountedRef.current) return;
@@ -59,8 +60,7 @@ export function useLocalFirst<T>(
 
   const writeOptimistic = useCallback(
     (record: T) => {
-      const prevData = data;
-      const prevStale = stale;
+      const version = (writeVersionRef.current += 1);
       setData(record);
       setStale(false);
       void (async () => {
@@ -69,14 +69,14 @@ export function useLocalFirst<T>(
           const table = db.table(tableName) as unknown as { put(item: T): Promise<unknown> };
           await table.put(record);
         } catch {
-          if (mountedRef.current) {
-            setData(prevData);
-            setStale(prevStale);
+          if (mountedRef.current && writeVersionRef.current === version) {
+            setData(null);
+            setStale(true);
           }
         }
       })();
     },
-    [tableName, data, stale],
+    [tableName],
   );
 
   useEffect(() => {
