@@ -69,6 +69,7 @@ import { useOsSnapshot } from './components/OsStreamProvider';
 import { SettingsView, type SettingsViewProps } from './components/SettingsView';
 import { LoginView } from './components/LoginView';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
+import { PanelErrorBoundary } from './components/PanelErrorBoundary';
 
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost } from './utils/currency';
@@ -740,11 +741,12 @@ export default function App() {
           </div>
 
           {/* ACTIVE VIEW ROUTER */}
-          {activeTab === 'OBSERVABILITY' && <ObservabilityPage />}
+          {activeTab === 'OBSERVABILITY' && <PanelErrorBoundary panel={activeTab}><ObservabilityPage /></PanelErrorBoundary>}
 
-        {activeTab === 'STUDIO' && <StudioRouter />}
+          {activeTab === 'STUDIO' && <PanelErrorBoundary panel={activeTab}><StudioRouter /></PanelErrorBoundary>}
 
           {activeTab === 'TELEMETRY' && (
+            <PanelErrorBoundary panel={activeTab}>
             <TelemetryPage
               liveStats={liveStats}
               currency={currency}
@@ -752,59 +754,61 @@ export default function App() {
               models={models}
               displayDensity={displayDensity}
             />
+            </PanelErrorBoundary>
           )}
 
           {activeTab === 'THINK' && (
-            <ThinkPage />
+            <PanelErrorBoundary panel={activeTab}><ThinkPage /></PanelErrorBoundary>
           )}
 
           {activeTab === 'GOVERNANCE' && (
-            <GovernancePage />
+            <PanelErrorBoundary panel={activeTab}><GovernancePage /></PanelErrorBoundary>
           )}
 
           {activeTab === 'CONTROL TOWER' && (
-            <ControlTowerPanel />
+            <PanelErrorBoundary panel={activeTab}><ControlTowerPanel /></PanelErrorBoundary>
           )}
 
           {activeTab === 'HERMES' && (
-            <HermesPage />
+            <PanelErrorBoundary panel={activeTab}><HermesPage /></PanelErrorBoundary>
           )}
 
           {activeTab === 'SENTINEL' && (
-            <SentinelPage />
+            <PanelErrorBoundary panel={activeTab}><SentinelPage /></PanelErrorBoundary>
           )}
 
-          {activeTab === 'TERMINAL' && <OllamaChat />}
+          {activeTab === 'TERMINAL' && <PanelErrorBoundary panel={activeTab}><OllamaChat /></PanelErrorBoundary>}
 
-          {activeTab === 'PLAYGROUND' && <PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} />}
+          {activeTab === 'PLAYGROUND' && <PanelErrorBoundary panel={activeTab}><PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} /></PanelErrorBoundary>}
 
           {activeTab === 'FIREWALL' && (
             <Suspense fallback={<RouteFallback label="Loading Firewall" />}>
-              <FirewallPage />
+              <PanelErrorBoundary panel={activeTab}><FirewallPage /></PanelErrorBoundary>
             </Suspense>
           )}
 
           {activeTab === 'GATEWAY' && (
-            <GatewayView showToast={showToast} />
+            <PanelErrorBoundary panel={activeTab}><GatewayView showToast={showToast} /></PanelErrorBoundary>
           )}
 
           {activeTab === 'INTERCEPTOR' && (
             <Suspense fallback={<div className="h-96 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-500" /></div>}>
-              <InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} />
+              <PanelErrorBoundary panel={activeTab}><InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} /></PanelErrorBoundary>
             </Suspense>
           )}
 
-          {activeTab === 'HISTORY' && <HistoryPage />}
+          {activeTab === 'HISTORY' && <PanelErrorBoundary panel={activeTab}><HistoryPage /></PanelErrorBoundary>}
 
           {activeTab === 'ALERTS' && (
             <Suspense fallback={<RouteFallback label="Loading Alerts" />}>
-              <AlertsPanel />
+              <PanelErrorBoundary panel={activeTab}><AlertsPanel /></PanelErrorBoundary>
             </Suspense>
           )}
 
-          {activeTab === 'INTELLIGENCE' && <IntelligenceView />}
+          {activeTab === 'INTELLIGENCE' && <PanelErrorBoundary panel={activeTab}><IntelligenceView /></PanelErrorBoundary>}
 
           {activeTab === 'SETTINGS' && (
+            <PanelErrorBoundary panel={activeTab}>
             <SettingsView
               currency={currency}
               setCurrency={setCurrency}
@@ -818,6 +822,7 @@ export default function App() {
               reducedMotion={reducedMotion}
               setReducedMotion={handleSetReducedMotion}
             />
+            </PanelErrorBoundary>
           )}
 
           {/* GLOBAL TERMINAL-STYLED FOOTER */}
