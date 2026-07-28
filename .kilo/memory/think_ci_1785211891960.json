@@ -1,0 +1,36 @@
+{
+  "compacted": {
+    "ts": 3,
+    "overall": "DEGRADED",
+    "latestRun": {
+      "name": "Kudbee CI",
+      "conclusion": "failure",
+      "branch": "salvage/pr208-phone-tree-harden",
+      "event": "pull_request"
+    },
+    "stats": {
+      "total": 10,
+      "passed": 8,
+      "failed": 2,
+      "passRate": 80
+    },
+    "recentFailures": [
+      {
+        "name": "Kudbee CI",
+        "branch": "salvage/pr208-phone-tree-harden",
+        "event": "pull_request",
+        "url": "https://github.com/KudbeeZero/Kudbee-fuel-gage/actions/runs/30327875958"
+      },
+      {
+        "name": "Kudbee CI",
+        "branch": "salvage/pr208-phone-tree-harden",
+        "event": "pull_request",
+        "url": "https://github.com/KudbeeZero/Kudbee-fuel-gage/actions/runs/30327585857"
+      }
+    ],
+    "source": "gh-cli"
+  },
+  "beforeTokens": 611,
+  "afterTokens": 579,
+  "savingsPct": 5.2
+}
