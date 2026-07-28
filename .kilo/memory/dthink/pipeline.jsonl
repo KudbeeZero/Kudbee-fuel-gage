@@ -1,0 +1,4 @@
+{"type":"token:forged","source":"think-forge-bridge","tokenId":"tk-black-screen-title","severity":"HIGH","timestamp":"2026-07-28T19:59:56Z"}
+{"type":"token:forged","source":"think-forge-bridge","tokenId":"tk-black-screen-auth","severity":"HIGH","timestamp":"2026-07-28T19:59:56Z"}
+{"type":"token:forged","source":"think-forge-bridge","tokenId":"tk-black-screen-loading","severity":"HIGH","timestamp":"2026-07-28T19:59:56Z"}
+{"type":"token:forged","source":"think-forge-bridge","tokenId":"tk-black-screen-error-boundary","severity":"HIGH","timestamp":"2026-07-28T19:59:56Z"}

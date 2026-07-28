@@ -70,6 +70,15 @@
         "middleware-pipeline-architecture",
         "database-schema"
       ]
+    },
+    "frontend-crash-prevention": {
+      "type": "snippet",
+      "category": "frontend",
+      "connectedTo": [
+        "frontend-patterns",
+        "middleware-pipeline-architecture",
+        "verification-patterns"
+      ]
     }
   },
   "edges": [
@@ -125,6 +134,24 @@
       "to": "database-schema",
       "type": "depends_on",
       "weight": 0.8
+    },
+    {
+      "from": "frontend-crash-prevention",
+      "to": "frontend-patterns",
+      "type": "extends",
+      "weight": 1
+    },
+    {
+      "from": "frontend-crash-prevention",
+      "to": "middleware-pipeline-architecture",
+      "type": "diagnoses",
+      "weight": 0.9
+    },
+    {
+      "from": "frontend-crash-prevention",
+      "to": "verification-patterns",
+      "type": "verifies",
+      "weight": 0.9
     }
   ]
 }
