@@ -7,3 +7,8 @@
 {"type":"token:forged","source":"interactive-agents","tokenId":"tk-curation","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}
 {"type":"token:forged","source":"interactive-agents","tokenId":"tk-guardian-scan","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}
 {"type":"token:forged","source":"interactive-agents","tokenId":"tk-agent-collab","severity":"HIGH","timestamp":"2026-07-28T20:40:49Z"}
+{"type":"token:forged","source":"sentinel-iqr-pipeline","tokenId":"tk-sse-ticket","severity":"HIGH","timestamp":"2026-07-28T21:04:30Z"}
+{"type":"token:forged","source":"sentinel-iqr-pipeline","tokenId":"tk-audit-channel","severity":"HIGH","timestamp":"2026-07-28T21:04:30Z"}
+{"type":"token:forged","source":"sentinel-iqr-pipeline","tokenId":"tk-anomaly-endpoints","severity":"HIGH","timestamp":"2026-07-28T21:04:30Z"}
+{"type":"token:forged","source":"sentinel-iqr-pipeline","tokenId":"tk-sentinel-pub","severity":"HIGH","timestamp":"2026-07-28T21:04:30Z"}
+{"type":"token:forged","source":"sentinel-iqr-pipeline","tokenId":"tk-anomaly-feed","severity":"HIGH","timestamp":"2026-07-28T21:04:30Z"}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785272670860-a28e27",
+  "topic": "think:token",
+  "source": "cli",
+  "data": {
+    "message": "14 total think tokens forged — sentinel iqr pipeline tokens #010-014 CHALLENGED"
+  },
+  "timestamp": "2026-07-28T21:04:30.860Z",
+  "sequence": 26
+}
