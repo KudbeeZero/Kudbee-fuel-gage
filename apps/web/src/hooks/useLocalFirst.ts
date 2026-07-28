@@ -37,7 +37,7 @@ export function useLocalFirst<T>(
       } else {
         const records = await table.toArray();
         if (records.length > 0) {
-          result = records as unknown as T;
+          result = records[0] as T;
         }
       }
 
