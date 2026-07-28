@@ -24,9 +24,19 @@ kudbee/
     utils/          # Crypto identity, LLM providers, prompts
   config/
     agents.json     # Ed25519 public-key registry (NO private keys)
-  scripts/
-    verify-*.mjs    # E2E and subsystem verifiers
-  .github/
+   scripts/
+     verify-*.mjs    # E2E and subsystem verifiers
+     cloud-agent.mjs  # Inter-agent P2P calls, voicemail, emergency interrupts
+     session-bootstrap.mjs  # Agent startup voicemail replay
+     think-compact.mjs # Zero-waste token compaction & DPO annotation
+     bus-debouncer.mjs # Serial bus event deduplication
+     bus-to-cache.mjs  # Interrupt-driven BUS→CACHE bridge
+   .kilo/
+     memory/
+       voicemails/    # Per-agent voicemail JSON storage
+       local-calls/   # Emergency interrupt records
+       decisions/     # DPO preference pair annotations
+   .github/
     workflows/      # CI gates
 ```
 
@@ -217,7 +227,7 @@ All scripts live in `scripts/` and are `.mjs` (native ESM).
 
 1. `npm run typecheck` — Turbo-routed TypeScript strict check.
 2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — 36/36 checks.
+3. `node scripts/verify-e2e.mjs` — 43/43 checks (38 core + 5 inter-agent phone tree).
 
 ### Common Test Failure Causes
 
@@ -227,6 +237,42 @@ All scripts live in `scripts/` and are `.mjs` (native ESM).
 - **Auth missing:** `/api/governance/mint-think-token` requires `X-Agent-Pass`. Unauthenticated calls return `401`.
 - **Receptor gate:** Mints with `kd > 0` or `efficacy === 0` trigger receptor gating and may return `423` if the slot is locked. For tests, omit gating params or use `kd: 0`.
 - **Agent registry stale:** If you generate a new key pair but forget to update `config/agents.json`, signature verification fails with `401`.
+
+---
+
+## 7a. Inter-Agent Phone Tree (Phase: Phone Tree Hardening)
+
+### P2P Calls (`scripts/cloud-agent.mjs`)
+
+- **Entrypoint:** `node scripts/cloud-agent.mjs call <agentId> [--priority=LEVEL]`
+- **Live call timeout:** 3000ms → voicemail fallback on timeout or offline detection (>45s heartbeat gap).
+- **Voicemail storage:** `.kilo/memory/voicemails/<agentId>.json` with strict schema (id, callerId, timestamp, urgency, transcript, requiredAction, read).
+- **Emergency interrupt:** `--priority=CRITICAL` publishes `agent:interrupt:<targetAgentId>` over `kudbee:agent:interrupt:*` Redis pub/sub, appends to `.kilo/memory/local-calls/interrupts.json`, emits `system:interrupt`.
+
+### Session Bootstrap (`scripts/session-bootstrap.mjs`)
+
+- On agent startup, inspects `.kilo/memory/voicemails/<agentId>.json`.
+- Replays unread voicemails to stdout, marks them `read: true` / `deliveredAt: <ISO>`, emits `agent:voicemail:replayed` to `kudbee:events`.
+
+### BUS→CACHE Bridge (`scripts/bus-to-cache.mjs`)
+
+- `--listen` subscribes to `kudbee:agent:interrupt:*` and flushes `agent-state`, `dashboard`, `decisions-recent` L1/L2 caches on interrupt.
+
+### Bus Debouncer (`scripts/bus-debouncer.mjs`)
+
+- `deduplicateEvents(events)` suppresses duplicate status checks within a 5s window.
+- Exports `{ isDuplicate, deduplicateEvents, isNoise }`.
+
+### DPO Preference Annotation
+
+- P2P completions tagged `trajectory_quality: OPTIMAL` (CHOSEN).
+- Voicemail/interrupt fallbacks tagged `trajectory_quality: ESCALATED` (REJECTED).
+- Annotations written to `.kilo/memory/decisions/dpo_<category>_<ts>.json`.
+
+### Token Compaction (`scripts/think-compact.mjs`)
+
+- `compactTrajectory(payload)` minifies keys, converts ISO to ms deltas, strips null/empty noise.
+- Pipe via stdin: `echo '<json>' | node scripts/think-compact.mjs`.
 
 ---
 

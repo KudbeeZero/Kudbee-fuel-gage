@@ -23,17 +23,37 @@ const TelemetryPanel = lazy(() =>
 const FirewallPanel = lazy(() =>
   import('../components/studio/FirewallPanel').then((m) => ({ default: m.FirewallPanel }))
 );
+const ChallengePanel = lazy(() =>
+  import('../components/studio/ChallengePanel').then((m) => ({ default: m.default ?? m }))
+);
+const MonitorPanel = lazy(() =>
+  import('../components/studio/MonitorPanel').then((m) => ({ default: m.default ?? m }))
+);
+const CIHealthPanel = lazy(() =>
+  import('../components/studio/CIHealthPanel').then((m) => ({ default: m.default ?? m }))
+);
+const LocalDbStatus = lazy(() =>
+  import('../components/studio/LocalDbStatus').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
+  monitor: '/tower/monitor',
+  ci: '/tower/ci',
   governance: '/tower/governance',
   tokens: '/tower/tokens',
+  challenge: '/tower/challenge',
+  localdb: '/tower/localdb',
   telemetry: '/tower/telemetry',
   firewall: '/tower/firewall',
 };
 
 const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
+  '/tower/monitor': 'monitor',
+  '/tower/ci': 'ci',
   '/tower/governance': 'governance',
   '/tower/tokens': 'tokens',
+  '/tower/challenge': 'challenge',
+  '/tower/localdb': 'localdb',
   '/tower/telemetry': 'telemetry',
   '/tower/firewall': 'firewall',
 };
@@ -52,7 +72,7 @@ function StudioShell() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const currentPath = location.pathname;
-  const activeTab: StudioTabId = PATH_TO_TAB_ID[currentPath] ?? 'telemetry';
+  const activeTab: StudioTabId = PATH_TO_TAB_ID[currentPath] ?? 'monitor';
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -76,9 +96,13 @@ function StudioShell() {
       <StudioLayout activeTab={activeTab} onTabChange={handleTabChange}>
         <Suspense fallback={<PanelFallback />}>
           <Routes>
-            <Route path="/" element={<GovernancePanel />} />
+            <Route path="/" element={<MonitorPanel />} />
+            <Route path="/monitor" element={<MonitorPanel />} />
+            <Route path="/ci" element={<CIHealthPanel />} />
             <Route path="/governance" element={<GovernancePanel />} />
             <Route path="/tokens" element={<ThinkTokensPanel />} />
+            <Route path="/challenge" element={<ChallengePanel />} />
+            <Route path="/localdb" element={<LocalDbStatus />} />
             <Route path="/telemetry" element={<TelemetryPanel />} />
             <Route path="/firewall" element={<FirewallPanel />} />
           </Routes>

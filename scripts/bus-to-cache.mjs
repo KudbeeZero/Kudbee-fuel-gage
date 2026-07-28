@@ -334,3 +334,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 `);
   }
 }
+
+// ─── Standalone flushCache export for E2E testing ─────────────────────────
+
+export function flushCache(redis, keys = []) {
+  if (!redis) {
+    for (const key of keys) {
+      try { unlinkSync(join(CACHE_DIR, `${key}.json`)); } catch {}
+    }
+    return { status: 'no-redis', flushed: keys };
+  }
+
+  const flushed = [];
+  for (const key of keys) {
+    try {
+      unlinkSync(join(CACHE_DIR, `${key}.json`));
+      flushed.push(key);
+    } catch {}
+  }
+  return { status: 'ok', flushed };
+}

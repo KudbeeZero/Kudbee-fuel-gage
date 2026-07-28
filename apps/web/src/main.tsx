@@ -6,6 +6,13 @@ import './index.css';
 import './core/registerPlugins';
 
 if (typeof window !== 'undefined') {
+  void import('./db/localDb').then(({ getLocalDb }) => {
+    getLocalDb();
+  });
+  void import('./db/syncEngine').then(({ startSyncEngine }) => {
+    startSyncEngine();
+  });
+
   window.addEventListener('error', (event) => {
     console.error('[GlobalError]', event.error ?? event.message);
   });
