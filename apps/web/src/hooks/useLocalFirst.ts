@@ -88,6 +88,7 @@ export function useLocalFirst<T>(
     return () => {
       mountedRef.current = false;
       clearInterval(pollInterval);
+      stopSyncEngine();
     };
   }, [load]);
 
