@@ -35,8 +35,13 @@
       "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
       "timestamp": "2026-07-28T21:04:02.643Z",
       "score": 6
+    },
+    {
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.334Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-28T21:04:02.643Z",
-  "recallCount": 7
+  "lastRecall": "2026-07-28T21:09:44.334Z",
+  "recallCount": 8
 }
