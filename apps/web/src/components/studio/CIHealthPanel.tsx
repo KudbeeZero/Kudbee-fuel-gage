@@ -39,8 +39,8 @@ export default function CIHealthPanel() {
     try {
       const data = await apiGet('/api/ci/health?record=true');
       setHealth(data as CIHealth);
-    } catch (e: any) {
-      setError(e?.message || 'CI health unavailable');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'CI health unavailable');
     } finally {
       setLoading(false);
     }
