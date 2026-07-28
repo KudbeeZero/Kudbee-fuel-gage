@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
 import {
-  Activity,
   Radio,
   WifiOff,
   Mail,
   Clock,
-  Users,
-  MessageSquare,
   RefreshCw,
   Terminal,
   ShieldAlert,
