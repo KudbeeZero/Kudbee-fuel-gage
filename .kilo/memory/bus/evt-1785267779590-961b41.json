@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785267779590-961b41",
+  "topic": "agent:report",
+  "source": "cli",
+  "data": {
+    "message": "STANDBY:guardian-28d6|CI:GREEN|tests:46/46|pipeline:6/6|redis:UNAVAILABLE-local-mode|status:ACTIVE|PRs:1(211)|next:review-PR-211"
+  },
+  "timestamp": "2026-07-28T19:42:59.590Z",
+  "sequence": 13
+}
