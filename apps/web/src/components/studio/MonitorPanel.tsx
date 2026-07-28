@@ -19,12 +19,8 @@ export default function MonitorPanel() {
   const agents = useMemo(() => (data?.agents ?? []).map((a) => ({
     id: a.id,
     online: a.status === 'online' || a.status === 'active' || a.status === 'processing',
-    ageSec: null,
-    voicemails: 0,
-    totalVoicemails: 0,
     fleetStatus: a.status,
     fleetTask: a.memory?.lastAction ?? 'idle',
-    fleetUpdated: null,
   })), [data]);
 
   const online = agents.filter((a) => a.online).length;
@@ -113,30 +109,15 @@ export default function MonitorPanel() {
               <span className="col-span-2 text-zinc-200 truncate" title={agent.id}>
                 {agent.id}
               </span>
+              <span className="text-zinc-500">—</span>
               <span className="text-zinc-500">
-                {agent.ageSec != null ? `${agent.ageSec}s ago` : '—'}
-              </span>
-              <span className="text-zinc-500">
-                {agent.voicemails > 0 ? (
-                  <span className="flex items-center gap-1 text-yellow-400">
-                    <ShieldAlert className="w-3 h-3" />
-                    pending
-                  </span>
-                ) : agent.fleetTask === 'idle' ? (
+                {agent.fleetTask === 'idle' ? (
                   <span className="text-zinc-600">idle</span>
                 ) : (
                   <span className="text-emerald-400">active</span>
                 )}
               </span>
-              <span className="text-right">
-                {agent.voicemails > 0 ? (
-                  <span className="flex items-center justify-end gap-1 text-yellow-400 font-bold">
-                    <Mail className="w-3 h-3" /> {agent.voicemails}
-                  </span>
-                ) : (
-                  <span className="text-zinc-600">0</span>
-                )}
-              </span>
+              <span className="text-right text-zinc-600">0</span>
             </div>
           ))}
         </div>
