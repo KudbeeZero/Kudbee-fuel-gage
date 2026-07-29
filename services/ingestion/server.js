@@ -3390,6 +3390,22 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
+app.get('/api/sse/stream', async (req, res) => {
+  const channel = req.query.channel || 'kudbee:events';
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.write(`: connected to ${channel}\n\n`);
+  if (!redis) { res.write('event: error\ndata: Redis unavailable\n\n'); res.end(); return; }
+  const sub = redis.duplicate();
+  await sub.subscribe(channel);
+  req.on('close', () => { sub.unsubscribe(channel); sub.quit(); });
+  sub.on('message', (ch, msg) => { try { res.write(`data: ${msg}\n\n`); } catch {} });
+});
+
 app.get('/health', apiLimiter, async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
