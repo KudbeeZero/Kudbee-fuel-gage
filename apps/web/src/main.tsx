@@ -52,4 +52,11 @@ if (root) {
       </ErrorBoundary>
     </StrictMode>
   );
+
+  // Dispatch event to signal React has mounted — used by index.html to suppress error card
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('kudbee:loaded', {
+      detail: { version: (window as any).__KUD_VER, ts: Date.now() }
+    }));
+  }, 100);
 }

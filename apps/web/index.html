@@ -38,7 +38,10 @@
     <div id="root"></div>
     <script>
       var t0=Date.now();
+      var mounted=false;
+      window.addEventListener('kudbee:loaded',function(e){mounted=true;});
       function fail(msg){
+        if(mounted)return;
         var r=document.getElementById('root');
         if(r)r.innerHTML='<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center;padding:1rem"><h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.25rem;margin:1rem 0;max-width:18rem"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">App did not load</p><p style="color:#94a3b8;font-size:.7rem;margin-bottom:.75rem">'+msg+'</p><button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">'+new Date().toISOString().slice(0,19)+'</p></div>';
       }
@@ -49,10 +52,8 @@
       }catch(e){
         fail('Dynamic import blocked: '+(e.message||e).slice(0,80));
       }
-      setTimeout(function(){
-        var r=document.getElementById('root');
-        if(r&&!r.children.length)fail('Module did not mount after 8s');
-      },8000);
+      // 8s timeout — but skip if kudbee:loaded fired
+      setTimeout(function(){if(!mounted)fail('Module did not mount after 8s');},8000);
     </script>
   </body>
 </html>
