@@ -3545,6 +3545,25 @@ app.get('/health', apiLimiter, async (_req, res) => {
         redisOk = false;
       }
     }
+    // REST fallback: if ioredis TCP failed, try Upstash REST API
+    if (!redisOk && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      try {
+        const restRes = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+          },
+          body: JSON.stringify(['PING']),
+        });
+        if (restRes.ok) {
+          const data = await restRes.json();
+          redisOk = data?.result === 'PONG';
+        }
+      } catch {
+        // REST fallback also failed — Redis truly down
+      }
+    }
     if (!redisOk) {
       console.warn(
         '[Health] REDIS_URL UNREACHABLE — Redis not configured or unavailable. ' +
