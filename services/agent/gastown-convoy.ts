@@ -180,34 +180,53 @@ export async function getDatabaseMetrics(): Promise<DBMetrics | null> {
       idleTimeoutMillis: 5000,
     });
 
-    const [sizeResult, counts] = await Promise.all([
-      pool.query(`SELECT pg_size_pretty(pg_database_size(current_database())) as total_size`),
-      pool.query(`
-        SELECT
-          (SELECT count(*) FROM think_tokens) as think_count,
-          pg_size_pretty(pg_total_relation_size('think_tokens')) as think_size,
-          (SELECT count(*) FROM telemetry_logs) as telemetry_count,
-          pg_size_pretty(pg_total_relation_size('telemetry_logs')) as telemetry_size,
-          (SELECT count(*) FROM governance_actions) as gov_count,
-          pg_size_pretty(pg_total_relation_size('governance_actions')) as gov_size,
-          (SELECT count(*) FROM system_topology_embeddings) as topo_count,
-          pg_size_pretty(pg_total_relation_size('system_topology_embeddings')) as topo_size,
-          (SELECT count(*) FROM audit_anchors) as audit_count,
-          pg_size_pretty(pg_total_relation_size('audit_anchors')) as audit_size
-      `),
-    ]);
-
-    await pool.end();
-
     const metrics: DBMetrics = {
-      totalSize: sizeResult.rows[0]?.total_size || '0 bytes',
-      thinkTokens: { count: Number(counts.rows[0]?.think_count) || 0, size: counts.rows[0]?.think_size || '0 bytes' },
-      telemetryLogs: { count: Number(counts.rows[0]?.telemetry_count) || 0, size: counts.rows[0]?.telemetry_size || '0 bytes' },
-      governanceActions: { count: Number(counts.rows[0]?.gov_count) || 0, size: counts.rows[0]?.gov_size || '0 bytes' },
-      topologyEmbeddings: { count: Number(counts.rows[0]?.topo_count) || 0, size: counts.rows[0]?.topo_size || '0 bytes' },
-      auditAnchors: { count: Number(counts.rows[0]?.audit_count) || 0, size: counts.rows[0]?.audit_size || '0 bytes' },
+      totalSize: '0 bytes',
+      thinkTokens: { count: 0, size: '0 bytes' },
+      telemetryLogs: { count: 0, size: '0 bytes' },
+      governanceActions: { count: 0, size: '0 bytes' },
+      topologyEmbeddings: { count: 0, size: '0 bytes' },
+      auditAnchors: { count: 0, size: '0 bytes' },
       sessionCount: 0,
     };
+
+    // Total size (always works)
+    try {
+      const r = await pool.query(`SELECT pg_size_pretty(pg_database_size(current_database())) as total_size`);
+      metrics.totalSize = r.rows[0]?.total_size || '0 bytes';
+    } catch { /* ignore */ }
+
+    // Think tokens
+    try {
+      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('think_tokens')) as s FROM think_tokens`);
+      metrics.thinkTokens = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
+    } catch { /* table may not exist */ }
+
+    // Telemetry logs
+    try {
+      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('telemetry_logs')) as s FROM telemetry_logs`);
+      metrics.telemetryLogs = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
+    } catch { /* table may not exist */ }
+
+    // Governance actions
+    try {
+      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('governance_actions')) as s FROM governance_actions`);
+      metrics.governanceActions = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
+    } catch { /* table may not exist */ }
+
+    // Topology embeddings
+    try {
+      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('system_topology_embeddings')) as s FROM system_topology_embeddings`);
+      metrics.topologyEmbeddings = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
+    } catch { /* table may not exist */ }
+
+    // Audit anchors
+    try {
+      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('audit_anchors')) as s FROM audit_anchors`);
+      metrics.auditAnchors = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
+    } catch { /* table may not exist */ }
+
+    await pool.end();
 
     _dbMetricsCache = { data: metrics, ts: Date.now() };
     return metrics;
