@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785287884631-0dd18154",
+  "agentId": "ci-watcher",
+  "decision": "run:verify all 5 PRs merged clean, E2E 44 checks, typecheck/lint/build green, Heroku CI deploying",
+  "context": {
+    "action": "execute",
+    "task": "verify all 5 PRs merged clean, E2E 44 checks, typecheck/lint/build green, Heroku CI deploying",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:18:04.631Z",
+  "decoded": false
+}

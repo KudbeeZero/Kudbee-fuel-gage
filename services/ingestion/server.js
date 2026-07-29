@@ -5597,6 +5597,19 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
   });
 });
 
+// --- Deploy Status (frontend-backend communication tunnel) ---
+app.get('/api/system/deploy-status', (_req, res) => {
+  const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
+  res.json({
+    commit,
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'unknown',
+    nodeEnv: process.env.NODE_ENV || 'production',
+    status: redisTelemetry?.restFallbackActive ? 'degraded' : 'ok',
+    uptimeSec: Math.floor((Date.now() - BOOT_TIME) / 1000),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
@@ -5611,7 +5624,15 @@ if (fs.existsSync(distPath)) {
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+      }
+    },
+  }));
   app.get('*', fileLimiter, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });

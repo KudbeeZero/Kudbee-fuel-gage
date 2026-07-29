@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785272642681-61616a7c",
+  "agentId": "pipeline-guardian",
+  "decision": "layer_scan_complete",
+  "context": {
+    "context": "all 11 layers present",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-28T21:04:02.681Z",
+  "decoded": false
+}

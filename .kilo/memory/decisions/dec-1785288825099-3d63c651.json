@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785288825099-3d63c651",
+  "agentId": "pipeline-guardian",
+  "decision": "run:post-NOAUTH-fix audit: verify all 11 middleware layers, check Redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+  "context": {
+    "action": "execute",
+    "task": "post-NOAUTH-fix audit: verify all 11 middleware layers, check Redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:33:45.099Z",
+  "decoded": false
+}

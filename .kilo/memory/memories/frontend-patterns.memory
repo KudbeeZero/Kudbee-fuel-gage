@@ -30,20 +30,53 @@
       "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
       "timestamp": "2026-07-28T20:40:01.824Z",
       "score": 15
-<<<<<<< ours
-    }
-  ],
-  "lastRecall": "2026-07-28T20:40:01.824Z",
-  "recallCount": 6
-=======
     },
     {
-      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
-      "timestamp": "2026-07-28T21:18:16.640Z",
+      "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+      "timestamp": "2026-07-28T21:04:02.643Z",
       "score": 6
+    },
+    {
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.334Z",
+      "score": 12
+    },
+    {
+      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
+      "timestamp": "2026-07-28T23:23:50.468Z",
+      "score": 5
+    },
+    {
+      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
+      "timestamp": "2026-07-29T00:02:52.307Z",
+      "score": 5
+    },
+    {
+      "query": "security audit: scan all 11 middleware layers, check sse ticket auth, verify lock registry endpoints, scan for cors misconfig, check audit channel subscriber",
+      "timestamp": "2026-07-29T01:08:06.012Z",
+      "score": 13
+    },
+    {
+      "query": "v273 deployed: 5 system improvements — redis rest health fallback, module script detection, sse lock streaming, lease renewal 2-phase commit, agent auto-recovery with workload redistribution",
+      "timestamp": "2026-07-29T01:13:00.099Z",
+      "score": 16
+    },
+    {
+      "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
+      "timestamp": "2026-07-29T01:18:04.309Z",
+      "score": 17
+    },
+    {
+      "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+      "timestamp": "2026-07-29T01:33:45.144Z",
+      "score": 15
+    },
+    {
+      "query": "root cause confirmed: crossorigin on module script blocked by cloudflare cors on chrome mobile. fix deployed — removed crossorigin, clean html.",
+      "timestamp": "2026-07-29T01:58:51.039Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-28T21:18:16.640Z",
-  "recallCount": 7
->>>>>>> theirs
+  "lastRecall": "2026-07-29T01:58:51.039Z",
+  "recallCount": 15
 }

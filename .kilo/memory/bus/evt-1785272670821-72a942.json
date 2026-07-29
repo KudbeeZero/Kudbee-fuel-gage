@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785272670821-72a942",
+  "topic": "sentinel:integration",
+  "source": "cli",
+  "data": {
+    "message": "Sentinel IQR SSE pipeline deployed: 5 tokens, 4 files, ticket auth enforced, audit channel live, AnomalyFeedPlugin built"
+  },
+  "timestamp": "2026-07-28T21:04:30.821Z",
+  "sequence": 25
+}

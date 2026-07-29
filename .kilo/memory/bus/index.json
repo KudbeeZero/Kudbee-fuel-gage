@@ -1,5 +1,5 @@
 {
-  "sequence": 24,
+  "sequence": 33,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -168,6 +168,69 @@
       "source": "cli",
       "sequence": 24,
       "timestamp": "2026-07-28T20:40:49.157Z"
+    },
+    {
+      "id": "evt-1785272670821-72a942",
+      "topic": "sentinel:integration",
+      "source": "cli",
+      "sequence": 25,
+      "timestamp": "2026-07-28T21:04:30.821Z"
+    },
+    {
+      "id": "evt-1785272670860-a28e27",
+      "topic": "think:token",
+      "source": "cli",
+      "sequence": 26,
+      "timestamp": "2026-07-28T21:04:30.860Z"
+    },
+    {
+      "id": "evt-1785281112547-828ed4",
+      "topic": "think:training",
+      "source": "cli",
+      "sequence": 27,
+      "timestamp": "2026-07-28T23:25:12.548Z"
+    },
+    {
+      "id": "evt-1785283393297-fa4f7d",
+      "topic": "diagnostic:chrome",
+      "source": "cli",
+      "sequence": 28,
+      "timestamp": "2026-07-29T00:03:13.297Z"
+    },
+    {
+      "id": "evt-1785287581856-bfe81f",
+      "topic": "system:improvements",
+      "source": "cli",
+      "sequence": 29,
+      "timestamp": "2026-07-29T01:13:01.856Z"
+    },
+    {
+      "id": "evt-1785287921097-88e3fb",
+      "topic": "training:complete",
+      "source": "cli",
+      "sequence": 30,
+      "timestamp": "2026-07-29T01:18:41.098Z"
+    },
+    {
+      "id": "evt-1785287921142-9ba3cd",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 31,
+      "timestamp": "2026-07-29T01:18:41.143Z"
+    },
+    {
+      "id": "evt-1785290347137-970b85",
+      "topic": "root-cause:crossorigin",
+      "source": "cli",
+      "sequence": 32,
+      "timestamp": "2026-07-29T01:59:07.137Z"
+    },
+    {
+      "id": "evt-1785291030087-f6956d",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 33,
+      "timestamp": "2026-07-29T02:10:30.088Z"
     }
   ],
   "topicCounts": {
@@ -177,16 +240,22 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 7,
+    "system:health": 9,
     "agent:recall": 1,
     "agent:report": 1,
     "agent:persistence": 1,
     "system:redis": 1,
     "agent:script": 1,
-    "think:token": 2,
+    "think:token": 3,
     "system:prevention": 1,
     "knowledge:snippet": 1,
     "deployment:complete": 1,
-    "agent:collaboration": 1
+    "agent:collaboration": 1,
+    "sentinel:integration": 1,
+    "think:training": 1,
+    "diagnostic:chrome": 1,
+    "system:improvements": 1,
+    "training:complete": 1,
+    "root-cause:crossorigin": 1
   }
 }

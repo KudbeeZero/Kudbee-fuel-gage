@@ -30,8 +30,43 @@
       "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
       "timestamp": "2026-07-28T20:40:01.826Z",
       "score": 13
+    },
+    {
+      "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+      "timestamp": "2026-07-28T21:04:02.642Z",
+      "score": 8
+    },
+    {
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.335Z",
+      "score": 12
+    },
+    {
+      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
+      "timestamp": "2026-07-28T23:23:50.469Z",
+      "score": 5
+    },
+    {
+      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
+      "timestamp": "2026-07-28T23:24:41.349Z",
+      "score": 17
+    },
+    {
+      "query": "security audit: scan all 11 middleware layers, check sse ticket auth, verify lock registry endpoints, scan for cors misconfig, check audit channel subscriber",
+      "timestamp": "2026-07-29T01:08:06.011Z",
+      "score": 16
+    },
+    {
+      "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
+      "timestamp": "2026-07-29T01:18:04.311Z",
+      "score": 15
+    },
+    {
+      "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+      "timestamp": "2026-07-29T01:33:45.146Z",
+      "score": 13
     }
   ],
-  "lastRecall": "2026-07-28T20:40:01.826Z",
-  "recallCount": 6
+  "lastRecall": "2026-07-29T01:33:45.146Z",
+  "recallCount": 13
 }

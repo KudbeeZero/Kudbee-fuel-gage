@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785290878014-af8df82d",
+  "agentId": "knowledge-curator",
+  "decision": "run:index struggle log: 6-hour Chrome mobile black screen diagnosis. Root cause: express.static fallthrough served .js as text/html. Fix: setHeaders for explicit MIME types. 9 phases documented.",
+  "context": {
+    "action": "execute",
+    "task": "index struggle log: 6-hour Chrome mobile black screen diagnosis. Root cause: express.static fallthrough served .js as text/html. Fix: setHeaders for explicit MIME types. 9 phases documented.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T02:07:58.014Z",
+  "decoded": false
+}

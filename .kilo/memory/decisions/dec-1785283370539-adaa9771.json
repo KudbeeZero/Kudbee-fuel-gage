@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785283370539-adaa9771",
+  "agentId": "pipeline-guardian",
+  "decision": "run:diagnose Chrome mobile black screen: scan static file serving layer, check MIME types, verify Cloudflare caching, check module script serving, verify CORS headers for Cross-Origin-Embedder-Policy",
+  "context": {
+    "action": "execute",
+    "task": "diagnose Chrome mobile black screen: scan static file serving layer, check MIME types, verify Cloudflare caching, check module script serving, verify CORS headers for Cross-Origin-Embedder-Policy",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T00:02:50.540Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785280016125-cb7cd10e",
+  "agentId": "pipeline-guardian",
+  "decision": "run:verify release v260 deployed, SSE ticket auth live, audit channel operational, simulate-attack endpoint wired",
+  "context": {
+    "action": "execute",
+    "task": "verify release v260 deployed, SSE ticket auth live, audit channel operational, simulate-attack endpoint wired",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T23:06:56.125Z",
+  "decoded": false
+}

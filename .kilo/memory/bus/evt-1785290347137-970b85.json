@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785290347137-970b85",
+  "topic": "root-cause:crossorigin",
+  "source": "cli",
+  "data": {
+    "message": "Root cause confirmed: crossorigin on module script blocked by Cloudflare CORS on Chrome. Fix: removed 13 chars."
+  },
+  "timestamp": "2026-07-29T01:59:07.137Z",
+  "sequence": 32
+}

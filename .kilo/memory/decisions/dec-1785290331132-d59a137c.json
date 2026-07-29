@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785290331132-d59a137c",
+  "agentId": "knowledge-curator",
+  "decision": "run:index root cause: crossorigin on same-origin script type=module triggers Cloudflare CORS preflight → Chrome mobile blocks execution → black screen. Solution: remove crossorigin completely.",
+  "context": {
+    "action": "execute",
+    "task": "index root cause: crossorigin on same-origin script type=module triggers Cloudflare CORS preflight → Chrome mobile blocks execution → black screen. Solution: remove crossorigin completely.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:58:51.133Z",
+  "decoded": false
+}
