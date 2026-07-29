@@ -19,13 +19,14 @@
 import Redis from 'ioredis';
 import { getOrCreateInMemoryQueue } from './inMemoryQueue.ts';
 
-function sanitizeRedisUrl(url) {
+function sanitizeRedisUrl(url, password) {
   if (!url) return url;
   if (url.startsWith('rediss://') || url.startsWith('redis://')) return url;
   if (url.startsWith('https://')) {
     try {
       const parsed = new URL(url);
-      return `rediss://${parsed.hostname}:6379`;
+      const auth = password ? `default:${password}@` : '';
+      return `rediss://${auth}${parsed.hostname}:6379`;
     } catch {
       console.warn('[redis] Failed to parse URL, keeping original');
       return url;
@@ -44,19 +45,23 @@ function hostnameIsUpstash(url) {
   }
 }
 
-const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
-const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL);
+const REDIS_URL = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://127.0.0.1:6379', process.env.UPSTASH_REDIS_REST_TOKEN);
+const REDIS_WORKER_URL = sanitizeRedisUrl(process.env.REDIS_WORKER_URL || REDIS_URL, process.env.UPSTASH_REDIS_REST_TOKEN_SLOW || process.env.UPSTASH_REDIS_REST_TOKEN);
 const isUpstash = REDIS_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_URL);
 const isWorkerUpstash =
   REDIS_WORKER_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_WORKER_URL);
 const MAX_REQUESTS_LIMIT = 500_000;
+const QUOTA_WARN_PCT = 0.80;
 const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
 let _client = null;
 let _subClient = null;
-const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
+const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0, noAuthCount: 0 };
 const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
 const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecutiveErrors: 0 };
+let _monthlyRequestCount = 0;
+let _quotaWarned = false;
+let _restFallbackActive = false;
 
 /**
  * Inspects a Redis error message and returns true if the error indicates
@@ -209,6 +214,10 @@ export function getRedisClient(opts = {}) {
       circuitBreaker.openedAt = Date.now();
       circuitBreaker.lastError = msg;
       console.warn(`[${label}] Circuit breaker opened due to rate limit: ${msg}`);
+    } else if (msg.includes('NOAUTH') || msg.includes('AUTH')) {
+      redisTelemetry.noAuthCount += 1;
+      _restFallbackActive = true;
+      console.warn(`[${label}] NOAUTH detected — REST fallback active (${redisTelemetry.noAuthCount} attempts)`);
     }
   });
   client.on('end', () => {
