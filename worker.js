@@ -37,8 +37,8 @@ import { geminiBreaker } from './services/lib/circuitBreaker.ts';
 import { runSystemPruner } from './services/lib/pruner.ts';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
-const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
-const HEARTBEAT_INTERVAL_MS = 10_000; // Control Tower online-check cadence
+const AUDIT_INTERVAL_MS = 60_000;
+const HEARTBEAT_INTERVAL_MS = 10_000;
 const POLL_BACKOFF_MS = process.env.NODE_ENV === 'test' ? 0 : 2000;
 
 const redis = getRedisClient({ label: 'worker' });
@@ -211,10 +211,7 @@ async function pollTasks() {
     }
 
     try {
-      // BLPOP call site #4: worker.js:173
-      // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getWorkerRedisClient
-      // Procfile: hermes-worker — MUST survive Upstash quota errors.
-      const result = await workerRedis.blpop(TASKS_QUEUE, 0);
+      const result = await workerRedis.blpop(TASKS_QUEUE, 5);
       if (!result) continue;
       resetRedisQuotaBackoff();
       const [, raw] = result;
@@ -242,11 +239,13 @@ async function pollTasks() {
         await new Promise((r) => setTimeout(r, backoff));
         continue;
       }
-      // Connection failures are benign outages — warn once and back off
+      // Connection failures are benign outages — back off with jitter
       // instead of spinning the loop or crashing the process.
-      if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
+      if (err && /redis|connection|ECONN|timed\s*out|timeout|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
         noteRedisUnavailable();
-        const backoff = process.env.NODE_ENV === 'test' ? 0 : AUDIT_INTERVAL_MS;
+        const baseMs = 5_000;
+        const jitterMs = Math.floor(Math.random() * 3000);
+        const backoff = process.env.NODE_ENV === 'test' ? 0 : baseMs + jitterMs;
         await new Promise((r) => setTimeout(r, backoff));
       } else {
         hermes.log.error('polling loop error:', err.message);

@@ -65,8 +65,18 @@
       "query": "autonomous production task: diagnose black screen, verify api health, check redis connectivity, validate mime types, scan anomalies, train tokens",
       "timestamp": "2026-07-29T08:01:04.876Z",
       "score": 19
+    },
+    {
+      "query": "full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
+      "timestamp": "2026-07-29T08:45:49.217Z",
+      "score": 11
+    },
+    {
+      "query": "synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
+      "timestamp": "2026-07-29T10:17:35.118Z",
+      "score": 11
     }
   ],
-  "lastRecall": "2026-07-29T08:01:04.876Z",
-  "recallCount": 13
+  "lastRecall": "2026-07-29T10:17:35.118Z",
+  "recallCount": 15
 }

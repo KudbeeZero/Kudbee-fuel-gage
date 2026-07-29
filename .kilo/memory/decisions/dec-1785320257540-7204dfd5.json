@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785320257540-7204dfd5",
+  "agentId": "ci-watcher",
+  "decision": "run:Full CI verification: typecheck, lint, build, E2E, verify all gates GREEN before PR merge",
+  "context": {
+    "action": "execute",
+    "task": "Full CI verification: typecheck, lint, build, E2E, verify all gates GREEN before PR merge",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T10:17:37.541Z",
+  "decoded": false
+}

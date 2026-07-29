@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314759536-1f869ab2",
+  "agentId": "token-forge",
+  "decision": "run:Mint think tokens for recent governance actions, compact trajectories, verify THINK pipeline, report token health",
+  "context": {
+    "action": "execute",
+    "task": "Mint think tokens for recent governance actions, compact trajectories, verify THINK pipeline, report token health",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:59.537Z",
+  "decoded": false
+}

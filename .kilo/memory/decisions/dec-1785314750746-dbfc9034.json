@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314750746-dbfc9034",
+  "agentId": "hermes",
+  "decision": "run:Comprehensive global audit — scan all Heroku dynos, Redis health, memory inefficiencies, unoptimized logic pairs, deploy metrics, and publish full report to Control Tower",
+  "context": {
+    "action": "execute",
+    "task": "Comprehensive global audit — scan all Heroku dynos, Redis health, memory inefficiencies, unoptimized logic pairs, deploy metrics, and publish full report to Control Tower",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:50.746Z",
+  "decoded": false
+}

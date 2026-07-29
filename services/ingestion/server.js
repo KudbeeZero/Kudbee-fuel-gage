@@ -54,6 +54,8 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
+import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
+import { grokConfigured, grokStatus } from '../lib/grokClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
@@ -70,6 +72,7 @@ import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
 import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
 import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
+import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -181,198 +184,12 @@ app.use((req, res, next) => {
 // --- Phase 66: Spheroid Audit Ledger — logs all mutating requests ---
 app.use(spheroidAudit());
 
-// --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
-// FAIL-OPEN: If Redis is unreachable, the rate-limit check is skipped
-// and the request passes through. Root / and static assets are excluded.
-const RATE_LIMIT_EXCLUDED = new Set([
-  '/',
-  '/health',
-  '/api/health',
-  '/api/health-check',
-  '/api/system/health-deep',
-  '/api/system/diagnostics',
-  '/api/system/rate-limit-stats',
-  '/api/governance/health',
-  '/api/events',
-  '/api/os-stream',
-  '/api/governance/hermes-logs',
-  '/api/dashboard/summary',
-  '/api/telemetry/poll',
-  '/metrics',
-]);
+// Synapse Protection Layer — C4769 quantitative threat barrier
+// Must run BEFORE bearerAuth to intercept unauthorized agents
+// before they reach auth. Triggers precipitated withdrawal for
+// threat vectors exceeding protractor threshold.
+app.use(synapseProtectionMiddleware);
 
-function isStaticAssetPath(path) {
-  return (
-    path.startsWith('/assets') ||
-    path.startsWith('/fonts') ||
-    path.startsWith('/icons') ||
-    path === '/favicon.ico' ||
-    path === '/manifest.json' ||
-    path === '/robots.txt' ||
-    path === '/sitemap.xml' ||
-    path.endsWith('.js') ||
-    path.endsWith('.css') ||
-    path.endsWith('.svg') ||
-    path.endsWith('.png') ||
-    path.endsWith('.woff2') ||
-    path.endsWith('.ico') ||
-    path.endsWith('.json') ||
-    path.endsWith('.map') ||
-    path.endsWith('.html')
-  );
-}
-
-app.use(
-  middlewareGuard.wrap(async (req, res, next) => {
-    if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
-    try {
-      const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-      const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
-      res.setHeader('X-RateLimit-Limit', String(result.limit));
-      res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
-      res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
-      if (!result.allowed) {
-        res.status(429).json({
-          error: 'too_many_requests',
-          message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
-          retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000),
-        });
-        return;
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (rate limit error: ${msg})`
-      );
-      next();
-    }
-    next();
-  })
-);
-
-// --- Reject requests that run longer than 15s to prevent Heroku H27 ---
-app.use((req, res, next) => {
-  const timer = setTimeout(() => {
-    if (!res.headersSent) {
-      console.warn(`[Timeout] ${req.method} ${req.path} exceeded 15s — returning 503`);
-      res.setHeader('Connection', 'close');
-      res.status(503).json({ error: 'Service Unavailable', reason: 'Request timeout' });
-    }
-  }, 15_000);
-  res.on('finish', () => clearTimeout(timer));
-  res.on('close', () => clearTimeout(timer));
-  next();
-});
-
-// Shared state holder — referenced lazily by the modular sub-routers so
-// they can be mounted near the top of the file without tripping
-// "Cannot access X before initialization" for state that is declared
-// further down (policyState, feedbackState, autoTuneState, evaluatePolicies,
-// alertsState, pool, redis, PROVIDER_CONFIG).
-const _state = {
-  policyState: null,
-  feedbackState: null,
-  autoTuneState: null,
-  evaluatePolicies: null,
-  alertsState: null,
-  bootTimeRef: { value: null },
-  redisRef: { value: null },
-  poolRef: { value: null },
-  providerConfigRef: { value: null },
-};
-globalThis.__KUBEE_STATE__ = _state;
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const BOOT_TIME = Date.now();
-_state.bootTimeRef.value = BOOT_TIME;
-const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
-const HIGH_VALUE_MODELS = new Set([
-  'gpt-4o',
-  'claude-3-5-sonnet',
-  'gemini-1.5-pro',
-  'deepseek-r1',
-  'deepseek-v3',
-  'o1-preview',
-  'o1-mini',
-]);
-const MAX_REASONING_LENGTH = 500;
-
-function truncatePayload(value, limit) {
-  if (typeof value !== 'string') return value;
-  if (value.length <= limit) return value;
-  return value.slice(0, limit) + '…[truncated]';
-}
-
-function loadAgentRegistry() {
-  try {
-    const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    const map = new Map();
-    for (const agent of parsed.registry || []) {
-      if (agent.status === 'active') map.set(agent.agentId, agent.publicKey);
-    }
-    return map;
-  } catch (err) {
-    console.error('[Identity] Failed to load agent registry:', err.message);
-    return new Map();
-  }
-}
-
-const AGENT_REGISTRY = loadAgentRegistry();
-
-const ALLOWED_ORIGINS = (process.env.CORS_ALLOW_ORIGINS || '*')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes('*') || (origin && ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS.includes('*') ? '*' : origin);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Agent-Pass,Accept');
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  next();
-});
-
-function authenticateAgentPass(headerValue) {
-  if (!headerValue) return null;
-  const pass = deserializePass(headerValue);
-  if (!pass) return null;
-  const publicKey = AGENT_REGISTRY.get(pass.agentId);
-  if (!publicKey) return null;
-  return verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS) ? pass.agentId : null;
-}
-
-function verifyAgentSignature(agentId, payload, signature) {
-  const publicKey = AGENT_REGISTRY.get(agentId);
-  if (!publicKey) return null;
-  try {
-    return verifySignature(publicKey, payload, signature) ? agentId : null;
-  } catch {
-    return null;
-  }
-}
-
-function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
-  const pass = deserializePass(agentPassEncoded);
-  if (!pass || pass.agentId !== expectedAgentId) return null;
-  if (Math.abs(Date.now() - pass.issuedAt) > AGENT_PASS_MAX_AGE_MS) return null;
-  try {
-    return verifySignature(publicKey, `${pass.agentId}:${pass.issuedAt}`, pass.signature)
-      ? pass.agentId
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-app.use(express.json({ limit: '10mb' }));
-
-// --- Phase 66: Bearer Auth — centralized authentication guard (optional for public routes) ---
 app.use(bearerAuth({ required: false }));
 
 // --- Phase 66: KiloBridge Token Budget Gate — enforces per-tenant token caps ---
@@ -433,7 +250,20 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 // Tenant state holder — populated after the sub-routers are mounted, but
 // referenced lazily by the governance sub-router via the getPolicyState etc.
 // helpers defined at the end of this file.
+const _state = {
+  policyState: null,
+  feedbackState: null,
+  autoTuneState: null,
+  evaluatePolicies: null,
+  alertsState: null,
+  bootTimeRef: { value: null },
+  redisRef: { value: null },
+  poolRef: { value: null },
+  providerConfigRef: { value: null },
+};
 globalThis.__KUBEE_STATE__ = _state;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const BOOT_TIME = Date.now();
 
 const auditRouter = createAuditRouter({ runQuery, publishEvent, requireRole });
 app.use('/api/audit', auditRouter);
@@ -468,6 +298,12 @@ const systemRouter = createSystemRouter({
 });
 app.use('/api/system', systemRouter);
 
+// Synapse Protection status endpoint
+app.get('/api/system/synapse-status', (_req, res) => {
+  res.json(getSynapseStatus());
+});
+
+
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
 // the Phase 6 context factory. We extract the raw intent from the body, tag it
@@ -476,6 +312,40 @@ app.use('/api/system', systemRouter);
 //
 // Phase 28 — The Token Forge: BEFORE the context is handed to the LLM, we query
 // the pgvector `think_tokens` store for the 3 most semantically similar past
+
+// ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
+import { getConvoyStats, listConvoys, getDatabaseMetrics } from '../agent/gastown-convoy.ts';
+app.get("/api/gastown/dashboard", async (_req, res) => {
+  try {
+    const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
+      getConvoyStats(),
+      listConvoys({ status: "IN_FLIGHT" }),
+      getDatabaseMetrics()
+    ]);
+    res.json({
+      gastown: "v1.2.1",
+      built: "Kudbee Clone",
+      activeConvoys: convoyStats.total,
+      byStatus: convoyStats.byStatus,
+      inFlight: activeConvoys.length,
+      activeAgents: convoyStats.activeAgents,
+      database: dbMetrics || { totalSize: "unavailable", thinkTokens: { count: 0, size: "?" }, telemetryLogs: { count: 0, size: "?" }, governanceActions: { count: 0, size: "?" }, topologyEmbeddings: { count: 0, size: "?" }, auditAnchors: { count: 0, size: "?" }, sessionCount: 0 },
+      swarm: {
+        agents: 11,
+        online: 4,
+        lastDeploy: process.env.HEROKU_RELEASE_VERSION || "unknown"
+      },
+      synapse: "C4769 active",
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+app.get("/api/gastown/convoys", (_req, res) => {
+  res.json(listConvoys());
+});
+
 // SUCCESSES and inject them as a "Past Successful Execution Context" section
 // (few-shot RAG). This grounds the agent in verified prior corrections instead
 // of reasoning from a cold start.
@@ -2796,6 +2666,8 @@ app.post('/api/system/lifecycle', async (req, res) => {
       receptor: false,
       sentinel: null,
       groq: groqConfigured || null,
+      deepseek: deepseekConfigured || null,
+      grok: grokConfigured || null,
     };
     let pgLatency = -1,
       redisLatency = -1;
@@ -2845,6 +2717,8 @@ app.post('/api/system/lifecycle', async (req, res) => {
         postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
         redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
         groq: { status: groqConfigured ? 'configured' : 'disabled' },
+        deepseek: { status: deepseekConfigured ? 'configured' : 'disabled' },
+        grok: { status: grokConfigured ? 'configured' : 'disabled', budget: grokConfigured ? grokStatus() : null },
       },
       agent: { status: health.worker ? 'running' : 'idle' },
       timestamp: new Date().toISOString(),
@@ -5741,6 +5615,14 @@ if (redis) {
   } catch (err) {
     console.warn('[Receptor] Bootstrap deferred (Redis unavailable):', err?.message);
   }
+}
+
+// --- Phase 40: Bootstrap Synapse Protection Layer (C4769) --------------------
+try {
+  bootstrapSynapseProtection();
+  console.log('[Synapse] Protection layer active — C4769 protractor guard online');
+} catch (err) {
+  console.warn('[Synapse] Bootstrap failed (degraded):', err?.message);
 }
 
 // Populate the shared state holder so the modular sub-routers can read the

@@ -18,6 +18,7 @@
 
 import Redis from 'ioredis';
 import { getOrCreateInMemoryQueue } from './inMemoryQueue.ts';
+import { getRestRedisClient } from './redisRest.js';
 
 function sanitizeRedisUrl(url, password) {
   if (!url) return url;
@@ -62,6 +63,49 @@ const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecu
 let _monthlyRequestCount = 0;
 let _quotaWarned = false;
 let _restFallbackActive = false;
+
+// Retry throttle: caps connection retry log noise per client label.
+// After MAX_RETRIES_PER_WINDOW failures in WINDOW_MS, suppresses logs
+// and uses a long backoff instead of tight ioredis retry loops.
+const RETRY_THROTTLE_WINDOW_MS = 60_000;
+const MAX_RETRIES_PER_WINDOW = 5;
+const THROTTLE_SILENCE_MS = 120_000;
+
+const retryThrottle = new Map();
+
+function getRetryThrottle(label) {
+  let entry = retryThrottle.get(label);
+  if (!entry) {
+    entry = { count: 0, windowStart: Date.now(), silenced: false, silencedUntil: 0 };
+    retryThrottle.set(label, entry);
+  }
+  const now = Date.now();
+  if (now - entry.windowStart > RETRY_THROTTLE_WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+    if (entry.silenced && now > entry.silencedUntil) {
+      entry.silenced = false;
+    }
+  }
+  return entry;
+}
+
+export function shouldThrottle(label) {
+  const entry = getRetryThrottle(label);
+  if (entry.silenced) return true;
+  entry.count += 1;
+  if (entry.count >= MAX_RETRIES_PER_WINDOW) {
+    entry.silenced = true;
+    entry.silencedUntil = Date.now() + THROTTLE_SILENCE_MS;
+    console.warn(`[${label}] Retry throttle engaged — ${MAX_RETRIES_PER_WINDOW} failures in ${RETRY_THROTTLE_WINDOW_MS / 1000}s, silencing for ${THROTTLE_SILENCE_MS / 1000}s`);
+    return true;
+  }
+  return false;
+}
+
+export function resetRetryThrottle(label) {
+  retryThrottle.delete(label);
+}
 
 /**
  * Inspects a Redis error message and returns true if the error indicates
@@ -170,7 +214,7 @@ export function getRedisClient(opts = {}) {
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? adaptiveRetryStrategy,
     connectTimeout: 10_000,
-    commandTimeout: 3_000,
+    commandTimeout: 10_000,
     keepAlive: 15_000,
   };
 
@@ -199,6 +243,8 @@ export function getRedisClient(opts = {}) {
   client.on('error', (err) => {
     redisTelemetry.errorCount += 1;
     const msg = err instanceof Error ? err.message : String(err);
+    const labelStr = `[${label}]`;
+    if (shouldThrottle(label)) return;
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       circuitBreaker.open = true;
@@ -276,6 +322,13 @@ export function getSlowRedisClient(opts = {}) {
   const REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL || REDIS_URL);
   const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_SLOW_URL);
 
+  // When the slow URL is the same as the primary, reuse the primary client
+  // instead of creating a duplicate connection with different timeouts.
+  if (REDIS_SLOW_URL === REDIS_URL) {
+    opts.label = 'slow-redis(primary)';
+    return getRedisClient(opts);
+  }
+
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
@@ -283,7 +336,7 @@ export function getSlowRedisClient(opts = {}) {
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? ((times) => Math.min(times * 250, 5000)),
     connectTimeout: 10_000,
-    commandTimeout: 3_000,
+    commandTimeout: 0,
     keepAlive: 15_000,
   };
 
@@ -303,9 +356,16 @@ export function getSlowRedisClient(opts = {}) {
     console.log(`[slow-redis] Redis connected`);
   });
   client.on('ready', () => {
+    resetRedisQuotaBackoff();
     console.log(`[slow-redis] Redis ready`);
   });
   client.on('error', (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (shouldThrottle('slow-redis')) return;
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[slow-redis] Quota error — backoff ${backoff}ms: ${msg}`);
+    }
     console.error(`[slow-redis] Error:`, err.message);
   });
   client.on('end', () => {
@@ -325,6 +385,14 @@ let _blockingClient = null;
 // All call sites MUST survive Upstash quota errors (ERR max requests) without crashing.
 export function getBlockingRedisClient(opts = {}) {
   if (!opts.forceNew && _blockingClient) return _blockingClient;
+
+  // Prefer REST client on Upstash free tier (TCP kills blocking commands)
+  const restClient = getRestRedisClient('blocking-redis(rest)');
+  if (restClient) {
+    console.log('[blocking-redis] Using REST API (TCP unreliable on free tier)');
+    if (!opts.forceNew) _blockingClient = restClient;
+    return restClient;
+  }
 
   const baseConfig = {
     lazyConnect: false,
@@ -353,10 +421,12 @@ export function getBlockingRedisClient(opts = {}) {
   client.on('connect', () => console.log('[blocking-redis] Redis connected'));
   client.on('ready', () => {
     resetRedisQuotaBackoff();
+    resetRetryThrottle('blocking-redis');
     console.log('[blocking-redis] Redis ready');
   });
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
+    if (shouldThrottle('blocking-redis')) return;
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(
@@ -382,9 +452,18 @@ export function getBlockingRedisClient(opts = {}) {
 }
 
 let _workerClient = null;
+let _workerFallbackActive = false;
 
 export function getWorkerRedisClient(opts = {}) {
   if (!opts.forceNew && _workerClient) return _workerClient;
+
+  // Prefer REST client on Upstash free tier (TCP kills blocking commands)
+  const restClient = getRestRedisClient('worker-redis(rest)');
+  if (restClient) {
+    console.log('[worker-redis] Using REST API (TCP unreliable on free tier)');
+    if (!opts.forceNew) _workerClient = restClient;
+    return restClient;
+  }
 
   const baseConfig = {
     lazyConnect: false,
@@ -393,20 +472,25 @@ export function getWorkerRedisClient(opts = {}) {
     enableOfflineQueue: true,
     retryStrategy: (times) => Math.min(times * 500, 10000),
     connectTimeout: 10_000,
-    connectTimeout: 10_000,
     commandTimeout: 0,
     keepAlive: 15_000,
   };
 
-  if (isWorkerUpstash) {
+  const targetUrl = _workerFallbackActive || !process.env.REDIS_WORKER_URL ? REDIS_URL : REDIS_WORKER_URL;
+  const targetTls = _workerFallbackActive || !process.env.REDIS_WORKER_URL ? isUpstash : isWorkerUpstash;
+  const label = _workerFallbackActive ? 'worker-redis(fallback)' : 'worker-redis';
+
+  if (targetTls) {
     baseConfig.tls = {};
   }
 
   let client;
+  let fallbackTimer = null;
+
   try {
-    client = new Redis(REDIS_WORKER_URL, baseConfig);
+    client = new Redis(targetUrl, baseConfig);
   } catch {
-    console.warn('[worker-redis] Invalid REDIS_WORKER_URL, falling back to REDIS_URL');
+    console.warn(`[worker-redis] Invalid URL, falling back to REDIS_URL`);
     try {
       client = new Redis(REDIS_URL, baseConfig);
     } catch {
@@ -415,19 +499,46 @@ export function getWorkerRedisClient(opts = {}) {
     }
   }
 
-  client.on('connect', () => console.log('[worker-redis] Redis connected'));
-  client.on('ready', () => {
-    resetRedisQuotaBackoff();
-    console.log('[worker-redis] Redis ready');
+  let fallbackTriggered = false;
+
+  client.on('connect', () => {
+    if (!fallbackTriggered) {
+      clearTimeout(fallbackTimer);
+      console.log(`[${label}] Redis connected`);
+    }
   });
+
+  client.on('ready', () => {
+    if (!fallbackTriggered) {
+      clearTimeout(fallbackTimer);
+      resetRedisQuotaBackoff();
+      console.log(`[${label}] Redis ready`);
+    }
+  });
+
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
+    const isTimeoutErr = /timed\s*out|timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(msg);
+
+    if (!fallbackTriggered && isTimeoutErr && !_workerFallbackActive) {
+      fallbackTriggered = true;
+      clearTimeout(fallbackTimer);
+      _workerFallbackActive = true;
+      _workerClient = null;
+      console.warn(`[worker-redis] Connection failure (${msg}) — permanently falling back to primary REDIS_URL`);
+      try { client.disconnect(); } catch {}
+
+      _workerClient = getBlockingRedisClient({ label: 'worker-redis(fallback)' });
+      return;
+    }
+
+    if (shouldThrottle(label)) return;
+
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(
-        `[worker-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`
+        `[${label}] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`
       );
-
       const inMemoryQueue = getOrCreateInMemoryQueue();
       inMemoryQueue.enqueue({
         queue: 'kudbee:telemetry_buffer',
@@ -435,14 +546,15 @@ export function getWorkerRedisClient(opts = {}) {
         source: 'worker-redis',
       });
     }
-    console.error('[worker-redis] Error:', msg);
-  });
-  client.on('end', () => {
-    console.warn('[worker-redis] Redis connection closed');
-    _workerClient = null;
+    console.error(`[${label}] Error:`, msg);
   });
 
-  if (!opts.forceNew) _workerClient = client;
+  client.on('end', () => {
+    console.warn(`[${label}] Redis connection closed`);
+    if (!fallbackTriggered) _workerClient = null;
+  });
+
+  if (!opts.forceNew && !fallbackTriggered) _workerClient = client;
   return client;
 }
 

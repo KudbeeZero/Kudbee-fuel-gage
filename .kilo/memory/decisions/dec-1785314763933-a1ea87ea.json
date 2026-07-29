@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314763933-a1ea87ea",
+  "agentId": "ledger-keeper",
+  "decision": "run:Full ledger audit — verify governance actions, task queues, DLQ status, think token records, database health",
+  "context": {
+    "action": "execute",
+    "task": "Full ledger audit — verify governance actions, task queues, DLQ status, think token records, database health",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:46:03.933Z",
+  "decoded": false
+}

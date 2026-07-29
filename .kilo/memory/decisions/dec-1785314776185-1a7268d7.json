@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785314776185-1a7268d7",
+  "agentId": "ci-watcher",
+  "decision": "error:Deployed full swarm — verify CI gates, run global diagnostics on all Heroku dynos, check Redis health, and report status",
+  "context": {
+    "error": "spawnSync /bin/sh ETIMEDOUT"
+  },
+  "timestamp": "2026-07-29T08:46:16.185Z",
+  "decoded": false
+}

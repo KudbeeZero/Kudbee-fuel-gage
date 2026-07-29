@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785320258736-15471e43",
+  "agentId": "ci-watcher",
+  "decision": "verification_complete",
+  "context": {
+    "context": "all 5 gates executed",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-29T10:17:38.736Z",
+  "decoded": false
+}

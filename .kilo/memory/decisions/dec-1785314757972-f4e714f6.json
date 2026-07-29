@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314757972-f4e714f6",
+  "agentId": "monitor",
+  "decision": "run:Monitor all Heroku dyno telemetry, Redis connections, governance actions, worker health — push alerts for any failures",
+  "context": {
+    "action": "execute",
+    "task": "Monitor all Heroku dyno telemetry, Redis connections, governance actions, worker health — push alerts for any failures",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:57.972Z",
+  "decoded": false
+}

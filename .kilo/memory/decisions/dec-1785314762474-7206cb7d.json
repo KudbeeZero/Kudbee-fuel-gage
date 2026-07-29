@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314762474-7206cb7d",
+  "agentId": "gateway-router",
+  "decision": "run:Route audit — verify all API gateway paths, check proxy health, test agent pass auth, report gateway metrics",
+  "context": {
+    "action": "execute",
+    "task": "Route audit — verify all API gateway paths, check proxy health, test agent pass auth, report gateway metrics",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:46:02.474Z",
+  "decoded": false
+}

@@ -396,9 +396,9 @@ export async function _tick() {
 
   const redis = getWorkerRedisClient();
   if (!redis) return false;
-  // BRPOP call site #2: services/agents/worker.ts:364
-  // Queue: kudbee-governance-tasks | Timeout: 5s | Client: getRedisClient
-  // Started from ingestion server at boot; MUST survive Upstash quota errors.
+  // BRPOP call site #2: services/agents/worker.ts
+  // Queue: kudbee-governance-tasks | Timeout: 5s
+  // Client is now REST-based on Upstash free tier (auto-detected)
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
     const msg = e.message;
     if (isUpstashMaxRequestsError(e)) {

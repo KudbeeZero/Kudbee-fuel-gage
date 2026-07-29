@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785320253588-b4abe94c",
+  "agentId": "gastown",
+  "decision": "run:Full swarm coordination: audit all 11 agents, verify Redis REST health, check database integrity, run adversarial challenge, report comprehensive status",
+  "context": {
+    "action": "execute",
+    "task": "Full swarm coordination: audit all 11 agents, verify Redis REST health, check database integrity, run adversarial challenge, report comprehensive status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T10:17:33.588Z",
+  "decoded": false
+}

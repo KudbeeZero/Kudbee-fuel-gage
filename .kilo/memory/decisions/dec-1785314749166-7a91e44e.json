@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314749166-7a91e44e",
+  "agentId": "pipeline-guardian",
+  "decision": "run:Full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
+  "context": {
+    "action": "execute",
+    "task": "Full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:49.166Z",
+  "decoded": false
+}

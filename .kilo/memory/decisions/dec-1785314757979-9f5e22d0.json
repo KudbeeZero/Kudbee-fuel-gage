@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785314757979-9f5e22d0",
+  "agentId": "monitor",
+  "decision": "error:Monitor all Heroku dyno telemetry, Redis connections, governance actions, worker health — push alerts for any failures",
+  "context": {
+    "error": "Command failed: ---\nid: monitor\ncategory: observability\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Monitor] Infrastructure watcher running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Script: services/monitor/agent.js\"\n  echo \"  Role: Polling loop — agent state + rate monitoring\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:45:57.979Z",
+  "decoded": false
+}
