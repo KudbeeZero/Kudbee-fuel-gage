@@ -1,9 +1,16 @@
 {
-  "extends": "@kudbee/config/tsconfig.base.json",
+  "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
     "allowJs": true,
-    "types": ["node"]
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["../../node_modules/*"]
+    }
   },
-  "include": ["*.ts", "*.js", "*.d.ts"]
+  "include": ["*.ts", "*.js", "*.d.ts"],
+  "exclude": ["node_modules", "../../node_modules", "../../packages"]
 }
