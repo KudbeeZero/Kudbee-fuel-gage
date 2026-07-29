@@ -247,24 +247,20 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
-// Dynamic deploy version — uses Heroku slug commit first, then SOURCE_VERSION,
-// then git hash from filesystem, then "unknown". Never hardcoded.
+// Dynamic deploy version — reads from build-time metadata, then env vars.
+// Never hardcoded. Build script writes version to .deploy-version.json.
 function getDeployVersion() {
-  // Heroku sets HEROKU_SLUG_COMMIT to the exact git SHA of the built slug
-  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
-  // Heroku sets SOURCE_VERSION during GitHub-connected deploys
-  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
-  // Try reading from .git/HEAD (works in local dev, not on Heroku slug)
-  try { fs.readFileSync; } catch {} // ensure fs is loaded
   try {
-    const head = fs.readFileSync('.git/HEAD', 'utf8').trim();
-    if (head.startsWith('ref:')) {
-      const ref = head.split(' ')[1];
-      return fs.readFileSync(`.git/${ref}`, 'utf8').trim().slice(0, 7);
-    }
-    return head.slice(0, 7);
+    // Read from build-time artifact (written by build script)
+    const deployFile = fs.readFileSync('.deploy-version.json', 'utf8');
+    const meta = JSON.parse(deployFile);
+    if (meta.commit) return meta.commit.slice(0, 7);
+    if (meta.version) return meta.version;
   } catch {}
-  return 'unknown';
+  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
+  if (process.env.HEROKU_RELEASE_VERSION) return process.env.HEROKU_RELEASE_VERSION;
+  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
+  return 'dev';
 }
 const _state = {
   policyState: null,
