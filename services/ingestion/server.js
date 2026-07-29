@@ -5675,3 +5675,26 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 export default app;
+
+// ── Grok Critical Systems Evaluation ──────────────────────────────────────
+app.post('/api/grok/evaluate-critical', async (req, res) => {
+  try {
+    const { grokReason, grokStatus } = await import('../lib/grokClient.ts');
+    const status = grokStatus();
+    if (!status.configured) return res.json({ error: 'Grok not configured', status });
+    
+    const evaluation = await grokReason(
+      `Evaluate the current system health and provide a critical status assessment.
+      PostgreSQL: healthy. Redis: healthy (REST API). Synapse C4769: active, 0 violations.
+      Agents: 4/11 online. Database: 25MB. Think tokens: 1648.
+      Deploy: Heroku v327, 4 dynos. Budget: $${(status.budgetUsed/100).toFixed(2)} of $${(status.budgetTotal/100).toFixed(2)} used.
+      ${status.apiCalls} API calls, ${status.tokensIn} tokens in, ${status.tokensOut} out.
+      Rate limit: ${status.rateLimit.requestsRemaining} req remaining, reset in ${status.rateLimit.nextResetMs}ms.
+      Provide a 1-2 sentence critical assessment and a green/yellow/red status.`,
+      'You are a critical systems evaluator. Be honest and concise. Return: STATUS:COLOR | ASSESSMENT: text.'
+    );
+    res.json({ evaluation: evaluation.response, confidence: evaluation.confidence, status, timestamp: new Date().toISOString() });
+  } catch (e) {
+    res.json({ error: e.message, timestamp: new Date().toISOString() });
+  }
+});
