@@ -5775,6 +5775,37 @@ app.post('/api/system/lock-metrics/update', (req, res) => {
   res.json({ ok: true, timestamp: lockMetricsCache.lastUpdated });
 });
 
+// --- Error Telemetry (production-grade crash reporting) ---
+const errorReports = [];
+const MAX_ERROR_REPORTS = 100;
+
+app.post('/api/system/error-report', (req, res) => {
+  const report = req.body || {};
+  report.receivedAt = new Date().toISOString();
+  errorReports.unshift(report);
+  if (errorReports.length > MAX_ERROR_REPORTS) errorReports.pop();
+
+  console.error('[ErrorReport]', report.fingerprint || 'n/a', report.message?.slice(0, 100), report.url);
+
+  if (redis) {
+    try {
+      redis.publish('kudbee:stream:audit', JSON.stringify({
+        type: 'error.report',
+        fingerprint: report.fingerprint,
+        message: report.message?.slice(0, 200),
+        url: report.url,
+        timestamp: report.receivedAt,
+      }));
+    } catch {}
+  }
+
+  res.json({ ok: true, reportedAt: report.receivedAt });
+});
+
+app.get('/api/system/error-report', (_req, res) => {
+  res.json({ count: errorReports.length, reports: errorReports.slice(0, 20) });
+});
+
 // --- Edge Sentinel: anomaly detection feed (consumed by EdgeSentinelPlugin) ---
 let edgeAnomaliesCache = { totalAlerts: 0, unacknowledged: 0, rules: 4, lastDetected: null };
 let edgeThroughputCache = { ingressCount: 0, egressCount: 0, requestRate: 0, windowSec: 60 };
