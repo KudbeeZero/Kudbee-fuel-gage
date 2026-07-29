@@ -4148,6 +4148,15 @@ app.get('/api/events', async (req, res) => {
     );
   }
 
+  const ticket = req.query?.ticket || req.url?.split('ticket=')[1]?.split('&')[0];
+  if (!validateStreamTicket(ticket)) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      error: 'Unauthorized',
+      reason: 'missing or invalid stream ticket. Obtain one via POST /api/auth/stream-ticket',
+    }));
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
