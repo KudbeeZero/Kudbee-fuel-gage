@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785302422774-063586",
+  "topic": "vector:reward-loop",
+  "source": "cli",
+  "data": {
+    "message": "Vector 10 deployed — R=α(Success)-β(Failure)-γ(Latency), K_new=K_old+η(R·Q)"
+  },
+  "timestamp": "2026-07-29T05:20:22.774Z",
+  "sequence": 38
+}
