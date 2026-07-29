@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314747705-e66861c3",
+  "agentId": "knowledge-curator",
+  "decision": "run:Curate all knowledge snippets, cross-reference recent decisions, prune stale entries, export learnings to skill directory",
+  "context": {
+    "action": "execute",
+    "task": "Curate all knowledge snippets, cross-reference recent decisions, prune stale entries, export learnings to skill directory",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:47.729Z",
+  "decoded": false
+}

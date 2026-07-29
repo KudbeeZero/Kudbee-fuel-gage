@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314756632-3223cd7c",
+  "agentId": "sentinel",
+  "decision": "run:Full edge security scan — verify all Heroku dyno health, check Redis circuit breakers, audit rate limits, report anomalies",
+  "context": {
+    "action": "execute",
+    "task": "Full edge security scan — verify all Heroku dyno health, check Redis circuit breakers, audit rate limits, report anomalies",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:56.632Z",
+  "decoded": false
+}

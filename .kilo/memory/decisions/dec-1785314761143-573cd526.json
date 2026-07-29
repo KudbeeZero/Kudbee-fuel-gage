@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785314761143-573cd526",
+  "agentId": "web-doctor",
+  "decision": "error:Diagnose Control Tower dashboard health, check Vite build, verify frontend-backend tunnel, test SSE stream, report UI status",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:46:01.143Z",
+  "decoded": false
+}

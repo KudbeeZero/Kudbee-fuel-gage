@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314761137-0258929f",
+  "agentId": "web-doctor",
+  "decision": "run:Diagnose Control Tower dashboard health, check Vite build, verify frontend-backend tunnel, test SSE stream, report UI status",
+  "context": {
+    "action": "execute",
+    "task": "Diagnose Control Tower dashboard health, check Vite build, verify frontend-backend tunnel, test SSE stream, report UI status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:46:01.138Z",
+  "decoded": false
+}

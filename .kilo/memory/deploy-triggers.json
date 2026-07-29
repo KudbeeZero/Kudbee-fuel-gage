@@ -1,0 +1,14 @@
+{
+  "triggers": [
+    {
+      "id": "trigger-1785315618672",
+      "type": "autorecovery",
+      "reason": "redis-tcp-dead-worker-fallback-to-primary",
+      "source": "kilo",
+      "branch": "session/agent_0d551f7f-a866-44bf-9d1c-1f837f21ccb6",
+      "commit": "1a21908",
+      "timestamp": "2026-07-29T09:00:18.683Z"
+    }
+  ],
+  "lastCleanedAt": null
+}

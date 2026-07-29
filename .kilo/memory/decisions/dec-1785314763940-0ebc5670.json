@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785314763940-0ebc5670",
+  "agentId": "ledger-keeper",
+  "decision": "error:Full ledger audit — verify governance actions, task queues, DLQ status, think token records, database health",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\nschedule: hourly\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:46:03.940Z",
+  "decoded": false
+}

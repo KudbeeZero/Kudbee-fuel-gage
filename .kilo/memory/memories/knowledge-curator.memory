@@ -81,8 +81,13 @@
       "id": "dec-1785312065129-5837f8e8",
       "decision": "curation_complete",
       "timestamp": "2026-07-29T08:01:05.129Z"
+    },
+    {
+      "id": "dec-1785314749130-d10162c2",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-29T08:45:49.130Z"
     }
   ],
-  "lastAction": "2026-07-29T08:01:05.129Z",
-  "totalActions": 30
+  "lastAction": "2026-07-29T08:45:49.130Z",
+  "totalActions": 32
 }

@@ -1,0 +1,42 @@
+{
+  "entries": [
+    {
+      "id": "deploy-1785315618746",
+      "timestamp": "2026-07-29T09:00:18.718Z",
+      "branch": "session/agent_0d551f7f-a866-44bf-9d1c-1f837f21ccb6",
+      "commit": "1a219083a82082cb308bf9f26d552f694cf6630e",
+      "message": "fix(hermes): switch infinite BLPOP to 5s short poll",
+      "author": "KudbeeZero",
+      "changedFiles": [
+        ".kilo/memory/memories/api-route-catalog.memory",
+        ".kilo/memory/memories/ci-watcher.memory",
+        ".kilo/memory/memories/database-schema.memory",
+        ".kilo/memory/memories/frontend-patterns.memory",
+        ".kilo/memory/memories/gateway-router.memory",
+        ".kilo/memory/memories/hermes.memory",
+        ".kilo/memory/memories/knowledge-curator.memory",
+        ".kilo/memory/memories/ledger-keeper.memory",
+        ".kilo/memory/memories/middleware-patterns.memory",
+        ".kilo/memory/memories/middleware-pipeline-architecture.memory",
+        ".kilo/memory/memories/monitor.memory",
+        ".kilo/memory/memories/pipeline-guardian.memory",
+        ".kilo/memory/memories/sentinel.memory",
+        ".kilo/memory/memories/token-forge.memory",
+        ".kilo/memory/memories/web-doctor.memory",
+        "services/lib/redis.js",
+        "worker.js"
+      ],
+      "remoteCommit": "bc6ece5aa1af5192f753ef5b6db4bb1f04012d7c",
+      "herokuRelease": "unknown",
+      "herokuSlug": "unknown",
+      "nodeVersion": "v22.22.3",
+      "pid": 26553,
+      "note": "fix: Redis worker/slow-redis TCP fallback to primary + deploy logging system + hermes 5s BLPOP + exponential backoff + jitter",
+      "trigger": "manual",
+      "operator": "kilo",
+      "previousDeploy": null
+    }
+  ],
+  "count": 1,
+  "lastDeploy": "2026-07-29T09:00:18.718Z"
+}

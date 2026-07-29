@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785314746179-33eea560",
+  "agentId": "ci-watcher",
+  "decision": "run:Deployed full swarm — verify CI gates, run global diagnostics on all Heroku dynos, check Redis health, and report status",
+  "context": {
+    "action": "execute",
+    "task": "Deployed full swarm — verify CI gates, run global diagnostics on all Heroku dynos, check Redis health, and report status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:45:46.179Z",
+  "decoded": false
+}

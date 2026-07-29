@@ -100,8 +100,13 @@
       "query": "verify global workspace: check redis tensor pool, validate sampleglobalworkspace, confirm latent state projection",
       "timestamp": "2026-07-29T07:07:59.296Z",
       "score": 7
+    },
+    {
+      "query": "full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
+      "timestamp": "2026-07-29T08:45:49.217Z",
+      "score": 16
     }
   ],
-  "lastRecall": "2026-07-29T07:07:59.296Z",
-  "recallCount": 20
+  "lastRecall": "2026-07-29T08:45:49.217Z",
+  "recallCount": 21
 }
