@@ -75,8 +75,13 @@
       "query": "root cause confirmed: crossorigin on module script blocked by cloudflare cors on chrome mobile. fix deployed — removed crossorigin, clean html.",
       "timestamp": "2026-07-29T01:58:51.039Z",
       "score": 5
+    },
+    {
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.746Z",
+      "score": 16
     }
   ],
-  "lastRecall": "2026-07-29T01:58:51.039Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-29T02:56:06.746Z",
+  "recallCount": 16
 }

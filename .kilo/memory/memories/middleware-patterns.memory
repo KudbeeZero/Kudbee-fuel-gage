@@ -65,8 +65,13 @@
       "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
       "timestamp": "2026-07-29T01:33:45.146Z",
       "score": 13
+    },
+    {
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.750Z",
+      "score": 13
     }
   ],
-  "lastRecall": "2026-07-29T01:33:45.146Z",
-  "recallCount": 13
+  "lastRecall": "2026-07-29T02:56:06.750Z",
+  "recallCount": 14
 }

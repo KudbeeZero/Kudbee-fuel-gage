@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785293766848-dd341dd7",
+  "agentId": "knowledge-curator",
+  "decision": "run:production hardening: verify MIME fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+  "context": {
+    "action": "execute",
+    "task": "production hardening: verify MIME fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T02:56:06.848Z",
+  "decoded": false
+}

@@ -2,48 +2,11 @@
   "id": "database-schema",
   "recalls": [
     {
-      "query": "scan all middleware",
-      "timestamp": "2026-07-27T18:00:37.845Z",
-      "score": 3
-    },
-    {
-      "query": "postgres database schema pgvector",
-      "timestamp": "2026-07-27T18:15:18.271Z",
-      "score": 6
-    },
-    {
-      "query": "inject-to-forge",
-      "timestamp": "2026-07-27T18:15:27.797Z",
-      "score": 0
-    },
-    {
-      "query": "black screen frontend crash web app deployment",
-      "timestamp": "2026-07-28T19:56:49.608Z",
-      "score": 4
-    },
-    {
-      "query": "scan middleware layers for frontend serving issues",
-      "timestamp": "2026-07-28T19:56:50.557Z",
-      "score": 5
-    },
-    {
-      "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
-      "timestamp": "2026-07-28T20:40:01.826Z",
-      "score": 11
-<<<<<<< ours
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.749Z",
+      "score": 14
     }
   ],
-  "lastRecall": "2026-07-28T20:40:01.826Z",
-  "recallCount": 6
-=======
-    },
-    {
-      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
-      "timestamp": "2026-07-28T21:18:16.639Z",
-      "score": 6
-    }
-  ],
-  "lastRecall": "2026-07-28T21:18:16.639Z",
-  "recallCount": 7
->>>>>>> theirs
+  "lastRecall": "2026-07-29T02:56:06.749Z",
+  "recallCount": 1
 }

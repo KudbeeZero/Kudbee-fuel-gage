@@ -1,12 +1,12 @@
 {
-  "id": "middleware-pipeline-architecture",
+  "id": "verification-patterns",
   "recalls": [
     {
       "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
-      "timestamp": "2026-07-29T02:56:06.747Z",
-      "score": 16
+      "timestamp": "2026-07-29T02:56:06.745Z",
+      "score": 18
     }
   ],
-  "lastRecall": "2026-07-29T02:56:06.747Z",
+  "lastRecall": "2026-07-29T02:56:06.746Z",
   "recallCount": 1
 }

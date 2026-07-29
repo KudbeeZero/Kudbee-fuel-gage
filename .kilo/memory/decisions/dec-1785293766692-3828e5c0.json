@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785293766692-3828e5c0",
+  "agentId": "pipeline-guardian",
+  "decision": "run:production hardening: verify MIME fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+  "context": {
+    "action": "execute",
+    "task": "production hardening: verify MIME fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T02:56:06.692Z",
+  "decoded": false
+}
