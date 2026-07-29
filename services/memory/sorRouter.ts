@@ -68,11 +68,12 @@ export function evaluateToken(
   token: ThinkToken,
   auditPublish: AuditPublishFn,
   sinkPressure: number,
-  threatLevel: number
+  threatLevel: number,
+  context: number[]
 ): SorDecision {
   const similarityScore = Math.abs(token.kd) * (token.status === 'CHALLENGED' ? 0.5 : 0.9);
   const tokenInput: TokenEnergyInput = {
-    kd: token.kd,
+    kd: token.kd / 100,
     efficacy: token.efficacy || 0.5,
     similarityScore,
     sinkPressure,
@@ -80,10 +81,11 @@ export function evaluateToken(
   };
 
   const E = computeEnergy(tokenInput);
-  feedContextWindow(E);
+  context.push(E);
+  if (context.length > 50) context.shift();
 
-  const fence = contextWindow.length >= 3
-    ? iqrFence(contextWindow)
+  const fence = context.length >= 3
+    ? iqrFence(context)
     : { lower: 0.1, upper: 0.7, iqr: 0.2 };
 
   const safeBound = fence.lower + 0.15 * fence.iqr;
@@ -165,8 +167,9 @@ export async function evaluateChallengedTokens(
   threatLevel: number
 ): Promise<SorDecision[]> {
   const results: SorDecision[] = [];
+  const localContext: number[] = [];
   for (const token of tokens.filter((t) => t.status === 'CHALLENGED')) {
-    const decision = evaluateToken(token, auditPublish, sinkPressure, threatLevel);
+    const decision = evaluateToken(token, auditPublish, sinkPressure, threatLevel, localContext);
     await executeSorDecision(decision, auditPublish);
     results.push(decision);
   }

@@ -7,28 +7,24 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Kudbee Fuel Gauge — AI Cost Intelligence</title>
     <style>
-      #boot-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:ui-monospace,'Fira Code',monospace}
-      #boot-splash h1{font-size:1.5rem;font-weight:700;margin-bottom:.25rem;color:#34d399}
-      #boot-splash p{font-size:.75rem;color:#64748b;margin-bottom:1.5rem}
-      #boot-splash .spinner{width:2.5rem;height:2.5rem;border:3px solid #1e293b;border-top-color:#34d399;border-radius:50%;animation:kud-spin .8s linear infinite}
+      #boot-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:ui-monospace,monospace}
+      #boot-splash h1{font-size:1.5rem;font-weight:700;margin:.5rem 0;color:#34d399}
+      #boot-splash p{font-size:.75rem;color:#64748b}
+      #boot-splash .spinner{width:2.5rem;height:2.5rem;border:3px solid #1e293b;border-top-color:#34d399;border-radius:50%;animation:kud-spin .8s linear infinite;margin-bottom:2rem}
       @keyframes kud-spin{to{transform:rotate(360deg)}}
       .boot-done #boot-splash{display:none}
     </style>
     <script>
+      var ROOT;
+      var BOOT_TIME = Date.now();
+      var DONE = false;
+      function hide(){if(DONE)return;DONE=true;document.documentElement.classList.add('boot-done')}
       document.addEventListener('DOMContentLoaded',function(){
-        var r=document.getElementById('root');
-        if(!r)return;
-        var o=new MutationObserver(function(){
-          if(r.children.length>0||r.textContent.trim().length>0){
-            document.documentElement.classList.add('boot-done');
-            o.disconnect();
-          }
-        });
-        o.observe(r,{childList:true,subtree:true,characterData:true});
+        ROOT=document.getElementById('root');
+        new MutationObserver(function(){if(ROOT.children.length>0)hide()}).observe(ROOT,{childList:true,subtree:true});
         setTimeout(function(){
-          if(!document.documentElement.classList.contains('boot-done'))
-            document.documentElement.classList.add('boot-done');
-        },8000);
+          if(!DONE){hide();ROOT.innerHTML='<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#e2e8f0;font-family:ui-monospace,monospace;text-align:center;padding:1rem;background:#020617"><h1 style="color:#34d399">Kudbee Fuel Gauge</h1><p style="color:#94a3b8;font-size:.75rem">AI Cost Intelligence</p><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.5rem;margin:1.5rem 0;max-width:18rem;width:100%"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">App did not load</p><p style="color:#94a3b8;font-size:.7rem">'+(Date.now()-BOOT_TIME<30000?'Still loading…':'Connection may be too slow')+'</p><button onclick="location.reload()" style="margin:1rem 0 .25rem;background:#059669;color:#fff;border:none;padding:.5rem 2rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">v267 · Chrome · '+(new Date().toISOString().slice(0,19))+'</p></div>'}
+        },5000);
       });
     </script>
   </head>
@@ -42,4 +38,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

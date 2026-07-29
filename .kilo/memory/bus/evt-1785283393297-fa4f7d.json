@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785283393297-fa4f7d",
+  "topic": "diagnostic:chrome",
+  "source": "cli",
+  "data": {
+    "message": "v269 deployed — 4-line vanilla JS, 0.32 kB, pipeline guardian 11/11, knowledge curator 51 recalls"
+  },
+  "timestamp": "2026-07-29T00:03:13.297Z",
+  "sequence": 28
+}

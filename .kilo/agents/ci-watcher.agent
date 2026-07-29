@@ -16,8 +16,7 @@ npm run typecheck 2>&1 | tail -1
 
 echo ""
 echo "  Gate 2: Tests"
-cd services/lib && npx -y bun test test/ 2>&1 | tail -3
-cd "$REPO_ROOT"
+(cd services/lib && npx -y bun test test/ 2>&1 | tail -3)
 
 echo ""
 echo "  Gate 3: Build"

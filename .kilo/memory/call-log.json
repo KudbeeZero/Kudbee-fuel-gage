@@ -136,10 +136,10 @@
       "routed": true
     },
     {
-      "id": "call-1785273496731-304e87",
+      "id": "call-1785272670728-bbf34a",
       "from": "pipeline-guardian",
       "to": "knowledge-curator",
-      "message": "Adversarial simulator deployed — 3 attack vectors, SOR router live, PR #213 open",
+      "message": "SSE ticket auth enforced — 401 on invalid tickets. kudbee:stream:audit subscribed. All 11 middleware layers healthy.",
       "path": [
         "pipeline-guardian",
         "dispatcher",
@@ -147,9 +147,69 @@
       ],
       "hops": 2,
       "type": "sibling",
-      "timestamp": "2026-07-28T21:18:16.731Z",
+      "timestamp": "2026-07-28T21:04:30.729Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785272670775-e48389",
+      "from": "knowledge-curator",
+      "to": "ci-watcher",
+      "message": "Sentinel IQR pipeline indexed: 5 tokens forged, AnomalyFeedPlugin built, Redis publisher created.",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T21:04:30.775Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785281030568-2f3f5b",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "v263 deployed: splash screen live, mobile loading fixed, PR #213 e2e CI patched",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T23:23:50.568Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785281112613-48341e",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "Token training complete: 10 promoted to VERIFIED, 4 remain CHALLENGED (KD 88-93), 0 Byzantine",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-28T23:25:12.613Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785283393250-7cd213",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "Chrome mobile diagnostic: 4-line vanilla JS deployed, all 11 layers healthy, module serving confirmed",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T00:03:13.250Z",
       "routed": true
     }
   ],
-  "totalCalls": 10
+  "totalCalls": 14
 }

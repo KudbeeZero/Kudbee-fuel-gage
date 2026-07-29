@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785272987468-328f9137",
+  "agentId": "knowledge-curator",
+  "decision": "run:curate sentinel pipeline knowledge: index redis-patterns, verify relations graph, cross-reference anomaly detection patterns",
+  "context": {
+    "action": "execute",
+    "task": "curate sentinel pipeline knowledge: index redis-patterns, verify relations graph, cross-reference anomaly detection patterns",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:09:47.468Z",
+  "decoded": false
+}

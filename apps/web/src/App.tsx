@@ -157,6 +157,8 @@ export default function App() {
 
   useEffect(() => {
     setAuthChecked(true);
+    const t = setTimeout(() => setAuthChecked(true), 6000);
+    return () => clearTimeout(t);
   }, []);
 
   const [activeTab, setActiveTab] = useState('TELEMETRY');
@@ -481,14 +483,7 @@ export default function App() {
   ];
 
   if (!authChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="flex items-center gap-3">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-          <span className="font-mono text-xs text-slate-400">Initializing Kudbee Control Tower…</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!isAuthenticated) {

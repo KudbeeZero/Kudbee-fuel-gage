@@ -21,8 +21,23 @@
       "id": "dec-1785271200255-10521a56",
       "decision": "curation_complete",
       "timestamp": "2026-07-28T20:40:00.256Z"
+    },
+    {
+      "id": "dec-1785272644602-23922b84",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-28T21:04:04.603Z"
+    },
+    {
+      "id": "dec-1785272987692-1d26b72a",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-28T21:09:47.692Z"
+    },
+    {
+      "id": "dec-1785281090884-a01da3ba",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-28T23:24:50.884Z"
     }
   ],
-  "lastAction": "2026-07-28T20:40:00.256Z",
-  "totalActions": 6
+  "lastAction": "2026-07-28T23:24:50.884Z",
+  "totalActions": 12
 }

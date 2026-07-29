@@ -32,11 +32,26 @@
       "score": 15
     },
     {
-      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
-      "timestamp": "2026-07-28T21:18:16.640Z",
+      "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+      "timestamp": "2026-07-28T21:04:02.643Z",
       "score": 6
+    },
+    {
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.334Z",
+      "score": 12
+    },
+    {
+      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
+      "timestamp": "2026-07-28T23:23:50.468Z",
+      "score": 5
+    },
+    {
+      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
+      "timestamp": "2026-07-29T00:02:52.307Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-28T21:18:16.640Z",
-  "recallCount": 7
+  "lastRecall": "2026-07-29T00:02:52.307Z",
+  "recallCount": 10
 }

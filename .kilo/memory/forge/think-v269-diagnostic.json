@@ -1,0 +1,28 @@
+{
+  "traceId": "tk-v269-diagnostic-021",
+  "taskContext": "v269 diagnostic build deploys 4-line vanilla JS (0.32 kB). Stripped React, CSS, plugins, auth, lazy loading. Tests whether Chrome mobile can execute module scripts at all.",
+  "kd": 99,
+  "efficacy": 0.99,
+  "status": "VERIFIED",
+  "reasoningSteps": [
+    "replaced main.tsx with 4-line vanilla JS setting innerHTML to Kudbee Fuel Gauge",
+    "build: 132 modules (was 2949), main.js 0.32 kB (was 7.62)",
+    "served as application/javascript, Content-Length 322",
+    "CORS: Access-Control-Allow-Origin: *",
+    "Android Chrome UA GET returns same content",
+    "Cache-Control: max-age=0, Cloudflare MISS",
+    "if user sees green text → modules work → React app is the problem",
+    "if user sees black → Cloudflare/Chrome blocks scripts entirely"
+  ],
+  "keywords": [
+    "diagnostic",
+    "v269",
+    "vanilla",
+    "Chrome",
+    "module",
+    "stripped",
+    "isolation"
+  ],
+  "createdAt": "2026-07-29T00:03:00Z",
+  "sorVerdict": "PROMOTE"
+}

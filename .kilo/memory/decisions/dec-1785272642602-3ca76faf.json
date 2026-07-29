@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785272642602-3ca76faf",
+  "agentId": "pipeline-guardian",
+  "decision": "run:scan SSE ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+  "context": {
+    "action": "execute",
+    "task": "scan SSE ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-28T21:04:02.602Z",
+  "decoded": false
+}

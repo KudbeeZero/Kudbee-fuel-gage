@@ -38,11 +38,31 @@
       "timestamp": "2026-07-28T20:40:01.885Z"
     },
     {
-      "id": "dec-1785273496684-4e56ca4a",
+      "id": "dec-1785272642681-61616a7c",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T21:18:16.685Z"
+      "timestamp": "2026-07-28T21:04:02.681Z"
+    },
+    {
+      "id": "dec-1785272984373-32cd66a2",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-28T21:09:44.373Z"
+    },
+    {
+      "id": "dec-1785281030513-4afa9b44",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-28T23:23:50.513Z"
+    },
+    {
+      "id": "dec-1785281081394-82147d3f",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-28T23:24:41.395Z"
+    },
+    {
+      "id": "dec-1785283370612-f3321a53",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-29T00:02:50.612Z"
     }
   ],
-  "lastAction": "2026-07-28T21:18:16.685Z",
-  "totalActions": 12
+  "lastAction": "2026-07-29T00:02:50.612Z",
+  "totalActions": 20
 }

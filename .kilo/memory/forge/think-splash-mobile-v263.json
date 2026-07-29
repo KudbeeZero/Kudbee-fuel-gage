@@ -1,0 +1,25 @@
+{
+  "traceId": "tk-splash-mobile-018",
+  "taskContext": "Fixed mobile black screen with boot splash: green spinner + Kudbee branding renders BEFORE React mounts. 4s timeout, MutationObserver hides on React render. Loading states brightened for OLED visibility.",
+  "kd": 97,
+  "efficacy": 0.98,
+  "status": "VERIFIED",
+  "reasoningSteps": [
+    "added boot-splash div to index.html with branded spinner",
+    "MutationObserver watches #root children — hides splash when React mounts",
+    "4s timeout fallback prevents perma-hang",
+    "Suspense fallback enlarged + bright emerald text",
+    "Auth loading state enlarged + bright emerald text"
+  ],
+  "keywords": [
+    "splash",
+    "mobile",
+    "black-screen",
+    "loading",
+    "OLED",
+    "visibility",
+    "MutationObserver"
+  ],
+  "createdAt": "2026-07-28T23:24:00Z",
+  "sorVerdict": "PROMOTE"
+}

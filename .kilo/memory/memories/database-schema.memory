@@ -32,11 +32,31 @@
       "score": 11
     },
     {
-      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
-      "timestamp": "2026-07-28T21:18:16.639Z",
+      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
+      "timestamp": "2026-07-28T21:09:44.335Z",
+      "score": 10
+    },
+    {
+      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
+      "timestamp": "2026-07-28T23:23:50.468Z",
+      "score": 5
+    },
+    {
+      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
+      "timestamp": "2026-07-28T23:24:41.347Z",
+      "score": 26
+    },
+    {
+      "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
+      "timestamp": "2026-07-29T00:02:50.578Z",
+      "score": 6
+    },
+    {
+      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
+      "timestamp": "2026-07-29T00:02:52.306Z",
       "score": 6
     }
   ],
-  "lastRecall": "2026-07-28T21:18:16.639Z",
-  "recallCount": 7
+  "lastRecall": "2026-07-29T00:02:52.306Z",
+  "recallCount": 11
 }

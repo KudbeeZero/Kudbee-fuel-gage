@@ -113,7 +113,7 @@ export class AdversarialSimulator {
     if (this.historicalActivations.length > 100) this.historicalActivations.shift();
   }
 
-  private tick(): void {
+  private async tick(): Promise<void> {
     const vectors: AttackVector[] = [
       this.buildDelayAttack(),
       this.buildScalingAttack(),
@@ -121,7 +121,7 @@ export class AdversarialSimulator {
     ];
 
     for (const vector of vectors) {
-      const result = this.executeAttack(vector);
+      const result = await this.executeAttack(vector);
       this.emitAuditEvent(result);
     }
   }
@@ -156,7 +156,7 @@ export class AdversarialSimulator {
     };
   }
 
-  private executeAttack(vector: AttackVector): AttackResult {
+  private async executeAttack(vector: AttackVector): Promise<AttackResult> {
     const attackId = `adversarial-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     let modifiedValues = this.getActiveCoordinateSlots();
 
@@ -191,7 +191,7 @@ export class AdversarialSimulator {
     const sentinelVerdict = this.classifySentinelResponse(vector, energyScore);
 
     if (sentinelVerdict === 'DETECTED') {
-      this.sinkRoute(attackId, `Adversarial ${vector.type} attack detected — energy ${energyScore.toFixed(3)}`);
+      await this.sinkRoute(attackId, `Adversarial ${vector.type} attack detected — energy ${energyScore.toFixed(3)}`);
     }
 
     return {
