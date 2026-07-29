@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785290878327-e0dd4a6d",
+  "agentId": "pipeline-guardian",
+  "decision": "run:verify MIME type fix: JS assets now serve as application/javascript. express.static setHeaders added. 9-phase struggle log recorded.",
+  "context": {
+    "action": "execute",
+    "task": "verify MIME type fix: JS assets now serve as application/javascript. express.static setHeaders added. 9-phase struggle log recorded.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T02:07:58.327Z",
+  "decoded": false
+}

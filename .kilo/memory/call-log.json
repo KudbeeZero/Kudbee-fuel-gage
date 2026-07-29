@@ -284,7 +284,52 @@
       "type": "sibling",
       "timestamp": "2026-07-29T01:18:41.052Z",
       "routed": true
+    },
+    {
+      "id": "call-1785290347174-da56f6",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "Root cause: crossorigin on script type=module triggers Cloudflare CORS preflight → Chrome mobile blocks → black screen. 13 character fix deployed.",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:59:07.174Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785290899155-89ac2d",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "9-phase struggle log complete: root cause MIME type, energy functions updated, tokens promoted",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T02:08:19.155Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785290899194-f5bddf",
+      "from": "knowledge-curator",
+      "to": "ci-watcher",
+      "message": "Struggle log indexed: 6-hour diagnosis, 2 root causes, v278 deployed. Model trained on Content-Type header checking.",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T02:08:19.194Z",
+      "routed": true
     }
   ],
-  "totalCalls": 19
+  "totalCalls": 22
 }

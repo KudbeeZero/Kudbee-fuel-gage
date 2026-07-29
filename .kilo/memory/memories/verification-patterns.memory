@@ -15,8 +15,13 @@
       "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
       "timestamp": "2026-07-29T01:18:04.312Z",
       "score": 12
+    },
+    {
+      "query": "verify mime type fix: js assets now serve as application/javascript. express.static setheaders added. 9-phase struggle log recorded.",
+      "timestamp": "2026-07-29T02:07:58.385Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-29T01:18:04.312Z",
-  "recallCount": 3
+  "lastRecall": "2026-07-29T02:07:58.385Z",
+  "recallCount": 4
 }

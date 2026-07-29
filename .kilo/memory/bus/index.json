@@ -1,5 +1,5 @@
 {
-  "sequence": 31,
+  "sequence": 32,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -217,6 +217,13 @@
       "source": "cli",
       "sequence": 31,
       "timestamp": "2026-07-29T01:18:41.143Z"
+    },
+    {
+      "id": "evt-1785290347137-970b85",
+      "topic": "root-cause:crossorigin",
+      "source": "cli",
+      "sequence": 32,
+      "timestamp": "2026-07-29T01:59:07.137Z"
     }
   ],
   "topicCounts": {
@@ -241,6 +248,7 @@
     "think:training": 1,
     "diagnostic:chrome": 1,
     "system:improvements": 1,
-    "training:complete": 1
+    "training:complete": 1,
+    "root-cause:crossorigin": 1
   }
 }

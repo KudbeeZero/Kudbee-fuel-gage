@@ -70,8 +70,13 @@
       "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
       "timestamp": "2026-07-29T01:33:45.144Z",
       "score": 15
+    },
+    {
+      "query": "root cause confirmed: crossorigin on module script blocked by cloudflare cors on chrome mobile. fix deployed — removed crossorigin, clean html.",
+      "timestamp": "2026-07-29T01:58:51.039Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-29T01:33:45.145Z",
-  "recallCount": 14
+  "lastRecall": "2026-07-29T01:58:51.039Z",
+  "recallCount": 15
 }
