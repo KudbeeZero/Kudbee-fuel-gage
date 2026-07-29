@@ -137,13 +137,7 @@
       "type": "system:victory",
       "agentId": "system",
       "timestamp": "2026-07-29T18:04:23.120Z"
-    },
-    {
-      "id": "456b652e-d8d9-44d6-b740-dd07a4722fbb",
-      "type": "system:guard",
-      "agentId": "system",
-      "timestamp": "2026-07-29T18:14:19.030Z"
     }
   ],
-  "totalEntries": 24
+  "totalEntries": 23
 }

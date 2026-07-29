@@ -159,6 +159,10 @@ async function loadWorktrees() {
 const CMD_HISTORY = [];
 let CMD_INDEX = -1;
 
+const API = window.location.origin;
+async function api(url) { const r = await fetch(url); return r.ok ? r.json() : null; }
+
+
 async function runCmd() {
   const input = document.getElementById('cmd-input');
   const output = document.getElementById('cmd-output');
