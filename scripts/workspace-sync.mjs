@@ -15,8 +15,10 @@ const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 async function redisCmd(args) {
   if (!REDIS_URL || !REDIS_TOKEN) return null;
-  const res = await fetch(REDIS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${REDIS_TOKEN}` }, body: JSON.stringify(args) });
-  return res.ok ? res.json() : null;
+  try {
+    const res = await fetch(REDIS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${REDIS_TOKEN}` }, body: JSON.stringify(args), signal: AbortSignal.timeout(5000) });
+    return res.ok ? res.json() : null;
+  } catch { return null; }
 }
 
 async function syncWorkspace() {
@@ -74,8 +76,7 @@ async function syncWorkspace() {
     snapshot.moods[v.mood] = (snapshot.moods[v.mood] || 0) + 1;
   }
 
-  await redisCmd(['SET', 'kudbee:global:workspace:centroid', JSON.stringify(snapshot)]);
-  await redisCmd(['EXPIRE', 'kudbee:global:workspace:centroid', '3600']);
+  await redisCmd(['SET', 'kudbee:global:workspace:centroid', JSON.stringify(snapshot), 'EX', '3600']);
 
   // Publish sync event
   await redisCmd(['PUBLISH', 'kudbee:stream:audit', JSON.stringify({

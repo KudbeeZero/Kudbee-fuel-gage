@@ -111,9 +111,14 @@ const SCHEDULER_JOBS = {
 async function handleSchedulerRun(jobName) {
   const job = SCHEDULER_JOBS[jobName];
   if (!job) return { error: `Unknown job: "${jobName}". Available: ${Object.keys(SCHEDULER_JOBS).join(', ')}` };
-  const { execSync } = await import('child_process');
   try {
-    const output = execSync(`node ${job.script}`, { timeout: 30000, encoding: 'utf8' });
+    const { execFile } = await import('child_process');
+    const output = await new Promise((resolve, reject) => {
+      execFile('node', [job.script], { timeout: 30000, maxBuffer: 1024 * 500 }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout);
+      });
+    });
     return { type: 'scheduler:run', job: jobName, output: output.slice(0, 500), status: 'completed', timestamp: new Date().toISOString() };
   } catch (e) {
     return { type: 'scheduler:run', job: jobName, error: e.message?.slice(0, 200), status: 'failed', timestamp: new Date().toISOString() };

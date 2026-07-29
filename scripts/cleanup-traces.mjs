@@ -19,29 +19,31 @@ async function cleanup() {
   let purged = 0;
   console.log('[Cleanup] Starting trace purge...');
 
-  // Purge stale bus events older than 7 days
-  const busEvents = await redisCmd(['SCAN', '0', 'MATCH', 'evt-*']);
-  if (busEvents) {
-    for (const key of busEvents.result?.[1] || []) {
+  // Purge stale bus events older than 7 days with cursor iteration
+  let cursor = 0;
+  do {
+    const busEvents = await redisCmd(['SCAN', String(cursor), 'MATCH', 'evt-*', 'COUNT', '50']);
+    if (!busEvents) break;
+    const [nextCursor, keys] = busEvents.result || [['0', []]];
+    cursor = parseInt(nextCursor);
+    for (const key of keys || []) {
       const ttl = await redisCmd(['TTL', key]);
-      if (ttl?.result === -1 || ttl?.result <= 0) {
-        await redisCmd(['DEL', key]);
-        purged++;
-      }
+      if (ttl?.result === -1 || ttl?.result <= 0) { await redisCmd(['DEL', key]); purged++; }
     }
-  }
+  } while (cursor !== 0);
 
-  // Purge expired lock workspace entries
-  const workspaceKeys = await redisCmd(['SCAN', '0', 'MATCH', 'kudbee:global:workspace:*']);
-  if (workspaceKeys) {
-    for (const key of workspaceKeys.result?.[1] || []) {
+  // Purge expired lock workspace entries with cursor iteration
+  cursor = 0;
+  do {
+    const workspaceKeys = await redisCmd(['SCAN', String(cursor), 'MATCH', 'kudbee:global:workspace:*', 'COUNT', '50']);
+    if (!workspaceKeys) break;
+    const [nextCursor, keys] = workspaceKeys.result || [['0', []]];
+    cursor = parseInt(nextCursor);
+    for (const key of keys || []) {
       const ttl = await redisCmd(['TTL', key]);
-      if (ttl?.result <= 0) {
-        await redisCmd(['DEL', key]);
-        purged++;
-      }
+      if (ttl?.result <= 0) { await redisCmd(['DEL', key]); purged++; }
     }
-  }
+  } while (cursor !== 0);
 
   // Clean stale decisions (older than 7 days)
   const fs = await import('fs');

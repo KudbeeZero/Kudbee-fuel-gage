@@ -5,8 +5,13 @@
       "query": "audit pr #220: check deep-equilibrium.ts for critical errors, verify anderson mixing math, validate deq solver",
       "timestamp": "2026-07-29T06:34:23.372Z",
       "score": 8
+    },
+    {
+      "query": "audit pr #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+      "timestamp": "2026-07-29T07:57:34.218Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-29T06:34:23.372Z",
-  "recallCount": 1
+  "lastRecall": "2026-07-29T07:57:34.218Z",
+  "recallCount": 2
 }

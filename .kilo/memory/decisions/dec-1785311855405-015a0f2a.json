@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785311855405-015a0f2a",
+  "agentId": "knowledge-curator",
+  "decision": "run:audit PR #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+  "context": {
+    "action": "execute",
+    "task": "audit PR #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T07:57:35.405Z",
+  "decoded": false
+}

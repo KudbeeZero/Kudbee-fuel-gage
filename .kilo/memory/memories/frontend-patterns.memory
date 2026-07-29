@@ -115,8 +115,13 @@
       "query": "batch protocol: verify terminal command dispatcher wired, all 4 commands functional, /api/terminal/execute endpoint registered",
       "timestamp": "2026-07-29T06:33:11.515Z",
       "score": 10
+    },
+    {
+      "query": "audit pr #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+      "timestamp": "2026-07-29T07:57:34.219Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-29T06:33:11.515Z",
-  "recallCount": 23
+  "lastRecall": "2026-07-29T07:57:34.219Z",
+  "recallCount": 24
 }

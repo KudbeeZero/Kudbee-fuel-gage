@@ -17,7 +17,7 @@ const CHECKS = [
   { name: 'Anomaly count', url: '/api/edge/anomalies/count', expect: 200 },
   { name: 'Frontend HTML', url: '/', expect: 200 },
   { name: 'JS bundle', url: '', expect: 200, dynamic: true },
-  { name: 'HEALTH parse', url: '/health', expect: 200, parse: true },
+  { name: 'HEALTH parse', url: '/health', expect: 200, parseHealth: true },
 ];
 
 async function probe() {

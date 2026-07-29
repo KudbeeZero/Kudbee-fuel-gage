@@ -48,6 +48,7 @@ Respond in JSON format: {"promotions":[], "prunes":[], "alpha_adjustment": 0, "b
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 200, temperature: 0.3 },
       }),
+      signal: AbortSignal.timeout(10000),
     });
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
