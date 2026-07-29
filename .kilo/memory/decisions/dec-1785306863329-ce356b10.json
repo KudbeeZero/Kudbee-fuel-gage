@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785306863329-ce356b10",
+  "agentId": "pipeline-guardian",
+  "decision": "run:audit PR #220: check deep-equilibrium.ts for critical errors, verify Anderson mixing math, validate DEQ solver",
+  "context": {
+    "action": "execute",
+    "task": "audit PR #220: check deep-equilibrium.ts for critical errors, verify Anderson mixing math, validate DEQ solver",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:34:23.329Z",
+  "decoded": false
+}

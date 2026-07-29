@@ -50,8 +50,13 @@
       "query": "batch protocol: verify terminal command dispatcher wired, all 4 commands functional, /api/terminal/execute endpoint registered",
       "timestamp": "2026-07-29T06:33:11.518Z",
       "score": 8
+    },
+    {
+      "query": "audit pr #220: check deep-equilibrium.ts for critical errors, verify anderson mixing math, validate deq solver",
+      "timestamp": "2026-07-29T06:34:23.373Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-29T06:33:11.518Z",
-  "recallCount": 10
+  "lastRecall": "2026-07-29T06:34:23.373Z",
+  "recallCount": 11
 }
