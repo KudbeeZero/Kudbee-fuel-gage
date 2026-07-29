@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope, AlertTriangle } from 'lucide-react';
+import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope, AlertTriangle, Rocket } from 'lucide-react';
 import { useCommandDispatcher, commandRunners, type DispatchedCommand } from '../store/commandDispatcher';
 import { WorkspaceBar } from './WorkspaceBar';
-import { apiGet } from '../lib/apiClient';
+import { apiGet, apiPost } from '../lib/apiClient';
 
 export type OSToggleState = {
   dbIngestion: boolean;
@@ -295,7 +295,7 @@ export interface PaletteCommand {
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  group: 'Navigate' | 'Dispatch' | 'Diagnostic';
+  group: 'Navigate' | 'Dispatch' | 'Diagnostic' | 'Governance' | 'Probe' | 'THINK';
   keywords?: string[];
   perform: () => void | Promise<void>;
 }
@@ -323,6 +323,28 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [executing, setExecuting] = useState<Set<string>>(new Set());
+  const [results, setResults] = useState<Map<string, { ok: boolean; msg: string }>>(new Map());
+
+  function execute(cmd: PaletteCommand) {
+    return async () => {
+      setExecuting((prev) => new Set(prev).add(cmd.id));
+      try {
+        await cmd.perform();
+        setResults((prev) => new Map(prev).set(cmd.id, { ok: true, msg: 'Done' }));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setResults((prev) => new Map(prev).set(cmd.id, { ok: false, msg }));
+      } finally {
+        setExecuting((prev) => {
+          const next = new Set(prev);
+          next.delete(cmd.id);
+          return next;
+        });
+        setTimeout(() => setResults((prev) => { const n = new Map(prev); n.delete(cmd.id); return n; }), 2500);
+      }
+    };
+  }
 
   const commands = useMemo<PaletteCommand[]>(() => {
     const navCommands: PaletteCommand[] = NAV_ITEMS.map((item) => ({
@@ -456,16 +478,168 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
       }
     ];
 
-    return [...navCommands, ...dispatchCommands, ...diagnosticCommands];
-  }, [onClose, onNavigate]);
+    const governanceCommands: PaletteCommand[] = [
+      {
+        id: 'gov-approve-pending',
+        label: 'Approve Pending Governance Actions',
+        description: 'Review and approve governance actions awaiting decision',
+        icon: CheckCircle2,
+        group: 'Governance',
+        keywords: ['approve', 'governance', 'accept'],
+        perform: async () => {
+          await apiPost('/api/governance/review-pending', {});
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Governance Approve', description: 'Governance actions reviewed' });
+        }
+      },
+      {
+        id: 'gov-status',
+        label: 'Governance Queue Status',
+        description: 'Fetch current governance action queue counts',
+        icon: Scale,
+        group: 'Governance',
+        keywords: ['governance', 'queue', 'pending'],
+        perform: async () => {
+          const data = await apiPost<any>('/api/governance/review-pending', { action: 'count' });
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Governance Status', description: `Pending: ${data?.pendingCount || 0}, Verified: ${data?.verifiedCount || 0}` });
+        }
+      },
+      {
+        id: 'gov-reject',
+        label: 'Reject Stale Governance Actions',
+        description: 'Reject governance actions flagged as stale',
+        icon: XCircle,
+        group: 'Governance',
+        keywords: ['reject', 'decline', 'stale'],
+        perform: async () => {
+          await apiPost('/api/governance/reject-stale', {});
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Governance Reject', description: 'Stale governance actions rejected' });
+        }
+      }
+    ];
+
+    const thinkCommands: PaletteCommand[] = [
+      {
+        id: 'think-search',
+        label: 'Search THINK Tokens',
+        description: 'Semantic recall from pgvector: past decisions, patterns, learnings',
+        icon: Search,
+        group: 'THINK',
+        keywords: ['think', 'token', 'pgvector', 'semantic', 'recall'],
+        perform: async () => {
+          const data = await apiPost<any>('/api/vector/think-recall', { query: 'system operations deployment architecture', limit: 5 });
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'THINK Recall', description: `Recalled ${data?.tokens?.length || 0} tokens` });
+        }
+      },
+      {
+        id: 'think-promote',
+        label: 'Promote Pending THINK Tokens',
+        description: 'Promote pending THINK tokens to VERIFIED (quality gate: KD >= 96)',
+        icon: Sparkles,
+        group: 'THINK',
+        keywords: ['promote', 'think', 'token', 'verify'],
+        perform: async () => {
+          await apiPost('/api/think/promote-pending', { qualityGate: true });
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'THINK Promote', description: 'Pending tokens promoted to VERIFIED' });
+        }
+      },
+      {
+        id: 'think-health',
+        label: 'THINK Token Health Report',
+        description: 'Token ecosystem: forged, verified, pruned counts',
+        icon: Activity,
+        group: 'THINK',
+        keywords: ['think', 'token', 'health', 'ecosystem'],
+        perform: async () => {
+          const data = await apiGet<any>('/api/system/think-metrics');
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'THINK Health', description: `Forged:${data?.forged || 0} Verified:${data?.verified || 0} Pruned:${data?.pruned || 0}` });
+        }
+      }
+    ];
+
+    const probeCommands: PaletteCommand[] = [
+      {
+        id: 'probe-synapse',
+        label: 'Synapse Protection Status',
+        description: 'C4769 protractor guard: fingerprints, violations, lockouts',
+        icon: Shield,
+        group: 'Probe',
+        keywords: ['synapse', 'c4769', 'protractor', 'guard'],
+        perform: async () => {
+          const data = await apiGet<any>('/api/system/synapse-status');
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Synapse Probe', description: `Fingerprints:${data?.knownFingerprints || 0} violations:${data?.violations?.length || 0} threshold:${data?.threshold || 0}rad` });
+        }
+      },
+      {
+        id: 'probe-deploy',
+        label: 'Deployment Status',
+        description: 'Current Heroku deployment version, health, uptime',
+        icon: Radio,
+        group: 'Probe',
+        keywords: ['deploy', 'heroku', 'version', 'release'],
+        perform: async () => {
+          const data = await apiGet<any>('/api/system/deploy-status');
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Deploy Status', description: `${data?.herokuRelease || '?'} | ${data?.status} | ${data?.uptimeSec || 0}s` });
+        }
+      },
+      {
+        id: 'probe-agents',
+        label: 'Agent Fleet Status',
+        description: 'All terminal agents: online count, recent decisions',
+        icon: Server,
+        group: 'Probe',
+        keywords: ['agent', 'fleet', 'swarm'],
+        perform: async () => {
+          const data = await apiGet<any>('/api/agents/status');
+          const active = (data?.agents || []).filter((a: any) => a.status === 'active').length;
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Agent Fleet', description: `${active}/${data?.agents?.length || 0} agents active` });
+        }
+      },
+      {
+        id: 'probe-lifecycle',
+        label: 'System Lifecycle Probe',
+        description: 'Full health matrix: PG, Redis, Worker, Receptor, Sentinel, Groq',
+        icon: Stethoscope,
+        group: 'Probe',
+        keywords: ['lifecycle', 'health', 'matrix', 'all'],
+        perform: async () => {
+          const data = await apiPost<any>('/api/system/lifecycle', { action: 'status' });
+          const h = data?.health || {};
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Lifecycle Probe', description: `PG:${h.pg ? '✓' : '✗'} Redis:${h.redis ? '✓' : '✗'} Worker:${h.worker ? '✓' : '✗'} Receptor:${h.receptor ? '✓' : '✗'}` });
+        }
+      }
+    ];
+
+    return [...navCommands, ...dispatchCommands, ...diagnosticCommands, ...governanceCommands, ...thinkCommands, ...probeCommands];
+  }, [onClose, onNavigate, executing]);
+
+  // --- fuzzy search ---
+  function fuzzyScore(haystack: string, needle: string): number {
+    const h = haystack.toLowerCase();
+    const n = needle.toLowerCase();
+    let score = 0;
+    let hIdx = 0;
+    for (let nIdx = 0; nIdx < n.length; nIdx++) {
+      const ch = n[nIdx];
+      const found = h.indexOf(ch, hIdx);
+      if (found === -1) return 0;
+      if (found === hIdx) score += 2;
+      else score += 1;
+      hIdx = found + 1;
+    }
+    return score + (hIdx === 0 ? 0 : h.length - hIdx) * 0.1;
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
-    return commands.filter((c) => {
-      const haystack = `${c.label} ${c.description} ${c.keywords?.join(' ') ?? ''} ${c.group}`.toLowerCase();
-      return haystack.includes(q);
-    });
+    const scored = commands
+      .map((c) => {
+        const haystack = `${c.label} ${c.description} ${c.keywords?.join(' ') ?? ''} ${c.group}`;
+        return { cmd: c, score: fuzzyScore(haystack, q) };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored.map((x) => x.cmd);
   }, [commands, query]);
 
   useEffect(() => {
