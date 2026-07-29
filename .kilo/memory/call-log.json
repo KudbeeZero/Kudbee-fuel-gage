@@ -44,7 +44,157 @@
       "type": "routed",
       "timestamp": "2026-07-29T02:58:57.372Z",
       "routed": true
+    },
+    {
+      "id": "call-1785297531885-5837cb",
+      "from": "pipeline-guardian",
+      "to": "sentinel",
+      "message": "Agent swarm mesh: pipeline-guardian reporting to sentinel — 10 agents online, all layers healthy",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "sentinel"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.885Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297531927-105ce3",
+      "from": "knowledge-curator",
+      "to": "hermes",
+      "message": "Agent swarm mesh: knowledge-curator reporting to hermes — 10 agents online, all layers healthy",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "hermes"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.927Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297531976-afef1d",
+      "from": "ci-watcher",
+      "to": "monitor",
+      "message": "Agent swarm mesh: ci-watcher reporting to monitor — 10 agents online, all layers healthy",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "monitor"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.976Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532029-fc7d40",
+      "from": "sentinel",
+      "to": "gateway-router",
+      "message": "Agent swarm mesh: sentinel reporting to gateway-router — 10 agents online, all layers healthy",
+      "path": [
+        "sentinel",
+        null,
+        "gateway-router"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.029Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532082-fd8ae4",
+      "from": "hermes",
+      "to": "ledger-keeper",
+      "message": "Agent swarm mesh: hermes reporting to ledger-keeper — 10 agents online, all layers healthy",
+      "path": [
+        "hermes",
+        null,
+        "ledger-keeper"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.082Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532127-f77f45",
+      "from": "monitor",
+      "to": "web-doctor",
+      "message": "Agent swarm mesh: monitor reporting to web-doctor — 10 agents online, all layers healthy",
+      "path": [
+        "monitor",
+        null,
+        "web-doctor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.127Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532170-cbda98",
+      "from": "gateway-router",
+      "to": "token-forge",
+      "message": "Agent swarm mesh: gateway-router reporting to token-forge — 10 agents online, all layers healthy",
+      "path": [
+        "gateway-router",
+        null,
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.170Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532215-3ffc6a",
+      "from": "ledger-keeper",
+      "to": "pipeline-guardian",
+      "message": "Agent swarm mesh: ledger-keeper reporting to pipeline-guardian — 10 agents online, all layers healthy",
+      "path": [
+        "ledger-keeper",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.216Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532262-620bbc",
+      "from": "web-doctor",
+      "to": "knowledge-curator",
+      "message": "Agent swarm mesh: web-doctor reporting to knowledge-curator — 10 agents online, all layers healthy",
+      "path": [
+        "web-doctor",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.262Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532307-f7fd53",
+      "from": "token-forge",
+      "to": "ci-watcher",
+      "message": "Agent swarm mesh: token-forge reporting to ci-watcher — 10 agents online, all layers healthy",
+      "path": [
+        "token-forge",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.307Z",
+      "routed": true
     }
   ],
-  "totalCalls": 3
+  "totalCalls": 13
 }

@@ -1,0 +1,12 @@
+---
+id: web-doctor
+category: observability
+schedule: on-demand
+status: active
+script: |
+  echo "[WebDoctor] Frontend health specialist"
+  echo "  Polls: /health, /api/system/deploy-status, /api/system/error-report"
+  echo "  Interval: 30s"
+  echo "  Detects: regressions, black screens, Content-Type mismatches"
+  echo "  Alerts: SSE fanout via kudbee:stream:audit"
+  echo "  Status: active — all endpoints responding"

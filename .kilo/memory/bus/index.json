@@ -1,5 +1,5 @@
 {
-  "sequence": 33,
+  "sequence": 34,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -231,6 +231,13 @@
       "source": "cli",
       "sequence": 33,
       "timestamp": "2026-07-29T02:10:30.088Z"
+    },
+    {
+      "id": "evt-1785297532350-fa81a0",
+      "topic": "agent:swarm",
+      "source": "cli",
+      "sequence": 34,
+      "timestamp": "2026-07-29T03:58:52.350Z"
     }
   ],
   "topicCounts": {
@@ -256,6 +263,7 @@
     "diagnostic:chrome": 1,
     "system:improvements": 1,
     "training:complete": 1,
-    "root-cause:crossorigin": 1
+    "root-cause:crossorigin": 1,
+    "agent:swarm": 1
   }
 }
