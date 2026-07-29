@@ -194,7 +194,22 @@
       "type": "sibling",
       "timestamp": "2026-07-28T23:25:12.613Z",
       "routed": true
+    },
+    {
+      "id": "call-1785283393250-7cd213",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "Chrome mobile diagnostic: 4-line vanilla JS deployed, all 11 layers healthy, module serving confirmed",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T00:03:13.250Z",
+      "routed": true
     }
   ],
-  "totalCalls": 13
+  "totalCalls": 14
 }

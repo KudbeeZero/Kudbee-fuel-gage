@@ -45,8 +45,18 @@
       "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
       "timestamp": "2026-07-28T23:24:41.348Z",
       "score": 21
+    },
+    {
+      "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
+      "timestamp": "2026-07-29T00:02:50.577Z",
+      "score": 13
+    },
+    {
+      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
+      "timestamp": "2026-07-29T00:02:52.305Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-28T23:24:41.348Z",
-  "recallCount": 9
+  "lastRecall": "2026-07-29T00:02:52.305Z",
+  "recallCount": 11
 }
