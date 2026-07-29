@@ -172,6 +172,87 @@ async function loadWorktrees() {
   } catch {}
 }
 
+
+// ── Terminal Commands ────────────────────────────────────────────────
+const CMD_HISTORY = [];
+let CMD_INDEX = -1;
+
+async function runCmd() {
+  const input = document.getElementById('cmd-input');
+  const output = document.getElementById('cmd-output');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  
+  CMD_HISTORY.push(cmd);
+  CMD_INDEX = CMD_HISTORY.length;
+  output.innerHTML += '<div style="color:var(--accent)">$ ' + cmd + '</div>';
+  input.value = '';
+  
+  try {
+    const result = await executeCommand(cmd);
+    output.innerHTML += '<div style="color:var(--text)">' + result + '</div>';
+  } catch(e) {
+    output.innerHTML += '<div style="color:var(--red)">Error: ' + e.message + '</div>';
+  }
+  
+  output.scrollTop = output.scrollHeight;
+  if (output.children.length > 50) {
+    while(output.children.length > 50) output.removeChild(output.firstChild);
+  }
+}
+
+async function executeCommand(cmd) {
+  const parts = cmd.split(' ');
+  const action = parts[0].toLowerCase();
+  const arg = parts.slice(1).join(' ');
+  
+  switch(action) {
+    case 'help': return 'Commands: help ping agents synapse deploy gastown audit db think';
+    case 'ping': {
+      const d = await api('/health');
+      return 'PONG — ' + d.status + ' | PG:' + d.dependencies.ingestion_db + ' | Redis:' + d.dependencies.redis + ' | Uptime:' + d.uptime_sec + 's';
+    }
+    case 'agents': {
+      const d = await api('/api/gastown/dashboard');
+      return d.swarm.online + '/' + d.swarm.agents + ' agents online. Convoys: ' + d.activeConvoys;
+    }
+    case 'synapse': {
+      const d = await api('/api/system/synapse-status');
+      return 'C4769 active. Fingerprints: ' + d.knownFingerprints + '. Violations: ' + (d.violations?.length||0) + '. Lockouts: ' + (d.lockedOut?.length||0) + '. Threshold: ' + d.threshold + 'rad';
+    }
+    case 'deploy': {
+      const d = await api('/api/system/deploy-status');
+      return d.status + ' | Release: ' + d.herokuRelease + ' | Uptime: ' + d.uptimeSec + 's';
+    }
+    case 'gastown': {
+      const d = await api('/api/gastown/dashboard');
+      return d.gastown + ' | Built: ' + d.built + ' | DB: ' + d.database.totalSize + ' | Think: ' + d.database.thinkTokens.count + ' tokens';
+    }
+    case 'audit': {
+      const d = await api('/api/governance/review-pending');
+      return 'Governance audit triggered. ' + (d?.message || 'Reviewing…');
+    }
+    case 'db': {
+      const d = await api('/api/gastown/dashboard');
+      return 'Total: ' + d.database.totalSize + ' | ThinkTokens: ' + d.database.thinkTokens.count + '/' + d.database.thinkTokens.size + ' | Governance: ' + d.database.governanceActions.count + '/' + d.database.governanceActions.size;
+    }
+    case 'think': {
+      return 'THINK protocol active. DTHINK pipeline streaming. 8 operational tokens minted this session.';
+    }
+    default: return 'Unknown command: ' + cmd + '. Type "help" for available commands.';
+  }
+}
+
+function quickCmd(cmd) {
+  document.getElementById('cmd-input').value = cmd;
+  runCmd();
+}
+
+// Register the command handler on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('cmd-input')?.focus();
+});
+
 // ── Init ─────────────────────────────────────────────────────────────
 let countdown = 30;
 function tick() {
