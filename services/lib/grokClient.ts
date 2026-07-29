@@ -262,9 +262,9 @@ export async function grokSecurityAnalyze(
   const recMatch = result.content.match(/REC:(.+)$/);
 
   return {
-    threatLevel: threatMatch ? Math.min(100, Number(threatMatch[1])) : 0,
-    vulnerabilities: vulnsMatch ? vulnsMatch[1].split(',').map((s) => s.trim()).filter(Boolean) : [],
-    recommendation: recMatch ? recMatch[1].trim() : result.content.slice(0, 150),
+    threatLevel: threatMatch ? Math.min(100, Number(threatMatch[1] ?? 0)) : 0,
+    vulnerabilities: vulnsMatch?.[1] ? vulnsMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+    recommendation: recMatch?.[1] ? recMatch[1].trim() : result.content.slice(0, 150),
   };
 }
 
