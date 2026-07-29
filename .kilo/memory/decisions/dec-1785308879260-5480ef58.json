@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785308879260-5480ef58",
+  "agentId": "pipeline-guardian",
+  "decision": "run:verify global workspace: check Redis tensor pool, validate sampleGlobalWorkspace, confirm latent state projection",
+  "context": {
+    "action": "execute",
+    "task": "verify global workspace: check Redis tensor pool, validate sampleGlobalWorkspace, confirm latent state projection",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T07:07:59.260Z",
+  "decoded": false
+}

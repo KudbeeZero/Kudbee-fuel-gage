@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785308879369-bcbd1974",
+  "agentId": "knowledge-curator",
+  "decision": "run:index global latent workspace: swarm consciousness tensor, centroid computation, zero-latency awareness",
+  "context": {
+    "action": "execute",
+    "task": "index global latent workspace: swarm consciousness tensor, centroid computation, zero-latency awareness",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T07:07:59.369Z",
+  "decoded": false
+}

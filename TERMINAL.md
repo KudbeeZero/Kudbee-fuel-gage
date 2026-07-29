@@ -2,7 +2,36 @@
 
 > **Living document** — updated on every session. Single source of truth for the terminal agent ecosystem.
 
-Last updated: 2026-07-27T18:26:31Z | Session: ses_05b7dc575feb07buxiDZIsOOuU | Mode: LOCAL
+Last updated: 2026-07-29T07:08:18Z | Session: ses-1785308878828 | Mode: BATCH
+
+## Agent Fleet — 10 Agents + 30 Sub-Agents
+
+| Agent | Decisions | Sub-Agents |
+|:---|:---|:---|
+| pipeline-guardian | 50 | middleware-scanner, sse-auth-checker, lock-auditor |
+| knowledge-curator | 36 | snippet-indexer, recall-optimizer, memory-compactor |
+| ci-watcher | 20 | typecheck-runner, lint-scanner, e2e-tester |
+| sentinel | 2 | anomaly-detector, circuit-guardian, noise-absorber |
+| hermes | 2 | task-poller, dlq-manager, budget-auditor |
+| monitor | 2 | dyno-watcher, latency-tracker, memory-guardian |
+| gateway-router | 2 | call-dispatcher, priority-sorter, mesh-checker |
+| ledger-keeper | 2 | quota-tracker, spend-calculator, alert-thresholder |
+| web-doctor | 2 | page-poller, mime-validator, render-checker |
+| token-forge | 2 | thompson-sampler, cusum-tracker, mahalanobis-router |
+
+## Active Systems
+- Global Latent Vector Workspace (swarm telepathy — replaces phone calls)
+- DEQ Infinity Solver (Anderson Mixing, 12,000× peak speedup)
+- Einstein CI Protocol (10 improvements, self-validating tests)
+- Attention Router (Vector 4, Q·K^T/√d_k transformer routing)
+- Self-Modifying Reward Loop (Vector 10, gradient backpropagation)
+- Enterprise SOR Math (Thompson Sampling + EWMA-CUSUM + Mahalanobis)
+- 36 THINK tokens forged (24 VERIFIED, 10 CHALLENGED, 1 PRUNED)
+
+## Production
+- v299 on Heroku (web + sentinel + hermes-worker + monitor-worker)
+- 4 databases: Postgres (Neon) + pgvector (1536-dim) + 2 Upstash Redis
+- 21 PRs merged in 2026-07-28 session
 
 ---
 

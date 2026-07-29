@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785308879573-76d2f9",
+  "topic": "workspace:telepathy",
+  "source": "cli",
+  "data": {
+    "message": "Global Workspace deployed — agents communicate via ambient tensor field, not phone calls"
+  },
+  "timestamp": "2026-07-29T07:07:59.573Z",
+  "sequence": 40
+}

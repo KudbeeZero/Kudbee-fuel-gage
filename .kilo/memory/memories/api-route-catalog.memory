@@ -50,8 +50,13 @@
       "query": "audit pr #220: check deep-equilibrium.ts for critical errors, verify anderson mixing math, validate deq solver",
       "timestamp": "2026-07-29T06:34:23.370Z",
       "score": 12
+    },
+    {
+      "query": "verify global workspace: check redis tensor pool, validate sampleglobalworkspace, confirm latent state projection",
+      "timestamp": "2026-07-29T07:07:59.294Z",
+      "score": 10
     }
   ],
-  "lastRecall": "2026-07-29T06:34:23.371Z",
-  "recallCount": 10
+  "lastRecall": "2026-07-29T07:07:59.294Z",
+  "recallCount": 11
 }
