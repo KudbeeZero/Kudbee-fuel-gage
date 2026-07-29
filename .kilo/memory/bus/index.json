@@ -1,5 +1,5 @@
 {
-  "sequence": 36,
+  "sequence": 37,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -252,6 +252,13 @@
       "source": "cli",
       "sequence": 36,
       "timestamp": "2026-07-29T04:42:29.998Z"
+    },
+    {
+      "id": "evt-1785301145428-ee5847",
+      "topic": "vector:attention-router",
+      "source": "cli",
+      "sequence": 37,
+      "timestamp": "2026-07-29T04:59:05.428Z"
     }
   ],
   "topicCounts": {
@@ -280,6 +287,7 @@
     "root-cause:crossorigin": 1,
     "agent:swarm": 1,
     "agent:swarm:test": 1,
-    "innovation:assessment": 1
+    "innovation:assessment": 1,
+    "vector:attention-router": 1
   }
 }
