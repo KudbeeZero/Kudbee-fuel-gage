@@ -169,7 +169,6 @@ import {
   resetRedisQuotaBackoff,
 } from '../lib/redis.js';
 import { getOrCreateInMemoryQueue } from '../lib/inMemoryQueue.ts';
-import { restQueuePop, isRestAvailable } from '../lib/redisRest.js';
 
 export interface TaskEnvelope {
   id: string;
@@ -195,9 +194,6 @@ let _stopRequested = false;
 let shuttingDown = false;
 let tickTimeout: ReturnType<typeof setTimeout> | null = null;
 let backoffMs = BASE_BACKOFF_MS;
-let tcpFailures = 0;
-let useRestFallback = false;
-const TCP_FAILURE_THRESHOLD = 2;
 
 process.on('SIGTERM', () => {
   console.log('[Worker] SIGTERM received – draining current task...');
@@ -400,46 +396,9 @@ export async function _tick() {
 
   const redis = getWorkerRedisClient();
   if (!redis) return false;
-
-  if (useRestFallback && isRestAvailable()) {
-    const restResult = await restQueuePop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
-      console.warn('[Worker] REST poll failed:', e.message);
-      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
-      return null;
-    });
-    if (!restResult) return false;
-    backoffMs = BASE_BACKOFF_MS;
-    tcpFailures = 0;
-    const raw = restResult[1];
-    if (!raw) return false;
-    let task = parse(raw);
-    if (typeof task === 'string') task = JSON.parse(task);
-    if (!task || typeof task !== 'object') return true;
-    const taskEnvelope = task as TaskEnvelope;
-    taskEnvelope.attempts = (taskEnvelope.attempts || 0) + 1;
-    broadcast('task.processing', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts });
-    try {
-      const procResult = await processTask(taskEnvelope);
-      broadcast('task.success', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts, result: procResult });
-      return true;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (taskEnvelope.attempts >= MAX_ATTEMPTS) {
-        const dead = { ...taskEnvelope, failedAt: new Date().toISOString(), lastError: message };
-        try { await redis.lpush(TASK_DLQ, envelope(dead)); } catch (e2) { console.warn('[Worker] DLQ push failed:', String(e2)); }
-        broadcast('task.dead_lettered', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempts: taskEnvelope.attempts, error: message });
-      } else {
-        const requeued = { ...taskEnvelope, lastError: message };
-        try { await redis.lpush(TASK_QUEUE, envelope(requeued)); } catch (e2) { console.warn('[Worker] Requeue failed:', String(e2)); }
-        broadcast('task.failed', { id: taskEnvelope.id, kind: taskEnvelope.kind, attempt: taskEnvelope.attempts, error: message });
-      }
-      return true;
-    }
-  }
-
   // BRPOP call site #2: services/agents/worker.ts
-  // Queue: kudbee-governance-tasks | Timeout: 5s | Client: getWorkerRedisClient
-  // REST fallback: after 2 consecutive TCP failures, switches to REST polling.
+  // Queue: kudbee-governance-tasks | Timeout: 5s
+  // Client is now REST-based on Upstash free tier (auto-detected)
   const result = await redis.brpop(TASK_QUEUE, BRPOP_TIMEOUT_MS).catch((e: Error) => {
     const msg = e.message;
     if (isUpstashMaxRequestsError(e)) {
@@ -455,11 +414,6 @@ export async function _tick() {
       );
     } else if (msg.includes('Command timed out') || msg.includes('timeout')) {
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
-      tcpFailures += 1;
-      if (tcpFailures >= TCP_FAILURE_THRESHOLD && isRestAvailable()) {
-        useRestFallback = true;
-        console.warn('[Worker] TCP failed ' + tcpFailures + ' times — switching to REST polling');
-      }
       console.warn(`[Worker] Command timeout — backing off for ${backoffMs}ms`);
     }
     console.warn('[Worker] redis brpop failed:', msg);

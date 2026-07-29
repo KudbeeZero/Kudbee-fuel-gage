@@ -1,14 +1,9 @@
 import { getRedisClient, getBlockingRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 import crypto from 'node:crypto';
 import { registerShutdown } from '../lib/shutdown.js';
-import { restQueuePop, isRestAvailable } from '../lib/redisRest.js';
 
 const redis = getRedisClient({ label: 'monitor-agent' });
 const blockingRedis = getBlockingRedisClient({ label: 'monitor-agent' });
-
-let useRestFallback = false;
-let tcpFailures = 0;
-const TCP_FAILURE_THRESHOLD = 2;
 
 registerShutdown('monitor-agent', redis);
 
@@ -185,12 +180,7 @@ async function runLoop() {
     }
 
     try {
-      let result;
-      if (useRestFallback && isRestAvailable()) {
-        result = await restQueuePop('kudbee:telemetry_feed', 5);
-      } else {
-        result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
-      }
+      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
       if (!result) continue;
       resetRedisQuotaBackoff();
       errorBackoffMs = BASE_BACKOFF_MS;
@@ -225,11 +215,6 @@ async function runLoop() {
       }
       const isTimeout = /timed\s*out|timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(msg);
       if (isTimeout) {
-        tcpFailures += 1;
-        if (tcpFailures >= TCP_FAILURE_THRESHOLD && isRestAvailable()) {
-          useRestFallback = true;
-          console.warn('[Agent] TCP failed ' + tcpFailures + ' times — switching to REST polling');
-        }
         errorBackoffMs = Math.min(errorBackoffMs * 2, MAX_BACKOFF_MS);
         const jitter = Math.floor(Math.random() * 2000);
         console.error(`[Agent] Polling loop error (sleeping ${errorBackoffMs + jitter}ms, consecutive=${consecutiveErrors}):`, msg);
