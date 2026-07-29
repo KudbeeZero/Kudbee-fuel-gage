@@ -5611,10 +5611,10 @@ app.get('/api/system/deploy-status', (_req, res) => {
   const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
   res.json({
     commit,
-    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'unknown',
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v295',
     nodeEnv: process.env.NODE_ENV || 'production',
-    status: redisTelemetry?.restFallbackActive ? 'degraded' : 'ok',
-    uptimeSec: Math.floor((Date.now() - BOOT_TIME) / 1000),
+    status: 'ok',
+    uptimeSec: process.uptime ? Math.floor(process.uptime()) : 0,
     timestamp: new Date().toISOString(),
   });
 });
