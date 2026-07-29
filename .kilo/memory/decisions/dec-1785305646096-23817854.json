@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785305646096-23817854",
+  "agentId": "web-doctor",
+  "decision": "error:ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T06:14:06.096Z",
+  "decoded": false
+}

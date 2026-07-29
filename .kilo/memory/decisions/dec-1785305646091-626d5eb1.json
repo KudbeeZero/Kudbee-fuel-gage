@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785305646091-626d5eb1",
+  "agentId": "web-doctor",
+  "decision": "run:ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+  "context": {
+    "action": "execute",
+    "task": "ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:14:06.091Z",
+  "decoded": false
+}

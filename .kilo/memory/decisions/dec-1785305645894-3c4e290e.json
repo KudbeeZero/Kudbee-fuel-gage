@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785305645894-3c4e290e",
+  "agentId": "sentinel",
+  "decision": "run:ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+  "context": {
+    "action": "execute",
+    "task": "ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:14:05.895Z",
+  "decoded": false
+}

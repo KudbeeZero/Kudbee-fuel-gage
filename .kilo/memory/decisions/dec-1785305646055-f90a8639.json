@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785305646055-f90a8639",
+  "agentId": "ledger-keeper",
+  "decision": "error:ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\nschedule: hourly\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T06:14:06.055Z",
+  "decoded": false
+}

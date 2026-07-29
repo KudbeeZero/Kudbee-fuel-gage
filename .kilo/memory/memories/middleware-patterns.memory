@@ -90,8 +90,13 @@
       "query": "absorb invisible_noise disruption param=1.52",
       "timestamp": "2026-07-29T04:28:42.290Z",
       "score": 5
+    },
+    {
+      "query": "ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+      "timestamp": "2026-07-29T06:14:04.528Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-29T04:28:42.290Z",
-  "recallCount": 18
+  "lastRecall": "2026-07-29T06:14:04.528Z",
+  "recallCount": 19
 }

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785305644817-5995d959",
+  "agentId": "ci-watcher",
+  "decision": "run:ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+  "context": {
+    "action": "execute",
+    "task": "ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:14:04.817Z",
+  "decoded": false
+}

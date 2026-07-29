@@ -26,9 +26,14 @@
       "id": "dec-1785287885914-aa2f4fa0",
       "decision": "verification_complete",
       "timestamp": "2026-07-29T01:18:05.915Z"
+    },
+    {
+      "id": "dec-1785305645852-04ae4701",
+      "decision": "verification_complete",
+      "timestamp": "2026-07-29T06:14:05.852Z"
     }
   ],
-  "totalActions": 12,
-  "lastAction": "2026-07-29T04:23:22.213Z",
+  "totalActions": 14,
+  "lastAction": "2026-07-29T06:14:05.852Z",
   "discoveredAt": "2026-07-27T18:44:38.562Z"
 }
