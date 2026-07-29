@@ -310,6 +310,40 @@ app.get('/api/system/synapse-status', (_req, res) => {
 //
 // Phase 28 — The Token Forge: BEFORE the context is handed to the LLM, we query
 // the pgvector `think_tokens` store for the 3 most semantically similar past
+
+// ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
+const { getConvoyStats, listConvoys, getDatabaseMetrics } = require("../agent/gastown-convoy.ts");
+app.get("/api/gastown/dashboard", async (_req, res) => {
+  try {
+    const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
+      getConvoyStats(),
+      listConvoys({ status: "IN_FLIGHT" }),
+      getDatabaseMetrics()
+    ]);
+    res.json({
+      gastown: "v1.2.1",
+      built: "Kudbee Clone",
+      activeConvoys: convoyStats.total,
+      byStatus: convoyStats.byStatus,
+      inFlight: activeConvoys.length,
+      activeAgents: convoyStats.activeAgents,
+      database: dbMetrics || { totalSize: "unavailable", thinkTokens: { count: 0, size: "?" }, telemetryLogs: { count: 0, size: "?" }, governanceActions: { count: 0, size: "?" }, topologyEmbeddings: { count: 0, size: "?" }, auditAnchors: { count: 0, size: "?" }, sessionCount: 0 },
+      swarm: {
+        agents: 11,
+        online: 4,
+        lastDeploy: process.env.HEROKU_RELEASE_VERSION || "unknown"
+      },
+      synapse: "C4769 active",
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+app.get("/api/gastown/convoys", (_req, res) => {
+  res.json(listConvoys());
+});
+
 // SUCCESSES and inject them as a "Past Successful Execution Context" section
 // (few-shot RAG). This grounds the agent in verified prior corrections instead
 // of reasoning from a cold start.
