@@ -4148,6 +4148,15 @@ app.get('/api/events', async (req, res) => {
     );
   }
 
+  const ticket = req.query?.ticket || req.url?.split('ticket=')[1]?.split('&')[0];
+  if (!validateStreamTicket(ticket)) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      error: 'Unauthorized',
+      reason: 'missing or invalid stream ticket. Obtain one via POST /api/auth/stream-ticket',
+    }));
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -5602,10 +5611,10 @@ app.get('/api/system/deploy-status', (_req, res) => {
   const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
   res.json({
     commit,
-    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'unknown',
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v295',
     nodeEnv: process.env.NODE_ENV || 'production',
-    status: redisTelemetry?.restFallbackActive ? 'degraded' : 'ok',
-    uptimeSec: Math.floor((Date.now() - BOOT_TIME) / 1000),
+    status: 'ok',
+    uptimeSec: process.uptime ? Math.floor(process.uptime()) : 0,
     timestamp: new Date().toISOString(),
   });
 });

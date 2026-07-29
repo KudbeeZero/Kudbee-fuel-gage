@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785301294592-0561de1a",
+  "agentId": "monitor",
+  "decision": "run:check all 4 Heroku dynos, verify Redis connectivity, check PostgreSQL latency, verify v292 deploying",
+  "context": {
+    "action": "execute",
+    "task": "check all 4 Heroku dynos, verify Redis connectivity, check PostgreSQL latency, verify v292 deploying",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T05:01:34.592Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785301294549-8d00cf1a",
+  "agentId": "web-doctor",
+  "decision": "run:diagnose: poll /health, check deploy version, verify Content-Type on JS assets, check if React mounts, analyze Heroku logs for errors",
+  "context": {
+    "action": "execute",
+    "task": "diagnose: poll /health, check deploy version, verify Content-Type on JS assets, check if React mounts, analyze Heroku logs for errors",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T05:01:34.549Z",
+  "decoded": false
+}
