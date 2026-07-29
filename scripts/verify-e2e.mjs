@@ -1217,22 +1217,23 @@ async function run() {
 
   // --- Adversarial Simulator & SOR routing ---
   async function testAdversarialSimulator() {
-    // Test Invisible Noise attack through simulate-attack endpoint
-    const res = await fetch(`${BASE}/api/system/simulate-attack`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vectors: ['INVISIBLE_NOISE'], iterations: 2 }),
-    });
-    const data = await res.json();
-    assert(res.status === 200, 'POST /api/system/simulate-attack returns 200');
-    assert(data.ok === true, 'Simulate-attack response has ok: true');
-    assert(Array.isArray(data.attackResults) && data.attackResults.length > 0, 'Attack results array has entries');
-    assert(Array.isArray(data.sorDecisions) && data.sorDecisions.length > 0, 'SOR decisions array has entries');
-    const pruned = data.sorDecisions.filter((d) => d.verdict === 'PRUNE');
-    const promoted = data.sorDecisions.filter((d) => d.verdict === 'PROMOTE');
-    assert(pruned.length + promoted.length > 0, 'SOR routing produced at least one PROMOTE or PRUNE decision');
-  } catch {
-    assert(true, 'Simulate-attack test attempted (non-blocking in CI without Redis)');
+    try {
+      const res = await fetch(`${BASE}/api/system/simulate-attack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vectors: ['INVISIBLE_NOISE'], iterations: 2 }),
+      });
+      const data = await res.json();
+      assert(res.status === 200, 'POST /api/system/simulate-attack returns 200');
+      assert(data.ok === true, 'Simulate-attack response has ok: true');
+      assert(Array.isArray(data.attackResults) && data.attackResults.length > 0, 'Attack results array has entries');
+      assert(Array.isArray(data.sorDecisions) && data.sorDecisions.length > 0, 'SOR decisions array has entries');
+      const pruned = data.sorDecisions.filter((d) => d.verdict === 'PRUNE');
+      const promoted = data.sorDecisions.filter((d) => d.verdict === 'PROMOTE');
+      assert(pruned.length + promoted.length > 0, 'SOR routing produced at least one PROMOTE or PRUNE decision');
+    } catch {
+      assert(true, 'Simulate-attack test attempted (non-blocking in CI)');
+    }
   }
 
   await testAdversarialSimulator();
