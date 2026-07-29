@@ -36,7 +36,7 @@ const LEARNING_RATE = 0.05; // η — how aggressively to update weights
  * @returns {number} reward score R (positive = good, negative = bad)
  */
 function computeReward(outcome) {
-  const { success = true, latencyMs = 0, errors = [] } = outcome || {};
+  const { success = false, latencyMs = 0, errors = [] } = outcome || {};
 
   const successScore = success ? REWARD_ALPHA : 0;
   const failurePenalty = success ? 0 : REWARD_BETA * (0.5 + Math.min(errors.length, 10) * 0.05);
@@ -82,7 +82,7 @@ async function dispatchOutcome(eventType, outcome) {
         },
         body: JSON.stringify(['PUBLISH', 'kudbee:stream:audit', JSON.stringify(envelope)]),
       });
-    } catch {}
+    } catch (e) { console.error('[outcome-oracle] Redis publish failed:', e.message); }
   }
 
   // Notify registered listeners
@@ -90,7 +90,7 @@ async function dispatchOutcome(eventType, outcome) {
     if (listener.eventType === eventType || listener.eventType === '*') {
       try {
         await listener.callback(envelope);
-      } catch {}
+      } catch (e) { console.error('[outcome-oracle] Listener callback failed:', e.message); }
     }
   }
 
@@ -138,6 +138,12 @@ function evaluateDeployOutcome(healthStatus, latencyMs, agentId) {
  * Evaluate E2E test outcome.
  */
 function evaluateE2eOutcome(passed, total, latencyMs, agentId) {
+  if (!total || total <= 0) {
+    return dispatchOutcome('e2e.test', {
+      success: false, latencyMs, errors: ['e2e_no_tests_defined'], agentId,
+      details: { passed: passed || 0, total: total || 0 },
+    });
+  }
   const success = passed === total;
   const errors = success ? [] : ['e2e_failure:' + passed + '/' + total];
 
