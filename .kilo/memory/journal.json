@@ -1,14 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785176117997-a756e92e",
-      "date": "2026-07-27T18:15:18.000Z",
-      "type": "bootstrap",
-      "agentsActive": 3,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 2
-    },
-    {
       "session": "ses-1785176275524-a5b617e4",
       "date": "2026-07-27T18:17:55.527Z",
       "type": "bootstrap",
@@ -174,10 +166,18 @@
       "agentsActive": 3,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785287065468-f31e90d3",
+      "date": "2026-07-29T01:04:25.678Z",
+      "type": "bootstrap",
+      "agentsActive": 3,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 22,
+    "sessions": 23,
     "ciPassRate": "100%"
   },
   "health": {
