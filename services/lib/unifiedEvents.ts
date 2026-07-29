@@ -18,7 +18,7 @@ import { getRedisClient } from './redis.js';
 
 const V2_CHANNEL = 'kudbee:events:v2';
 
-export type EventSource = 'worker' | 'sentinel' | 'receptor' | 'governance' | 'hermes' | 'system' | 'groq' | 'lockRegistry';
+export type EventSource = 'worker' | 'sentinel' | 'receptor' | 'governance' | 'hermes' | 'system' | 'groq' | 'lockRegistry' | 'synapse';
 
 let _counter = 0;
 function nextId(): string {

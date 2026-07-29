@@ -238,7 +238,7 @@ function escalate(source: string, score: number): { blocked: boolean; level: num
  * Evaluates incoming connections using the C4769 protractor model.
  * Triggers precipitated withdrawal for threat vectors exceeding threshold.
  */
-export function synapseProtectionMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function synapseProtectionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   const source = (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
   const agentId = typeof req.headers['x-agent-id'] === 'string' ? req.headers['x-agent-id'] : '';
 
@@ -286,10 +286,10 @@ export function synapseProtectionMiddleware(req: Request, res: Response, next: N
       `blocked=${escalation.duration}ms`
     );
 
-    // Publish security event
+    // Publish security event (best-effort)
     try {
-      const { publishEvent } = await import('./redis.js');
-      await publishEvent?.('synapse:precipitated_withdrawal', {
+      const { publishEvent } = await import('./unifiedEvents.js');
+      void publishEvent('synapse', 'precipitated_withdrawal', {
         source,
         agentId,
         angle: angle.toFixed(4),
