@@ -3404,7 +3404,7 @@ app.get('/api/sse/stream', async (req, res) => {
   }
   const cid = ++_sseConnectionId;
   _sseConnections++;
-  const channel = (req.query.channel as string) || 'kudbee:events';
+  const channel = String(req.query.channel || 'kudbee:events');
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
