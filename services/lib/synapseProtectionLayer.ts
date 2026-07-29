@@ -34,6 +34,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -287,8 +288,8 @@ export function synapseProtectionMiddleware(req: Request, res: Response, next: N
 
     // Publish security event
     try {
-      const { publishEvent } = require('./redis.js');
-      publishEvent?.('synapse:precipitated_withdrawal', {
+      const { publishEvent } = await import('./redis.js');
+      await publishEvent?.('synapse:precipitated_withdrawal', {
         source,
         agentId,
         angle: angle.toFixed(4),
@@ -365,8 +366,7 @@ export function clearSynapseLockout(source: string): void {
 
 export function bootstrapSynapseProtection(): void {
   try {
-    const fs = require('node:fs');
-    const agentsConfig = JSON.parse(fs.readFileSync('config/agents.json', 'utf8'));
+    const agentsConfig = JSON.parse(readFileSync('config/agents.json', 'utf8'));
     const registry = agentsConfig.registry || [];
     for (const agent of registry) {
       if (agent.agentId && agent.publicKey) {

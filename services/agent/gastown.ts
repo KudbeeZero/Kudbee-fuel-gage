@@ -19,6 +19,7 @@
 
 import { SupervisorOrchestrator } from './orchestrator.js';
 import type { TaskResult } from './types.js';
+import { execSync } from 'node:child_process';
 
 const AGENT_ID = `gastown-manager-${process.pid}`;
 const PREFIX = '[GASTOWN]';
@@ -26,7 +27,6 @@ const PREFIX = '[GASTOWN]';
 // Shell command wrappers — Gastown coordinates the terminal agent swarm
 function sh(cmd: string): string {
   try {
-    const { execSync } = require('node:child_process');
     return execSync(cmd, { encoding: 'utf8', timeout: 10_000 }).trim();
   } catch {
     return '';
@@ -176,7 +176,6 @@ export class GastownManager {
 
     // Feed into DTHINK pipeline
     try {
-      const { execSync } = require('child_process');
       execSync(
         `node scripts/dthink-pipeline.mjs feed "agent:action" "Gastown executing: ${userPrompt.slice(0, 100).replace(/"/g, '\\"')}"`,
         { timeout: 5000 }
@@ -199,7 +198,6 @@ export class GastownManager {
     const failCount = results.filter((r) => !r.success).length;
 
     try {
-      const { execSync } = require('child_process');
       execSync(
         `node scripts/dthink-pipeline.mjs feed "agent:decision" "Gastown complete: ${successCount} succeeded, ${failCount} failed, ${totalDuration}ms"`,
         { timeout: 5000 }

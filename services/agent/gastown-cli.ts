@@ -16,6 +16,7 @@
 import { GastownManager } from './gastown.js';
 import { createInterface } from 'node:readline';
 import { SafeZoneEngine } from '@kudbee/opencode';
+import { execSync } from 'node:child_process';
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -29,7 +30,6 @@ function readStdin(): Promise<string> {
 
 function sh(cmd: string): string {
   try {
-    const { execSync } = require('node:child_process');
     return execSync(cmd, { encoding: 'utf8', timeout: 15_000 }).trim();
   } catch { return ''; }
 }
@@ -104,7 +104,6 @@ async function main() {
     // Feed results into DTHINK
     for (const r of results) {
       try {
-        const { execSync } = require('child_process');
         execSync(`node scripts/dthink-pipeline.mjs feed "system:verify" "${r}"`, { timeout: 5000 });
       } catch {}
     }
@@ -165,7 +164,6 @@ async function main() {
 
     // Feed outcome to DTHINK
     try {
-      const { execSync } = require('child_process');
       execSync(`node scripts/dthink-pipeline.mjs feed "agent:complete" "Gastown session: ${results.length} tasks, ${summary.slice(0, 80)}"`, { timeout: 5000 });
     } catch {}
   } catch (err) {
