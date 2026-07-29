@@ -56,11 +56,12 @@ const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
 let _client = null;
 let _subClient = null;
-const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
+const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0, noAuthCount: 0 };
 const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
 const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecutiveErrors: 0 };
 let _monthlyRequestCount = 0;
 let _quotaWarned = false;
+let _restFallbackActive = false;
 
 /**
  * Inspects a Redis error message and returns true if the error indicates
@@ -213,6 +214,10 @@ export function getRedisClient(opts = {}) {
       circuitBreaker.openedAt = Date.now();
       circuitBreaker.lastError = msg;
       console.warn(`[${label}] Circuit breaker opened due to rate limit: ${msg}`);
+    } else if (msg.includes('NOAUTH') || msg.includes('AUTH')) {
+      redisTelemetry.noAuthCount += 1;
+      _restFallbackActive = true;
+      console.warn(`[${label}] NOAUTH detected — REST fallback active (${redisTelemetry.noAuthCount} attempts)`);
     }
   });
   client.on('end', () => {

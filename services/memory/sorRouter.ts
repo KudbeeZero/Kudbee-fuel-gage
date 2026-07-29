@@ -64,6 +64,19 @@ export function feedContextWindow(value: number): void {
   if (contextWindow.length > 50) contextWindow.shift();
 }
 
+/**
+ * Token Quality Gate: validates a token against IQR boundaries before promotion.
+ * Returns { valid, fence } — if valid is false, promotion should be rejected.
+ */
+export function qualityGate(kd: number, efficacy: number): { valid: boolean; lower: number; upper: number; score: number } {
+  const normKd = kd / 100;
+  const score = normKd * 0.6 + efficacy * 0.4;
+  const lower = 0.25;
+  const upper = 0.95;
+  const valid = score >= lower && score <= upper;
+  return { valid, lower, upper, score: Math.round(score * 1000) / 1000 };
+}
+
 export function evaluateToken(
   token: ThinkToken,
   auditPublish: AuditPublishFn,
