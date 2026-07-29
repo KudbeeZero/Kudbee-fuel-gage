@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785306295990-20d1955a",
+  "agentId": "knowledge-curator",
+  "decision": "run:index DEQ infinity solver, Anderson mixing, 12,000× theoretical speedup",
+  "context": {
+    "action": "execute",
+    "task": "index DEQ infinity solver, Anderson mixing, 12,000× theoretical speedup",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:24:55.990Z",
+  "decoded": false
+}

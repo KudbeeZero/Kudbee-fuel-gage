@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785306296215-8dd8dcd4",
+  "agentId": "token-forge",
+  "decision": "run:challenge DEQ token — verify Thompson sample, EWMA-CUSUM check, Mahalanobis fit",
+  "context": {
+    "action": "execute",
+    "task": "challenge DEQ token — verify Thompson sample, EWMA-CUSUM check, Mahalanobis fit",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:24:56.215Z",
+  "decoded": false
+}

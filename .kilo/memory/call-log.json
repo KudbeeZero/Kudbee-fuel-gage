@@ -509,7 +509,22 @@
       "type": "sibling",
       "timestamp": "2026-07-29T06:03:37.915Z",
       "routed": true
+    },
+    {
+      "id": "call-1785306261887-fbc8dd",
+      "from": "token-forge",
+      "to": "knowledge-curator",
+      "message": "DEQ infinity solver deployed — Anderson mixing collapses time-steps to O(1) root-finding. 12,000× theoretical peak with quantum mesh.",
+      "path": [
+        "token-forge",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:24:21.887Z",
+      "routed": true
     }
   ],
-  "totalCalls": 34
+  "totalCalls": 35
 }

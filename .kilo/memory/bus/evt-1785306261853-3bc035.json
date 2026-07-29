@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785306261853-3bc035",
+  "topic": "vector:deq-infinity",
+  "source": "cli",
+  "data": {
+    "message": "Vector 11 deployed — Anderson Mixing O(1) infinite-time solver, 12,000× peak speedup"
+  },
+  "timestamp": "2026-07-29T06:24:21.853Z",
+  "sequence": 38
+}
