@@ -209,7 +209,37 @@
       "type": "sibling",
       "timestamp": "2026-07-29T00:03:13.250Z",
       "routed": true
+    },
+    {
+      "id": "call-1785287581772-421d53",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "5 improvements deployed: REST health fallback, module detection, SSE streaming, lease renewal, auto-recovery",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:13:01.772Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785287581815-7d2eb7",
+      "from": "ci-watcher",
+      "to": "pipeline-guardian",
+      "message": "All 3 databases verified: Postgres healthy, Fast Brain 24 keys, Slow Brain 1 key, REDIS_URL set on Heroku v273",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:13:01.816Z",
+      "routed": true
     }
   ],
-  "totalCalls": 14
+  "totalCalls": 16
 }

@@ -1213,7 +1213,28 @@ async function run() {
   } catch (e) {
     console.error(`[E2E] Fatal error: ${e.message}`);
     failed++;
-  } finally {
+  }
+
+  // --- Adversarial Simulator & SOR routing ---
+  async function testAdversarialSimulator() {
+    // Test Invisible Noise attack through simulate-attack endpoint
+    const res = await fetch(`${BASE}/api/system/simulate-attack`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vectors: ['INVISIBLE_NOISE'], iterations: 2 }),
+    });
+    const data = await res.json();
+    assert(res.status === 200, 'POST /api/system/simulate-attack returns 200');
+    assert(data.ok === true, 'Simulate-attack response has ok: true');
+    assert(Array.isArray(data.attackResults) && data.attackResults.length > 0, 'Attack results array has entries');
+    assert(Array.isArray(data.sorDecisions) && data.sorDecisions.length > 0, 'SOR decisions array has entries');
+    const pruned = data.sorDecisions.filter((d) => d.verdict === 'PRUNE');
+    const promoted = data.sorDecisions.filter((d) => d.verdict === 'PROMOTE');
+    assert(pruned.length + promoted.length > 0, 'SOR routing produced at least one PROMOTE or PRUNE decision');
+  }
+
+  await testAdversarialSimulator();
+
   // Check 44 — P2P lock sync: acquire lock on Slow Brain, verify Fast Brain detects it
   async function check44_CrossBrainLockSync() {
     const res = await fetch(`${BASE}/api/system/lock-metrics/update`, {
@@ -1230,7 +1251,6 @@ async function run() {
     const data = await res.json();
     assert(res.ok, 'POST /api/system/lock-metrics/update returns 200');
     assert(data.ok === true, 'Lock metrics update returns ok: true');
-
     const getRes = await fetch(`${BASE}/api/system/lock-metrics`);
     const metrics = await getRes.json();
     assert(getRes.ok, 'GET /api/system/lock-metrics returns 200');
