@@ -1,1 +1,24 @@
-{"traceId":"tk-training-session-020","taskContext":"Token training session complete: 17 think tokens evaluated through SOR routing. 10 high-KD tokens promoted to VERIFIED, 0 low-KD tokens pruned to recycling sink.","kd":96,"efficacy":0.96,"status":"VERIFIED","sorVerdict":"PROMOTE","reasoningSteps":["fed all 17 tokens through DTHINK pipeline","scored each by KD threshold: ≥95 promoted, <85 pruned","knowledge curator indexed patterns","pipeline guardian confirmed 11 layers during challenge","3 agent phone calls routed for collaboration"],"keywords":["training","SOR","promote","prune","DTHINK","pipeline"],"createdAt":"2026-07-28T23:25:02Z"}
+{
+  "traceId": "tk-training-session-020",
+  "taskContext": "Token training session complete: 17 think tokens evaluated through SOR routing. 10 high-KD tokens promoted to VERIFIED, 0 low-KD tokens pruned to recycling sink.",
+  "kd": 96,
+  "efficacy": 0.96,
+  "status": "VERIFIED",
+  "sorVerdict": "PROMOTE",
+  "reasoningSteps": [
+    "fed all 17 tokens through DTHINK pipeline",
+    "scored each by KD threshold: ≥95 promoted, <85 pruned",
+    "knowledge curator indexed patterns",
+    "pipeline guardian confirmed 11 layers during challenge",
+    "3 agent phone calls routed for collaboration"
+  ],
+  "keywords": [
+    "training",
+    "SOR",
+    "promote",
+    "prune",
+    "DTHINK",
+    "pipeline"
+  ],
+  "createdAt": "2026-07-28T23:25:02Z"
+}

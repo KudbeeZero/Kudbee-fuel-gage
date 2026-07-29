@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785287884258-e160d0be",
+  "agentId": "pipeline-guardian",
+  "decision": "run:full post-merge audit: PR #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify REST health fallback, confirm E2E 44 checks syntax OK",
+  "context": {
+    "action": "execute",
+    "task": "full post-merge audit: PR #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify REST health fallback, confirm E2E 44 checks syntax OK",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:18:04.258Z",
+  "decoded": false
+}

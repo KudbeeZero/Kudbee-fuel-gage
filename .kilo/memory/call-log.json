@@ -239,7 +239,52 @@
       "type": "sibling",
       "timestamp": "2026-07-29T01:13:01.816Z",
       "routed": true
+    },
+    {
+      "id": "call-1785287920955-480b48",
+      "from": "pipeline-guardian",
+      "to": "knowledge-curator",
+      "message": "Training complete: 25 tokens, 14 promoted, 10 challenged, 1 pruned. Post-merge audit clean.",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:18:40.955Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785287921006-857911",
+      "from": "knowledge-curator",
+      "to": "ci-watcher",
+      "message": "All 5 PRs merged, 44 E2E checks, 3 databases verified, Heroku deploying",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:18:41.007Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785287921052-f71fa4",
+      "from": "ci-watcher",
+      "to": "pipeline-guardian",
+      "message": "CI verification complete: 5/5 gates, all agents healthy, token training done",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T01:18:41.052Z",
+      "routed": true
     }
   ],
-  "totalCalls": 16
+  "totalCalls": 19
 }

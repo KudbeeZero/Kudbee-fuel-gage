@@ -60,8 +60,13 @@
       "query": "v273 deployed: 5 system improvements — redis rest health fallback, module script detection, sse lock streaming, lease renewal 2-phase commit, agent auto-recovery with workload redistribution",
       "timestamp": "2026-07-29T01:13:00.099Z",
       "score": 16
+    },
+    {
+      "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
+      "timestamp": "2026-07-29T01:18:04.309Z",
+      "score": 17
     }
   ],
-  "lastRecall": "2026-07-29T01:13:00.099Z",
-  "recallCount": 12
+  "lastRecall": "2026-07-29T01:18:04.309Z",
+  "recallCount": 13
 }

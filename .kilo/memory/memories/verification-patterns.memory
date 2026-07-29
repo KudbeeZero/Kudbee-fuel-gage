@@ -10,8 +10,13 @@
       "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
       "timestamp": "2026-07-29T00:02:50.575Z",
       "score": 16
+    },
+    {
+      "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
+      "timestamp": "2026-07-29T01:18:04.312Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-29T00:02:50.575Z",
-  "recallCount": 2
+  "lastRecall": "2026-07-29T01:18:04.312Z",
+  "recallCount": 3
 }

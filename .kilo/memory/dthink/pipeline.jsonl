@@ -33,3 +33,6 @@
 {"type":"token:forged","source":"training-session","tokenId":"tk-training-session-020","severity":"HIGH","timestamp":"2026-07-28T23:25:12Z"}
 {"type":"sor:promoted","source":"sor-router","tokenId":"tk-v269-diagnostic","severity":"HIGH","timestamp":"2026-07-29T00:03:25Z"}
 {"type":"sor:promoted","source":"sor-router","tokenId":"tk-agent-diagnostic","severity":"HIGH","timestamp":"2026-07-29T00:03:25Z"}
+{"type":"token:forged","source":"training-session","tokenId":"tk-pr213-merged","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}
+{"type":"token:forged","source":"training-session","tokenId":"tk-pr214-merged","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}
+{"type":"token:forged","source":"training-session","tokenId":"tk-training-final","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}

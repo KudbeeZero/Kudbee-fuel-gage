@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785287884396-0cff838f",
+  "agentId": "knowledge-curator",
+  "decision": "run:index all merged changes: adversarial simulator (253 lines), SOR router (177 lines), lock registry (370 lines), Redis health fallback, module detection, SSE streaming, lease renewal, auto-recovery — cross-reference all databases and tokens",
+  "context": {
+    "action": "execute",
+    "task": "index all merged changes: adversarial simulator (253 lines), SOR router (177 lines), lock registry (370 lines), Redis health fallback, module detection, SSE streaming, lease renewal, auto-recovery — cross-reference all databases and tokens",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:18:04.396Z",
+  "decoded": false
+}

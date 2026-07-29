@@ -1,5 +1,5 @@
 {
-  "sequence": 29,
+  "sequence": 31,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -203,6 +203,20 @@
       "source": "cli",
       "sequence": 29,
       "timestamp": "2026-07-29T01:13:01.856Z"
+    },
+    {
+      "id": "evt-1785287921097-88e3fb",
+      "topic": "training:complete",
+      "source": "cli",
+      "sequence": 30,
+      "timestamp": "2026-07-29T01:18:41.098Z"
+    },
+    {
+      "id": "evt-1785287921142-9ba3cd",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 31,
+      "timestamp": "2026-07-29T01:18:41.143Z"
     }
   ],
   "topicCounts": {
@@ -212,7 +226,7 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 7,
+    "system:health": 8,
     "agent:recall": 1,
     "agent:report": 1,
     "agent:persistence": 1,
@@ -226,6 +240,7 @@
     "sentinel:integration": 1,
     "think:training": 1,
     "diagnostic:chrome": 1,
-    "system:improvements": 1
+    "system:improvements": 1,
+    "training:complete": 1
   }
 }
