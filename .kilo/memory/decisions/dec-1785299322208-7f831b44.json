@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299322208-7f831b44",
+  "agentId": "sentinel",
+  "decision": "run:absorb INVISIBLE_NOISE disruption param=1.52",
+  "context": {
+    "action": "execute",
+    "task": "absorb INVISIBLE_NOISE disruption param=1.52",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:42.208Z",
+  "decoded": false
+}

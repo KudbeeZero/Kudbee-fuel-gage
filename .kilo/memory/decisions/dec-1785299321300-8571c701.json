@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785299321300-8571c701",
+  "agentId": "web-doctor",
+  "decision": "error:absorb DELAY disruption param=5",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T04:28:41.300Z",
+  "decoded": false
+}

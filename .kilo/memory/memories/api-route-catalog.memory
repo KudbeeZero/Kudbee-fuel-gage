@@ -15,8 +15,23 @@
       "query": "swarm test",
       "timestamp": "2026-07-29T04:23:21.895Z",
       "score": 2
+    },
+    {
+      "query": "absorb delay disruption param=5",
+      "timestamp": "2026-07-29T04:28:40.933Z",
+      "score": 3
+    },
+    {
+      "query": "absorb scaling disruption param=-1",
+      "timestamp": "2026-07-29T04:28:41.608Z",
+      "score": 4
+    },
+    {
+      "query": "absorb invisible_noise disruption param=1.52",
+      "timestamp": "2026-07-29T04:28:42.288Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-29T04:23:21.895Z",
-  "recallCount": 3
+  "lastRecall": "2026-07-29T04:28:42.288Z",
+  "recallCount": 6
 }

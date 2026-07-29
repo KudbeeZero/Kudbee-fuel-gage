@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299321060-7ce966f9",
+  "agentId": "knowledge-curator",
+  "decision": "run:absorb DELAY disruption param=5",
+  "context": {
+    "action": "execute",
+    "task": "absorb DELAY disruption param=5",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:41.061Z",
+  "decoded": false
+}

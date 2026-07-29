@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299322378-4c9e59a2",
+  "agentId": "token-forge",
+  "decision": "run:absorb INVISIBLE_NOISE disruption param=1.52",
+  "context": {
+    "action": "execute",
+    "task": "absorb INVISIBLE_NOISE disruption param=1.52",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:42.379Z",
+  "decoded": false
+}

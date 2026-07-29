@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299321564-f7109355",
+  "agentId": "pipeline-guardian",
+  "decision": "run:absorb SCALING disruption param=-1",
+  "context": {
+    "action": "execute",
+    "task": "absorb SCALING disruption param=-1",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:41.564Z",
+  "decoded": false
+}

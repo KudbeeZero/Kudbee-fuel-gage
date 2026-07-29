@@ -41,8 +41,23 @@
       "id": "dec-1785299002167-31ebba78",
       "decision": "curation_complete",
       "timestamp": "2026-07-29T04:23:22.168Z"
+    },
+    {
+      "id": "dec-1785299321253-d9fa6b2a",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-29T04:28:41.254Z"
+    },
+    {
+      "id": "dec-1785299321941-6c58f6f6",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-29T04:28:41.941Z"
+    },
+    {
+      "id": "dec-1785299322629-87301c47",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-29T04:28:42.630Z"
     }
   ],
-  "lastAction": "2026-07-29T04:23:22.168Z",
-  "totalActions": 14
+  "lastAction": "2026-07-29T04:28:42.630Z",
+  "totalActions": 20
 }

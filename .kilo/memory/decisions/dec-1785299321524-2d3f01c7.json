@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785299321524-2d3f01c7",
+  "agentId": "sentinel",
+  "decision": "error:absorb SCALING disruption param=-1",
+  "context": {
+    "error": "Command failed: ---\nid: sentinel\ncategory: security\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Sentinel] Edge anomaly detection running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Channel: kudbee:stream:audit\"\n  echo \"  Publisher: services/sentinel/src/redisPublisher.ts\"\n  echo \"  Status: $(curl -s --max-time 3 https://kudbee-fuel-gage-330ade653a62.herokuapp.com/api/edge/anomalies/count 2>/dev/null | node -p 'JSON.parse(require(\"fs\").readFileSync(0,\"utf8\")).totalAlerts || \"0\"' 2>/dev/null || echo \"offline\") alerts\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T04:28:41.524Z",
+  "decoded": false
+}
