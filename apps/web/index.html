@@ -41,9 +41,10 @@
       var hardTimeout = setTimeout(function() {
         if (!_kud.loaded) {
           var s = document.getElementById('boot-splash');
-          if (s) { s.innerHTML = '<h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><p style="color:#f87171;font-size:.75rem">Loading timed out</p><button onclick="location.reload()" style="margin-top:1rem;background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button>'; }
+          if (s) { s.innerHTML = '<h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><p style="color:#eab308;font-size:.75rem">React build unavailable — redirecting to Control Center…</p>'; }
+          window.location.replace('/unified.html');
         }
-      }, 25000);
+      }, 15000);
       window.addEventListener('kudbee:loaded', function(e) {
         clearTimeout(splashTimeout);
         clearTimeout(hardTimeout);
