@@ -125,7 +125,7 @@ function extractFeatureVector(req: Request): number[] {
 function dotProduct(a: number[], b: number[]): number {
   const len = Math.min(a.length, b.length);
   let sum = 0;
-  for (let i = 0; i < len; i++) sum += a[i] * b[i];
+  for (let i = 0; i < len; i++) sum += (a[i] ?? 0) * (b[i] ?? 0);
   return sum;
 }
 
@@ -337,7 +337,7 @@ export function getSynapseStatus(): object {
       source,
       count: v.length,
       lastScore: v[v.length - 1]?.score || 0,
-      lastSeen: v[v.length - 1] ? new Date(v[v.length - 1].timestamp).toISOString() : null,
+      lastSeen: v[v.length - 1]?.timestamp ? new Date(v[v.length - 1]!.timestamp).toISOString() : null,
     })),
     lockedOut: [...state.lockedOut.entries()]
       .filter(([, unlockAt]) => now < unlockAt)
