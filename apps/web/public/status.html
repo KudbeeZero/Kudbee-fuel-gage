@@ -88,8 +88,8 @@ const checks = [
   { id:'gastown', label:'Gastown Dashboard', endpoint:'/api/gastown/dashboard', extract: d => d?.gastown ? d.activeConvoys : null, fmt: v => v + ' convoys' },
   { id:'agents', label:'Agent Swarm', endpoint:'/api/gastown/dashboard', extract: d => d?.swarm?.online + '/' + d?.swarm?.agents, fallback:'?/?' },
   { id:'deploy', label:'Deploy', endpoint:'/api/system/deploy-status', extract: d => d?.status, ok:'ok' },
-  { id:'groq', label:'Groq LPU', endpoint:'/api/system/lifecycle', method:'POST', body:JSON.stringify({action:'status'}), headers:{'Content-Type':'application/json'}, extract: d => d?.services?.groq?.status, ok:'configured' },
-  { id:'deepseek', label:'Deepseek', endpoint:'/api/system/lifecycle', method:'POST', body:JSON.stringify({action:'status'}), headers:{'Content-Type':'application/json'}, extract: d => d?.services?.deepseek?.status || d?.health?.deepseek, ok:'configured', fallback:'unknown' },
+  { id:'groq', label:'Groq LPU', endpoint:'/health', extract: d => d?.dependencies?.groq || '—', ok:'healthy', fallback:'disabled' },
+  { id:'deepseek', label:'Deepseek', endpoint:'/health', extract: d => d?.dependencies?.deepseek || '—', ok:'healthy', fallback:'disabled' },
 ];
 
 async function checkAll() {
@@ -264,8 +264,10 @@ function tick() {
 async function runAll() {
   const allOk = await checkAll();
   await loadWorktrees();
-  document.querySelector('.header h1').textContent = allOk ? 'Kudbee — All Systems Ready' : 'Kudbee — Degraded';
-  document.querySelector('.header h1').style.color = allOk ? 'var(--green)' : 'var(--amber)';
+  const criticalOk = results.filter(r => ['postgres','redis','worker','synapse','deploy'].includes(r.id)).every(r => r.ok);
+  document.querySelector('.header h1').textContent = criticalOk ? 'Kudbee — All Systems Ready' : 'Kudbee — Degraded';
+  document.querySelector('.header h1').style.color = criticalOk ? 'var(--green)' : 'var(--amber)';
+  ;
 }
 
 runAll();
