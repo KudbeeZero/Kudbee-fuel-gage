@@ -15,17 +15,13 @@
       .boot-done #boot-splash{display:none}
     </style>
     <script>
-      var ROOT;
-      var BOOT_TIME = Date.now();
-      var DONE = false;
-      function hide(){if(DONE)return;DONE=true;document.documentElement.classList.add('boot-done')}
-      document.addEventListener('DOMContentLoaded',function(){
-        ROOT=document.getElementById('root');
-        new MutationObserver(function(){if(ROOT.children.length>0)hide()}).observe(ROOT,{childList:true,subtree:true});
-        setTimeout(function(){
-          if(!DONE){hide();ROOT.innerHTML='<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#e2e8f0;font-family:ui-monospace,monospace;text-align:center;padding:1rem;background:#020617"><h1 style="color:#34d399">Kudbee Fuel Gauge</h1><p style="color:#94a3b8;font-size:.75rem">AI Cost Intelligence</p><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.5rem;margin:1.5rem 0;max-width:18rem;width:100%"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">App did not load</p><p style="color:#94a3b8;font-size:.7rem">'+(Date.now()-BOOT_TIME<30000?'Still loading…':'Connection may be too slow')+'</p><button onclick="location.reload()" style="margin:1rem 0 .25rem;background:#059669;color:#fff;border:none;padding:.5rem 2rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">v267 · Chrome · '+(new Date().toISOString().slice(0,19))+'</p></div>'}
-        },5000);
-      });
+      window.__KUD_VER='v277';
+      window.__KUD_LOADED=false;
+      window.addEventListener('kudbee:loaded',function(){window.__KUD_LOADED=true;hide();});
+      function hide(){document.documentElement.classList.add('boot-done');}
+      function fail(msg){if(window.__KUD_LOADED)return;hide();var r=document.getElementById('root');if(r)r.innerHTML='<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center;padding:1rem"><h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.25rem;margin:1rem 0;max-width:18rem"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">App did not load</p><p style="color:#94a3b8;font-size:.7rem;margin-bottom:.75rem">'+msg+'</p><button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">'+new Date().toISOString().slice(0,19)+'</p></div>';}
+      try{import('/src/main.tsx').catch(function(e){fail('Load error: '+(e.message||'').slice(0,60));});}catch(e){fail('Import blocked');}
+      setTimeout(function(){if(!window.__KUD_LOADED)fail('Timed out');},10000);
     </script>
   </head>
   <body>
@@ -35,25 +31,5 @@
       <div class="spinner"></div>
     </div>
     <div id="root"></div>
-    <div id="root"></div>
-    <script>
-      var t0=Date.now();
-      var mounted=false;
-      window.addEventListener('kudbee:loaded',function(e){mounted=true;});
-      function fail(msg){
-        if(mounted)return;
-        var r=document.getElementById('root');
-        if(r)r.innerHTML='<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center;padding:1rem"><h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.25rem;margin:1rem 0;max-width:18rem"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">App did not load</p><p style="color:#94a3b8;font-size:.7rem;margin-bottom:.75rem">'+msg+'</p><button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">'+new Date().toISOString().slice(0,19)+'</p></div>';
-      }
-      try{
-        import('/src/main.tsx').catch(function(e){
-          fail('Script load failed: '+(e.message||e).slice(0,80));
-        });
-      }catch(e){
-        fail('Dynamic import blocked: '+(e.message||e).slice(0,80));
-      }
-      // 8s timeout — but skip if kudbee:loaded fired
-      setTimeout(function(){if(!mounted)fail('Module did not mount after 8s');},8000);
-    </script>
   </body>
 </html>
