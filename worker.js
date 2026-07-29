@@ -35,14 +35,19 @@ import { registerShutdown } from './services/lib/shutdown.js';
 import { agentLog, broadcastAgentState } from './services/lib/agentLogger.ts';
 import { geminiBreaker } from './services/lib/circuitBreaker.ts';
 import { runSystemPruner } from './services/lib/pruner.ts';
+import { restQueuePop, isRestAvailable } from './services/lib/redisRest.js';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
-const AUDIT_INTERVAL_MS = 60_000; // HERMES auditor cadence
-const HEARTBEAT_INTERVAL_MS = 10_000; // Control Tower online-check cadence
+const AUDIT_INTERVAL_MS = 60_000;
+const HEARTBEAT_INTERVAL_MS = 10_000;
 const POLL_BACKOFF_MS = process.env.NODE_ENV === 'test' ? 0 : 2000;
+const TCP_FAILURE_THRESHOLD = 2;
 
 const redis = getRedisClient({ label: 'worker' });
 const workerRedis = getWorkerRedisClient({ label: 'worker' });
+
+let tcpFailures = 0;
+let useRestFallback = false;
 
 // --- Event bus (Redis pub/sub) -------------------------------------------
 // Publishes real-time events that the web server fans out to dashboard SSE
@@ -211,11 +216,12 @@ async function pollTasks() {
     }
 
     try {
-      // BLPOP call site #4: worker.js:173
-      // Queue: kudbee:governance:tasks | Timeout: 5s (short poll to prevent
-      // Upstash free-tier TCP idle disconnect) | Client: getWorkerRedisClient
-      // Procfile: hermes-worker — MUST survive Upstash quota errors.
-      const result = await workerRedis.blpop(TASKS_QUEUE, 5);
+      let result;
+      if (useRestFallback && isRestAvailable()) {
+        result = await restQueuePop(TASKS_QUEUE, 5);
+      } else {
+        result = await workerRedis.blpop(TASKS_QUEUE, 5);
+      }
       if (!result) continue;
       resetRedisQuotaBackoff();
       const [, raw] = result;
@@ -247,6 +253,11 @@ async function pollTasks() {
       // instead of spinning the loop or crashing the process.
       if (err && /redis|connection|ECONN|timed\s*out|timeout|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
         noteRedisUnavailable();
+        tcpFailures += 1;
+        if (tcpFailures >= TCP_FAILURE_THRESHOLD && isRestAvailable()) {
+          useRestFallback = true;
+          console.warn('[HERMES:AUDITOR] TCP failed ' + tcpFailures + ' times — switching to REST polling');
+        }
         const baseMs = 5_000;
         const jitterMs = Math.floor(Math.random() * 3000);
         const backoff = process.env.NODE_ENV === 'test' ? 0 : baseMs + jitterMs;
