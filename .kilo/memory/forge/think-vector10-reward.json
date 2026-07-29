@@ -1,0 +1,29 @@
+{
+  "traceId": "tk-vector10-reward-034",
+  "taskContext": "Vector 10 — Self-Modifying Reward Loop. Pairs with Vector 4 Attention Router to autonomously adjust agent capability vectors based on downstream CI/CD outcomes. R = α(Success) - β(Failure) - γ(Latency). K_new = K_old + η(R·Q).",
+  "kd": 100,
+  "efficacy": 1,
+  "status": "VERIFIED",
+  "reasoningSteps": [
+    "built outcome-oracle.mjs with computeReward function",
+    "reward formula: R = 1.0·success - 0.8·failure - 0.1·latency",
+    "backpropagateReward() with learning rate η=0.05",
+    "Scenario A: pipeline-guardian success → security K[0] +0.049 (0.95→1.00)",
+    "Scenario B: pipeline-guardian failure → all dims -0.013, SOR threshold ↑ to 0.8 after 2 fails",
+    "wireOracleToRouter() bridges Vector 10 ↔ Vector 4",
+    "dynamic thresholding: consecutive failures raise routing bar"
+  ],
+  "keywords": [
+    "reward",
+    "self-modifying",
+    "backpropagation",
+    "learning",
+    "CI",
+    "outcome",
+    "oracle",
+    "Vector 10",
+    "K_new"
+  ],
+  "createdAt": "2026-07-29T05:20:00Z",
+  "sorVerdict": "PROMOTE"
+}
