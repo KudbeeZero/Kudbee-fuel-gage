@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785287285970-e7eaea9b",
+  "agentId": "pipeline-guardian",
+  "decision": "run:security audit: scan all 11 middleware layers, check SSE ticket auth, verify lock registry endpoints, scan for CORS misconfig, check audit channel subscriber",
+  "context": {
+    "action": "execute",
+    "task": "security audit: scan all 11 middleware layers, check SSE ticket auth, verify lock registry endpoints, scan for CORS misconfig, check audit channel subscriber",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:08:05.970Z",
+  "decoded": false
+}

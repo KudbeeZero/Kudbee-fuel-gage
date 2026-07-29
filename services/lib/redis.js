@@ -50,6 +50,7 @@ const isUpstash = REDIS_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_U
 const isWorkerUpstash =
   REDIS_WORKER_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_WORKER_URL);
 const MAX_REQUESTS_LIMIT = 500_000;
+const QUOTA_WARN_PCT = 0.80;
 const CIRCUIT_BREAKER_RESET_MS = 30_000;
 
 let _client = null;
@@ -57,6 +58,8 @@ let _subClient = null;
 const redisTelemetry = { primaryCount: 0, fallbackCount: 0, errorCount: 0 };
 const circuitBreaker = { open: false, openedAt: 0, requestCount: 0, lastError: null };
 const quotaBackoffState = { enabled: false, backoffMs: 2000, untilTs: 0, consecutiveErrors: 0 };
+let _monthlyRequestCount = 0;
+let _quotaWarned = false;
 
 /**
  * Inspects a Redis error message and returns true if the error indicates
