@@ -1,0 +1,14 @@
+{
+  "id": "evt-1785291030087-f6956d",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "diagnostic": "complete",
+    "v278": "application/javascript",
+    "tokens": 27,
+    "dthink": 39
+  },
+  "timestamp": "2026-07-29T02:10:30.088Z",
+  "sequence": 33
+}
