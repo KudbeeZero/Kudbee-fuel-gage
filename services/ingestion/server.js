@@ -54,6 +54,7 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
+import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
@@ -2664,6 +2665,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
       receptor: false,
       sentinel: null,
       groq: groqConfigured || null,
+      deepseek: deepseekConfigured || null,
     };
     let pgLatency = -1,
       redisLatency = -1;
@@ -2713,6 +2715,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
         postgres: { status: health.pg ? 'connected' : 'down', latencyMs: pgLatency },
         redis: { status: health.redis ? 'connected' : 'down', latencyMs: redisLatency },
         groq: { status: groqConfigured ? 'configured' : 'disabled' },
+        deepseek: { status: deepseekConfigured ? 'configured' : 'disabled' },
       },
       agent: { status: health.worker ? 'running' : 'idle' },
       timestamp: new Date().toISOString(),
