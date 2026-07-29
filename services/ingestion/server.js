@@ -296,6 +296,12 @@ const systemRouter = createSystemRouter({
 });
 app.use('/api/system', systemRouter);
 
+// Synapse Protection status endpoint
+app.get('/api/system/synapse-status', (_req, res) => {
+  res.json(getSynapseStatus());
+});
+
+
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
 // the Phase 6 context factory. We extract the raw intent from the body, tag it
@@ -5578,11 +5584,6 @@ try {
 } catch (err) {
   console.warn('[Synapse] Bootstrap failed (degraded):', err?.message);
 }
-
-// Synapse status endpoint
-app.get('/api/system/synapse-status', (_req, res) => {
-  res.json(getSynapseStatus());
-});
 
 // Populate the shared state holder so the modular sub-routers can read the
 // policy / feedback / auto-tune / evaluate state lazily.
