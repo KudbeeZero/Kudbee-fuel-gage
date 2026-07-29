@@ -5619,6 +5619,25 @@ app.get('/api/system/deploy-status', (_req, res) => {
   });
 });
 
+// --- Interactive Terminal Command Dispatcher ---
+app.post('/api/terminal/execute', async (req, res) => {
+  try {
+    const { command } = req.body || {};
+    if (!command || typeof command !== 'string') {
+      return res.status(400).json({ error: 'Missing command string in body.command' });
+    }
+    const { dispatchCommand } = await import('../terminal/commandDispatcher.mjs');
+    const result = await dispatchCommand(command);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      type: 'terminal:error',
+      message: err instanceof Error ? err.message : 'Command execution failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
