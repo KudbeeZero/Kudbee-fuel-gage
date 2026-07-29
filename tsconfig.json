@@ -21,8 +21,6 @@
     "services/ingestion",
     "services/lib",
     "services/memory",
-    "services/sentinel",
-    "services/skillz-library",
-    "services/telemetry"
+    "services/sentinel"
   ]
 }
