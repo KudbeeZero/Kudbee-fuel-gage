@@ -95,8 +95,13 @@
       "query": "ultimate swarm resilience test: absorb simultaneous 3-vector attack, route through quantum interference, self-heal via tiered repair",
       "timestamp": "2026-07-29T06:14:04.528Z",
       "score": 9
+    },
+    {
+      "query": "verify global workspace: check redis tensor pool, validate sampleglobalworkspace, confirm latent state projection",
+      "timestamp": "2026-07-29T07:07:59.296Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-29T06:14:04.528Z",
-  "recallCount": 19
+  "lastRecall": "2026-07-29T07:07:59.296Z",
+  "recallCount": 20
 }
