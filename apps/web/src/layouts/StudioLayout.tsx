@@ -6,8 +6,7 @@ import { AgentTerminal } from '../components/studio/AgentTerminal';
 import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
-  Activity, AlertTriangle, Brain,
-  Database, RefreshCw, Shield, Terminal, Radio
+  Database, RefreshCw, Terminal
 } from 'lucide-react';
 
 interface StudioContextValue {

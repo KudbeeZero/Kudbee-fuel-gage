@@ -3,17 +3,14 @@ import {
   Activity,
   Brain,
   CheckCircle2,
-  Cpu,
   Database,
   RefreshCw,
   Server,
-  ShieldX,
   XCircle,
   Zap,
   Gauge,
   MemoryStick,
   TrendingUp,
-  TrendingDown,
   BarChart
 } from 'lucide-react';
 import { useGovernanceStream } from '../../hooks/useGovernanceStream';

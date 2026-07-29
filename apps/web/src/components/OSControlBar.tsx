@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Database, Pause, Play, Radio, Search, Zap, Server, Shield, Scale, Globe, Bell, Settings, LayoutDashboard, Calculator, History, Activity, Cpu, Sparkles, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, Stethoscope, AlertTriangle, Rocket } from 'lucide-react';
+import { Database, Pause, Play, Radio, Search, Zap, Server, History, ArrowRight, Loader2, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { useCommandDispatcher, commandRunners, type DispatchedCommand } from '../store/commandDispatcher';
 import { WorkspaceBar } from './WorkspaceBar';
 import { apiGet, apiPost } from '../lib/apiClient';

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BadgeCheck,
   ScrollText,
-  ShieldAlert,
   ShieldCheck,
   ShieldX,
   Gauge,

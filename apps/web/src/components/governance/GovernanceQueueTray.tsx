@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Cpu, Clock, Zap, Brain, Activity, CheckSquare, Square, Edit3, Save } from 'lucide-react';
+import { CheckCircle2, XCircle, Brain, Activity, CheckSquare, Square, Edit3, Save } from 'lucide-react';
 import type { ThinkTrajectory } from '@kudbee/types';
 import { PanelErrorBoundary } from '../PanelErrorBoundary';
 

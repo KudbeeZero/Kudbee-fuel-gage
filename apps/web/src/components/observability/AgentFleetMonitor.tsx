@@ -1,4 +1,4 @@
-import { Bot, Clock, Zap, Layers, DoorOpen, Activity } from 'lucide-react';
+import { Bot, Zap, Layers, DoorOpen } from 'lucide-react';
 import type { FleetAgent, TopSnippet, AgentStatusResponse } from '../../hooks/useAgentStatus';
 
 function statusDot(status: string) {

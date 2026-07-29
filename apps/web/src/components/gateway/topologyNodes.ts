@@ -1,5 +1,3 @@
-import { Network, Server, Database, Cpu, Brain, Shield, Radio } from 'lucide-react';
-
 export interface TopologyNode {
   x: number;
   y: number;
