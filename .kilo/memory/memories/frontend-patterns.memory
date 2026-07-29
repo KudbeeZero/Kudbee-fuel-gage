@@ -65,8 +65,13 @@
       "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
       "timestamp": "2026-07-29T01:18:04.309Z",
       "score": 17
+    },
+    {
+      "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+      "timestamp": "2026-07-29T01:33:45.144Z",
+      "score": 15
     }
   ],
-  "lastRecall": "2026-07-29T01:18:04.309Z",
-  "recallCount": 13
+  "lastRecall": "2026-07-29T01:33:45.145Z",
+  "recallCount": 14
 }

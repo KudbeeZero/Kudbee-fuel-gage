@@ -60,8 +60,13 @@
       "query": "v273 deployed: 5 system improvements — redis rest health fallback, module script detection, sse lock streaming, lease renewal 2-phase commit, agent auto-recovery with workload redistribution",
       "timestamp": "2026-07-29T01:13:00.101Z",
       "score": 12
+    },
+    {
+      "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
+      "timestamp": "2026-07-29T01:33:45.147Z",
+      "score": 11
     }
   ],
-  "lastRecall": "2026-07-29T01:13:00.102Z",
-  "recallCount": 12
+  "lastRecall": "2026-07-29T01:33:45.147Z",
+  "recallCount": 13
 }
