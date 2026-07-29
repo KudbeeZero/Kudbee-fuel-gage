@@ -6,7 +6,7 @@ import './index.css';
 import './core/registerPlugins';
 
 if (typeof window !== 'undefined') {
-  window.__KUD_VER = 'v294';
+  (window as any).__KUD_VER = 'v295';
   var el = document.getElementById('root');
   if (el) {
     el.innerHTML = '<div style="position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center"><h1 style="color:#34d399;font-size:1.5rem;margin-bottom:.25rem">Kudbee Fuel Gauge</h1><p style="color:#64748b;font-size:.75rem;margin-bottom:1.5rem">Booting…</p><div style="width:2.5rem;height:2.5rem;border:3px solid #1e293b;border-top-color:#34d399;border-radius:50%;animation:kud-spin .8s linear infinite"></div></div>';
