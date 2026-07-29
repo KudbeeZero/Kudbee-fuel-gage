@@ -70,8 +70,13 @@
       "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
       "timestamp": "2026-07-29T02:56:06.750Z",
       "score": 13
+    },
+    {
+      "query": "swarm test",
+      "timestamp": "2026-07-29T04:23:21.894Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-29T02:56:06.750Z",
-  "recallCount": 14
+  "lastRecall": "2026-07-29T04:23:21.894Z",
+  "recallCount": 15
 }

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001812-f404db17",
+  "agentId": "monitor",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.812Z",
+  "decoded": false
+}

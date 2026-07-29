@@ -2,8 +2,18 @@
   "id": "token-forge",
   "type": "agent-memory",
   "profile": "Think token lifecycle manager that orchestrates token minting, SOR challenge routing, IQR boundary validation, and promotion/pruning decisions. Manages the full think token pipeline from creation through retirement.",
-  "connections": ["knowledge-curator", "pipeline-guardian"],
-  "endpoints": ["/api/think/tokens"],
-  "redisKeys": ["think_tokens (pgvector)", "kudbee:think:forge:stream"],
-  "createdAt": "2026-07-29T03:27:24.000Z"
+  "connections": [
+    "knowledge-curator",
+    "pipeline-guardian"
+  ],
+  "endpoints": [
+    "/api/think/tokens"
+  ],
+  "redisKeys": [
+    "think_tokens (pgvector)",
+    "kudbee:think:forge:stream"
+  ],
+  "createdAt": "2026-07-29T03:27:24.000Z",
+  "totalActions": null,
+  "lastAction": "2026-07-29T04:23:21.674Z"
 }

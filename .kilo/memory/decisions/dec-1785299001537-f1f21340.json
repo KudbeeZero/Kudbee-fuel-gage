@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001537-f1f21340",
+  "agentId": "gateway-router",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.537Z",
+  "decoded": false
+}

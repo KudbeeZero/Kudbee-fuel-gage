@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785298912468-8c5542b5",
+  "agentId": "ci-watcher",
+  "decision": "run:verify CI status: typecheck, lint, e2e, build — confirm GREEN",
+  "context": {
+    "action": "execute",
+    "task": "verify CI status: typecheck, lint, e2e, build — confirm GREEN",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:21:52.468Z",
+  "decoded": false
+}

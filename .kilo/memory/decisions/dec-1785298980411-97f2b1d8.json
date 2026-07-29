@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785298980411-97f2b1d8",
+  "agentId": "pipeline-guardian",
+  "decision": "run:swarm test — verify operational status",
+  "context": {
+    "action": "execute",
+    "task": "swarm test — verify operational status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:00.411Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001674-beb23f87",
+  "agentId": "token-forge",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.674Z",
+  "decoded": false
+}

@@ -6,8 +6,23 @@
       "id": "dec-1785293766788-a746df15",
       "decision": "layer_scan_complete",
       "timestamp": "2026-07-29T02:56:06.788Z"
+    },
+    {
+      "id": "dec-1785298908883-714bc41a",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-29T04:21:48.883Z"
+    },
+    {
+      "id": "dec-1785298980487-013ebefe",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-29T04:23:00.487Z"
+    },
+    {
+      "id": "dec-1785299001927-b32be55d",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-29T04:23:21.927Z"
     }
   ],
-  "lastAction": "2026-07-29T02:56:06.788Z",
-  "totalActions": 2
+  "lastAction": "2026-07-29T04:23:21.927Z",
+  "totalActions": 8
 }

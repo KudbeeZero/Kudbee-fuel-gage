@@ -5,8 +5,23 @@
       "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
       "timestamp": "2026-07-29T02:56:06.749Z",
       "score": 14
+    },
+    {
+      "query": "full swarm audit: verify all 10 agents, check mesh calls, validate bus events",
+      "timestamp": "2026-07-29T04:21:48.849Z",
+      "score": 4
+    },
+    {
+      "query": "swarm test — verify operational status",
+      "timestamp": "2026-07-29T04:23:00.451Z",
+      "score": 4
+    },
+    {
+      "query": "swarm test",
+      "timestamp": "2026-07-29T04:23:21.895Z",
+      "score": 3
     }
   ],
-  "lastRecall": "2026-07-29T02:56:06.749Z",
-  "recallCount": 1
+  "lastRecall": "2026-07-29T04:23:21.895Z",
+  "recallCount": 4
 }

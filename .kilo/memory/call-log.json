@@ -194,7 +194,157 @@
       "type": "routed",
       "timestamp": "2026-07-29T03:58:52.307Z",
       "routed": true
+    },
+    {
+      "id": "call-1785299013469-abb793",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.469Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013508-aa6801",
+      "from": "knowledge-curator",
+      "to": "sentinel",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "sentinel"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.508Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013546-e616cf",
+      "from": "ci-watcher",
+      "to": "hermes",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "hermes"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.546Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013585-ff5693",
+      "from": "sentinel",
+      "to": "monitor",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "sentinel",
+        null,
+        "monitor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.585Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013622-2865b1",
+      "from": "hermes",
+      "to": "gateway-router",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "hermes",
+        null,
+        "gateway-router"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.623Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013662-247088",
+      "from": "monitor",
+      "to": "ledger-keeper",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "monitor",
+        null,
+        "ledger-keeper"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.662Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013700-aa2384",
+      "from": "gateway-router",
+      "to": "web-doctor",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "gateway-router",
+        null,
+        "web-doctor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.700Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013741-1d8ddd",
+      "from": "ledger-keeper",
+      "to": "token-forge",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "ledger-keeper",
+        null,
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.742Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013778-936023",
+      "from": "web-doctor",
+      "to": "pipeline-guardian",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "web-doctor",
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.778Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013823-9f1b3d",
+      "from": "token-forge",
+      "to": "knowledge-curator",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "token-forge",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.823Z",
+      "routed": true
     }
   ],
-  "totalCalls": 13
+  "totalCalls": 23
 }
