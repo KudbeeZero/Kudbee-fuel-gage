@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785311854180-3eae5f52",
+  "agentId": "pipeline-guardian",
+  "decision": "run:audit PR #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+  "context": {
+    "action": "execute",
+    "task": "audit PR #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T07:57:34.181Z",
+  "decoded": false
+}

@@ -55,8 +55,13 @@
       "query": "verify global workspace: check redis tensor pool, validate sampleglobalworkspace, confirm latent state projection",
       "timestamp": "2026-07-29T07:07:59.295Z",
       "score": 9
+    },
+    {
+      "query": "audit pr #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
+      "timestamp": "2026-07-29T07:57:34.218Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-29T07:07:59.295Z",
-  "recallCount": 11
+  "lastRecall": "2026-07-29T07:57:34.218Z",
+  "recallCount": 12
 }
