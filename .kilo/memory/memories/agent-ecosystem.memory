@@ -2,43 +2,11 @@
   "id": "agent-ecosystem",
   "recalls": [
     {
-      "query": "rate limit redis middleware",
-      "timestamp": "2026-07-27T17:57:31.138Z",
-      "score": 4
-    },
-    {
-      "query": "scan all middleware",
-      "timestamp": "2026-07-27T18:00:37.845Z",
-      "score": 2
-    },
-    {
-      "query": "postgres database schema pgvector",
-      "timestamp": "2026-07-27T18:15:18.272Z",
-      "score": 3
-    },
-    {
-      "query": "black screen frontend crash web app deployment",
-      "timestamp": "2026-07-28T19:56:49.609Z",
-      "score": 3
-    },
-    {
-      "query": "scan middleware layers for frontend serving issues",
-      "timestamp": "2026-07-28T19:56:50.556Z",
-      "score": 9
-<<<<<<< ours
+      "query": "audit pr #220: check deep-equilibrium.ts for critical errors, verify anderson mixing math, validate deq solver",
+      "timestamp": "2026-07-29T06:34:23.372Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-28T19:56:50.556Z",
-  "recallCount": 5
-=======
-    },
-    {
-      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
-      "timestamp": "2026-07-28T21:18:16.639Z",
-      "score": 7
-    }
-  ],
-  "lastRecall": "2026-07-28T21:18:16.639Z",
-  "recallCount": 6
->>>>>>> theirs
+  "lastRecall": "2026-07-29T06:34:23.372Z",
+  "recallCount": 1
 }

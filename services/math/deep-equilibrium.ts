@@ -166,7 +166,9 @@ function benchmark(
   const odeTime = Date.now() - odeStart;
 
   // NEW: DEQ solver (direct equilibrium)
+  const deqStart = Date.now();
   const deqResult = andersonMixing(ncafn, initialState);
+  const deqTime = Date.now() - deqStart;
 
   return {
     ode: {
@@ -177,11 +179,11 @@ function benchmark(
     },
     deq: {
       iterations: deqResult.iterations,
-      cpuTimeMs: deqResult.solveTime || 0,
+      cpuTimeMs: deqTime,
       finalState: deqResult.solution,
       converged: deqResult.converged,
     },
-    speedup: deqResult.solveTime > 0 ? Math.round((odeTime / deqResult.solveTime) * 100) / 100 : Infinity,
+    speedup: deqTime > 0 ? Math.round((odeTime / deqTime) * 100) / 100 : odeTime,
   };
 }
 

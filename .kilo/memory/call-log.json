@@ -524,7 +524,37 @@
       "type": "routed",
       "timestamp": "2026-07-29T06:24:21.887Z",
       "routed": true
+    },
+    {
+      "id": "call-1785306819135-bc8fec",
+      "from": "pipeline-guardian",
+      "to": "token-forge",
+      "message": "Batch protocol enforced — PR #221 consolidated, 34 tokens VERIFIED, 4 terminal commands live",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:33:39.135Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785306819169-5496e1",
+      "from": "knowledge-curator",
+      "to": "web-doctor",
+      "message": "DTHINK protocol complete — 34 tokens, 181 decisions, 40-agent swarm healthy",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "web-doctor"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:33:39.169Z",
+      "routed": true
     }
   ],
-  "totalCalls": 35
+  "totalCalls": 37
 }
