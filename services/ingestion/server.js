@@ -247,9 +247,25 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
-// Tenant state holder — populated after the sub-routers are mounted, but
-// referenced lazily by the governance sub-router via the getPolicyState etc.
-// helpers defined at the end of this file.
+// Dynamic deploy version — uses Heroku slug commit first, then SOURCE_VERSION,
+// then git hash from filesystem, then "unknown". Never hardcoded.
+function getDeployVersion() {
+  // Heroku sets HEROKU_SLUG_COMMIT to the exact git SHA of the built slug
+  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
+  // Heroku sets SOURCE_VERSION during GitHub-connected deploys
+  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
+  // Try reading from .git/HEAD (works in local dev, not on Heroku slug)
+  try {
+    const { readFileSync } = require('node:fs');
+    const head = readFileSync('.git/HEAD', 'utf8').trim();
+    if (head.startsWith('ref:')) {
+      const ref = head.split(' ')[1];
+      return readFileSync(`.git/${ref}`, 'utf8').trim().slice(0, 7);
+    }
+    return head.slice(0, 7);
+  } catch {}
+  return 'unknown';
+}
 const _state = {
   policyState: null,
   feedbackState: null,
@@ -5521,7 +5537,7 @@ app.get('/api/system/deploy-status', (_req, res) => {
   const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
   res.json({
     commit,
-    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v295',
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
     nodeEnv: process.env.NODE_ENV || 'production',
     status: 'ok',
     uptimeSec: process.uptime ? Math.floor(process.uptime()) : 0,
@@ -5576,7 +5592,7 @@ app.get('/api/kilo/telemetry', async (_req, res) => {
     production: {
       status: 'ok',
       uptimeMin: Math.floor(process.uptime() / 60),
-      herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v299',
+      herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
       commit: process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || 'HEAD',
       dynos: { web: 1, sentinel: 1, hermesWorker: 1, monitorWorker: 1 },
     },
