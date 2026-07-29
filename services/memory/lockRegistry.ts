@@ -39,6 +39,10 @@ interface PeerHeartbeat {
 
 const HEARTBEAT_INTERVAL_MS = 10000;
 const HEARTBEAT_GRACE_MS = 25000;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BACKOFF_MS = 2000;
+
+type CircuitState = 'closed' | 'open' | 'half_open';
 
 export class DistributedLockRegistry {
   // All currently held locks across all brains
@@ -49,7 +53,11 @@ export class DistributedLockRegistry {
   private listeners = new Set<(locks: Map<string, LockEntry>) => void>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly lockSource: EventSource = 'receptor';
+  private circuitState: CircuitState = 'closed';
+  private circuitFailures: number = 0;
+  private localOnly: boolean = false;
 
   /**
    * Acquire a lock on a coordinate slot.
@@ -69,13 +77,30 @@ export class DistributedLockRegistry {
       ttlMs,
     });
 
-    await publishEvent(this.lockSource, 'LOCK_ACQUIRED', {
-      slotId,
-      workerId,
-      brain,
-      ttlMs,
-      timestamp: new Date().toISOString(),
-    });
+    if (this.circuitState === 'open') {
+      this.localOnly = true;
+      this.notifyListeners();
+      return true;
+    }
+
+    try {
+      await publishEvent(this.lockSource, 'LOCK_ACQUIRED', {
+        slotId,
+        workerId,
+        brain,
+        ttlMs,
+        timestamp: new Date().toISOString(),
+      });
+      this.circuitFailures = 0;
+      this.localOnly = false;
+    } catch {
+      this.circuitFailures++;
+      if (this.circuitFailures >= MAX_RECONNECT_ATTEMPTS) {
+        this.circuitState = 'open';
+        this.localOnly = true;
+        this.scheduleCircuitRecovery();
+      }
+    }
 
     this.notifyListeners();
     return true;
@@ -91,11 +116,15 @@ export class DistributedLockRegistry {
 
     this.locks.delete(slotId);
 
-    await publishEvent(this.lockSource, 'LOCK_RELEASED', {
-      slotId,
-      workerId,
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      await publishEvent(this.lockSource, 'LOCK_RELEASED', {
+        slotId,
+        workerId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // local release succeeds even if publish fails
+    }
 
     this.notifyListeners();
   }
@@ -184,6 +213,8 @@ export class DistributedLockRegistry {
     slowBrainLocks: number;
     peerCount: number;
     peerStatuses: Record<string, string>;
+    circuitState: CircuitState;
+    localOnly: boolean;
   } {
     let fast = 0;
     let slow = 0;
@@ -203,7 +234,63 @@ export class DistributedLockRegistry {
       slowBrainLocks: slow,
       peerCount: this.peers.size,
       peerStatuses,
+      circuitState: this.circuitState,
+      localOnly: this.localOnly,
     };
+  }
+
+  /**
+   * Renew a lock lease (2-phase commit).
+   * Phase 1: extend local TTL. Phase 2: publish LOCK_RENEWED.
+   * If Phase 2 fails, revert the TTL extension to prevent split-brain.
+   */
+  async renewLease(slotId: string, workerId: string, extensionMs: number = 30000): Promise<boolean> {
+    const existing = this.locks.get(slotId);
+    if (!existing || existing.workerId !== workerId) return false;
+
+    const prevTtl = existing.ttlMs;
+    existing.acquiredAt = Date.now();
+    existing.ttlMs = extensionMs;
+
+    try {
+      await publishEvent(this.lockSource, 'LOCK_RENEWED', {
+        slotId,
+        workerId,
+        extensionMs,
+        timestamp: new Date().toISOString(),
+      });
+      return true;
+    } catch {
+      existing.acquiredAt = Date.now() - (prevTtl - extensionMs);
+      existing.ttlMs = prevTtl;
+      this.circuitFailures++;
+      return false;
+    }
+  }
+
+  /**
+   * Auto-recovery: redistribute locks from a dead worker to healthy workers.
+   * Called when PEER_LOST is detected.
+   */
+  redistributeWorkload(deadWorkerId: string): void {
+    const orphanedLocks: LockEntry[] = [];
+    for (const [slotId, lock] of this.locks) {
+      if (lock.workerId === deadWorkerId) {
+        orphanedLocks.push(lock);
+        this.locks.delete(slotId);
+      }
+    }
+
+    if (orphanedLocks.length > 0) {
+      publishEvent('system', 'WORKLOAD_REDISTRIBUTED', {
+        deadWorker: deadWorkerId,
+        orphanedLockCount: orphanedLocks.length,
+        slotIds: orphanedLocks.map((l) => l.slotId),
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
+    this.notifyListeners();
   }
 
   // --- Private ---
@@ -222,7 +309,7 @@ export class DistributedLockRegistry {
       const age = now - peer.lastSeen;
       if (age > HEARTBEAT_GRACE_MS * 2) {
         this.peers.set(id, { ...peer, status: 'dead' });
-        this.releaseWorkerLocks(id);
+        this.redistributeWorkload(id);
         publishEvent('system', 'PEER_LOST', {
           workerId: id,
           age: Math.floor(age / 1000),

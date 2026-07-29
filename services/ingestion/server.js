@@ -5665,6 +5665,10 @@ app.post('/api/system/lock-metrics/update', (req, res) => {
   if (peerCount !== undefined) lockMetricsCache.peerCount = peerCount;
   if (peerStatuses !== undefined) lockMetricsCache.peerStatuses = peerStatuses;
   lockMetricsCache.lastUpdated = new Date().toISOString();
+
+  // Push lock metrics to SSE fanout in real-time
+  broadcast({ type: 'lock_metrics', data: lockMetricsCache });
+
   res.json({ ok: true, timestamp: lockMetricsCache.lastUpdated });
 });
 
