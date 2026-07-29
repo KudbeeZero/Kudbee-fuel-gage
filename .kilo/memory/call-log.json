@@ -359,7 +359,157 @@
       "type": "routed",
       "timestamp": "2026-07-29T04:42:29.938Z",
       "routed": true
+    },
+    {
+      "id": "call-1785305017584-ba18cd",
+      "from": "pipeline-guardian",
+      "to": "middleware-scanner",
+      "message": "Sub-swarm activation: middleware-scanner reports to pipeline-guardian",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "middleware-scanner"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:03:37.585Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017621-d2fa83",
+      "from": "knowledge-curator",
+      "to": "snippet-indexer",
+      "message": "Sub-swarm activation: snippet-indexer reports to knowledge-curator",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "snippet-indexer"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:03:37.621Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017657-77e543",
+      "from": "ci-watcher",
+      "to": "typecheck-runner",
+      "message": "Sub-swarm activation: typecheck-runner reports to ci-watcher",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "typecheck-runner"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T06:03:37.657Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017696-57add1",
+      "from": "sentinel",
+      "to": "anomaly-detector",
+      "message": "Sub-swarm activation: anomaly-detector reports to sentinel",
+      "path": [
+        "sentinel",
+        null,
+        "anomaly-detector"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.696Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017737-3d2398",
+      "from": "hermes",
+      "to": "task-poller",
+      "message": "Sub-swarm activation: task-poller reports to hermes",
+      "path": [
+        "hermes",
+        null,
+        "task-poller"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.737Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017774-e8356d",
+      "from": "monitor",
+      "to": "dyno-watcher",
+      "message": "Sub-swarm activation: dyno-watcher reports to monitor",
+      "path": [
+        "monitor",
+        null,
+        "dyno-watcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.774Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017809-add238",
+      "from": "gateway-router",
+      "to": "call-dispatcher",
+      "message": "Sub-swarm activation: call-dispatcher reports to gateway-router",
+      "path": [
+        "gateway-router",
+        null,
+        "call-dispatcher"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.809Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017844-40de02",
+      "from": "ledger-keeper",
+      "to": "quota-tracker",
+      "message": "Sub-swarm activation: quota-tracker reports to ledger-keeper",
+      "path": [
+        "ledger-keeper",
+        null,
+        "quota-tracker"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.844Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017879-ad35da",
+      "from": "web-doctor",
+      "to": "page-poller",
+      "message": "Sub-swarm activation: page-poller reports to web-doctor",
+      "path": [
+        "web-doctor",
+        null,
+        "page-poller"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.880Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785305017915-40b0a8",
+      "from": "token-forge",
+      "to": "thompson-sampler",
+      "message": "Sub-swarm activation: thompson-sampler reports to token-forge",
+      "path": [
+        "token-forge",
+        null,
+        "thompson-sampler"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T06:03:37.915Z",
+      "routed": true
     }
   ],
-  "totalCalls": 24
+  "totalCalls": 34
 }

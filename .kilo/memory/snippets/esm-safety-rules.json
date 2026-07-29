@@ -1,0 +1,11 @@
+{
+  "id": "esm-safety-rules",
+  "title": "ESM .mjs File Safety — Production-Grade Validation Rules",
+  "content": "## ESM SAFETY RULES (Research-backed)\n\n### 1. SYNTAX CHECK (run on every file before CI)\nnode --check file.mjs\n\n### 2. ANTI-PATTERNS (block on PR)\n- require() in .mjs → ERROR (use import/import()/createRequire)\n- __dirname in .mjs → ERROR (use import.meta.url + fileURLToPath)\n- Missing .mjs extension → ERROR (Node requires explicit extension)\n- Top-level await without --input-type=module → ERROR\n\n### 3. PRODUCTION CONVENTIONS\n- Named exports only (no default export mixing)\n- One purpose per .mjs file\n- JSDoc type annotations for VSCode Intellisense\n- import.meta.url for file-relative paths\n\n### 4. VALIDATION PIPELINE\n- node --check *.mjs (syntax)\n- grep -rn 'require(' *.mjs (anti-pattern scan)\n- grep -rn '__dirname' *.mjs (anti-pattern scan)\n- Added to CI as pre-merge check\n\n### 5. COMPANY STANDARDS\n- Google: ESM-first since Node 18, all new code uses .mjs\n- Vercel: .mjs for serverless function entry points\n- Stripe: .mjs for internal tooling, compiled to CJS for production\n- Linear: .mjs for build scripts, TypeScript for everything else",
+  "keywords": ["ESM", "mjs", "module", "import", "safety", "validation", "syntax", "anti-pattern"],
+  "category": "security",
+  "recallCount": 0,
+  "createdAt": "2026-07-29T06:04:00Z",
+  "size": 850,
+  "relations": ["pr-workflow-optimization", "verification-patterns"]
+}
