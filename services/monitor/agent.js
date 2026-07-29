@@ -1,9 +1,9 @@
-import { getRedisClient, getWorkerRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
+import { getRedisClient, getBlockingRedisClient, isRedisQuotaError, isUpstashMaxRequestsError, getRedisQuotaBackoffRemaining, applyRedisQuotaBackoff, resetRedisQuotaBackoff } from '../lib/redis.js';
 import crypto from 'node:crypto';
 import { registerShutdown } from '../lib/shutdown.js';
 
 const redis = getRedisClient({ label: 'monitor-agent' });
-const workerRedis = getWorkerRedisClient({ label: 'monitor-agent' });
+const blockingRedis = getBlockingRedisClient({ label: 'monitor-agent' });
 
 registerShutdown('monitor-agent', redis);
 
@@ -166,6 +166,11 @@ async function runLoop() {
   console.log('[Agent] Starting polling loop...');
   console.log('[Agent] Listening on kudbee:telemetry_feed');
 
+  const BASE_BACKOFF_MS = 2000;
+  const MAX_BACKOFF_MS = 60_000;
+  let errorBackoffMs = BASE_BACKOFF_MS;
+  let consecutiveErrors = 0;
+
   while (true) {
     const remainingBackoff = getRedisQuotaBackoffRemaining();
     if (remainingBackoff > 0) {
@@ -175,9 +180,11 @@ async function runLoop() {
     }
 
     try {
-      const result = await workerRedis.blpop('kudbee:telemetry_feed', 5);
+      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
       if (!result) continue;
       resetRedisQuotaBackoff();
+      errorBackoffMs = BASE_BACKOFF_MS;
+      consecutiveErrors = 0;
 
       const [, raw] = result;
       let telemetry;
@@ -193,13 +200,29 @@ async function runLoop() {
       const msg = err instanceof Error ? err.message : String(err);
       if (isUpstashMaxRequestsError(err)) {
         const backoff = applyRedisQuotaBackoff();
+        errorBackoffMs = Math.min(backoff, MAX_BACKOFF_MS);
         console.error(`[worker:monitor-agent] Upstash MAX_REQUESTS_LIMIT hit — entering backoff (${backoff}ms)`);
         await new Promise((resolve) => setTimeout(resolve, backoff));
         continue;
       }
-      const sleepMs = isRedisQuotaError(msg) ? 15_000 : 2000;
-      console.error(`[Agent] Polling loop error (sleeping ${sleepMs}ms):`, msg);
-      await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      consecutiveErrors += 1;
+      if (isRedisQuotaError(err)) {
+        const backoff = applyRedisQuotaBackoff();
+        errorBackoffMs = Math.min(backoff, MAX_BACKOFF_MS);
+        console.error(`[Agent] Redis quota error — backoff ${backoff}ms`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        continue;
+      }
+      const isTimeout = /timed\s*out|timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(msg);
+      if (isTimeout) {
+        errorBackoffMs = Math.min(errorBackoffMs * 2, MAX_BACKOFF_MS);
+        const jitter = Math.floor(Math.random() * 2000);
+        console.error(`[Agent] Polling loop error (sleeping ${errorBackoffMs + jitter}ms, consecutive=${consecutiveErrors}):`, msg);
+        await new Promise((resolve) => setTimeout(resolve, errorBackoffMs + jitter));
+      } else {
+        console.error(`[Agent] Polling loop error:`, msg);
+        await new Promise((resolve) => setTimeout(resolve, errorBackoffMs));
+      }
     }
   }
 }

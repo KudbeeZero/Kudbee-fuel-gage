@@ -242,11 +242,13 @@ async function pollTasks() {
         await new Promise((r) => setTimeout(r, backoff));
         continue;
       }
-      // Connection failures are benign outages — warn once and back off
+      // Connection failures are benign outages — back off with jitter
       // instead of spinning the loop or crashing the process.
-      if (err && /redis|connection|ECONN|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
+      if (err && /redis|connection|ECONN|timed\s*out|timeout|ETIMEDOUT|ENOTFOUND/i.test(String(err.message))) {
         noteRedisUnavailable();
-        const backoff = process.env.NODE_ENV === 'test' ? 0 : AUDIT_INTERVAL_MS;
+        const baseMs = 5_000;
+        const jitterMs = Math.floor(Math.random() * 3000);
+        const backoff = process.env.NODE_ENV === 'test' ? 0 : baseMs + jitterMs;
         await new Promise((r) => setTimeout(r, backoff));
       } else {
         hermes.log.error('polling loop error:', err.message);

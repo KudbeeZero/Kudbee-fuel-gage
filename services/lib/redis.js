@@ -170,7 +170,7 @@ export function getRedisClient(opts = {}) {
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? adaptiveRetryStrategy,
     connectTimeout: 10_000,
-    commandTimeout: 3_000,
+    commandTimeout: 10_000,
     keepAlive: 15_000,
   };
 
@@ -283,7 +283,7 @@ export function getSlowRedisClient(opts = {}) {
     enableOfflineQueue: opts.enableOfflineQueue ?? true,
     retryStrategy: opts.retryStrategy ?? ((times) => Math.min(times * 250, 5000)),
     connectTimeout: 10_000,
-    commandTimeout: 3_000,
+    commandTimeout: 0,
     keepAlive: 15_000,
   };
 
@@ -303,9 +303,15 @@ export function getSlowRedisClient(opts = {}) {
     console.log(`[slow-redis] Redis connected`);
   });
   client.on('ready', () => {
+    resetRedisQuotaBackoff();
     console.log(`[slow-redis] Redis ready`);
   });
   client.on('error', (err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isRedisQuotaError(msg)) {
+      const backoff = applyRedisQuotaBackoff();
+      console.warn(`[slow-redis] Quota error — backoff ${backoff}ms: ${msg}`);
+    }
     console.error(`[slow-redis] Error:`, err.message);
   });
   client.on('end', () => {
