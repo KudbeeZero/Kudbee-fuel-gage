@@ -3545,6 +3545,25 @@ app.get('/health', apiLimiter, async (_req, res) => {
         redisOk = false;
       }
     }
+    // REST fallback: if ioredis TCP failed, try Upstash REST API
+    if (!redisOk && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      try {
+        const restRes = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+          },
+          body: JSON.stringify(['PING']),
+        });
+        if (restRes.ok) {
+          const data = await restRes.json();
+          redisOk = data?.result === 'PONG';
+        }
+      } catch {
+        // REST fallback also failed — Redis truly down
+      }
+    }
     if (!redisOk) {
       console.warn(
         '[Health] REDIS_URL UNREACHABLE — Redis not configured or unavailable. ' +
@@ -5626,6 +5645,31 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
+});
+
+// --- P2P Lock Registry metrics (Phase 34 — cross-brain synchronization) ---
+let lockMetricsCache = {
+  totalLocks: 0, fastBrainLocks: 0, slowBrainLocks: 0,
+  peerCount: 0, peerStatuses: {}, lastUpdated: null,
+};
+
+app.get('/api/system/lock-metrics', (_req, res) => {
+  res.json({ ...lockMetricsCache, timestamp: new Date().toISOString() });
+});
+
+app.post('/api/system/lock-metrics/update', (req, res) => {
+  const { totalLocks, fastBrainLocks, slowBrainLocks, peerCount, peerStatuses } = req.body || {};
+  if (totalLocks !== undefined) lockMetricsCache.totalLocks = totalLocks;
+  if (fastBrainLocks !== undefined) lockMetricsCache.fastBrainLocks = fastBrainLocks;
+  if (slowBrainLocks !== undefined) lockMetricsCache.slowBrainLocks = slowBrainLocks;
+  if (peerCount !== undefined) lockMetricsCache.peerCount = peerCount;
+  if (peerStatuses !== undefined) lockMetricsCache.peerStatuses = peerStatuses;
+  lockMetricsCache.lastUpdated = new Date().toISOString();
+
+  // Push lock metrics to SSE fanout in real-time
+  broadcast({ type: 'lock_metrics', data: lockMetricsCache });
+
+  res.json({ ok: true, timestamp: lockMetricsCache.lastUpdated });
 });
 
 // --- Edge Sentinel: anomaly detection feed (consumed by EdgeSentinelPlugin) ---
