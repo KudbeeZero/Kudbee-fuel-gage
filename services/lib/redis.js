@@ -388,6 +388,7 @@ export function getBlockingRedisClient(opts = {}) {
 }
 
 let _workerClient = null;
+let _workerFallbackActive = false;
 
 export function getWorkerRedisClient(opts = {}) {
   if (!opts.forceNew && _workerClient) return _workerClient;
@@ -399,20 +400,25 @@ export function getWorkerRedisClient(opts = {}) {
     enableOfflineQueue: true,
     retryStrategy: (times) => Math.min(times * 500, 10000),
     connectTimeout: 10_000,
-    connectTimeout: 10_000,
     commandTimeout: 0,
     keepAlive: 15_000,
   };
 
-  if (isWorkerUpstash) {
+  const targetUrl = _workerFallbackActive || !process.env.REDIS_WORKER_URL ? REDIS_URL : REDIS_WORKER_URL;
+  const targetTls = _workerFallbackActive || !process.env.REDIS_WORKER_URL ? isUpstash : isWorkerUpstash;
+  const label = _workerFallbackActive ? 'worker-redis(fallback)' : 'worker-redis';
+
+  if (targetTls) {
     baseConfig.tls = {};
   }
 
   let client;
+  let fallbackTimer = null;
+
   try {
-    client = new Redis(REDIS_WORKER_URL, baseConfig);
+    client = new Redis(targetUrl, baseConfig);
   } catch {
-    console.warn('[worker-redis] Invalid REDIS_WORKER_URL, falling back to REDIS_URL');
+    console.warn(`[worker-redis] Invalid URL, falling back to REDIS_URL`);
     try {
       client = new Redis(REDIS_URL, baseConfig);
     } catch {
@@ -421,19 +427,45 @@ export function getWorkerRedisClient(opts = {}) {
     }
   }
 
-  client.on('connect', () => console.log('[worker-redis] Redis connected'));
-  client.on('ready', () => {
-    resetRedisQuotaBackoff();
-    console.log('[worker-redis] Redis ready');
+  let fallbackTriggered = false;
+
+  client.on('connect', () => {
+    if (!fallbackTriggered) {
+      clearTimeout(fallbackTimer);
+      console.log(`[${label}] Redis connected`);
+    }
   });
+
+  client.on('ready', () => {
+    if (!fallbackTriggered) {
+      clearTimeout(fallbackTimer);
+      resetRedisQuotaBackoff();
+      console.log(`[${label}] Redis ready`);
+    }
+  });
+
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
+    const isTimeoutErr = /timed\s*out|timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENOTFOUND/i.test(msg);
+
+    if (!fallbackTriggered && isTimeoutErr && !_workerFallbackActive) {
+      fallbackTriggered = true;
+      clearTimeout(fallbackTimer);
+      _workerFallbackActive = true;
+      _workerClient = null;
+      console.warn(`[worker-redis] Connection failure (${msg}) — permanently falling back to REDIS_URL`);
+      try { client.disconnect(); } catch {}
+
+      const fallback = getWorkerRedisClient({ forceNew: true });
+      _workerClient = fallback;
+      return;
+    }
+
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(
-        `[worker-redis] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`
+        `[${label}] Quota error — backing off ${backoff}ms (consecutive: ${quotaBackoffState.consecutiveErrors})`
       );
-
       const inMemoryQueue = getOrCreateInMemoryQueue();
       inMemoryQueue.enqueue({
         queue: 'kudbee:telemetry_buffer',
@@ -441,14 +473,15 @@ export function getWorkerRedisClient(opts = {}) {
         source: 'worker-redis',
       });
     }
-    console.error('[worker-redis] Error:', msg);
-  });
-  client.on('end', () => {
-    console.warn('[worker-redis] Redis connection closed');
-    _workerClient = null;
+    console.error(`[${label}] Error:`, msg);
   });
 
-  if (!opts.forceNew) _workerClient = client;
+  client.on('end', () => {
+    console.warn(`[${label}] Redis connection closed`);
+    if (!fallbackTriggered) _workerClient = null;
+  });
+
+  if (!opts.forceNew && !fallbackTriggered) _workerClient = client;
   return client;
 }
 
