@@ -5848,7 +5848,15 @@ if (fs.existsSync(distPath)) {
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+      }
+    },
+  }));
   app.get('*', fileLimiter, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
