@@ -212,9 +212,10 @@ async function pollTasks() {
 
     try {
       // BLPOP call site #4: worker.js:173
-      // Queue: kudbee:governance:tasks | Timeout: 0 (infinite blocking) | Client: getWorkerRedisClient
+      // Queue: kudbee:governance:tasks | Timeout: 5s (short poll to prevent
+      // Upstash free-tier TCP idle disconnect) | Client: getWorkerRedisClient
       // Procfile: hermes-worker — MUST survive Upstash quota errors.
-      const result = await workerRedis.blpop(TASKS_QUEUE, 0);
+      const result = await workerRedis.blpop(TASKS_QUEUE, 5);
       if (!result) continue;
       resetRedisQuotaBackoff();
       const [, raw] = result;
