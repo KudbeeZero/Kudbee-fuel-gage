@@ -63,6 +63,49 @@ let _monthlyRequestCount = 0;
 let _quotaWarned = false;
 let _restFallbackActive = false;
 
+// Retry throttle: caps connection retry log noise per client label.
+// After MAX_RETRIES_PER_WINDOW failures in WINDOW_MS, suppresses logs
+// and uses a long backoff instead of tight ioredis retry loops.
+const RETRY_THROTTLE_WINDOW_MS = 60_000;
+const MAX_RETRIES_PER_WINDOW = 5;
+const THROTTLE_SILENCE_MS = 120_000;
+
+const retryThrottle = new Map();
+
+function getRetryThrottle(label) {
+  let entry = retryThrottle.get(label);
+  if (!entry) {
+    entry = { count: 0, windowStart: Date.now(), silenced: false, silencedUntil: 0 };
+    retryThrottle.set(label, entry);
+  }
+  const now = Date.now();
+  if (now - entry.windowStart > RETRY_THROTTLE_WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+    if (entry.silenced && now > entry.silencedUntil) {
+      entry.silenced = false;
+    }
+  }
+  return entry;
+}
+
+export function shouldThrottle(label) {
+  const entry = getRetryThrottle(label);
+  if (entry.silenced) return true;
+  entry.count += 1;
+  if (entry.count >= MAX_RETRIES_PER_WINDOW) {
+    entry.silenced = true;
+    entry.silencedUntil = Date.now() + THROTTLE_SILENCE_MS;
+    console.warn(`[${label}] Retry throttle engaged — ${MAX_RETRIES_PER_WINDOW} failures in ${RETRY_THROTTLE_WINDOW_MS / 1000}s, silencing for ${THROTTLE_SILENCE_MS / 1000}s`);
+    return true;
+  }
+  return false;
+}
+
+export function resetRetryThrottle(label) {
+  retryThrottle.delete(label);
+}
+
 /**
  * Inspects a Redis error message and returns true if the error indicates
  * a quota exhaustion or rate-limit condition (Upstash MAX_REQUESTS_LIMIT,
@@ -199,6 +242,8 @@ export function getRedisClient(opts = {}) {
   client.on('error', (err) => {
     redisTelemetry.errorCount += 1;
     const msg = err instanceof Error ? err.message : String(err);
+    const labelStr = `[${label}]`;
+    if (shouldThrottle(label)) return;
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       circuitBreaker.open = true;
@@ -279,7 +324,8 @@ export function getSlowRedisClient(opts = {}) {
   // When the slow URL is the same as the primary, reuse the primary client
   // instead of creating a duplicate connection with different timeouts.
   if (REDIS_SLOW_URL === REDIS_URL) {
-    return getRedisClient({ label: 'slow-redis(primary)', ...opts });
+    opts.label = 'slow-redis(primary)';
+    return getRedisClient(opts);
   }
 
   const baseConfig = {
@@ -314,6 +360,7 @@ export function getSlowRedisClient(opts = {}) {
   });
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
+    if (shouldThrottle('slow-redis')) return;
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(`[slow-redis] Quota error — backoff ${backoff}ms: ${msg}`);
@@ -365,10 +412,12 @@ export function getBlockingRedisClient(opts = {}) {
   client.on('connect', () => console.log('[blocking-redis] Redis connected'));
   client.on('ready', () => {
     resetRedisQuotaBackoff();
+    resetRetryThrottle('blocking-redis');
     console.log('[blocking-redis] Redis ready');
   });
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
+    if (shouldThrottle('blocking-redis')) return;
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
       console.warn(
@@ -462,9 +511,11 @@ export function getWorkerRedisClient(opts = {}) {
       console.warn(`[worker-redis] Connection failure (${msg}) — permanently falling back to primary REDIS_URL`);
       try { client.disconnect(); } catch {}
 
-      _workerClient = getRedisClient({ label: 'worker-redis(fallback)' });
+      _workerClient = getBlockingRedisClient({ label: 'worker-redis(fallback)' });
       return;
     }
+
+    if (shouldThrottle(label)) return;
 
     if (isRedisQuotaError(msg)) {
       const backoff = applyRedisQuotaBackoff();
