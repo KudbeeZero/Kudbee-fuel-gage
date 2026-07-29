@@ -255,12 +255,12 @@ function getDeployVersion() {
   // Heroku sets SOURCE_VERSION during GitHub-connected deploys
   if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
   // Try reading from .git/HEAD (works in local dev, not on Heroku slug)
+  try { fs.readFileSync; } catch {} // ensure fs is loaded
   try {
-    const { readFileSync } = require('node:fs');
-    const head = readFileSync('.git/HEAD', 'utf8').trim();
+    const head = fs.readFileSync('.git/HEAD', 'utf8').trim();
     if (head.startsWith('ref:')) {
       const ref = head.split(' ')[1];
-      return readFileSync(`.git/${ref}`, 'utf8').trim().slice(0, 7);
+      return fs.readFileSync(`.git/${ref}`, 'utf8').trim().slice(0, 7);
     }
     return head.slice(0, 7);
   } catch {}
