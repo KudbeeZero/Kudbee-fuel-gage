@@ -36,5 +36,14 @@
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      var MODULES_SUPPORTED = 'noModule' in HTMLScriptElement.prototype;
+      setTimeout(function(){
+        var r = document.getElementById('root');
+        if (r && !r.children.length && !r.textContent.trim()) {
+          r.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center;padding:1rem"><h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.25rem;margin:1rem 0;max-width:18rem"><p style="color:#f87171;font-weight:600;margin-bottom:.25rem">'+(MODULES_SUPPORTED?'Scripts did not execute':'Modules not supported')+'</p><p style="color:#94a3b8;font-size:.7rem;margin-bottom:.75rem">'+(MODULES_SUPPORTED?'Your browser blocked module scripts. Check VPN, Data Saver, or ad blocker settings.':'Update Chrome or try a different browser.')+'</p><button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button></div><p style="font-size:.6rem;color:#475569">build: '+(Date.now())+'</p></div>';
+        }
+      },6000);
+    </script>
   </body>
 </html>
