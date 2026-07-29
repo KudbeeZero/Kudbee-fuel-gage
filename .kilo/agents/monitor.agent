@@ -1,0 +1,10 @@
+---
+id: monitor
+category: observability
+schedule: on-deploy
+status: active
+script: |
+  echo "[Monitor] Infrastructure watcher running on Heroku dyno"
+  echo "  Type: Basic | Scaling: 1"
+  echo "  Script: services/monitor/agent.js"
+  echo "  Role: Polling loop — agent state + rate monitoring"

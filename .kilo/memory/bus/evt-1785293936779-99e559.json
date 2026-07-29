@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785293936779-99e559",
+  "topic": "agent:registered",
+  "source": "session-bootstrap",
+  "data": {
+    "agentId": "hermes",
+    "discovered": true
+  },
+  "timestamp": "2026-07-29T02:58:56.779Z",
+  "sequence": 1785293936779
+}
