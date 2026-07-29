@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785301294633-42daf0",
+  "topic": "system:diagnostic",
+  "source": "cli",
+  "data": {
+    "message": "v293 deploying — 5 PR issues fixed, metadata added, agents diagnosing loading screen"
+  },
+  "timestamp": "2026-07-29T05:01:34.633Z",
+  "sequence": 37
+}

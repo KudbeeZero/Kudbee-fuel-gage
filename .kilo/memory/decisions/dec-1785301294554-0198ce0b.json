@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785301294554-0198ce0b",
+  "agentId": "web-doctor",
+  "decision": "error:diagnose: poll /health, check deploy version, verify Content-Type on JS assets, check if React mounts, analyze Heroku logs for errors",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T05:01:34.554Z",
+  "decoded": false
+}
