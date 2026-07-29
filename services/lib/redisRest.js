@@ -1,82 +1,75 @@
 /**
  * services/lib/redisRest.js
  * ---------------------------------------------------------------------------
- * REST-based Upstash Redis client — zero TCP dependency.
+ * REST-based Upstash Redis client — replacement for ioredis TCP connections.
  *
- * When the Upstash free tier TCP endpoint rejects blocking commands,
- * this module provides an HTTP-based fallback using the REST API.
- * Workers poll queues via LPOP/LPUSH instead of BRPOP/BLPOP.
+ * Upstash free-tier TCP kills long-lived blocking commands (BRPOP/BLPOP).
+ * This module provides a drop-in HTTP facade for the queue operations workers
+ * need. Uses native fetch — zero dependencies.
  *
- * Uses native fetch — no external dependencies.
+ * The exported `getRestRedisClient` returns an object with the same method
+ * signatures as ioredis for: brpop, lpush, rpush, llen, publish, ping.
+ * Workers use this instead of creating ioredis TCP connections.
  * ---------------------------------------------------------------------------
  */
 
 const REST_URL = process.env.UPSTASH_REDIS_REST_URL || '';
 const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 
-let _restInitialized = false;
 let _restFailed = false;
-
-export function isRestAvailable() {
-  if (_restFailed) return false;
-  if (!REST_URL || !REST_TOKEN) return false;
-  return true;
-}
+let _restConsecutiveErrors = 0;
 
 async function restCmd(command, ...args) {
-  if (!isRestAvailable()) throw new Error('REST Redis unavailable');
-  const parts = [command, ...args].filter(Boolean);
+  const parts = [command, ...args.filter(Boolean)];
   const url = `${REST_URL.replace(/\/$/, '')}/${parts.join('/')}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${REST_TOKEN}` },
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) {
     if (res.status === 429 || res.status === 503) {
+      _restConsecutiveErrors++;
       throw new Error('REST_RATE_LIMITED');
     }
     throw new Error(`REST_HTTP_${res.status}`);
   }
   const json = await res.json();
   if (json.error) throw new Error(json.error);
+  _restConsecutiveErrors = 0;
   return json.result;
 }
 
-// Queue operations (the critical ones workers need)
-
-export async function lpop(key, count = 1) {
+async function lpop(key, count = 1) {
   try {
-    const val = await restCmd('lpop', key);
-    return val === null || val === 'null' ? null : val;
+    return await restCmd('lpop', key);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('REST_RATE_LIMITED')) throw err;
-    console.warn(`[rest-redis] lpop ${key} failed: ${msg}`);
     return null;
   }
 }
 
-export async function lpush(key, value) {
+async function lpush(key, value) {
   try {
     return await restCmd('lpush', key, value);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[rest-redis] lpush ${key} failed: ${msg}`);
+    if (msg.includes('REST_RATE_LIMITED')) throw err;
     return null;
   }
 }
 
-export async function rpush(key, value) {
+async function rpush(key, value) {
   try {
     return await restCmd('rpush', key, value);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[rest-redis] rpush ${key} failed: ${msg}`);
+    if (msg.includes('REST_RATE_LIMITED')) throw err;
     return null;
   }
 }
 
-export async function llen(key) {
+async function llen(key) {
   try {
     return await restCmd('llen', key);
   } catch {
@@ -84,31 +77,72 @@ export async function llen(key) {
   }
 }
 
-export async function ping() {
+async function ping() {
   try {
-    const result = await restCmd('ping');
-    return result === 'PONG';
+    return (await restCmd('ping')) === 'PONG' ? 'PONG' : null;
   } catch {
     _restFailed = true;
-    return false;
+    return null;
   }
 }
+
+async function publish(channel, message) {
+  try {
+    return await restCmd('publish', channel, message);
+  } catch {
+    return 0;
+  }
+}
+
+function on() { /* noop for ioredis compat */ }
+function disconnect() { /* noop */ }
 
 /**
- * REST-based queue poller.
- * Replaces BRPOP/BLPOP with LPOP-based polling.
- * Returns [queueName, value] tuple or null (matching ioredis BRPOP return).
+ * Returns a REST-based Redis facade matching ioredis interface for
+ * queue operations. Drop-in replacement for getBlockingRedisClient
+ * and getWorkerRedisClient when TCP is unavailable.
  */
-export async function restQueuePop(key, timeoutMs = 5000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const val = await lpop(key);
-    if (val !== null && val !== undefined) {
-      return [key, val];
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  return null;
+export function getRestRedisClient(label = 'rest-redis') {
+  const isAvailable = REST_URL && REST_TOKEN && !_restFailed;
+  if (!isAvailable) return null;
+
+  return {
+    label,
+    // Blocking pop emulated via LPOP polling loop (mimics BRPOP return)
+    brpop: async (key, timeoutMs = 5) => {
+      const deadline = Date.now() + (timeoutMs * 1000);
+      while (Date.now() < deadline) {
+        const val = await lpop(key);
+        if (val !== null && val !== undefined && val !== 'null') {
+          return [key, val];
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      return null;
+    },
+    blpop: async (key, timeoutMs = 5) => {
+      const deadline = Date.now() + (timeoutMs * 1000);
+      while (Date.now() < deadline) {
+        const val = await lpop(key);
+        if (val !== null && val !== undefined && val !== 'null') {
+          return [key, val];
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      return null;
+    },
+    lpop,
+    lpush,
+    rpush,
+    llen,
+    publish,
+    ping,
+    on,
+    disconnect,
+    isRestClient: true,
+  };
 }
 
-export { restCmd, ping as restPing };
+export { lpop, rpush, llen, ping as restPing, restCmd };
+export { REST_URL, REST_TOKEN }; // for direct access by polling loops
+

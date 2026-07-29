@@ -18,6 +18,7 @@
 
 import Redis from 'ioredis';
 import { getOrCreateInMemoryQueue } from './inMemoryQueue.ts';
+import { getRestRedisClient } from './redisRest.js';
 
 function sanitizeRedisUrl(url, password) {
   if (!url) return url;
@@ -385,6 +386,14 @@ let _blockingClient = null;
 export function getBlockingRedisClient(opts = {}) {
   if (!opts.forceNew && _blockingClient) return _blockingClient;
 
+  // Prefer REST client on Upstash free tier (TCP kills blocking commands)
+  const restClient = getRestRedisClient('blocking-redis(rest)');
+  if (restClient) {
+    console.log('[blocking-redis] Using REST API (TCP unreliable on free tier)');
+    if (!opts.forceNew) _blockingClient = restClient;
+    return restClient;
+  }
+
   const baseConfig = {
     lazyConnect: false,
     maxRetriesPerRequest: null,
@@ -447,6 +456,14 @@ let _workerFallbackActive = false;
 
 export function getWorkerRedisClient(opts = {}) {
   if (!opts.forceNew && _workerClient) return _workerClient;
+
+  // Prefer REST client on Upstash free tier (TCP kills blocking commands)
+  const restClient = getRestRedisClient('worker-redis(rest)');
+  if (restClient) {
+    console.log('[worker-redis] Using REST API (TCP unreliable on free tier)');
+    if (!opts.forceNew) _workerClient = restClient;
+    return restClient;
+  }
 
   const baseConfig = {
     lazyConnect: false,
