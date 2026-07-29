@@ -36,6 +36,15 @@ interface CacheEntry {
 
 const inFlight = new Map<string, CacheEntry>();
 
+const ecpMetrics = { hits: 0, misses: 0, coalesced: 0, errors: 0 };
+
+function resetEcpMetrics(): void {
+  ecpMetrics.hits = 0;
+  ecpMetrics.misses = 0;
+  ecpMetrics.coalesced = 0;
+  ecpMetrics.errors = 0;
+}
+
 function hashPayload(body: unknown): string {
   if (!body || typeof body !== 'object') return '';
   try {
@@ -83,17 +92,23 @@ export function ecpSingleflight() {
         try {
           cached = await existing.promise;
         } catch {
+          ecpMetrics.errors++;
           inFlight.delete(key);
           return next();
         }
         if (cached) {
+          ecpMetrics.coalesced++;
           replayResponse(res, cached);
           return;
         }
+        ecpMetrics.errors++;
         return next();
       }
+      ecpMetrics.errors++;
       inFlight.delete(key);
     }
+
+    ecpMetrics.misses++;
 
     if (inFlight.size >= MAX_CACHE_ENTRIES) {
       return next();
@@ -168,5 +183,11 @@ export function getEcpStats() {
     guard: ecpGuard.stats(),
     inFlightSize: inFlight.size,
     maxEntries: MAX_CACHE_ENTRIES,
+    metrics: { ...ecpMetrics },
+    hitRatio: ecpMetrics.misses + ecpMetrics.coalesced > 0
+      ? (ecpMetrics.coalesced / (ecpMetrics.misses + ecpMetrics.coalesced) * 100).toFixed(1) + '%'
+      : '0.0%',
   };
 }
+
+export { ecpMetrics, resetEcpMetrics };

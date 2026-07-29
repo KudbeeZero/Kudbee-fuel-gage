@@ -74,16 +74,23 @@ export function registerKudbeeRecallAndMintTools(registry: KudbeeNativeRegistry)
   registry.register(
     Tool.define({
       name: 'kudbee_recall_memories',
-      description: 'Recall memories by keyword query with optional category filter',
+      description: 'Vector search query against 1536-dimensional pgvector store for semantically similar think tokens',
       handler: async (args) => {
         const query = typeof args.query === 'string' ? args.query : '';
         const limit = typeof args.limit === 'number' ? args.limit : 5;
-        const minSimilarity = typeof args.min_similarity === 'number' ? args.min_similarity : 0.1;
-        const categoryFilter: string[] = Array.isArray(args.category_filter) ? args.category_filter as string[] : [];
-        return {
-          success: true,
-          output: JSON.stringify({ query, limit, minSimilarity, categoryFilter, memories: [] })
-        };
+        try {
+          const { getRelevantThinkTokens } = await import('../../../../../services/memory/vectorStore.ts');
+          const result = await getRelevantThinkTokens(query, limit);
+          if (!result.ok) {
+            return { success: false, output: '', error: result.error };
+          }
+          return {
+            success: true,
+            output: JSON.stringify({ query, limit, memories: result.results })
+          };
+        } catch (err) {
+          return { success: false, output: '', error: err instanceof Error ? err.message : String(err) };
+        }
       }
     })
   );
