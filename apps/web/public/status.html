@@ -68,9 +68,9 @@ body{background:var(--bg);color:var(--text);font-family:ui-monospace,'Cascadia C
     </div>
   </div>
 
-  <h3 style="font-size:.7rem;color:var(--muted);margin-top:1.5rem;text-transform:uppercase;letter-spacing:.1em">Live Event Stream (SSE)</h3>
+  <h3 style="font-size:.7rem;color:var(--muted);margin-top:1.5rem;text-transform:uppercase;letter-spacing:.1em">Live Check Log</h3>
   <div class="event-stream" id="event-stream">
-    <div class="event-line"><span class="ts">--:--:--</span><span class="src">system</span><span class="kind">boot</span><span class="data">Connecting to event stream…</span></div>
+    <div class="event-line"><span class="ts">--:--:--</span><span class="src">system</span><span class="kind">boot</span><span class="data">Status page loaded — checks starting…</span></div>
   </div>
 
   <div class="countdown" id="countdown">Next refresh in <span>30</span>s</div>
@@ -115,6 +115,7 @@ async function checkAll() {
     }
   }
 
+  results.forEach(r => logCheck(r.label, r.ok ? 'ok' : 'fail', r.value));
   grid.innerHTML = results.map(r => {
     const cls = r.ok ? 'green' : (r.value === 'unreachable' ? 'red' : 'amber');
     return `<div class="status-row">
@@ -128,35 +129,16 @@ async function checkAll() {
   return results.every(r => r.ok);
 }
 
-// ── SSE Event Stream ─────────────────────────────────────────────────
-function connectSSE() {
+// ── Check Log ────────────────────────────────────────────────────────
+function logCheck(label, status, detail) {
   const stream = document.getElementById('event-stream');
-  const evtSource = new EventSource(API + '/sse/stream?channel=kudbee:events');
-  
-  evtSource.onmessage = (event) => {
-    let data;
-    try { data = JSON.parse(event.data); } catch { data = { raw: event.data }; }
-    const ts = new Date().toLocaleTimeString();
-    const src = data.source || data.event || 'event';
-    const kind = data.kind || data.type || '';
-    const info = typeof data.data === 'string' ? data.data.slice(0,60) : JSON.stringify(data).slice(0,80);
-    
-    const line = document.createElement('div');
-    line.className = 'event-line';
-    line.innerHTML = `<span class="ts">${ts}</span><span class="src">${src}</span><span class="kind">${kind}</span><span class="data">${info}</span>`;
-    stream.insertBefore(line, stream.firstChild);
-    
-    if (stream.children.length > 100) stream.removeChild(stream.lastChild);
-  };
-  
-  evtSource.onerror = () => {
-    const line = document.createElement('div');
-    line.className = 'event-line';
-    line.innerHTML = `<span class="ts">${new Date().toLocaleTimeString()}</span><span class="src">sse</span><span class="kind" style="color:var(--red)">disconnected</span><span class="data">Reconnecting in 3s…</span>`;
-    stream.insertBefore(line, stream.firstChild);
-    evtSource.close();
-    setTimeout(connectSSE, 3000);
-  };
+  const ts = new Date().toLocaleTimeString();
+  const color = status === 'ok' ? 'var(--green)' : 'var(--red)';
+  const line = document.createElement('div');
+  line.className = 'event-line';
+  line.innerHTML = `<span class="ts">${ts}</span><span class="src" style="color:${color}">${label}</span><span class="kind">${status}</span><span class="data">${detail || ''}</span>`;
+  stream.insertBefore(line, stream.firstChild);
+  if (stream.children.length > 50) stream.removeChild(stream.lastChild);
 }
 
 // ── Worktrees / Rigs ─────────────────────────────────────────────────
@@ -262,6 +244,7 @@ function tick() {
 }
 
 async function runAll() {
+  logCheck('refresh', 'ok', 'Running full health check…') {
   const allOk = await checkAll();
   await loadWorktrees();
   const criticalOk = results.filter(r => ['postgres','redis','worker','synapse','deploy'].includes(r.id)).every(r => r.ok);
@@ -271,7 +254,7 @@ async function runAll() {
 }
 
 runAll();
-connectSSE();
+logCheck('boot', 'ok', 'Status page ready');
 loadWorktrees();
 setInterval(tick, 1000);
 </script>
