@@ -31,3 +31,5 @@
 {"type":"token:forged","source":"think-forge","tokenId":"tk-sse-ticket-010","severity":"HIGH","timestamp":"2026-07-28T23:24:31Z"}
 {"type":"sor:promoted","source":"sor-router","count":10,"timestamp":"2026-07-28T23:25:12Z"}
 {"type":"token:forged","source":"training-session","tokenId":"tk-training-session-020","severity":"HIGH","timestamp":"2026-07-28T23:25:12Z"}
+{"type":"sor:promoted","source":"sor-router","tokenId":"tk-v269-diagnostic","severity":"HIGH","timestamp":"2026-07-29T00:03:25Z"}
+{"type":"sor:promoted","source":"sor-router","tokenId":"tk-agent-diagnostic","severity":"HIGH","timestamp":"2026-07-29T00:03:25Z"}
