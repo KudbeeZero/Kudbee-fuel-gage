@@ -31,6 +31,7 @@ export default defineConfig(() => {
     },
     build: {
       outDir: 'dist',
+      modulePreload: false,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
