@@ -1,0 +1,11 @@
+{
+  "id": "pr-workflow-optimization",
+  "title": "Optimized PR Workflow — 200-line target, conventional commits, stacking",
+  "content": "## PR WORKFLOW STANDARDS (Researched 2026-07-29)\n\n### SIZE LIMITS\n- Target: 100-200 lines per PR (Google standard)\n- Soft limit: 400 lines (review quality cliff at 200-400)\n- Hard limit: never exceed 600 lines\n- PRs under 200 lines: 75%+ defect detection\n- PRs over 1000 lines: 31% defect detection (rubber-stamping)\n- 50-line PRs merge within hours; 500+ line PRs take 9 days average\n\n### COMMIT CONVENTIONS\n- feat(scope): new feature\n- fix(scope): bug fix\n- refactor(scope): structural change, no behavior change\n- docs(scope): documentation\n- test(scope): tests\n- chore(scope): build, config, deps\n- Keep subject line under 50 chars, lowercase, no period\n\n### MERGE STRATEGY\n- Squash merge for most PRs (one commit = one PR)\n- Merge commit only when individual commits matter\n- Delete branch after merge\n\n### WORKFLOW\n- 1 PR = 1 purpose (one sentence to explain)\n- Separate refactoring from feature work\n- Use draft PRs for early direction, NOT for infinite building\n- Self-review (Files Changed tab) before marking ready\n- No force-push after review starts\n- Stacked PRs when dependencies exist (refactor → feature)\n- PR lifecycle target: under 24h from first commit to merge\n\n### ANTI-PATTERNS\n- Giant PRs (800+ lines) — reviewer surrenders\n- Mixed PRs (refactor + feature + typo) — signal lost in noise\n- Empty descriptions — no 'why', no 'verification'\n- Force-push mid-review — loses reviewer context\n- 'While I'm at it' changes — separate PRs for unrelated work",
+  "keywords": ["PR", "workflow", "commits", "size", "conventional", "squash", "stack", "review"],
+  "category": "process",
+  "recallCount": 0,
+  "createdAt": "2026-07-29T05:27:00Z",
+  "size": 1450,
+  "relations": ["frontend-patterns", "verification-patterns"]
+}

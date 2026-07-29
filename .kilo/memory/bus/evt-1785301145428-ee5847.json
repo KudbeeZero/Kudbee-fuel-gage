@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785301145428-ee5847",
+  "topic": "vector:attention-router",
+  "source": "cli",
+  "data": {
+    "message": "Vector 4 deployed: Q·K^T/√d_k softmax routing across 10 agents — 3/3 scenarios verified"
+  },
+  "timestamp": "2026-07-29T04:59:05.428Z",
+  "sequence": 37
+}
