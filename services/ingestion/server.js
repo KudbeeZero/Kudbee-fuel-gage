@@ -2832,7 +2832,7 @@ app.post('/api/system/lifecycle', async (req, res) => {
       setTimeout(async () => {
         try {
           const { startWorker } = await import('../agents/worker.ts');
-          void startWorker();
+          if (redis && process.env.NODE_ENV !== 'test') void startWorker();
         } catch {}
       }, 2000);
     }
@@ -5681,7 +5681,7 @@ if (process.env.CRUCIBLE_ENABLED === 'true') {
 // the next process restart.
 try {
   const { startWorker } = await import('../agents/worker.ts');
-  void startWorker();
+  if (redis && process.env.NODE_ENV !== 'test') void startWorker();
 } catch (err) {
   console.error(
     '[Worker] Failed to start background loop:',
