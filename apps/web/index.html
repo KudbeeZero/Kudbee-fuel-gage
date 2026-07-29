@@ -31,8 +31,22 @@
     <div id="root"></div>
     <div id="deploy-footer">Connecting to Heroku…</div>
     <script>
-      var _kud = { loaded: false, ver: null, health: null };
+      var _kud = { loaded: false, ver: null, health: null, retries: 0 };
+      var splashTimeout = setTimeout(function() {
+        if (!_kud.loaded) {
+          var s = document.getElementById('boot-splash');
+          if (s) { s.innerHTML = s.innerHTML.replace('Kudbee Fuel Gauge', 'Kudbee Fuel Gauge').replace(/<p>[^<]*<\/p>/, '<p style="color:#eab308;font-size:.75rem">Still loading…</p>').replace('spinner', 'spinner'); }
+        }
+      }, 8000);
+      var hardTimeout = setTimeout(function() {
+        if (!_kud.loaded) {
+          var s = document.getElementById('boot-splash');
+          if (s) { s.innerHTML = '<h1 style="color:#34d399;font-size:1.5rem">Kudbee Fuel Gauge</h1><p style="color:#f87171;font-size:.75rem">Loading timed out</p><button onclick="location.reload()" style="margin-top:1rem;background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry</button>'; }
+        }
+      }, 25000);
       window.addEventListener('kudbee:loaded', function(e) {
+        clearTimeout(splashTimeout);
+        clearTimeout(hardTimeout);
         _kud.loaded = true;
         _kud.ver = e.detail?.version;
         document.documentElement.classList.add('boot-done');

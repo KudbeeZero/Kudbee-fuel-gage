@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785320259165-1d7957fc",
+  "agentId": "web-doctor",
+  "decision": "run:Frontend health: diagnose dashboard boot, check Vite build, verify SSE stream, test all tab loads",
+  "context": {
+    "action": "execute",
+    "task": "Frontend health: diagnose dashboard boot, check Vite build, verify SSE stream, test all tab loads",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T10:17:39.165Z",
+  "decoded": false
+}

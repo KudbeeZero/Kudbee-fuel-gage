@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785320256323-1ce92a86",
+  "agentId": "sentinel",
+  "decision": "run:Edge defense: verify all auth gates, scan for intrusion patterns, test agent pass protocol, report perimeter status",
+  "context": {
+    "action": "execute",
+    "task": "Edge defense: verify all auth gates, scan for intrusion patterns, test agent pass protocol, report perimeter status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T10:17:36.323Z",
+  "decoded": false
+}

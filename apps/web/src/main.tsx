@@ -25,25 +25,44 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const APP_LOAD_TIMEOUT = 8000;
+const APP_LOAD_TIMEOUT = 15000;
+let retries = 0;
+const MAX_RETRIES = 3;
+
+function renderFallback(message: string) {
+  const el = document.getElementById('root');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:monospace;text-align:center;padding:1rem">
+      <h1 style="color:#34d399;font-size:1.5rem;margin-bottom:.5rem">Kudbee Fuel Gauge</h1>
+      <div style="background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:1.5rem;margin:1rem 0;max-width:24rem">
+        <p style="color:#${retries >= MAX_RETRIES ? 'f87171' : 'eab308'};font-weight:600;margin-bottom:.25rem">${retries >= MAX_RETRIES ? 'Startup Failed' : 'Retrying…'}</p>
+        <p style="color:#94a3b8;font-size:.7rem;margin-bottom:1rem;word-break:break-word">${message}</p>
+        <p style="color:#475569;font-size:.6rem;margin-bottom:1rem">Retry ${retries}/${MAX_RETRIES} | ${new Date().toLocaleTimeString()}</p>
+        <button onclick="location.reload()" style="background:#059669;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:.5rem;font-weight:600;cursor:pointer">Retry Now</button>
+      </div>
+      <div id="deploy-footer" style="position:fixed;bottom:0;left:0;right:0;background:#0f172aaa;border-top:1px solid #1e293b;padding:.25rem .75rem;font-size:.6rem;color:#475569"></div>
+    </div>`;
+  // Show deploy status even in fallback
+  fetch('/api/system/deploy-status').then(r => r.json()).then(d => {
+    const f = document.getElementById('deploy-footer');
+    if (f) { f.textContent = 'Deploy ' + (d.commit || '?').slice(0,7) + ' | ' + d.status + ' | ' + d.herokuRelease; f.className = d.status === 'ok' ? 'ok' : 'degraded'; }
+  }).catch(() => {});
+}
 
 const App = React.lazy(() => {
   const loadPromise = import('./App.tsx');
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('App load timed out')), APP_LOAD_TIMEOUT)
+    setTimeout(() => reject(new Error('App load timed out after ' + (APP_LOAD_TIMEOUT/1000) + 's')), APP_LOAD_TIMEOUT)
   );
   return Promise.race([loadPromise, timeoutPromise]).catch((err) => {
-    return { default: () => (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center">
-          <h1 className="text-lg font-semibold text-slate-200">Bootstrap Failed</h1>
-          <pre className="mt-4 max-h-48 overflow-auto rounded border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-rose-400 text-left">
-            {err instanceof Error ? err.message : String(err)}
-          </pre>
-          <button className="mt-4 rounded bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300" onClick={() => window.location.reload()}>Retry</button>
-        </div>
-      </div>
-    )};
+    retries++;
+    const msg = err instanceof Error ? err.message : String(err);
+    renderFallback(msg);
+    if (retries < MAX_RETRIES) {
+      setTimeout(() => location.reload(), 3000 * retries);
+    }
+    return { default: () => null as any };
   }) as Promise<{ default: React.ComponentType<object> }>;
 });
 

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785320255075-3db25d17",
+  "agentId": "pipeline-guardian",
+  "decision": "run:Synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
+  "context": {
+    "action": "execute",
+    "task": "Synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T10:17:35.075Z",
+  "decoded": false
+}

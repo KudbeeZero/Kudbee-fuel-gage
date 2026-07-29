@@ -70,6 +70,7 @@ import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
 import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
 import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
+import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -181,198 +182,12 @@ app.use((req, res, next) => {
 // --- Phase 66: Spheroid Audit Ledger — logs all mutating requests ---
 app.use(spheroidAudit());
 
-// --- Phase 65: Heroku-Favored Redis Rate Limiter (secondary DB) ---
-// FAIL-OPEN: If Redis is unreachable, the rate-limit check is skipped
-// and the request passes through. Root / and static assets are excluded.
-const RATE_LIMIT_EXCLUDED = new Set([
-  '/',
-  '/health',
-  '/api/health',
-  '/api/health-check',
-  '/api/system/health-deep',
-  '/api/system/diagnostics',
-  '/api/system/rate-limit-stats',
-  '/api/governance/health',
-  '/api/events',
-  '/api/os-stream',
-  '/api/governance/hermes-logs',
-  '/api/dashboard/summary',
-  '/api/telemetry/poll',
-  '/metrics',
-]);
+// Synapse Protection Layer — C4769 quantitative threat barrier
+// Must run BEFORE bearerAuth to intercept unauthorized agents
+// before they reach auth. Triggers precipitated withdrawal for
+// threat vectors exceeding protractor threshold.
+app.use(synapseProtectionMiddleware);
 
-function isStaticAssetPath(path) {
-  return (
-    path.startsWith('/assets') ||
-    path.startsWith('/fonts') ||
-    path.startsWith('/icons') ||
-    path === '/favicon.ico' ||
-    path === '/manifest.json' ||
-    path === '/robots.txt' ||
-    path === '/sitemap.xml' ||
-    path.endsWith('.js') ||
-    path.endsWith('.css') ||
-    path.endsWith('.svg') ||
-    path.endsWith('.png') ||
-    path.endsWith('.woff2') ||
-    path.endsWith('.ico') ||
-    path.endsWith('.json') ||
-    path.endsWith('.map') ||
-    path.endsWith('.html')
-  );
-}
-
-app.use(
-  middlewareGuard.wrap(async (req, res, next) => {
-    if (RATE_LIMIT_EXCLUDED.has(req.path) || isStaticAssetPath(req.path)) return next();
-    try {
-      const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-      const result = await rateLimitCheck(`ip:${ip}`, DEFAULT_RATE_LIMIT);
-      res.setHeader('X-RateLimit-Limit', String(result.limit));
-      res.setHeader('X-RateLimit-Remaining', String(Math.max(0, result.remaining)));
-      res.setHeader('X-RateLimit-Reset', String(Math.ceil(result.resetAtMs / 1000)));
-      if (!result.allowed) {
-        res.status(429).json({
-          error: 'too_many_requests',
-          message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAtMs - Date.now()) / 1000)}s.`,
-          retryAfter: Math.ceil((result.resetAtMs - Date.now()) / 1000),
-        });
-        return;
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[rate-limit] FAIL-OPEN: passing ${req.method} ${req.path} through (rate limit error: ${msg})`
-      );
-      next();
-    }
-    next();
-  })
-);
-
-// --- Reject requests that run longer than 15s to prevent Heroku H27 ---
-app.use((req, res, next) => {
-  const timer = setTimeout(() => {
-    if (!res.headersSent) {
-      console.warn(`[Timeout] ${req.method} ${req.path} exceeded 15s — returning 503`);
-      res.setHeader('Connection', 'close');
-      res.status(503).json({ error: 'Service Unavailable', reason: 'Request timeout' });
-    }
-  }, 15_000);
-  res.on('finish', () => clearTimeout(timer));
-  res.on('close', () => clearTimeout(timer));
-  next();
-});
-
-// Shared state holder — referenced lazily by the modular sub-routers so
-// they can be mounted near the top of the file without tripping
-// "Cannot access X before initialization" for state that is declared
-// further down (policyState, feedbackState, autoTuneState, evaluatePolicies,
-// alertsState, pool, redis, PROVIDER_CONFIG).
-const _state = {
-  policyState: null,
-  feedbackState: null,
-  autoTuneState: null,
-  evaluatePolicies: null,
-  alertsState: null,
-  bootTimeRef: { value: null },
-  redisRef: { value: null },
-  poolRef: { value: null },
-  providerConfigRef: { value: null },
-};
-globalThis.__KUBEE_STATE__ = _state;
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const BOOT_TIME = Date.now();
-_state.bootTimeRef.value = BOOT_TIME;
-const REGISTRY_FILE = path.resolve(__dirname, '../../config/agents.json');
-const HIGH_VALUE_MODELS = new Set([
-  'gpt-4o',
-  'claude-3-5-sonnet',
-  'gemini-1.5-pro',
-  'deepseek-r1',
-  'deepseek-v3',
-  'o1-preview',
-  'o1-mini',
-]);
-const MAX_REASONING_LENGTH = 500;
-
-function truncatePayload(value, limit) {
-  if (typeof value !== 'string') return value;
-  if (value.length <= limit) return value;
-  return value.slice(0, limit) + '…[truncated]';
-}
-
-function loadAgentRegistry() {
-  try {
-    const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    const map = new Map();
-    for (const agent of parsed.registry || []) {
-      if (agent.status === 'active') map.set(agent.agentId, agent.publicKey);
-    }
-    return map;
-  } catch (err) {
-    console.error('[Identity] Failed to load agent registry:', err.message);
-    return new Map();
-  }
-}
-
-const AGENT_REGISTRY = loadAgentRegistry();
-
-const ALLOWED_ORIGINS = (process.env.CORS_ALLOW_ORIGINS || '*')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes('*') || (origin && ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS.includes('*') ? '*' : origin);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Agent-Pass,Accept');
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  next();
-});
-
-function authenticateAgentPass(headerValue) {
-  if (!headerValue) return null;
-  const pass = deserializePass(headerValue);
-  if (!pass) return null;
-  const publicKey = AGENT_REGISTRY.get(pass.agentId);
-  if (!publicKey) return null;
-  return verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS) ? pass.agentId : null;
-}
-
-function verifyAgentSignature(agentId, payload, signature) {
-  const publicKey = AGENT_REGISTRY.get(agentId);
-  if (!publicKey) return null;
-  try {
-    return verifySignature(publicKey, payload, signature) ? agentId : null;
-  } catch {
-    return null;
-  }
-}
-
-function verifyAgentPassFromKey(agentPassEncoded, publicKey, expectedAgentId) {
-  const pass = deserializePass(agentPassEncoded);
-  if (!pass || pass.agentId !== expectedAgentId) return null;
-  if (Math.abs(Date.now() - pass.issuedAt) > AGENT_PASS_MAX_AGE_MS) return null;
-  try {
-    return verifySignature(publicKey, `${pass.agentId}:${pass.issuedAt}`, pass.signature)
-      ? pass.agentId
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-app.use(express.json({ limit: '10mb' }));
-
-// --- Phase 66: Bearer Auth — centralized authentication guard (optional for public routes) ---
 app.use(bearerAuth({ required: false }));
 
 // --- Phase 66: KiloBridge Token Budget Gate — enforces per-tenant token caps ---
@@ -5742,6 +5557,19 @@ if (redis) {
     console.warn('[Receptor] Bootstrap deferred (Redis unavailable):', err?.message);
   }
 }
+
+// --- Phase 40: Bootstrap Synapse Protection Layer (C4769) --------------------
+try {
+  bootstrapSynapseProtection();
+  console.log('[Synapse] Protection layer active — C4769 protractor guard online');
+} catch (err) {
+  console.warn('[Synapse] Bootstrap failed (degraded):', err?.message);
+}
+
+// Synapse status endpoint
+app.get('/api/system/synapse-status', (_req, res) => {
+  res.json(getSynapseStatus());
+});
 
 // Populate the shared state holder so the modular sub-routers can read the
 // policy / feedback / auto-tune / evaluate state lazily.

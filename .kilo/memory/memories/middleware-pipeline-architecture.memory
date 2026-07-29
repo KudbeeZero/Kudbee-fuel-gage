@@ -50,8 +50,13 @@
       "query": "full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
       "timestamp": "2026-07-29T08:45:49.215Z",
       "score": 23
+    },
+    {
+      "query": "synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
+      "timestamp": "2026-07-29T10:17:35.115Z",
+      "score": 21
     }
   ],
-  "lastRecall": "2026-07-29T08:45:49.215Z",
-  "recallCount": 10
+  "lastRecall": "2026-07-29T10:17:35.115Z",
+  "recallCount": 11
 }
