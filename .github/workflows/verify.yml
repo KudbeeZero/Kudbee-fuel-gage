@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main, develop]
   schedule:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  statuses: read
     - cron: '0 6 * * *'
 
 jobs:
