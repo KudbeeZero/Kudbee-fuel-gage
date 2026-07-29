@@ -276,6 +276,12 @@ export function getSlowRedisClient(opts = {}) {
   const REDIS_SLOW_URL = sanitizeRedisUrl(process.env.REDIS_SLOW_URL || REDIS_URL);
   const isSlowUpstash = REDIS_SLOW_URL.startsWith('rediss://') || hostnameIsUpstash(REDIS_SLOW_URL);
 
+  // When the slow URL is the same as the primary, reuse the primary client
+  // instead of creating a duplicate connection with different timeouts.
+  if (REDIS_SLOW_URL === REDIS_URL) {
+    return getRedisClient({ label: 'slow-redis(primary)', ...opts });
+  }
+
   const baseConfig = {
     lazyConnect: opts.lazyConnect ?? false,
     maxRetriesPerRequest: opts.maxRetriesPerRequest ?? 0,
@@ -453,11 +459,10 @@ export function getWorkerRedisClient(opts = {}) {
       clearTimeout(fallbackTimer);
       _workerFallbackActive = true;
       _workerClient = null;
-      console.warn(`[worker-redis] Connection failure (${msg}) — permanently falling back to REDIS_URL`);
+      console.warn(`[worker-redis] Connection failure (${msg}) — permanently falling back to primary REDIS_URL`);
       try { client.disconnect(); } catch {}
 
-      const fallback = getWorkerRedisClient({ forceNew: true });
-      _workerClient = fallback;
+      _workerClient = getRedisClient({ label: 'worker-redis(fallback)' });
       return;
     }
 
