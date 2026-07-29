@@ -5628,6 +5628,27 @@ app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
 });
 
+// --- P2P Lock Registry metrics (Phase 34 — cross-brain synchronization) ---
+let lockMetricsCache = {
+  totalLocks: 0, fastBrainLocks: 0, slowBrainLocks: 0,
+  peerCount: 0, peerStatuses: {}, lastUpdated: null,
+};
+
+app.get('/api/system/lock-metrics', (_req, res) => {
+  res.json({ ...lockMetricsCache, timestamp: new Date().toISOString() });
+});
+
+app.post('/api/system/lock-metrics/update', (req, res) => {
+  const { totalLocks, fastBrainLocks, slowBrainLocks, peerCount, peerStatuses } = req.body || {};
+  if (totalLocks !== undefined) lockMetricsCache.totalLocks = totalLocks;
+  if (fastBrainLocks !== undefined) lockMetricsCache.fastBrainLocks = fastBrainLocks;
+  if (slowBrainLocks !== undefined) lockMetricsCache.slowBrainLocks = slowBrainLocks;
+  if (peerCount !== undefined) lockMetricsCache.peerCount = peerCount;
+  if (peerStatuses !== undefined) lockMetricsCache.peerStatuses = peerStatuses;
+  lockMetricsCache.lastUpdated = new Date().toISOString();
+  res.json({ ok: true, timestamp: lockMetricsCache.lastUpdated });
+});
+
 // --- Edge Sentinel: anomaly detection feed (consumed by EdgeSentinelPlugin) ---
 let edgeAnomaliesCache = { totalAlerts: 0, unacknowledged: 0, rules: 4, lastDetected: null };
 let edgeThroughputCache = { ingressCount: 0, egressCount: 0, requestRate: 0, windowSec: 60 };
