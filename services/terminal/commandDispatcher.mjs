@@ -104,6 +104,7 @@ const SCHEDULER_JOBS = {
   'workspace-sync': { script: 'scripts/workspace-sync.mjs sync', schedule: 'every 10 minutes', description: 'Global tensor centroid alignment' },
   'canary-probe': { script: 'scripts/canary-probe.mjs', schedule: 'every 10 minutes', description: 'API/DB/frontend health probe' },
   'cleanup-traces': { script: 'scripts/cleanup-traces.mjs', schedule: 'daily @ 12:00 AM', description: 'Stale trace and audit purging' },
+  'gemini-trainer': { script: 'scripts/gemini-token-trainer.mjs', schedule: 'hourly', description: 'Gemini AI token analysis (≤50 free reqs/hr)' },
   'workspace-full': { script: 'scripts/workspace-sync.mjs full', schedule: 'hourly at :0', description: 'Full-state workspace rollup' },
 };
 
