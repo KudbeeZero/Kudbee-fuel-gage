@@ -315,6 +315,15 @@ app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
 });
 
+// Self-hosted CI status — receives results from ci-self-hosted.mjs
+let _ciResults = { lastRun: null, status: 'unknown', results: [] };
+app.get('/api/ci/status', (_req, res) => { res.json(_ciResults); });
+app.post('/api/ci/status', (req, res) => {
+  _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
+  console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
+  res.json({ ok: true });
+});
+
 
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
