@@ -1,0 +1,29 @@
+/**
+ * .kilo/agents/gastown.agent
+ * ---------------------------------------------------------------------------
+ * Gastown Manager — THINK-aware meta-agent coordinator.
+ *
+ * Category: orchestration
+ * Schedule: on-demand
+ * Status: active
+ *
+ * Script:
+ *   npx tsx services/agent/gastown-cli.ts "<prompt>"
+ *
+ * Capabilities:
+ * - Loads THINK tokens from pgvector for contextual awareness
+ * - Semantic recall of historical decisions and learnings
+ * - Coordinates 10-agent terminal swarm via phone tree
+ * - Delegates to SupervisorOrchestrator for DAG-based task execution
+ * - Feeds all outcomes into DTHINK pipeline
+ * - Mints new THINK tokens from successful/failed decisions
+ * - Maintains full audit trail with decision log
+ * - Self-healing: degrades gracefully when pgvector/Redis unavailable
+ */
+echo "[Gastown] THINK-aware meta-agent coordinator"
+echo "  Type: Orchestrator | Scaling: on-demand"
+echo "  Memory: Neon pgvector (1536-dim embeddings)"
+echo "  Pipeline: DTHINK → THINK Tokens → pgvector"
+echo "  Swarm: 10-agent terminal fleet via phone tree"
+echo "  Decisions: recorded to .kilo/memory/decisions/"
+echo "  Status: active — ready to coordinate"
