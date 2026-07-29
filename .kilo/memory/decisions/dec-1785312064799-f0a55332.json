@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785312064799-f0a55332",
+  "agentId": "monitor",
+  "decision": "error:autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+  "context": {
+    "error": "Command failed: ---\nid: monitor\ncategory: observability\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Monitor] Infrastructure watcher running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Script: services/monitor/agent.js\"\n  echo \"  Role: Polling loop — agent state + rate monitoring\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:01:04.799Z",
+  "decoded": false
+}

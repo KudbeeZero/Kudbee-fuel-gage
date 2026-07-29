@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785312064835-58bfc6a2",
+  "agentId": "pipeline-guardian",
+  "decision": "run:autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+  "context": {
+    "action": "execute",
+    "task": "autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:01:04.836Z",
+  "decoded": false
+}

@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785312066388-f0fae295",
+  "agentId": "ledger-keeper",
+  "decision": "error:autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\nschedule: hourly\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:01:06.388Z",
+  "decoded": false
+}

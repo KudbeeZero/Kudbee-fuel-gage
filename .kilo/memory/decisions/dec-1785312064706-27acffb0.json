@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785312064706-27acffb0",
+  "agentId": "sentinel",
+  "decision": "run:autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+  "context": {
+    "action": "execute",
+    "task": "autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T08:01:04.706Z",
+  "decoded": false
+}

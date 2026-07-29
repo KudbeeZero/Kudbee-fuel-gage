@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785312064755-364ecfcc",
+  "agentId": "hermes",
+  "decision": "error:autonomous production task: diagnose black screen, verify API health, check Redis connectivity, validate MIME types, scan anomalies, train tokens",
+  "context": {
+    "error": "Command failed: ---\nid: hermes\ncategory: governance\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Hermes] Governance auditor running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Brain: Slow Redis (REDIS_WORKER_URL)\"\n  echo \"  Task: Polling kudbee-governance-tasks via BRPOP\"\n  echo \"  DLQ: kudbee-governance-tasks-failed\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T08:01:04.755Z",
+  "decoded": false
+}
