@@ -1,0 +1,38 @@
+name: Deploy to Heroku
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.14.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: kudbee-fuel-gage
+          heroku_email: dominick.ziola@gmail.com
+          branch: main
+          usedocker: false
+          buildpack: heroku/nodejs
+          dontuseforce: true
+
+      - name: Run release verification
+        run: |
+          sleep 15
+          curl -fsS https://kudbee-fuel-gage-330ade653a62.herokuapp.com/health || true
