@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kudbee Terminal — Enterprise CLI</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --term-bg: #0d1117;
+  --green: #34d399;
+  --cyan: #06b6d4;
+  --amber: #eab308;
+  --red: #f87171;
+  --muted: #6b7280;
+  --white: #e5e7eb;
+  --prompt: #a78bfa;
+  --border: #21262d;
+  --selection: #1f6feb40;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.toolbar {
+  background: #161b22;
+  border-bottom: 1px solid var(--border);
+  padding: .5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: .7rem;
+  user-select: none;
+}
+
+.toolbar .logo {
+  color: var(--green);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: -.02em;
+}
+
+.toolbar .session {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-left: auto;
+}
+
+.session-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+
+.toolbar .status {
+  color: var(--muted);
+  font-size: .6rem;
+}
+
+.tabs {
+  display: flex;
+  background: #0d1117;
+  border-bottom: 1px solid var(--border);
+  font-size: .65rem;
+}
+
+.tab {
+  padding: .4rem 1rem;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+}
+
+.tab.active {
+  color: var(--white);
+  border-bottom-color: var(--green);
+  background: #1c2128;
+}
+
+.tab:hover {
+  color: var(--white);
+}
+
+.terminal-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--term-bg);
+  font-size: .75rem;
+  line-height: 1.6;
+  cursor: text;
+}
+
+.terminal-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.output-line {
+  padding: .1rem 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.output-line .timestamp {
+  color: var(--muted);
+  font-size: .6rem;
+  margin-right: .5rem;
+}
+
+.output-line .prompt {
+  color: var(--prompt);
+  font-weight: 600;
+}
+
+.output-line .command {
+  color: var(--white);
+}
+
+.output-line .json {
+  color: var(--cyan);
+}
+
+.output-line .error {
+  color: var(--red);
+}
+
+.output-line .success {
+  color: var(--green);
+}
+
+.output-line .warn {
+  color: var(--amber);
+}
+
+.output-line .info {
+  color: var(--muted);
+}
+
+.input-line {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem 0;
+}
+
+.input-line .prompt-symbol {
+  color: var(--green);
+  font-weight: 700;
+  user-select: none;
+}
+
+.input-line .path {
+  color: var(--cyan);
+  font-size: .7rem;
+  user-select: none;
+}
+
+#terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--white);
+  font-family: inherit;
+  font-size: .75rem;
+  outline: none;
+  caret-color: var(--green);
+}
+
+#terminal-input::selection {
+  background: var(--selection);
+}
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: #0d1117;
+  border-left: 1px solid var(--border);
+  padding: 1rem;
+  font-size: .65rem;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform .2s;
+  z-index: 100;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar h3 {
+  color: var(--green);
+  margin-bottom: .75rem;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.sidebar-section {
+  margin-bottom: 1rem;
+}
+
+.agent-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-item .name {
+  color: var(--white);
+  font-weight: 600;
+}
+
+.agent-item .status-text {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.bottom-bar {
+  background: #161b22;
+  border-top: 1px solid var(--border);
+  padding: .25rem 1rem;
+  font-size: .6rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.bottom-bar span {
+  color: var(--cyan);
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="logo">◈ Kudbee Terminal</span>
+  <span class="status">v2.0 — Enterprise CLI</span>
+  <div class="session">
+    <div class="session-dot" id="session-dot"></div>
+    <span id="session-name">kudbee@studio</span>
+    <span style="color:var(--muted);cursor:pointer;font-size:1.1rem" onclick="toggleSidebar()">☰</span>
+  </div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-tab="main" onclick="switchTab('main')">main</div>
+  <div class="tab" data-tab="agents" onclick="switchTab('agents')">agents</div>
+  <div class="tab" data-tab="events" onclick="switchTab('events')">events</div>
+  <div class="tab" data-tab="db" onclick="switchTab('db')">database</div>
+</div>
+
+<div class="terminal-container" id="terminal" onclick="focusInput()">
+  <div class="output-line">
+    <span class="timestamp">12:34:46</span>
+    <span class="info">╔══════════════════════════════════════════════════════════╗</span>
+  </div>
+  <div class="output-line">
+    <span class="timestamp">12:34:46</span>
+    <span class="info">║  Kudbee Enterprise Terminal v2.0                         ║</span>
+  </div>
+  <div class="output-line">
+    <span class="timestamp">12:34:46</span>
+    <span class="info">║  Type 'help' for commands. 'Ctrl+L' to clear.            ║</span>
+  </div>
+  <div class="output-line">
+    <span class="timestamp">12:34:46</span>
+    <span class="info">╚══════════════════════════════════════════════════════════╝</span>
+  </div>
+  <div id="output-area"></div>
+  <div class="input-line">
+    <span class="prompt-symbol">❯</span>
+    <span class="path">~/kudbee</span>
+    <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <span>Session: <span id="bottom-session">active</span></span>
+  <span>PG: <span id="bottom-pg">—</span></span>
+  <span>Redis: <span id="bottom-redis">—</span></span>
+  <span>Agents: <span id="bottom-agents">—</span></span>
+  <span>🔒 Synapse</span>
+</div>
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-section">
+    <h3>Agent Fleet</h3>
+    <div id="sidebar-agents">Loading…</div>
+  </div>
+  <div class="sidebar-section">
+    <h3>Recent Commands</h3>
+    <div id="sidebar-history"></div>
+  </div>
+  <div class="sidebar-section">
+    <h3>System</h3>
+    <div style="color:var(--muted)">
+      PG: <span id="sidebar-pg">—</span><br>
+      Redis: <span id="sidebar-redis">—</span><br>
+      Synapse: active<br>
+      Heroku: v327
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────
+let CMD_HISTORY = JSON.parse(localStorage.getItem('kudbee_cmd_history') || '[]');
+let CMD_INDEX = CMD_HISTORY.length;
+let ACTIVE_TAB = 'main';
+let EVENT_SOURCE = null;
+
+// ── API ──────────────────────────────────────────────────────────────
+const API = window.location.origin;
+
+async function apiReq(endpoint, opts = {}) {
+  const res = await fetch(API + endpoint, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── OUTPUT ───────────────────────────────────────────────────────────
+const output = document.getElementById('output-area');
+const input = document.getElementById('terminal-input');
+
+function print(text, cls = '') {
+  const ts = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'output-line ' + cls;
+  div.innerHTML = `<span class="timestamp">${ts}</span>${text}`;
+  output.appendChild(div);
+  scrollBottom();
+}
+
+function printJson(data) {
+  print(JSON.stringify(data, null, 2), 'json');
+}
+
+function scrollBottom() {
+  const term = document.getElementById('terminal');
+  term.scrollTop = term.scrollHeight;
+}
+
+function clearScreen() {
+  output.innerHTML = '';
+  print('<span class="info">Terminal cleared.</span>', 'info');
+}
+
+// ── COMMANDS ─────────────────────────────────────────────────────────
+const COMMANDS = {
+  help: {
+    desc: 'Show available commands',
+    fn: async () => {
+      print('<span class="info">Available commands:</span>', 'info');
+      for (const [name, cmd] of Object.entries(COMMANDS)) {
+        print(`  <span class="cyan">${name.padEnd(14)}</span> <span class="muted">${cmd.desc}</span>`);
+      }
+    }
+  },
+
+  ping: {
+    desc: 'Health check — all services',
+    fn: async () => {
+      const d = await apiReq('/health');
+      print(`<span class="success">PONG</span> — ${d.status} | PG:${d.dependencies.ingestion_db} | Redis:${d.dependencies.redis} | Uptime:${d.uptime_sec}s`);
+      document.getElementById('bottom-pg').textContent = d.dependencies.ingestion_db;
+      document.getElementById('bottom-redis').textContent = d.dependencies.redis;
+    }
+  },
+
+  agents: {
+    desc: 'Agent fleet status',
+    fn: async () => {
+      const d = await apiReq('/api/gastown/dashboard');
+      print(`<span class="success">${d.swarm.online}/${d.swarm.agents}</span> agents online. ${d.activeConvoys} active convoys.`);
+      document.getElementById('bottom-agents').textContent = d.swarm.online + '/' + d.swarm.agents;
+    }
+  },
+
+  synapse: {
+    desc: 'Synapse C4769 security status',
+    fn: async () => {
+      const d = await apiReq('/api/system/synapse-status');
+      print(`Protocol: <span class="cyan">${d.protocol}</span>`);
+      print(`Fingerprints: ${d.knownFingerprints} | Violations: ${d.violations?.length || 0} | Lockouts: ${d.lockedOut?.length || 0} | Threshold: ${d.threshold} rad`);
+    }
+  },
+
+  deploy: {
+    desc: 'Deployment status',
+    fn: async () => {
+      const d = await apiReq('/api/system/deploy-status');
+      print(`Status: <span class="${d.status === 'ok' ? 'success' : 'error'}">${d.status}</span> | Release: ${d.herokuRelease} | Uptime: ${d.uptimeSec}s`);
+    }
+  },
+
+  db: {
+    desc: 'Database metrics',
+    fn: async () => {
+      const d = await apiReq('/api/gastown/dashboard');
+      print(`Total: <span class="cyan">${d.database.totalSize}</span>`);
+      print(`Think Tokens: ${d.database.thinkTokens.count} rows / ${d.database.thinkTokens.size}`);
+      print(`Governance: ${d.database.governanceActions.count} rows / ${d.database.governanceActions.size}`);
+      print(`Telemetry: ${d.database.telemetryLogs.count} rows`);
+    }
+  },
+
+  gastown: {
+    desc: 'Gastown dashboard overview',
+    fn: async () => {
+      const d = await apiReq('/api/gastown/dashboard');
+      print(`<span class="success">${d.gastown}</span> — Built: ${d.built}`);
+      print(`Convoys: ${d.activeConvoys} | ByStatus: ${JSON.stringify(d.byStatus)}`);
+      print(`Synapse: ${d.synapse}`);
+      printJson(d.database);
+    }
+  },
+
+  ls: {
+    desc: 'List recent events or files',
+    fn: async () => {
+      print('<span class="info">Recent deploys:</span>', 'info');
+      print('  v327 — Grok client integration');
+      print('  v326 — Synapse C4769 bypass fix');
+      print('  v325 — Frontend status page');
+      print('  v321 — Redis REST worker migration');
+      print('<span class="info">PRs:</span>', 'info');
+      print('  #225 — MERGED: Redis Hardening');
+      print('  #226 — MERGED: Cmd+K Palette');
+      print('  #227 — DRAFT: Live Status Terminal');
+    }
+  },
+
+  clear: {
+    desc: 'Clear terminal',
+    fn: async () => clearScreen()
+  },
+
+  version: {
+    desc: 'Show version info',
+    fn: async () => {
+      print('<span class="success">Kudbee Terminal v2.0</span> — Enterprise CLI');
+      print('Backend: Kudbee Fuel Gauge v327');
+      print('Architecture: 11-agent swarm, REST Redis, Synapse C4769, THINK pgvector');
+    }
+  },
+
+  think: {
+    desc: 'THINK token status',
+    fn: async () => {
+      const d = await apiReq('/api/gastown/dashboard');
+      print(`<span class="cyan">DTHINK Pipeline</span> — ${d.database.thinkTokens.count} tokens (${d.database.thinkTokens.size})`);
+      print('Recent tokens: Redis REST pattern, Synapse C4769, Frontend recovery, Deploy workflow');
+    }
+  }
+};
+
+// ── INPUT HANDLER ────────────────────────────────────────────────────
+input.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    const cmd = input.value.trim();
+    if (!cmd) return;
+
+    CMD_HISTORY.push(cmd);
+    CMD_INDEX = CMD_HISTORY.length;
+    localStorage.setItem('kudbee_cmd_history', JSON.stringify(CMD_HISTORY.slice(-100)));
+    updateHistory();
+
+    print(`<span class="prompt">❯</span> <span class="command">${cmd}</span>`);
+    input.value = '';
+
+    const [action, ...args] = cmd.split(/\s+/);
+    const handler = COMMANDS[action];
+
+    if (handler) {
+      try {
+        await handler.fn(args);
+      } catch (err) {
+        print(`<span class="error">Error: ${err.message}</span>`, 'error');
+      }
+    } else {
+      print(`<span class="warn">Unknown command: ${action}</span> <span class="info">Type 'help' for available commands.</span>`, 'warn');
+    }
+
+    scrollBottom();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (CMD_INDEX > 0) {
+      CMD_INDEX--;
+      input.value = CMD_HISTORY[CMD_INDEX] || '';
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    CMD_INDEX = Math.min(CMD_HISTORY.length, CMD_INDEX + 1);
+    input.value = CMD_INDEX < CMD_HISTORY.length ? CMD_HISTORY[CMD_INDEX] : '';
+  } else if (e.key === 'l' && e.ctrlKey) {
+    e.preventDefault();
+    clearScreen();
+  }
+});
+
+// ── TAB COMPLETION ───────────────────────────────────────────────────
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const val = input.value.trim();
+    const matches = Object.keys(COMMANDS).filter(c => c.startsWith(val));
+    if (matches.length === 1) {
+      input.value = matches[0] + ' ';
+    } else if (matches.length > 1) {
+      print(`<span class="info">${matches.join('  ')}</span>`, 'info');
+    }
+  }
+});
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function updateHistory() {
+  const el = document.getElementById('sidebar-history');
+  el.innerHTML = CMD_HISTORY.slice(-10).reverse().map(c => 
+    `<div style="padding:.15rem 0;color:var(--muted)">❯ ${c.slice(0,40)}</div>`
+  ).join('') || '<div style="color:var(--muted)">No history</div>';
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ACTIVE_TAB = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  print(`<span class="info">Switched to ${tab} tab</span>`, 'info');
+  if (tab === 'events') connectSSE();
+}
+
+// ── SSE ──────────────────────────────────────────────────────────────
+function connectSSE() {
+  if (EVENT_SOURCE) EVENT_SOURCE.close();
+  print('<span class="info">Connecting to event stream…</span>', 'info');
+  
+  EVENT_SOURCE = new EventSource(API + '/api/sse/stream?channel=kudbee:events');
+  
+  EVENT_SOURCE.onmessage = (event) => {
+    if (ACTIVE_TAB !== 'events') return;
+    try {
+      const d = JSON.parse(event.data);
+      const src = d.source || 'event';
+      const kind = d.kind || '';
+      print(`[<span class="cyan">${src}</span>] <span class="success">${kind}</span> ${JSON.stringify(d.data || '').slice(0,60)}`);
+    } catch {
+      print(`<span class="info">${event.data.slice(0, 100)}</span>`, 'info');
+    }
+  };
+
+  EVENT_SOURCE.onerror = () => {
+    print('<span class="warn">Event stream disconnected — reconnecting…</span>', 'warn');
+    EVENT_SOURCE.close();
+    setTimeout(() => { if (ACTIVE_TAB === 'events') connectSSE(); }, 3000);
+  };
+}
+
+// ── BOTTOM BAR UPDATES ───────────────────────────────────────────────
+async function updateBottomBar() {
+  try {
+    const d = await apiReq('/health');
+    document.getElementById('bottom-pg').textContent = d.dependencies.ingestion_db;
+    document.getElementById('bottom-redis').textContent = d.dependencies.redis;
+    document.getElementById('bottom-pg').style.color = d.dependencies.ingestion_db === 'healthy' ? 'var(--green)' : 'var(--red)';
+    document.getElementById('bottom-redis').style.color = d.dependencies.redis === 'healthy' ? 'var(--green)' : 'var(--red)';
+  } catch {}
+
+  try {
+    const d = await apiReq('/api/gastown/dashboard');
+    document.getElementById('bottom-agents').textContent = d.swarm.online + '/' + d.swarm.agents;
+  } catch {}
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+function focusInput() {
+  input.focus();
+}
+
+updateHistory();
+updateBottomBar();
+setInterval(updateBottomBar, 30000);
+print('<span class="success">Terminal ready.</span> <span class="info">Type \'help\' to get started.</span>', 'info');
+</script>
+</body>
+</html>
