@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785297531394-5b9015",
+  "topic": "agent:registered",
+  "source": "session-bootstrap",
+  "data": {
+    "agentId": "ledger-keeper",
+    "discovered": true
+  },
+  "timestamp": "2026-07-29T03:58:51.394Z",
+  "sequence": 1785297531394
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785298908809-d5a26b79",
+  "agentId": "pipeline-guardian",
+  "decision": "run:full swarm audit: verify all 10 agents, check mesh calls, validate BUS events",
+  "context": {
+    "action": "execute",
+    "task": "full swarm audit: verify all 10 agents, check mesh calls, validate BUS events",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:21:48.809Z",
+  "decoded": false
+}

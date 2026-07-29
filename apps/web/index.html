@@ -13,6 +13,10 @@
       #boot-splash .spinner{width:2.5rem;height:2.5rem;border:3px solid #1e293b;border-top-color:#34d399;border-radius:50%;animation:kud-spin .8s linear infinite;margin-bottom:2rem}
       @keyframes kud-spin{to{transform:rotate(360deg)}}
       .boot-done #boot-splash{display:none}
+      #deploy-footer{position:fixed;bottom:0;left:0;right:0;z-index:99998;background:#0f172aaa;backdrop-filter:blur(8px);border-top:1px solid #1e293b;padding:.25rem .75rem;display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:.6rem;color:#475569}
+      #deploy-footer.ok{color:#34d399}
+      #deploy-footer.degraded{color:#eab308}
+      #deploy-footer.error{color:#f87171}
     </style>
   </head>
   <body>
@@ -22,6 +26,35 @@
       <div class="spinner"></div>
     </div>
     <div id="root"></div>
+    <div id="deploy-footer">Connecting to Heroku…</div>
+    <script>
+      var _kud = { loaded: false, ver: null, health: null };
+      window.addEventListener('kudbee:loaded', function(e) {
+        _kud.loaded = true;
+        _kud.ver = e.detail?.version;
+        document.documentElement.classList.add('boot-done');
+      });
+      function showDeployInfo() {
+        fetch('/api/system/deploy-status')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            _kud.health = d.status;
+            var f = document.getElementById('deploy-footer');
+            if (!f) return;
+            f.className = d.status === 'ok' ? 'ok' : 'degraded';
+            f.textContent = 'Deploy ' + d.commit + ' | ' + d.status + ' | ' + d.nodeEnv + ' | Heroku ' + d.herokuRelease;
+          })
+          .catch(function() {
+            var f = document.getElementById('deploy-footer');
+            if (f) { f.className = 'error'; f.textContent = 'Backend unreachable'; }
+          });
+      }
+      fetch('/api/system/deploy-status').then(function(r){return r.json()}).then(function(d){
+        _kud.health = d.status;
+        var f = document.getElementById('deploy-footer');
+        if (f) { f.className = d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + d.commit + ' | ' + d.status + ' | Heroku ' + d.herokuRelease; }
+      }).catch(function(){var f=document.getElementById('deploy-footer');if(f){f.className='error';f.textContent='Backend unreachable';}});
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

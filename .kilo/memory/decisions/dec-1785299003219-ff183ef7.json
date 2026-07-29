@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785299003219-ff183ef7",
+  "agentId": "ci-watcher",
+  "decision": "error:swarm test",
+  "context": {
+    "error": "Command failed: echo \"[ci-watcher] Running verification...\"\n\necho \"\"\necho \"  Gate 1: Typecheck\"\nnpm run typecheck 2>&1 | tail -1\n\necho \"\"\necho \"  Gate 2: Tests\"\ncd services/lib && npx -y bun test test/ 2>&1 | tail -3\ncd \"$REPO_ROOT\"\n\necho \"\"\necho \"  Gate 3: Build\"\nnpm run build --workspace=@kudbee/web 2>&1 | tail -1\n\necho \"\"\necho \"  Gate 4: E2E\"\nnode scripts/verify-e2e.mjs 2>&1 | tail -3\n\necho \"\"\necho \"  Gate 5: Knowledge\"\nnode scripts/snippet-agent.mjs health 2>&1 | tail -5\n\nnode scripts/agents.mjs decide ci-watcher \"verification_complete\" \"all 5 gates executed\"\nnode:internal/modules/cjs/loader:1433\n  throw err;\n  ^\n\nError: Cannot find module '/workspace/2e6dc741-8901-47c1-a77a-1e16175361df/sessions/agent_44f30011-688f-4952-b771-bedead694223/services/lib/scripts/agents.mjs'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)\n    at Function._load (node:internal/modules/cjs/loader:1216:25)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v22.22.3\n"
+  },
+  "timestamp": "2026-07-29T04:23:23.219Z",
+  "decoded": false
+}

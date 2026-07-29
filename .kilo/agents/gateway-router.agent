@@ -1,0 +1,11 @@
+---
+id: gateway-router
+category: orchestration
+schedule: on-demand
+status: active
+script: |
+  echo "[GatewayRouter] Inter-agent call dispatcher"
+  echo "  Role: Message routing, priority queuing, dead-letter handling"
+  echo "  Rate limit endpoint: /api/system/rate-limit-stats"
+  echo "  Phone tree: 6 agents, full mesh, 2-hop max"
+  echo "  Status: active — 7 routes registered"

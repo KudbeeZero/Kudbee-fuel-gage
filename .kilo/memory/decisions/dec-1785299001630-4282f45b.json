@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001630-4282f45b",
+  "agentId": "web-doctor",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.630Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785298908927-a4491334",
+  "agentId": "knowledge-curator",
+  "decision": "run:index all 10 agent profiles, 4 new memories, mesh topology, BUS events",
+  "context": {
+    "action": "execute",
+    "task": "index all 10 agent profiles, 4 new memories, mesh topology, BUS events",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:21:48.927Z",
+  "decoded": false
+}

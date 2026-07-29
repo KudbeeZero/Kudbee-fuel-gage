@@ -25,53 +25,20 @@
       "query": "scan middleware layers for frontend serving issues",
       "timestamp": "2026-07-28T19:56:50.556Z",
       "score": 9
-    },
-    {
-      "query": "scan sse ticket auth enforcement, kudbee:stream:audit subscriber, edge/anomalies routes",
-      "timestamp": "2026-07-28T21:04:02.643Z",
-      "score": 5
-    },
-    {
-      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
-      "timestamp": "2026-07-28T23:23:50.467Z",
-      "score": 5
-    },
-    {
-      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
-      "timestamp": "2026-07-28T23:24:41.348Z",
-      "score": 19
-    },
-    {
-      "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
-      "timestamp": "2026-07-29T00:02:50.576Z",
-      "score": 15
-    },
-    {
-      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
-      "timestamp": "2026-07-29T00:02:52.306Z",
-      "score": 5
-    },
-    {
-      "query": "security audit: scan all 11 middleware layers, check sse ticket auth, verify lock registry endpoints, scan for cors misconfig, check audit channel subscriber",
-      "timestamp": "2026-07-29T01:08:06.012Z",
-      "score": 13
-    },
-    {
-      "query": "v273 deployed: 5 system improvements — redis rest health fallback, module script detection, sse lock streaming, lease renewal 2-phase commit, agent auto-recovery with workload redistribution",
-      "timestamp": "2026-07-29T01:13:00.101Z",
-      "score": 13
-    },
-    {
-      "query": "root cause confirmed: crossorigin on module script blocked by cloudflare cors on chrome mobile. fix deployed — removed crossorigin, clean html.",
-      "timestamp": "2026-07-29T01:58:51.036Z",
-      "score": 5
-    },
-    {
-      "query": "verify mime type fix: js assets now serve as application/javascript. express.static setheaders added. 9-phase struggle log recorded.",
-      "timestamp": "2026-07-29T02:07:58.385Z",
-      "score": 6
+<<<<<<< ours
     }
   ],
-  "lastRecall": "2026-07-29T02:07:58.385Z",
-  "recallCount": 14
+  "lastRecall": "2026-07-28T19:56:50.556Z",
+  "recallCount": 5
+=======
+    },
+    {
+      "query": "scan adversarial simulator post route, verify sorrouter sink accumulator integration, check simulate-attack audit channel wiring",
+      "timestamp": "2026-07-28T21:18:16.639Z",
+      "score": 7
+    }
+  ],
+  "lastRecall": "2026-07-28T21:18:16.639Z",
+  "recallCount": 6
+>>>>>>> theirs
 }

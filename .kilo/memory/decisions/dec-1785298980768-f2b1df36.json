@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785298980768-f2b1df36",
+  "agentId": "ci-watcher",
+  "decision": "run:swarm test — verify operational status",
+  "context": {
+    "action": "execute",
+    "task": "swarm test — verify operational status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:00.768Z",
+  "decoded": false
+}

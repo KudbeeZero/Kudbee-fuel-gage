@@ -3,96 +3,41 @@
   "recalls": [],
   "decisions": [
     {
-      "id": "dec-1785175237883-28fe1663",
+      "id": "dec-1785293766788-a746df15",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-27T18:00:37.883Z"
+      "timestamp": "2026-07-29T02:56:06.788Z"
     },
     {
-      "id": "dec-1785185672442-d29cb9eb",
-      "decision": "handoff:no_action_required",
-      "timestamp": "2026-07-27T20:54:32.442Z"
-    },
-    {
-      "id": "dec-1785185672529-22ff1f02",
-      "decision": "handoff:resolved",
-      "timestamp": "2026-07-27T20:54:32.530Z"
-    },
-    {
-      "id": "dec-1785268085385-678a7c83",
-      "decision": "redis_persistence_layer_built",
-      "timestamp": "2026-07-28T19:48:05.385Z"
-    },
-    {
-      "id": "dec-1785268610619-f9218bf9",
+      "id": "dec-1785298908883-714bc41a",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T19:56:50.620Z"
+      "timestamp": "2026-07-29T04:21:48.883Z"
     },
     {
-      "id": "dec-1785268806932-6c0eaf00",
-      "decision": "frontend_crash_prevention_deployed",
-      "timestamp": "2026-07-28T20:00:06.932Z"
-    },
-    {
-      "id": "dec-1785271201885-bba7bf2b",
+      "id": "dec-1785298980487-013ebefe",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T20:40:01.885Z"
+      "timestamp": "2026-07-29T04:23:00.487Z"
     },
     {
-      "id": "dec-1785272642681-61616a7c",
+      "id": "dec-1785299001927-b32be55d",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T21:04:02.681Z"
+      "timestamp": "2026-07-29T04:23:21.927Z"
     },
     {
-      "id": "dec-1785272984373-32cd66a2",
+      "id": "dec-1785299320968-eddf32f2",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T21:09:44.373Z"
+      "timestamp": "2026-07-29T04:28:40.968Z"
     },
     {
-      "id": "dec-1785281030513-4afa9b44",
+      "id": "dec-1785299321648-20dda892",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T23:23:50.513Z"
+      "timestamp": "2026-07-29T04:28:41.648Z"
     },
     {
-      "id": "dec-1785281081394-82147d3f",
+      "id": "dec-1785299322327-72d37260",
       "decision": "layer_scan_complete",
-      "timestamp": "2026-07-28T23:24:41.395Z"
-    },
-    {
-      "id": "dec-1785283370612-f3321a53",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T00:02:50.612Z"
-    },
-    {
-      "id": "dec-1785287286051-e681c265",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T01:08:06.051Z"
-    },
-    {
-      "id": "dec-1785287580140-29872813",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T01:13:00.140Z"
-    },
-    {
-      "id": "dec-1785287884349-0c944037",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T01:18:04.349Z"
-    },
-    {
-      "id": "dec-1785288825187-b650ac48",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T01:33:45.188Z"
-    },
-    {
-      "id": "dec-1785290331077-83f33ecc",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T01:58:51.077Z"
-    },
-    {
-      "id": "dec-1785290878428-109bdf0b",
-      "decision": "layer_scan_complete",
-      "timestamp": "2026-07-29T02:07:58.428Z"
+      "timestamp": "2026-07-29T04:28:42.327Z"
     }
   ],
-  "lastAction": "2026-07-29T02:07:58.428Z",
-  "totalActions": 32
+  "lastAction": "2026-07-29T04:28:42.327Z",
+  "totalActions": 14
 }

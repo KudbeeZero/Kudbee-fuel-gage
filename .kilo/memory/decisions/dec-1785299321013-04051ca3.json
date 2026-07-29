@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299321013-04051ca3",
+  "agentId": "token-forge",
+  "decision": "run:absorb DELAY disruption param=5",
+  "context": {
+    "action": "execute",
+    "task": "absorb DELAY disruption param=5",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:41.013Z",
+  "decoded": false
+}

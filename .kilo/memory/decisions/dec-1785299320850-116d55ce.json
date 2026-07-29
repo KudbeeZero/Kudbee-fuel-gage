@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299320850-116d55ce",
+  "agentId": "sentinel",
+  "decision": "run:absorb DELAY disruption param=5",
+  "context": {
+    "action": "execute",
+    "task": "absorb DELAY disruption param=5",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:40.850Z",
+  "decoded": false
+}

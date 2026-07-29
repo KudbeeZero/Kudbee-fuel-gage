@@ -2,81 +2,41 @@
   "id": "database-schema",
   "recalls": [
     {
-      "query": "scan all middleware",
-      "timestamp": "2026-07-27T18:00:37.845Z",
-      "score": 3
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.749Z",
+      "score": 14
     },
     {
-      "query": "postgres database schema pgvector",
-      "timestamp": "2026-07-27T18:15:18.271Z",
-      "score": 6
-    },
-    {
-      "query": "inject-to-forge",
-      "timestamp": "2026-07-27T18:15:27.797Z",
-      "score": 0
-    },
-    {
-      "query": "black screen frontend crash web app deployment",
-      "timestamp": "2026-07-28T19:56:49.608Z",
+      "query": "full swarm audit: verify all 10 agents, check mesh calls, validate bus events",
+      "timestamp": "2026-07-29T04:21:48.849Z",
       "score": 4
     },
     {
-      "query": "scan middleware layers for frontend serving issues",
-      "timestamp": "2026-07-28T19:56:50.557Z",
+      "query": "swarm test — verify operational status",
+      "timestamp": "2026-07-29T04:23:00.451Z",
+      "score": 4
+    },
+    {
+      "query": "swarm test",
+      "timestamp": "2026-07-29T04:23:21.895Z",
+      "score": 3
+    },
+    {
+      "query": "absorb delay disruption param=5",
+      "timestamp": "2026-07-29T04:28:40.932Z",
+      "score": 4
+    },
+    {
+      "query": "absorb scaling disruption param=-1",
+      "timestamp": "2026-07-29T04:28:41.605Z",
       "score": 5
     },
     {
-      "query": "full 11-layer middleware scan, check all guards, verify frontend static serving, check release phase health",
-      "timestamp": "2026-07-28T20:40:01.826Z",
-      "score": 11
-    },
-    {
-      "query": "full pipeline audit: scan all middleware, check sse ticket auth, verify audit channel, check edge/anomalies routes, verify production health",
-      "timestamp": "2026-07-28T21:09:44.335Z",
-      "score": 10
-    },
-    {
-      "query": "verify v263 deployed, splash screen live, mobile loading states, ci e2e fix",
-      "timestamp": "2026-07-28T23:23:50.468Z",
+      "query": "absorb invisible_noise disruption param=1.52",
+      "timestamp": "2026-07-29T04:28:42.289Z",
       "score": 5
-    },
-    {
-      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
-      "timestamp": "2026-07-28T23:24:41.347Z",
-      "score": 26
-    },
-    {
-      "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
-      "timestamp": "2026-07-29T00:02:50.578Z",
-      "score": 6
-    },
-    {
-      "query": "chrome mobile black screen module script not loading cloudflare cache cors",
-      "timestamp": "2026-07-29T00:02:52.306Z",
-      "score": 6
-    },
-    {
-      "query": "v273 deployed: 5 system improvements — redis rest health fallback, module script detection, sse lock streaming, lease renewal 2-phase commit, agent auto-recovery with workload redistribution",
-      "timestamp": "2026-07-29T01:13:00.101Z",
-      "score": 12
-    },
-    {
-      "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
-      "timestamp": "2026-07-29T01:33:45.147Z",
-      "score": 11
-    },
-    {
-      "query": "root cause confirmed: crossorigin on module script blocked by cloudflare cors on chrome mobile. fix deployed — removed crossorigin, clean html.",
-      "timestamp": "2026-07-29T01:58:51.038Z",
-      "score": 5
-    },
-    {
-      "query": "verify mime type fix: js assets now serve as application/javascript. express.static setheaders added. 9-phase struggle log recorded.",
-      "timestamp": "2026-07-29T02:07:58.385Z",
-      "score": 7
     }
   ],
-  "lastRecall": "2026-07-29T02:07:58.385Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-29T04:28:42.289Z",
+  "recallCount": 7
 }

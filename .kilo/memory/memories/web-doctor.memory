@@ -1,0 +1,22 @@
+{
+  "id": "web-doctor",
+  "type": "agent-memory",
+  "profile": "Frontend health specialist that polls /health, /api/system/deploy-status, and /api/system/error-report endpoints every 30 seconds. Detects regressions, black screens, content-type mismatches, and deploy failures.",
+  "connections": [
+    "sentinel",
+    "monitor",
+    "ci-watcher"
+  ],
+  "endpoints": [
+    "/health",
+    "/api/system/deploy-status",
+    "/api/system/error-report"
+  ],
+  "redisKeys": [
+    "kudbee:frontend:health",
+    "kudbee:frontend:regressions"
+  ],
+  "createdAt": "2026-07-29T03:27:24.000Z",
+  "totalActions": 3,
+  "lastAction": "2026-07-29T04:28:42.676Z"
+}

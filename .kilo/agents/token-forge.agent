@@ -1,0 +1,12 @@
+---
+id: token-forge
+category: training
+schedule: on-demand
+status: active
+script: |
+  echo "[TokenForge] Think token lifecycle manager"
+  echo "  Tokens forged: 17 | VERIFIED: 16 | PRUNED: 1"
+  echo "  SOR routing: IQR Tukey fence evaluation"
+  echo "  Quality gate: KD >= 96 → PROMOTE, KD < 85 → PRUNE"
+  echo "  DTHINK pipeline: 9 entries, 2.3 KB"
+  echo "  Status: active — token ecosystem healthy"

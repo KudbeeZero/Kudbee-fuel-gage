@@ -65,8 +65,33 @@
       "query": "post-noauth-fix audit: verify all 11 middleware layers, check redis auth with embedded password, confirm hermes-worker and monitor-worker connections, verify frontend static serving",
       "timestamp": "2026-07-29T01:33:45.146Z",
       "score": 13
+    },
+    {
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.750Z",
+      "score": 13
+    },
+    {
+      "query": "swarm test",
+      "timestamp": "2026-07-29T04:23:21.894Z",
+      "score": 8
+    },
+    {
+      "query": "absorb delay disruption param=5",
+      "timestamp": "2026-07-29T04:28:40.931Z",
+      "score": 5
+    },
+    {
+      "query": "absorb scaling disruption param=-1",
+      "timestamp": "2026-07-29T04:28:41.607Z",
+      "score": 5
+    },
+    {
+      "query": "absorb invisible_noise disruption param=1.52",
+      "timestamp": "2026-07-29T04:28:42.290Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-29T01:33:45.146Z",
-  "recallCount": 13
+  "lastRecall": "2026-07-29T04:28:42.290Z",
+  "recallCount": 18
 }

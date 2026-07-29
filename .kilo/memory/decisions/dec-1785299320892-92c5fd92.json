@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299320892-92c5fd92",
+  "agentId": "pipeline-guardian",
+  "decision": "run:absorb DELAY disruption param=5",
+  "context": {
+    "action": "execute",
+    "task": "absorb DELAY disruption param=5",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:40.892Z",
+  "decoded": false
+}

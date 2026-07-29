@@ -1,335 +1,365 @@
 {
   "calls": [
     {
-      "id": "call-1785175875452-5fa5b7",
-      "from": "pipeline-guardian",
-      "to": "ci-watcher",
-      "message": "Middleware scan complete — ready for CI verification",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-27T18:11:15.452Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785175875496-d80f9a",
-      "from": "knowledge-curator",
+      "id": "call-1785293937291-d59aa3",
+      "from": "sentinel",
       "to": "pipeline-guardian",
-      "message": "New snippet available: redis-patterns",
+      "message": "Sentinel IQR agent online — scanning edge anomalies via kudbee:stream:audit",
       "path": [
-        "knowledge-curator",
+        "sentinel",
         "dispatcher",
         "pipeline-guardian"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-27T18:11:15.496Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785176127759-2f7299",
-      "from": "ci-watcher",
-      "to": "pipeline-guardian",
-      "message": "Typecheck passed — ready for integration",
-      "path": [
-        "ci-watcher",
-        "dispatcher",
-        "pipeline-guardian"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-27T18:15:27.759Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785185672489-c9ca99",
-      "from": "pipeline-guardian",
-      "to": "operator",
-      "message": "HANDOFF ASSESSMENT: No escalation required — system healthy, 46/46 tests, 0 critical alerts, all guards active",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "operator"
       ],
       "hops": 2,
       "type": "routed",
-      "timestamp": "2026-07-27T20:54:32.489Z",
+      "timestamp": "2026-07-29T02:58:57.291Z",
       "routed": true
     },
     {
-      "id": "call-1785269689255-8fd28a",
+      "id": "call-1785293937331-235261",
+      "from": "hermes",
+      "to": "knowledge-curator",
+      "message": "Hermes governance agent online — polling kudbee-governance-tasks via Slow Brain",
+      "path": [
+        "hermes",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T02:58:57.332Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785293937371-ce44c3",
+      "from": "monitor",
+      "to": "ci-watcher",
+      "message": "Monitor agent online — watching infrastructure health and agent states",
+      "path": [
+        "monitor",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T02:58:57.372Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297531885-5837cb",
+      "from": "pipeline-guardian",
+      "to": "sentinel",
+      "message": "Agent swarm mesh: pipeline-guardian reporting to sentinel — 10 agents online, all layers healthy",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "sentinel"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.885Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297531927-105ce3",
+      "from": "knowledge-curator",
+      "to": "hermes",
+      "message": "Agent swarm mesh: knowledge-curator reporting to hermes — 10 agents online, all layers healthy",
+      "path": [
+        "knowledge-curator",
+        "dispatcher",
+        "hermes"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.927Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297531976-afef1d",
       "from": "ci-watcher",
-      "to": "pipeline-guardian",
-      "message": "Deployment v254 verified — title fix live, 6 think tokens forged, boot-verify patched",
+      "to": "monitor",
+      "message": "Agent swarm mesh: ci-watcher reporting to monitor — 10 agents online, all layers healthy",
       "path": [
         "ci-watcher",
+        "dispatcher",
+        "monitor"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:51.976Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532029-fc7d40",
+      "from": "sentinel",
+      "to": "gateway-router",
+      "message": "Agent swarm mesh: sentinel reporting to gateway-router — 10 agents online, all layers healthy",
+      "path": [
+        "sentinel",
+        null,
+        "gateway-router"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.029Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532082-fd8ae4",
+      "from": "hermes",
+      "to": "ledger-keeper",
+      "message": "Agent swarm mesh: hermes reporting to ledger-keeper — 10 agents online, all layers healthy",
+      "path": [
+        "hermes",
+        null,
+        "ledger-keeper"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.082Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532127-f77f45",
+      "from": "monitor",
+      "to": "web-doctor",
+      "message": "Agent swarm mesh: monitor reporting to web-doctor — 10 agents online, all layers healthy",
+      "path": [
+        "monitor",
+        null,
+        "web-doctor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.127Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532170-cbda98",
+      "from": "gateway-router",
+      "to": "token-forge",
+      "message": "Agent swarm mesh: gateway-router reporting to token-forge — 10 agents online, all layers healthy",
+      "path": [
+        "gateway-router",
+        null,
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T03:58:52.170Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532215-3ffc6a",
+      "from": "ledger-keeper",
+      "to": "pipeline-guardian",
+      "message": "Agent swarm mesh: ledger-keeper reporting to pipeline-guardian — 10 agents online, all layers healthy",
+      "path": [
+        "ledger-keeper",
         "dispatcher",
         "pipeline-guardian"
       ],
       "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T20:14:49.255Z",
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.216Z",
       "routed": true
     },
     {
-      "id": "call-1785269689304-534c9d",
-      "from": "knowledge-curator",
-      "to": "ci-watcher",
-      "message": "Record deployment: 6 tokens, PR #211 merged, v254 live, black screen resolved",
+      "id": "call-1785297532262-620bbc",
+      "from": "web-doctor",
+      "to": "knowledge-curator",
+      "message": "Agent swarm mesh: web-doctor reporting to knowledge-curator — 10 agents online, all layers healthy",
       "path": [
-        "knowledge-curator",
+        "web-doctor",
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.262Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785297532307-f7fd53",
+      "from": "token-forge",
+      "to": "ci-watcher",
+      "message": "Agent swarm mesh: token-forge reporting to ci-watcher — 10 agents online, all layers healthy",
+      "path": [
+        "token-forge",
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T03:58:52.307Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013469-abb793",
+      "from": "pipeline-guardian",
+      "to": "ci-watcher",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "pipeline-guardian",
         "dispatcher",
         "ci-watcher"
       ],
       "hops": 2,
       "type": "sibling",
-      "timestamp": "2026-07-28T20:14:49.304Z",
+      "timestamp": "2026-07-29T04:23:33.469Z",
       "routed": true
     },
     {
-      "id": "call-1785271245902-1aa138",
+      "id": "call-1785299013508-aa6801",
       "from": "knowledge-curator",
-      "to": "pipeline-guardian",
-      "message": "Curation complete: 10 nodes, 13 relations indexed. Redis and crash-prevention snippets searchable.",
+      "to": "sentinel",
+      "message": "Swarm test: 10/10 agents operational",
       "path": [
         "knowledge-curator",
+        "dispatcher",
+        "sentinel"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.508Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013546-e616cf",
+      "from": "ci-watcher",
+      "to": "hermes",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "ci-watcher",
+        "dispatcher",
+        "hermes"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.546Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013585-ff5693",
+      "from": "sentinel",
+      "to": "monitor",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "sentinel",
+        null,
+        "monitor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.585Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013622-2865b1",
+      "from": "hermes",
+      "to": "gateway-router",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "hermes",
+        null,
+        "gateway-router"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.623Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013662-247088",
+      "from": "monitor",
+      "to": "ledger-keeper",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "monitor",
+        null,
+        "ledger-keeper"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.662Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013700-aa2384",
+      "from": "gateway-router",
+      "to": "web-doctor",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "gateway-router",
+        null,
+        "web-doctor"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.700Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013741-1d8ddd",
+      "from": "ledger-keeper",
+      "to": "token-forge",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "ledger-keeper",
+        null,
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "sibling",
+      "timestamp": "2026-07-29T04:23:33.742Z",
+      "routed": true
+    },
+    {
+      "id": "call-1785299013778-936023",
+      "from": "web-doctor",
+      "to": "pipeline-guardian",
+      "message": "Swarm test: 10/10 agents operational",
+      "path": [
+        "web-doctor",
         "dispatcher",
         "pipeline-guardian"
       ],
       "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T20:40:45.902Z",
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.778Z",
       "routed": true
     },
     {
-      "id": "call-1785271245967-940458",
-      "from": "pipeline-guardian",
-      "to": "ci-watcher",
-      "message": "All 11 middleware layers healthy. Static serving verified. Release phase boot-verify patched.",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T20:40:45.967Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785271246027-97bc1e",
-      "from": "ci-watcher",
+      "id": "call-1785299013823-9f1b3d",
+      "from": "token-forge",
       "to": "knowledge-curator",
-      "message": "Verification initiated. Typecheck/lint/e2e in progress for v255 deployment.",
+      "message": "Swarm test: 10/10 agents operational",
       "path": [
-        "ci-watcher",
+        "token-forge",
         "dispatcher",
         "knowledge-curator"
       ],
       "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T20:40:46.027Z",
+      "type": "routed",
+      "timestamp": "2026-07-29T04:23:33.823Z",
       "routed": true
     },
     {
-      "id": "call-1785272670728-bbf34a",
+      "id": "call-1785300149938-cb36dd",
       "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "SSE ticket auth enforced — 401 on invalid tickets. kudbee:stream:audit subscribed. All 11 middleware layers healthy.",
+      "to": "token-forge",
+      "message": "Innovation assessment: 5 unique properties verified, 10 invention vectors identified for PR #217",
       "path": [
         "pipeline-guardian",
         "dispatcher",
-        "knowledge-curator"
+        "token-forge"
       ],
       "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T21:04:30.729Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785272670775-e48389",
-      "from": "knowledge-curator",
-      "to": "ci-watcher",
-      "message": "Sentinel IQR pipeline indexed: 5 tokens forged, AnomalyFeedPlugin built, Redis publisher created.",
-      "path": [
-        "knowledge-curator",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T21:04:30.775Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785281030568-2f3f5b",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "v263 deployed: splash screen live, mobile loading fixed, PR #213 e2e CI patched",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T23:23:50.568Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785281112613-48341e",
-      "from": "pipeline-guardian",
-      "to": "ci-watcher",
-      "message": "Token training complete: 10 promoted to VERIFIED, 4 remain CHALLENGED (KD 88-93), 0 Byzantine",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-28T23:25:12.613Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785283393250-7cd213",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "Chrome mobile diagnostic: 4-line vanilla JS deployed, all 11 layers healthy, module serving confirmed",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T00:03:13.250Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785287581772-421d53",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "5 improvements deployed: REST health fallback, module detection, SSE streaming, lease renewal, auto-recovery",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:13:01.772Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785287581815-7d2eb7",
-      "from": "ci-watcher",
-      "to": "pipeline-guardian",
-      "message": "All 3 databases verified: Postgres healthy, Fast Brain 24 keys, Slow Brain 1 key, REDIS_URL set on Heroku v273",
-      "path": [
-        "ci-watcher",
-        "dispatcher",
-        "pipeline-guardian"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:13:01.816Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785287920955-480b48",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "Training complete: 25 tokens, 14 promoted, 10 challenged, 1 pruned. Post-merge audit clean.",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:18:40.955Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785287921006-857911",
-      "from": "knowledge-curator",
-      "to": "ci-watcher",
-      "message": "All 5 PRs merged, 44 E2E checks, 3 databases verified, Heroku deploying",
-      "path": [
-        "knowledge-curator",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:18:41.007Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785287921052-f71fa4",
-      "from": "ci-watcher",
-      "to": "pipeline-guardian",
-      "message": "CI verification complete: 5/5 gates, all agents healthy, token training done",
-      "path": [
-        "ci-watcher",
-        "dispatcher",
-        "pipeline-guardian"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:18:41.052Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785290347174-da56f6",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "Root cause: crossorigin on script type=module triggers Cloudflare CORS preflight → Chrome mobile blocks → black screen. 13 character fix deployed.",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T01:59:07.174Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785290899155-89ac2d",
-      "from": "pipeline-guardian",
-      "to": "knowledge-curator",
-      "message": "9-phase struggle log complete: root cause MIME type, energy functions updated, tokens promoted",
-      "path": [
-        "pipeline-guardian",
-        "dispatcher",
-        "knowledge-curator"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T02:08:19.155Z",
-      "routed": true
-    },
-    {
-      "id": "call-1785290899194-f5bddf",
-      "from": "knowledge-curator",
-      "to": "ci-watcher",
-      "message": "Struggle log indexed: 6-hour diagnosis, 2 root causes, v278 deployed. Model trained on Content-Type header checking.",
-      "path": [
-        "knowledge-curator",
-        "dispatcher",
-        "ci-watcher"
-      ],
-      "hops": 2,
-      "type": "sibling",
-      "timestamp": "2026-07-29T02:08:19.194Z",
+      "type": "routed",
+      "timestamp": "2026-07-29T04:42:29.938Z",
       "routed": true
     }
   ],
-  "totalCalls": 22
+  "totalCalls": 24
 }

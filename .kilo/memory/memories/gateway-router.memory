@@ -1,0 +1,27 @@
+{
+  "id": "gateway-router",
+  "type": "agent-memory",
+  "profile": "Call router/dispatcher that manages inter-agent phone calls, message queuing, and priority routing across the agent fleet. Orchestrates agent-to-agent communication via the phone tree and Redis pub/sub channels.",
+  "connections": [
+    "sentinel",
+    "hermes",
+    "monitor",
+    "pipeline-guardian",
+    "knowledge-curator",
+    "ci-watcher",
+    "ledger-keeper",
+    "web-doctor",
+    "token-forge"
+  ],
+  "endpoints": [
+    "/api/system/rate-limit-stats"
+  ],
+  "redisKeys": [
+    "kudbee:phone:tree",
+    "kudbee:queue:interagent",
+    "kudbee:events"
+  ],
+  "createdAt": "2026-07-29T03:27:24.000Z",
+  "totalActions": null,
+  "lastAction": "2026-07-29T04:23:21.537Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001585-fa78b940",
+  "agentId": "ledger-keeper",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.586Z",
+  "decoded": false
+}

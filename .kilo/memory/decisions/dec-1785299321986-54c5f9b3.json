@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299321986-54c5f9b3",
+  "agentId": "web-doctor",
+  "decision": "run:absorb SCALING disruption param=-1",
+  "context": {
+    "action": "execute",
+    "task": "absorb SCALING disruption param=-1",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:28:41.986Z",
+  "decoded": false
+}

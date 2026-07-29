@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785297532350-fa81a0",
+  "topic": "agent:swarm",
+  "source": "cli",
+  "data": {
+    "message": "10-agent swarm deployed: pipeline-guardian, knowledge-curator, ci-watcher, sentinel, hermes, monitor, gateway-router, ledger-keeper, web-doctor, token-forge"
+  },
+  "timestamp": "2026-07-29T03:58:52.350Z",
+  "sequence": 34
+}

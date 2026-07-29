@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001767-196b6f1f",
+  "agentId": "hermes",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.767Z",
+  "decoded": false
+}

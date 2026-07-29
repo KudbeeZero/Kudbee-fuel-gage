@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001972-a543e5a2",
+  "agentId": "knowledge-curator",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.972Z",
+  "decoded": false
+}

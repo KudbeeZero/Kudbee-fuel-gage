@@ -2,26 +2,41 @@
   "id": "verification-patterns",
   "recalls": [
     {
-      "query": "challenge all think tokens — test delayed attack vector, scaling attack, invisible noise boundaries. verify sor routing promotes healthy tokens and prunes byzantine ones.",
-      "timestamp": "2026-07-28T23:24:41.348Z",
+      "query": "production hardening: verify mime fix, deploy footer, comms tunnel, error boundaries, lock registry, token quality gate — all systems green",
+      "timestamp": "2026-07-29T02:56:06.745Z",
       "score": 18
     },
     {
-      "query": "diagnose chrome mobile black screen: scan static file serving layer, check mime types, verify cloudflare caching, check module script serving, verify cors headers for cross-origin-embedder-policy",
-      "timestamp": "2026-07-29T00:02:50.575Z",
-      "score": 16
-    },
-    {
-      "query": "full post-merge audit: pr #213 + #214 merged, verify all 11 middleware layers, check lock registry endpoints, verify rest health fallback, confirm e2e 44 checks syntax ok",
-      "timestamp": "2026-07-29T01:18:04.312Z",
-      "score": 12
-    },
-    {
-      "query": "verify mime type fix: js assets now serve as application/javascript. express.static setheaders added. 9-phase struggle log recorded.",
-      "timestamp": "2026-07-29T02:07:58.385Z",
+      "query": "full swarm audit: verify all 10 agents, check mesh calls, validate bus events",
+      "timestamp": "2026-07-29T04:21:48.848Z",
       "score": 7
+    },
+    {
+      "query": "swarm test — verify operational status",
+      "timestamp": "2026-07-29T04:23:00.450Z",
+      "score": 8
+    },
+    {
+      "query": "swarm test",
+      "timestamp": "2026-07-29T04:23:21.894Z",
+      "score": 6
+    },
+    {
+      "query": "absorb delay disruption param=5",
+      "timestamp": "2026-07-29T04:28:40.932Z",
+      "score": 4
+    },
+    {
+      "query": "absorb scaling disruption param=-1",
+      "timestamp": "2026-07-29T04:28:41.607Z",
+      "score": 5
+    },
+    {
+      "query": "absorb invisible_noise disruption param=1.52",
+      "timestamp": "2026-07-29T04:28:42.291Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-29T02:07:58.385Z",
-  "recallCount": 4
+  "lastRecall": "2026-07-29T04:28:42.291Z",
+  "recallCount": 7
 }

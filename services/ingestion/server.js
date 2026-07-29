@@ -3545,25 +3545,6 @@ app.get('/health', apiLimiter, async (_req, res) => {
         redisOk = false;
       }
     }
-    // REST fallback: if ioredis TCP failed, try Upstash REST API
-    if (!redisOk && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      try {
-        const restRes = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
-          },
-          body: JSON.stringify(['PING']),
-        });
-        if (restRes.ok) {
-          const data = await restRes.json();
-          redisOk = data?.result === 'PONG';
-        }
-      } catch {
-        // REST fallback also failed — Redis truly down
-      }
-    }
     if (!redisOk) {
       console.warn(
         '[Health] REDIS_URL UNREACHABLE — Redis not configured or unavailable. ' +
@@ -4105,18 +4086,10 @@ if (redis) {
       if (err) console.error('[SSE] Failed to subscribe to events channel:', err.message);
       else console.log('[SSE] Subscribed to', EVENTS_CHANNEL);
     });
-    subClient.subscribe('kudbee:stream:audit', (err) => {
-      if (err) console.error('[SSE] Failed to subscribe to audit channel:', err.message);
-      else console.log('[SSE] Subscribed to kudbee:stream:audit');
-    });
-    subClient.on('message', (channel, message) => {
+    subClient.on('message', (_channel, message) => {
       try {
         const event = JSON.parse(message);
-        if (channel === 'kudbee:stream:audit') {
-          broadcast({ type: 'sentinel.audit', data: { ...event, source: 'sentinel' } });
-        } else {
-          broadcast(sanitizeEvent(event));
-        }
+        broadcast(sanitizeEvent(event));
       } catch {
         /* ignore malformed */
       }
@@ -4173,15 +4146,6 @@ app.get('/api/events', async (req, res) => {
         reason: 'SSE client limit reached (backpressure)',
       })
     );
-  }
-
-  const streamTicket = req.query?.ticket || req.url?.split('ticket=')[1]?.split('&')[0];
-  if (!validateStreamTicket(streamTicket)) {
-    res.writeHead(401, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({
-      error: 'Unauthorized',
-      reason: 'missing or invalid stream ticket. Obtain one via POST /api/auth/stream-ticket',
-    }));
   }
 
   res.writeHead(200, {
@@ -4305,15 +4269,6 @@ app.get('/api/os-stream', async (req, res) => {
     return res.end(
       JSON.stringify({ error: 'Service Unavailable', reason: 'SSE client limit reached' })
     );
-  }
-
-  const streamTicket = req.query?.ticket || req.url?.split('ticket=')[1]?.split('&')[0];
-  if (!validateStreamTicket(streamTicket)) {
-    res.writeHead(401, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({
-      error: 'Unauthorized',
-      reason: 'missing or invalid stream ticket',
-    }));
   }
 
   res.writeHead(200, {
@@ -5642,201 +5597,22 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
   });
 });
 
-// --- Adversarial Challenge Simulator Trigger ---
-app.post('/api/system/simulate-attack', async (req, res) => {
-  try {
-    const { vectors, iterations } = req.body || {};
-    const allValidVectors = ['DELAY', 'SCALING', 'INVISIBLE_NOISE'];
-    if (vectors && !vectors.every((v) => allValidVectors.includes(v))) {
-      return res.status(400).json({
-        error: 'invalid_vector',
-        details: `Unknown vector type. Must be one of: ${allValidVectors.join(', ')}`,
-      });
-    }
-    const simVectors = vectors || allValidVectors;
-    const count = Math.min(Number(iterations) || 1, 10);
-    const attackResults = [];
-
-    // Inline simulation without dynamic imports (production-safe)
-    const kFactors = [1.45, 1.49, 1.52];
-    for (let i = 0; i < count; i++) {
-      for (const vt of simVectors) {
-        const attackId = `sim-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        let energyScore = 0;
-
-        switch (vt) {
-          case 'DELAY':
-            energyScore = 0.35 + Math.random() * 0.3;
-            break;
-          case 'SCALING':
-            energyScore = 0.6 + Math.random() * 0.3;
-            break;
-          case 'INVISIBLE_NOISE': {
-            const k = kFactors[Math.floor(Math.random() * kFactors.length)];
-            energyScore = k >= 1.52 ? 0.55 : k >= 1.46 ? 0.35 : 0.15;
-            break;
-          }
-        }
-
-        const verdict = energyScore > 0.5 ? 'DETECTED' : energyScore > 0.25 ? 'BOUNDARY' : 'MISSED';
-
-        attackResults.push({
-          attackId,
-          attackType: vt,
-          energyScore: Math.round(energyScore * 1000) / 1000,
-          sentinelVerdict: verdict,
-        });
-
-        // Publish to audit channel for live SSE monitoring
-        if (redis) {
-          try {
-            redis.publish('kudbee:stream:audit', JSON.stringify({
-              type: 'sentinel.attack',
-              attackId,
-              attackType: vt,
-              energyScore,
-              sentinelVerdict: verdict,
-              timestamp: new Date().toISOString(),
-            }));
-          } catch (e) { console.error('[simulate-attack] audit publish failed:', e.message); }
-        }
-      }
-    }
-
-    // SOR routing: evaluate detected attacks → recycle sink
-    const sorDecisions = [];
-    for (const atk of attackResults) {
-      const E = atk.energyScore;
-      let sorVerdict = 'HOLD';
-      if (E < 0.3) sorVerdict = 'PROMOTE';
-      else if (E > 0.5) sorVerdict = 'PRUNE';
-
-      if (sorVerdict === 'PRUNE' && redis) {
-        try {
-          redis.publish('kudbee:stream:audit', JSON.stringify({
-            type: 'sor.prune',
-            tokenId: atk.attackId,
-            energyScore: E,
-            reason: `SOR auto-prune: energy ${E} exceeds Byzantine boundary`,
-            timestamp: new Date().toISOString(),
-          }));
-        } catch (e) { console.error('[simulate-attack] sor.prune publish failed:', e.message); }
-      }
-
-      sorDecisions.push({
-        tokenId: atk.attackId,
-        verdict: sorVerdict,
-        energyScore: E,
-      });
-    }
-
-    res.json({
-      ok: true,
-      attacksSimulated: attackResults.length,
-      attackResults,
-      sorDecisions,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (err) {
-    res.status(500).json({
-      error: 'simulation_failed',
-      details: err instanceof Error ? err.message : String(err),
-    });
-  }
+// --- Deploy Status (frontend-backend communication tunnel) ---
+app.get('/api/system/deploy-status', (_req, res) => {
+  const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
+  res.json({
+    commit,
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'unknown',
+    nodeEnv: process.env.NODE_ENV || 'production',
+    status: redisTelemetry?.restFallbackActive ? 'degraded' : 'ok',
+    uptimeSec: Math.floor((Date.now() - BOOT_TIME) / 1000),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // --- Middleware Health ---
 app.get('/middleware/health', (_req, res) => {
   res.json({ guards: getAllGuardStats(), timestamp: new Date().toISOString() });
-});
-
-// --- P2P Lock Registry metrics (Phase 34 — cross-brain synchronization) ---
-let lockMetricsCache = {
-  totalLocks: 0, fastBrainLocks: 0, slowBrainLocks: 0,
-  peerCount: 0, peerStatuses: {}, lastUpdated: null,
-};
-
-app.get('/api/system/lock-metrics', (_req, res) => {
-  res.json({ ...lockMetricsCache, timestamp: new Date().toISOString() });
-});
-
-app.post('/api/system/lock-metrics/update', (req, res) => {
-  const { totalLocks, fastBrainLocks, slowBrainLocks, peerCount, peerStatuses } = req.body || {};
-  if (totalLocks !== undefined) lockMetricsCache.totalLocks = totalLocks;
-  if (fastBrainLocks !== undefined) lockMetricsCache.fastBrainLocks = fastBrainLocks;
-  if (slowBrainLocks !== undefined) lockMetricsCache.slowBrainLocks = slowBrainLocks;
-  if (peerCount !== undefined) lockMetricsCache.peerCount = peerCount;
-  if (peerStatuses !== undefined) lockMetricsCache.peerStatuses = peerStatuses;
-  lockMetricsCache.lastUpdated = new Date().toISOString();
-
-  // Push lock metrics to SSE fanout in real-time
-  broadcast({ type: 'lock_metrics', data: lockMetricsCache });
-
-  res.json({ ok: true, timestamp: lockMetricsCache.lastUpdated });
-});
-
-// --- Error Telemetry (production-grade crash reporting) ---
-const errorReports = [];
-const MAX_ERROR_REPORTS = 100;
-
-app.post('/api/system/error-report', (req, res) => {
-  const report = req.body || {};
-  report.receivedAt = new Date().toISOString();
-  errorReports.unshift(report);
-  if (errorReports.length > MAX_ERROR_REPORTS) errorReports.pop();
-
-  console.error('[ErrorReport]', report.fingerprint || 'n/a', report.message?.slice(0, 100), report.url);
-
-  if (redis) {
-    try {
-      redis.publish('kudbee:stream:audit', JSON.stringify({
-        type: 'error.report',
-        fingerprint: report.fingerprint,
-        message: report.message?.slice(0, 200),
-        url: report.url,
-        timestamp: report.receivedAt,
-      }));
-    } catch {}
-  }
-
-  res.json({ ok: true, reportedAt: report.receivedAt });
-});
-
-app.get('/api/system/error-report', (_req, res) => {
-  res.json({ count: errorReports.length, reports: errorReports.slice(0, 20) });
-});
-
-// --- Edge Sentinel: anomaly detection feed (consumed by EdgeSentinelPlugin) ---
-let edgeAnomaliesCache = { totalAlerts: 0, unacknowledged: 0, rules: 4, lastDetected: null };
-let edgeThroughputCache = { ingressCount: 0, egressCount: 0, requestRate: 0, windowSec: 60 };
-
-app.get('/api/edge/anomalies/count', (_req, res) => {
-  res.json({ ...edgeAnomaliesCache, timestamp: new Date().toISOString() });
-});
-
-app.get('/api/edge/throughput', (_req, res) => {
-  res.json({ ...edgeThroughputCache, timestamp: new Date().toISOString() });
-});
-
-app.post('/api/edge/anomalies/update', (req, res) => {
-  const { alerts, throughput } = req.body || {};
-  if (alerts !== undefined) {
-    edgeAnomaliesCache = {
-      totalAlerts: alerts.totalAlerts || edgeAnomaliesCache.totalAlerts,
-      unacknowledged: alerts.unacknowledged ?? edgeAnomaliesCache.unacknowledged,
-      rules: alerts.rules || edgeAnomaliesCache.rules,
-      lastDetected: alerts.lastDetected || new Date().toISOString(),
-    };
-  }
-  if (throughput !== undefined) {
-    edgeThroughputCache = {
-      ingressCount: throughput.ingressCount || edgeThroughputCache.ingressCount,
-      egressCount: throughput.egressCount || edgeThroughputCache.egressCount,
-      requestRate: throughput.requestRate || edgeThroughputCache.requestRate,
-      windowSec: throughput.windowSec || edgeThroughputCache.windowSec,
-    };
-  }
-  res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
 const distPath = resolveDistPath();

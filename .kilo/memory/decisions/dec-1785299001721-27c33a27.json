@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785299001721-27c33a27",
+  "agentId": "sentinel",
+  "decision": "run:swarm test",
+  "context": {
+    "action": "execute",
+    "task": "swarm test",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T04:23:21.721Z",
+  "decoded": false
+}

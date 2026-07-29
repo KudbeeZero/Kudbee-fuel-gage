@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785293936779-735478",
+  "topic": "agent:registered",
+  "source": "session-bootstrap",
+  "data": {
+    "agentId": "monitor",
+    "discovered": true
+  },
+  "timestamp": "2026-07-29T02:58:56.779Z",
+  "sequence": 1785293936779
+}
