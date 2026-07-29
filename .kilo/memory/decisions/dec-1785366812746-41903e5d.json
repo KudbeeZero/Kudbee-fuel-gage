@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785366812746-41903e5d",
+  "agentId": "web-doctor",
+  "decision": "error:DIRECTIVE ACKNOWLEDGED: Kudbee operates at elite capacity independent of external infrastructure. GitHub Actions blocked by billing — NOT application failure. Independent CI is verification authority. 93 unused imports cleaned, 24 files, gate now PASS. kudbee_recall_memories wired to live pgvector. ECP metrics tracking active. PR #228 single lane preserved. Production FROZEN at f423c14/v342. C4769 IMMUTABLE at 0.4769 rad. Redis REST facade preserved. Methodology: search before build, verify independently, classify failures, preserve PR boundaries, evidence provenance, production frozen, report truth, never leave work behind. Acknowledge and confirm readiness.",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-29T23:13:32.746Z",
+  "decoded": false
+}

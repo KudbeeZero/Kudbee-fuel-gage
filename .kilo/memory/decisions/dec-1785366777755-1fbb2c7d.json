@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785366777755-1fbb2c7d",
+  "agentId": "gastown",
+  "decision": "run:PRE-DEPLOYMENT WAVE 1: Execute full verification sweep — MJS syntax 20/20 PASS confirmed, 93 unused lucide-react imports removed across 24 files, kudbee_recall_memories wired to pgvector getRelevantThinkTokens, ECP metrics tracking added. PR #228 single lane preserved. Production frozen at f423c14. Independent CI authoritative. GitHub Actions blocked (billing) — not application failure. Run ci-watcher verify → pipeline-guardian audit → web-doctor frontend check → knowledge-curator snapshot. All agents report readiness. NO production mutation.",
+  "context": {
+    "action": "execute",
+    "task": "PRE-DEPLOYMENT WAVE 1: Execute full verification sweep — MJS syntax 20/20 PASS confirmed, 93 unused lucide-react imports removed across 24 files, kudbee_recall_memories wired to pgvector getRelevantThinkTokens, ECP metrics tracking added. PR #228 single lane preserved. Production frozen at f423c14. Independent CI authoritative. GitHub Actions blocked (billing) — not application failure. Run ci-watcher verify → pipeline-guardian audit → web-doctor frontend check → knowledge-curator snapshot. All agents report readiness. NO production mutation.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T23:12:57.756Z",
+  "decoded": false
+}

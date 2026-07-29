@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785366799147-0985f33e",
+  "agentId": "knowledge-curator",
+  "decision": "run:SNAPSHOT: Record current state — 28 files changed (24 frontend icon cleanup, 2 vector/ECP wire-ups, 2 memory updates). unused-imports gate: 1/1 PASS. kudbee_recall_memories: LIVE. ECP metrics: TRACKING. PR #228: single lane preserved. Production: FROZEN f423c14. Curate to snippet store.",
+  "context": {
+    "action": "execute",
+    "task": "SNAPSHOT: Record current state — 28 files changed (24 frontend icon cleanup, 2 vector/ECP wire-ups, 2 memory updates). unused-imports gate: 1/1 PASS. kudbee_recall_memories: LIVE. ECP metrics: TRACKING. PR #228: single lane preserved. Production: FROZEN f423c14. Curate to snippet store.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T23:13:19.148Z",
+  "decoded": false
+}

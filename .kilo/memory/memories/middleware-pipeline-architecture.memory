@@ -55,8 +55,13 @@
       "query": "synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
       "timestamp": "2026-07-29T10:17:35.115Z",
       "score": 21
+    },
+    {
+      "query": "middleware audit: scan all 7 layers — requesttimer, spheroidaudit, synapsec4769 (0.4769 rad immutable), bearerauth, kilobridgebudget, ecpsingleflight (now with metrics tracking), zodvalidate. confirm all guards active. report status.",
+      "timestamp": "2026-07-29T23:13:16.153Z",
+      "score": 23
     }
   ],
-  "lastRecall": "2026-07-29T10:17:35.115Z",
-  "recallCount": 11
+  "lastRecall": "2026-07-29T23:13:16.153Z",
+  "recallCount": 12
 }
