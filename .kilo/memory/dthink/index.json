@@ -77,7 +77,97 @@
       "type": "system:verify",
       "agentId": "system",
       "timestamp": "2026-07-29T11:50:20.231Z"
+    },
+    {
+      "id": "7535412f-ad81-495a-98ef-656fa694eacd",
+      "type": "system:ops",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:18:56.956Z"
+    },
+    {
+      "id": "c46ce3aa-0b72-4f89-bd4f-a34bc5998ee7",
+      "type": "system:ops",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:19:07.072Z"
+    },
+    {
+      "id": "6afa2e18-0e5f-4b16-8f3f-02994d57e850",
+      "type": "system:ops",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:19:07.112Z"
+    },
+    {
+      "id": "43858b8b-6ca1-4e41-a7ec-c7b81d91abb7",
+      "type": "system:security",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:19:07.152Z"
+    },
+    {
+      "id": "a80895b1-19f9-415b-a2dc-8fe1f65d54fb",
+      "type": "system:verify",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:28:11.725Z"
+    },
+    {
+      "id": "f673b8c5-ebed-468b-83f0-50e737212559",
+      "type": "system:victory",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:32:40.574Z"
+    },
+    {
+      "id": "c160569e-416c-4421-a62a-bb0cd75b6ed4",
+      "type": "system:victory",
+      "agentId": "system",
+      "timestamp": "2026-07-29T12:36:53.009Z"
+    },
+    {
+      "id": "a915bd06-b02f-4c24-a9e9-327fb82bf119",
+      "type": "system:guard",
+      "agentId": "system",
+      "timestamp": "2026-07-29T13:13:28.549Z"
+    },
+    {
+      "id": "18251feb-137c-45b0-8497-db15c33a7474",
+      "type": "system:guard",
+      "agentId": "system",
+      "timestamp": "2026-07-29T17:45:10.090Z"
+    },
+    {
+      "id": "96b15ca3-4298-4f05-b5f7-4afda20d55aa",
+      "type": "system:victory",
+      "agentId": "system",
+      "timestamp": "2026-07-29T18:04:23.120Z"
+    },
+    {
+      "id": "b602ae0e-284a-414a-8f22-2687bedb26da",
+      "type": "system:ci",
+      "agentId": "system",
+      "timestamp": "2026-07-29T20:00:23.183Z"
+    },
+    {
+      "id": "41fe2283-8d5b-4e01-a32e-be2678768dca",
+      "type": "system:ci",
+      "agentId": "system",
+      "timestamp": "2026-07-29T20:05:00.114Z"
+    },
+    {
+      "id": "0651e511-c885-48c5-845c-3d0d1fe61a9f",
+      "type": "system:verify",
+      "agentId": "system",
+      "timestamp": "2026-07-29T20:12:14.880Z"
+    },
+    {
+      "id": "945403b2-a74b-4c6c-aa0c-c9c4a182d143",
+      "type": "system:ci",
+      "agentId": "system",
+      "timestamp": "2026-07-29T20:12:16.565Z"
+    },
+    {
+      "id": "68672f97-f6fb-48b8-9fa1-86ce3475502a",
+      "type": "system:ci",
+      "agentId": "system",
+      "timestamp": "2026-07-29T20:14:16.395Z"
     }
   ],
-  "totalEntries": 13
+  "totalEntries": 28
 }

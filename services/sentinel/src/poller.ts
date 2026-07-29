@@ -28,14 +28,13 @@ import { IngestRequestSchema, type IngestRequest } from '@kudbee/types';
 function resolveIngestUrl(): string {
   if (process.env.KUDBEE_API_URL) return process.env.KUDBEE_API_URL;
   if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  // Hard-coded production URL as fallback — prevents "No such app" when
+  // HEROKU_APP_NAME resolves to an incorrect Heroku domain.
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com';
+  }
   if (process.env.HEROKU_APP_NAME) {
     return `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`;
-  }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Sentinel] FATAL: running in production but no ingress URL configured. ' +
-      'Set KUDBEE_API_URL, API_BASE_URL, or HEROKU_APP_NAME.'
-    );
   }
   return 'http://localhost:3000';
 }

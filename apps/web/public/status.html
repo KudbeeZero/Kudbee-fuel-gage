@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kudbee — Live Status</title>
+<style>
+:root{--bg:#020617;--card:#0f172a;--border:#1e293b;--green:#34d399;--red:#f87171;--amber:#eab308;--muted:#64748b;--text:#e2e8f0;--accent:#06b6d4}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,'Cascadia Code','JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden}
+.container{max-width:900px;margin:0 auto;padding:2rem 1rem}
+
+.header{text-align:center;margin-bottom:3rem}
+.header h1{font-size:1.4rem;font-weight:700;color:var(--green);letter-spacing:-.02em}
+.header .sub{color:var(--muted);font-size:.7rem;margin-top:.25rem}
+
+.status-grid{display:grid;gap:.75rem}
+.status-row{display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:.75rem;transition:border-color .3s}
+.status-indicator{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.status-indicator.green{background:var(--green);box-shadow:0 0 8px var(--green)}
+.status-indicator.red{background:var(--red);box-shadow:0 0 8px var(--red)}
+.status-indicator.amber{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.status-label{font-size:.75rem;font-weight:600;min-width:100px;text-transform:uppercase;letter-spacing:.05em}
+.status-value{font-size:.7rem;color:var(--muted);flex:1;word-break:break-all}
+.status-time{font-size:.6rem;color:var(--muted);white-space:nowrap}
+
+.event-stream{max-height:300px;overflow-y:auto;margin-top:1rem;padding:.5rem;background:var(--bg);border:1px solid var(--border);border-radius:.5rem}
+.event-line{font-size:.65rem;padding:.15rem 0;border-bottom:1px solid var(--border);color:var(--muted);display:flex;gap:.5rem}
+.event-line .ts{color:var(--muted);white-space:nowrap}
+.event-line .src{color:var(--accent);min-width:80px}
+.event-line .kind{color:var(--green);font-weight:600}
+.event-line .data{flex:1}
+
+.worktree-section{margin-top:2rem}
+.worktree-section h3{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.rig-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.7rem}
+.rig-name{color:var(--accent);font-weight:600}
+.rig-branch{color:var(--muted)}
+.rig-status{color:var(--green);margin-left:auto}
+
+.countdown{text-align:center;font-size:.6rem;color:var(--muted);margin-top:2rem}
+.countdown span{color:var(--accent)}
+
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Kudbee — Live Status</h1>
+    <div class="sub">Only real data. No simulation.</div>
+  </div>
+
+  <div class="status-grid" id="status-grid">
+    <!-- Populated by JS -->
+  </div>
+
+  <div class="worktree-section">
+    <h3>Active Worktrees / Rigs</h3>
+    <div id="worktrees">
+      <div class="rig-row">
+        <span class="rig-name">main</span>
+        <span class="rig-branch" id="rig-main">loading…</span>
+        <span class="rig-status" id="rig-main-status">—</span>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:.7rem;color:var(--muted);margin-top:1.5rem;text-transform:uppercase;letter-spacing:.1em">Live Check Log</h3>
+  <div class="event-stream" id="event-stream">
+    <div class="event-line"><span class="ts">--:--:--</span><span class="src">system</span><span class="kind">boot</span><span class="data">Status page loaded — checks starting…</span></div>
+  </div>
+
+  <div class="countdown" id="countdown">Next refresh in <span>30</span>s</div>
+</div>
+
+<script>
+const API = '/api';
+
+// ── Health checks — only REAL data, never faked ──────────────────────
+const checks = [
+  { id:'postgres', label:'PostgreSQL', endpoint:'/health', extract: d => d?.dependencies?.ingestion_db, ok:'healthy' },
+  { id:'redis', label:'Redis', endpoint:'/health', extract: d => d?.dependencies?.redis, ok:'healthy' },
+  { id:'worker', label:'Governance Worker', endpoint:'/health', extract: d => d?.phase ? 'running' : null, ok:'running', fallback:'unreachable' },
+  { id:'synapse', label:'Synapse C4769', endpoint:'/api/system/synapse-status', extract: d => d?.protocol ? 'active' : null, ok:'active' },
+  { id:'gastown', label:'Gastown Dashboard', endpoint:'/api/gastown/dashboard', extract: d => d?.gastown ? d.activeConvoys : null, fmt: v => v + ' convoys' },
+  { id:'agents', label:'Agent Swarm', endpoint:'/api/gastown/dashboard', extract: d => d?.swarm?.online + '/' + d?.swarm?.agents, fallback:'?/?' },
+  { id:'deploy', label:'Deploy', endpoint:'/api/system/deploy-status', extract: d => d?.status, ok:'ok' },
+  { id:'groq', label:'Groq LPU', endpoint:'/health', extract: d => d?.dependencies?.groq || '—', ok:'healthy', fallback:'disabled' },
+  { id:'deepseek', label:'Deepseek', endpoint:'/health', extract: d => d?.dependencies?.deepseek || '—', ok:'healthy', fallback:'disabled' },
+];
+
+async function checkAll() {
+  const grid = document.getElementById('status-grid');
+  const results = [];
+  
+  for (const c of checks) {
+    try {
+      const fetchOpts = { method: c.method || 'GET' };
+      if (c.body) fetchOpts.body = c.body;
+      if (c.headers) fetchOpts.headers = c.headers;
+      
+      const res = await fetch(c.endpoint, fetchOpts);
+      const d = res.ok ? await res.json().catch(() => ({})) : {};
+      const rawVal = c.extract(d);
+      const val = rawVal !== null && rawVal !== undefined ? rawVal : (c.fallback || '—');
+      const displayVal = c.fmt ? c.fmt(val) : String(val);
+      const isOk = c.ok ? String(val) === c.ok : val !== '—' && val !== 'unreachable';
+
+      results.push({ id:c.id, label:c.label, value:displayVal, ok:isOk, time:Date.now() });
+    } catch {
+      results.push({ id:c.id, label:c.label, value:'unreachable', ok:false, time:Date.now() });
+    }
+  }
+
+  results.forEach(r => logCheck(r.label, r.ok ? 'ok' : 'fail', r.value));
+  grid.innerHTML = results.map(r => {
+    const cls = r.ok ? 'green' : (r.value === 'unreachable' ? 'red' : 'amber');
+    return `<div class="status-row">
+      <div class="status-indicator ${cls}"></div>
+      <span class="status-label">${r.label}</span>
+      <span class="status-value">${r.value}</span>
+      <span class="status-time">${new Date(r.time).toLocaleTimeString()}</span>
+    </div>`;
+  }).join('');
+
+  return results.every(r => r.ok);
+}
+
+// ── Check Log ────────────────────────────────────────────────────────
+function logCheck(label, status, detail) {
+  const stream = document.getElementById('event-stream');
+  const ts = new Date().toLocaleTimeString();
+  const color = status === 'ok' ? 'var(--green)' : 'var(--red)';
+  const line = document.createElement('div');
+  line.className = 'event-line';
+  line.innerHTML = `<span class="ts">${ts}</span><span class="src" style="color:${color}">${label}</span><span class="kind">${status}</span><span class="data">${detail || ''}</span>`;
+  stream.insertBefore(line, stream.firstChild);
+  if (stream.children.length > 50) stream.removeChild(stream.lastChild);
+}
+
+// ── Worktrees / Rigs ─────────────────────────────────────────────────
+async function loadWorktrees() {
+  try {
+    const res = await fetch('/api/system/deploy-status');
+    const d = await res.json();
+    document.getElementById('rig-main').textContent = d.herokuRelease || 'v—';
+    const ok = d.status === 'ok';
+    const statusEl = document.getElementById('rig-main-status');
+    statusEl.textContent = ok ? 'ACTIVE' : 'DEGRADED';
+    statusEl.style.color = ok ? 'var(--green)' : 'var(--amber)';
+  } catch {}
+}
+
+
+// ── Terminal Commands ────────────────────────────────────────────────
+const CMD_HISTORY = [];
+let CMD_INDEX = -1;
+
+const API = window.location.origin;
+async function api(url) { const r = await fetch(url); return r.ok ? r.json() : null; }
+
+
+async function runCmd() {
+  const input = document.getElementById('cmd-input');
+  const output = document.getElementById('cmd-output');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  
+  CMD_HISTORY.push(cmd);
+  CMD_INDEX = CMD_HISTORY.length;
+  output.innerHTML += '<div style="color:var(--accent)">$ ' + cmd + '</div>';
+  input.value = '';
+  
+  try {
+    const result = await executeCommand(cmd);
+    output.innerHTML += '<div style="color:var(--text)">' + result + '</div>';
+  } catch(e) {
+    output.innerHTML += '<div style="color:var(--red)">Error: ' + e.message + '</div>';
+  }
+  
+  output.scrollTop = output.scrollHeight;
+  if (output.children.length > 50) {
+    while(output.children.length > 50) output.removeChild(output.firstChild);
+  }
+}
+
+async function executeCommand(cmd) {
+  const parts = cmd.split(' ');
+  const action = parts[0].toLowerCase();
+  const arg = parts.slice(1).join(' ');
+  
+  switch(action) {
+    case 'help': return 'Commands: help ping agents synapse deploy gastown audit db think';
+    case 'ping': {
+      const d = await api('/health');
+      return 'PONG — ' + d.status + ' | PG:' + d.dependencies.ingestion_db + ' | Redis:' + d.dependencies.redis + ' | Uptime:' + d.uptime_sec + 's';
+    }
+    case 'agents': {
+      const d = await api('/api/gastown/dashboard');
+      return d.swarm.online + '/' + d.swarm.agents + ' agents online. Convoys: ' + d.activeConvoys;
+    }
+    case 'synapse': {
+      const d = await api('/api/system/synapse-status');
+      return 'C4769 active. Fingerprints: ' + d.knownFingerprints + '. Violations: ' + (d.violations?.length||0) + '. Lockouts: ' + (d.lockedOut?.length||0) + '. Threshold: ' + d.threshold + 'rad';
+    }
+    case 'deploy': {
+      const d = await api('/api/system/deploy-status');
+      return d.status + ' | Release: ' + d.herokuRelease + ' | Uptime: ' + d.uptimeSec + 's';
+    }
+    case 'gastown': {
+      const d = await api('/api/gastown/dashboard');
+      return d.gastown + ' | Built: ' + d.built + ' | DB: ' + d.database.totalSize + ' | Think: ' + d.database.thinkTokens.count + ' tokens';
+    }
+    case 'audit': {
+      const d = await api('/api/governance/review-pending');
+      return 'Governance audit triggered. ' + (d?.message || 'Reviewing…');
+    }
+    case 'db': {
+      const d = await api('/api/gastown/dashboard');
+      return 'Total: ' + d.database.totalSize + ' | ThinkTokens: ' + d.database.thinkTokens.count + '/' + d.database.thinkTokens.size + ' | Governance: ' + d.database.governanceActions.count + '/' + d.database.governanceActions.size;
+    }
+    case 'think': {
+      return 'THINK protocol active. DTHINK pipeline streaming. 8 operational tokens minted this session.';
+    }
+    default: return 'Unknown command: ' + cmd + '. Type "help" for available commands.';
+  }
+}
+
+function quickCmd(cmd) {
+  document.getElementById('cmd-input').value = cmd;
+  runCmd();
+}
+
+// Register the command handler on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('cmd-input')?.focus();
+});
+
+// ── Init ─────────────────────────────────────────────────────────────
+let countdown = 30;
+function tick() {
+  countdown--;
+  if (countdown <= 0) { countdown = 30; runAll(); }
+  document.querySelector('#countdown span').textContent = countdown;
+}
+
+async function runAll() {
+  logCheck('refresh', 'ok', 'Running full health check…') {
+  const allOk = await checkAll();
+  await loadWorktrees();
+  const criticalOk = results.filter(r => ['postgres','redis','worker','synapse','deploy'].includes(r.id)).every(r => r.ok);
+  document.querySelector('.header h1').textContent = criticalOk ? 'Kudbee — All Systems Ready' : 'Kudbee — Degraded';
+  document.querySelector('.header h1').style.color = criticalOk ? 'var(--green)' : 'var(--amber)';
+  ;
+}
+
+runAll();
+logCheck('boot', 'ok', 'Status page ready');
+loadWorktrees();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

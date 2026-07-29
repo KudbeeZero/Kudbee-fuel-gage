@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785327811890-e95f84eb",
+  "agentId": "gastown",
+  "decision": "run:Full swarm coordination: deploy all agents, verify Solana integration, health-check all 4 Heroku dynos, report status",
+  "context": {
+    "action": "execute",
+    "task": "Full swarm coordination: deploy all agents, verify Solana integration, health-check all 4 Heroku dynos, report status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T12:23:31.891Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785355404083-b5d482fa",
+  "agentId": "gastown",
+  "decision": "run:KUDBEEVILLE GASTOWN: Full swarm deployment — coordinate all 11 agents, run complete CI audit, database compression analysis, sub-agent deployment. Report comprehensive status.",
+  "context": {
+    "action": "execute",
+    "task": "KUDBEEVILLE GASTOWN: Full swarm deployment — coordinate all 11 agents, run complete CI audit, database compression analysis, sub-agent deployment. Report comprehensive status.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T20:03:24.083Z",
+  "decoded": false
+}

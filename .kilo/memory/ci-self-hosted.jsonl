@@ -1,0 +1,14 @@
+{"ts":"2026-07-29T20:12:10.735Z","level":"INFO","msg":"CI run ci-ms6itoq7 started"}
+{"ts":"2026-07-29T20:12:10.737Z","level":"INFO","msg":"Gate 1/6: Typecheck"}
+{"ts":"2026-07-29T20:12:13.403Z","level":"FAIL","msg":"Typecheck: FAILED"}
+{"ts":"2026-07-29T20:12:13.403Z","level":"INFO","msg":"Gate 2/6: Lint"}
+{"ts":"2026-07-29T20:12:14.776Z","level":"WARN","msg":"Lint: warnings"}
+{"ts":"2026-07-29T20:12:14.777Z","level":"INFO","msg":"Gate 3/6: Unused imports"}
+{"ts":"2026-07-29T20:12:14.893Z","level":"FAIL","msg":"Unused imports: FOUND"}
+{"ts":"2026-07-29T20:12:14.893Z","level":"INFO","msg":"Gate 4/6: Build"}
+{"ts":"2026-07-29T20:12:16.123Z","level":"FAIL","msg":"Build: FAILED"}
+{"ts":"2026-07-29T20:12:16.123Z","level":"INFO","msg":"Gate 5/6: E2E"}
+{"ts":"2026-07-29T20:12:16.203Z","level":"FAIL","msg":"E2E: FAILED"}
+{"ts":"2026-07-29T20:12:16.203Z","level":"INFO","msg":"Gate 6/6: Agent verify"}
+{"ts":"2026-07-29T20:12:16.245Z","level":"FAIL","msg":"Agents: FAILED"}
+{"ts":"2026-07-29T20:12:16.245Z","level":"INFO","msg":"Complete: 0/6 gates passed — FAIL"}

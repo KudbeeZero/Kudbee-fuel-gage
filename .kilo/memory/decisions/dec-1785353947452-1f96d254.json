@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785353947452-1f96d254",
+  "agentId": "gastown",
+  "decision": "run:Full production swarm: deploy all 11 agents, verify Heroku health, audit all layers, report comprehensive status to DTHINK",
+  "context": {
+    "action": "execute",
+    "task": "Full production swarm: deploy all 11 agents, verify Heroku health, audit all layers, report comprehensive status to DTHINK",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T19:39:07.452Z",
+  "decoded": false
+}

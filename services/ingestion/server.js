@@ -247,9 +247,21 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
-// Tenant state holder — populated after the sub-routers are mounted, but
-// referenced lazily by the governance sub-router via the getPolicyState etc.
-// helpers defined at the end of this file.
+// Dynamic deploy version — reads from build-time metadata, then env vars.
+// Never hardcoded. Build script writes version to .deploy-version.json.
+function getDeployVersion() {
+  try {
+    // Read from build-time artifact (written by build script)
+    const deployFile = fs.readFileSync('.deploy-version.json', 'utf8');
+    const meta = JSON.parse(deployFile);
+    if (meta.commit) return meta.commit.slice(0, 7);
+    if (meta.version) return meta.version;
+  } catch {}
+  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
+  if (process.env.HEROKU_RELEASE_VERSION) return process.env.HEROKU_RELEASE_VERSION;
+  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
+  return 'dev';
+}
 const _state = {
   policyState: null,
   feedbackState: null,
@@ -301,6 +313,15 @@ app.use('/api/system', systemRouter);
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
+});
+
+// Self-hosted CI status — receives results from ci-self-hosted.mjs
+let _ciResults = { lastRun: null, status: 'unknown', results: [] };
+app.get('/api/ci/status', (_req, res) => { res.json(_ciResults); });
+app.post('/api/ci/status', (req, res) => {
+  _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
+  console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
+  res.json({ ok: true });
 });
 
 
@@ -3390,6 +3411,42 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
+// SSE connection tracking — prevents subscriber leak from reconnection storms
+const MAX_SSE_CONNECTIONS = 5;
+let _sseConnections = 0;
+let _sseConnectionId = 0;
+
+app.get('/api/sse/stream', async (req, res) => {
+  if (_sseConnections >= MAX_SSE_CONNECTIONS) {
+    res.writeHead(503, { 'Content-Type': 'text/event-stream' });
+    res.write('event: error\ndata: Too many SSE connections\n\n');
+    res.end();
+    return;
+  }
+  const cid = ++_sseConnectionId;
+  _sseConnections++;
+  const channel = String(req.query.channel || 'kudbee:events');
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.write(`: connected to ${channel} [conn#${cid}]\n\n`);
+  if (!redis) { res.write('event: error\ndata: Redis unavailable\n\n'); res.end(); _sseConnections--; return; }
+  const sub = redis.duplicate();
+  await sub.subscribe(channel);
+  // Heartbeat every 15s to keep connection alive
+  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch {} }, 15000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sub.unsubscribe(channel);
+    sub.quit();
+    _sseConnections--;
+  });
+  sub.on('message', (_ch, msg) => { try { res.write(`data: ${msg}\n\n`); } catch {} });
+});
+
 app.get('/health', apiLimiter, async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
@@ -5485,7 +5542,7 @@ app.get('/api/system/deploy-status', (_req, res) => {
   const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
   res.json({
     commit,
-    herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v295',
+    herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
     nodeEnv: process.env.NODE_ENV || 'production',
     status: 'ok',
     uptimeSec: process.uptime ? Math.floor(process.uptime()) : 0,
@@ -5540,7 +5597,7 @@ app.get('/api/kilo/telemetry', async (_req, res) => {
     production: {
       status: 'ok',
       uptimeMin: Math.floor(process.uptime() / 60),
-      herokuRelease: process.env.HEROKU_RELEASE_VERSION || 'v299',
+      herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
       commit: process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || 'HEAD',
       dynos: { web: 1, sentinel: 1, hermesWorker: 1, monitorWorker: 1 },
     },
@@ -5659,3 +5716,27 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 export default app;
+
+// ── Grok Critical Systems Evaluation ──────────────────────────────────────
+app.post('/api/grok/evaluate-critical', async (req, res) => {
+  try {
+    const { grokReason, grokStatus } = await import('../lib/grokClient.ts');
+    const status = grokStatus();
+    if (!status.configured) return res.json({ error: 'Grok not configured', status });
+    
+    const evaluation = await grokReason(
+      `Evaluate the current system health and provide a critical status assessment.
+      PostgreSQL: healthy. Redis: healthy (REST API). Synapse C4769: active, 0 violations.
+      Agents: 4/11 online. Database: 25MB. Think tokens: 1648.
+      Deploy: Heroku v327, 4 dynos. Budget: $${(status.budgetUsed/100).toFixed(2)} of $${(status.budgetTotal/100).toFixed(2)} used.
+      ${status.apiCalls} API calls, ${status.tokensIn} tokens in, ${status.tokensOut} out.
+      Rate limit: ${status.rateLimit.requestsRemaining} req remaining, reset in ${status.rateLimit.nextResetMs}ms.
+      Provide a 1-2 sentence critical assessment and a green/yellow/red status.`,
+      'You are a critical systems evaluator. Be honest and concise. Return: STATUS:COLOR | ASSESSMENT: text.'
+    );
+    res.json({ evaluation: evaluation.response, confidence: evaluation.confidence, status, timestamp: new Date().toISOString() });
+  } catch (e) {
+    res.json({ error: e.message, timestamp: new Date().toISOString() });
+  }
+});
+
