@@ -3390,20 +3390,40 @@ app.get('/api/system/file', async (req, res) => {
   }
 });
 
+// SSE connection tracking — prevents subscriber leak from reconnection storms
+const MAX_SSE_CONNECTIONS = 5;
+let _sseConnections = 0;
+let _sseConnectionId = 0;
+
 app.get('/api/sse/stream', async (req, res) => {
-  const channel = req.query.channel || 'kudbee:events';
+  if (_sseConnections >= MAX_SSE_CONNECTIONS) {
+    res.writeHead(503, { 'Content-Type': 'text/event-stream' });
+    res.write('event: error\ndata: Too many SSE connections\n\n');
+    res.end();
+    return;
+  }
+  const cid = ++_sseConnectionId;
+  _sseConnections++;
+  const channel = (req.query.channel as string) || 'kudbee:events';
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': '*',
   });
-  res.write(`: connected to ${channel}\n\n`);
-  if (!redis) { res.write('event: error\ndata: Redis unavailable\n\n'); res.end(); return; }
+  res.write(`: connected to ${channel} [conn#${cid}]\n\n`);
+  if (!redis) { res.write('event: error\ndata: Redis unavailable\n\n'); res.end(); _sseConnections--; return; }
   const sub = redis.duplicate();
   await sub.subscribe(channel);
-  req.on('close', () => { sub.unsubscribe(channel); sub.quit(); });
-  sub.on('message', (ch, msg) => { try { res.write(`data: ${msg}\n\n`); } catch {} });
+  // Heartbeat every 15s to keep connection alive
+  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch {} }, 15000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sub.unsubscribe(channel);
+    sub.quit();
+    _sseConnections--;
+  });
+  sub.on('message', (_ch, msg) => { try { res.write(`data: ${msg}\n\n`); } catch {} });
 });
 
 app.get('/health', apiLimiter, async (_req, res) => {
