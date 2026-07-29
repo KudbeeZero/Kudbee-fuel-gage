@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785306295860-7627c665",
+  "agentId": "pipeline-guardian",
+  "decision": "run:final scan: verify all 11 layers, DEQ solver, quantum mesh, 40-agent swarm integrity",
+  "context": {
+    "action": "execute",
+    "task": "final scan: verify all 11 layers, DEQ solver, quantum mesh, 40-agent swarm integrity",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:24:55.860Z",
+  "decoded": false
+}
