@@ -312,7 +312,7 @@ app.get('/api/system/synapse-status', (_req, res) => {
 // the pgvector `think_tokens` store for the 3 most semantically similar past
 
 // ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
-const { getConvoyStats, listConvoys, getDatabaseMetrics } = require("../agent/gastown-convoy.ts");
+import { getConvoyStats, listConvoys, getDatabaseMetrics } from '../agent/gastown-convoy.ts';
 app.get("/api/gastown/dashboard", async (_req, res) => {
   try {
     const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
