@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785308216752-d3dd9e84",
+  "agentId": "ci-watcher",
+  "decision": "run:audit CodeQL alerts: check all open security warnings, identify patterns, recommend fixes",
+  "context": {
+    "action": "execute",
+    "task": "audit CodeQL alerts: check all open security warnings, identify patterns, recommend fixes",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:56:56.752Z",
+  "decoded": false
+}

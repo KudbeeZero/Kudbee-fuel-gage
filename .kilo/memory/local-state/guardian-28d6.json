@@ -1,7 +1,8 @@
 {
   "id": "guardian-28d6",
   "category": "middleware",
-  "status": "online",
+  "status": "offline",
   "heartbeat": 1785176567289,
-  "updatedAt": "2026-07-27T18:22:47.289Z"
+  "updatedAt": "2026-07-27T18:22:47.289Z",
+  "cleanedAt": "2026-07-29T06:53:22.307Z"
 }
