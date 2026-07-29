@@ -239,7 +239,14 @@ function escalate(source: string, score: number): { blocked: boolean; level: num
  * Triggers precipitated withdrawal for threat vectors exceeding threshold.
  */
 export async function synapseProtectionMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const source = (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown';
+  // Skip local connections (health checks, boot-verify, local dev)
+  const ip = (req.headers['x-forwarded-for'] as string) || req.ip || '0.0.0.0';
+  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
+    state.stats.totalPassed++;
+    return next();
+  }
+
+  const source = ip;
   const agentId = typeof req.headers['x-agent-id'] === 'string' ? req.headers['x-agent-id'] : '';
 
   // Skip non-mutating read requests (therapeutic path)
