@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785290330991-4b4ca470",
+  "agentId": "pipeline-guardian",
+  "decision": "run:root cause confirmed: crossorigin on module script blocked by Cloudflare CORS on Chrome mobile. Fix deployed — removed crossorigin, clean HTML.",
+  "context": {
+    "action": "execute",
+    "task": "root cause confirmed: crossorigin on module script blocked by Cloudflare CORS on Chrome mobile. Fix deployed — removed crossorigin, clean HTML.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T01:58:50.992Z",
+  "decoded": false
+}

@@ -36,3 +36,4 @@
 {"type":"token:forged","source":"training-session","tokenId":"tk-pr213-merged","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}
 {"type":"token:forged","source":"training-session","tokenId":"tk-pr214-merged","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}
 {"type":"token:forged","source":"training-session","tokenId":"tk-training-final","severity":"HIGH","timestamp":"2026-07-29T01:18:30Z"}
+{"type":"token:forged","source":"root-cause-analysis","tokenId":"tk-crossorigin-root-030","severity":"CRITICAL","timestamp":"2026-07-29T01:59:07Z"}
