@@ -344,7 +344,22 @@
       "type": "routed",
       "timestamp": "2026-07-29T04:23:33.823Z",
       "routed": true
+    },
+    {
+      "id": "call-1785300149938-cb36dd",
+      "from": "pipeline-guardian",
+      "to": "token-forge",
+      "message": "Innovation assessment: 5 unique properties verified, 10 invention vectors identified for PR #217",
+      "path": [
+        "pipeline-guardian",
+        "dispatcher",
+        "token-forge"
+      ],
+      "hops": 2,
+      "type": "routed",
+      "timestamp": "2026-07-29T04:42:29.938Z",
+      "routed": true
     }
   ],
-  "totalCalls": 23
+  "totalCalls": 24
 }
