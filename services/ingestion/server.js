@@ -248,7 +248,20 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 // Tenant state holder — populated after the sub-routers are mounted, but
 // referenced lazily by the governance sub-router via the getPolicyState etc.
 // helpers defined at the end of this file.
+const _state = {
+  policyState: null,
+  feedbackState: null,
+  autoTuneState: null,
+  evaluatePolicies: null,
+  alertsState: null,
+  bootTimeRef: { value: null },
+  redisRef: { value: null },
+  poolRef: { value: null },
+  providerConfigRef: { value: null },
+};
 globalThis.__KUBEE_STATE__ = _state;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const BOOT_TIME = Date.now();
 
 const auditRouter = createAuditRouter({ runQuery, publishEvent, requireRole });
 app.use('/api/audit', auditRouter);
