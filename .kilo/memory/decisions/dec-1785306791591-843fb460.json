@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785306791591-843fb460",
+  "agentId": "token-forge",
+  "decision": "run:forge batch protocol token — consolidated PR #221, terminal command dispatcher, 12,000× DEQ speedup",
+  "context": {
+    "action": "execute",
+    "task": "forge batch protocol token — consolidated PR #221, terminal command dispatcher, 12,000× DEQ speedup",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T06:33:11.591Z",
+  "decoded": false
+}

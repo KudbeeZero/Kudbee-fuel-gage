@@ -40,8 +40,13 @@
       "query": "final scan: verify all 11 layers, deq solver, quantum mesh, 40-agent swarm integrity",
       "timestamp": "2026-07-29T06:24:55.902Z",
       "score": 9
+    },
+    {
+      "query": "batch protocol: verify terminal command dispatcher wired, all 4 commands functional, /api/terminal/execute endpoint registered",
+      "timestamp": "2026-07-29T06:33:11.517Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-29T06:24:55.902Z",
-  "recallCount": 8
+  "lastRecall": "2026-07-29T06:33:11.517Z",
+  "recallCount": 9
 }
