@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785424455501-31e41c5c",
+  "agentId": "knowledge-curator",
+  "decision": "run:RESEARCH: Analyze Upstash integration setup. We now have 6 Upstash products: Redis(KV), Vector, Search, QStash, Workflow, Box. Verify all config vars are set on Heroku staging. Verify CI is isolated from Redis. Verify limit gates are active. Report any gaps.",
+  "context": {
+    "action": "execute",
+    "task": "RESEARCH: Analyze Upstash integration setup. We now have 6 Upstash products: Redis(KV), Vector, Search, QStash, Workflow, Box. Verify all config vars are set on Heroku staging. Verify CI is isolated from Redis. Verify limit gates are active. Report any gaps.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T15:14:15.501Z",
+  "decoded": false
+}

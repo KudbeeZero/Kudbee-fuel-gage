@@ -623,6 +623,384 @@
       "id": "deploy-identity",
       "status": "PASSED",
       "created": "2026-07-30T06:27:42.005Z"
+    },
+    "event:22960842-e9dd-4919-8b22-21ae83e69f70": {
+      "type": "system:verify",
+      "id": "22960842-e9dd-4919-8b22-21ae83e69f70",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 0P 94F 0W — 93 unused lucide-react imports, typecheck failed",
+      "timestamp": "2026-07-29T22:46:26.909Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.916Z"
+    },
+    "event:6e2435c7-5ea3-451f-99cc-6c6403c8be3d": {
+      "type": "system:verify",
+      "id": "6e2435c7-5ea3-451f-99cc-6c6403c8be3d",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 0P 94F 0W — 93 unused lucide-react imports, typecheck failed",
+      "timestamp": "2026-07-29T23:06:22.155Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:47099737-1d89-495a-8f98-ce0c4ab81202": {
+      "type": "system:verify",
+      "id": "47099737-1d89-495a-8f98-ce0c4ab81202",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 0P 93F 0W — 93 unused lucide-react imports",
+      "timestamp": "2026-07-29T23:09:01.556Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:ddda0d2e-d156-4db0-8448-ae6d859e167a": {
+      "type": "system:verify",
+      "id": "ddda0d2e-d156-4db0-8448-ae6d859e167a",
+      "agent": "system",
+      "summary": "Pre-flight gates: PASS — 1P 0F 0W — no errors",
+      "timestamp": "2026-07-29T23:11:12.060Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:81cef52d-4bb1-42e4-bcb9-0689a80850ee": {
+      "type": "system:verify",
+      "id": "81cef52d-4bb1-42e4-bcb9-0689a80850ee",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 1P 1F 0W — typecheck failed",
+      "timestamp": "2026-07-29T23:19:32.827Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:250b8a22-0cfa-4e1b-b782-5999a55d449a": {
+      "type": "system:verify",
+      "id": "250b8a22-0cfa-4e1b-b782-5999a55d449a",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 1P 1F 0W — typecheck failed",
+      "timestamp": "2026-07-29T23:20:24.276Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785395134912-1f4079c4": {
+      "type": "agent:decision",
+      "id": "dec-1785395134912-1f4079c4",
+      "agent": "gastown",
+      "summary": "gastown: run:EOE-1 MISSION CHECK: Confirm Execution Orchestration patch lifecycle is enforced. Show current mission certificates, patch inventory, and token budget tracker.",
+      "timestamp": "2026-07-30T07:05:34.912Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:4f69d64d-7c78-4020-852a-de3f7adbdb3b": {
+      "type": "system:sync",
+      "id": "4f69d64d-7c78-4020-852a-de3f7adbdb3b",
+      "agent": "system",
+      "summary": "Stream Lab — cache invalidated, state pushed, frontend ready",
+      "timestamp": "2026-07-30T08:40:02.412Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401944330-2df664bb": {
+      "type": "agent:decision",
+      "id": "dec-1785401944330-2df664bb",
+      "agent": "gastown",
+      "summary": "gastown: run:WFO-1 MISSION DIRECTOR: Organize all 11 agents into 6 divisions with clear ownership, roles, capabilities, and permissions. Establish Workforce Registry, Division Commanders, worker capability matrix, scorecards, mission planner, capacity estimator. Every worker has: owner, role, capabilities, permissions, health, utilization, current mission.",
+      "timestamp": "2026-07-30T08:59:04.330Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401944414-24d1af91": {
+      "type": "agent:decision",
+      "id": "dec-1785401944414-24d1af91",
+      "agent": "sentinel",
+      "summary": "sentinel: run:AOP-1: Implement scheduled maintenance, dependency monitoring, CI health checks, infrastructure audits, cost monitoring, branch cleanup, cache cleanup, workspace lifecycle, auto worker provisioning, auto worker teardown, daily engineering report. Safety: read-only default, governance policy required, every action recorded, every action reversible.",
+      "timestamp": "2026-07-30T08:59:04.414Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401944418-d0a01875": {
+      "type": "agent:decision",
+      "id": "dec-1785401944418-d0a01875",
+      "agent": "sentinel",
+      "summary": "sentinel: error:AOP-1: Implement scheduled maintenance, dependency monitoring, CI health checks, infrastructure audits, cost monitoring, branch cleanup, cache cleanup, workspace lifecycle, auto worker provisioning, auto worker teardown, daily engineering report. Safety: read-only default, governance policy required, every action recorded, every action reversible.",
+      "timestamp": "2026-07-30T08:59:04.419Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962114-08384699": {
+      "type": "agent:decision",
+      "id": "dec-1785401962114-08384699",
+      "agent": "pipeline-guardian",
+      "summary": "pipeline-guardian: run:WFO-1 ENGINEERING DIVISION: Manage mission planning, patch generation, verification. Establish worker profiles: Engineering Worker (patch generation), Verification Worker (tests), Architecture Worker (repo analysis). Each worker has defined role. Integrate with Dyno Manager for auto-provisioning.",
+      "timestamp": "2026-07-30T08:59:22.114Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962198-9f605390": {
+      "type": "agent:decision",
+      "id": "dec-1785401962198-9f605390",
+      "agent": "pipeline-guardian",
+      "summary": "pipeline-guardian: layer_scan_complete",
+      "timestamp": "2026-07-30T08:59:22.198Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962251-6af012f4": {
+      "type": "agent:decision",
+      "id": "dec-1785401962251-6af012f4",
+      "agent": "knowledge-curator",
+      "summary": "knowledge-curator: run:CIE-1 MEMORY DIVISION: Pattern detection from 299 decisions and 37 DTHINK events. Analyze repeated failures, build trends, governance patterns. Generate recommendation engine outputs. After every mission: what worked, what failed, what should change. Store in DTHINK.",
+      "timestamp": "2026-07-30T08:59:22.251Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962427-a61cea3f": {
+      "type": "agent:decision",
+      "id": "dec-1785401962427-a61cea3f",
+      "agent": "knowledge-curator",
+      "summary": "knowledge-curator: curation_complete",
+      "timestamp": "2026-07-30T08:59:22.427Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962478-ed6d45c0": {
+      "type": "agent:decision",
+      "id": "dec-1785401962478-ed6d45c0",
+      "agent": "monitor",
+      "summary": "monitor: run:AOP-1 OBSERVATION DIVISION: Telemetry, health, cost monitoring. Implement daily engineering report. Track: CI health, dependency freshness, infrastructure audit scores, cost trends (now $7/mo production, $5/mo staging). Auto-generate: daily engineering report with recommendations.",
+      "timestamp": "2026-07-30T08:59:22.478Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962483-0ce7ef84": {
+      "type": "agent:decision",
+      "id": "dec-1785401962483-0ce7ef84",
+      "agent": "monitor",
+      "summary": "monitor: error:AOP-1 OBSERVATION DIVISION: Telemetry, health, cost monitoring. Implement daily engineering report. Track: CI health, dependency freshness, infrastructure audit scores, cost trends (now $7/mo production, $5/mo staging). Auto-generate: daily engineering report with recommendations.",
+      "timestamp": "2026-07-30T08:59:22.483Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962516-ca887128": {
+      "type": "agent:decision",
+      "id": "dec-1785401962516-ca887128",
+      "agent": "gateway-router",
+      "summary": "gateway-router: run:WFO-1 INTELLIGENCE DIVISION: Model routing, prompt planning, reasoning allocation. Integrate ISE scheduler with workforce: every worker receives mission context, evidence, provider assignment, budget, and context. Workers never choose models.",
+      "timestamp": "2026-07-30T08:59:22.516Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.917Z"
+    },
+    "event:dec-1785401962520-325f1c34": {
+      "type": "agent:decision",
+      "id": "dec-1785401962520-325f1c34",
+      "agent": "gateway-router",
+      "summary": "gateway-router: error:WFO-1 INTELLIGENCE DIVISION: Model routing, prompt planning, reasoning allocation. Integrate ISE scheduler with workforce: every worker receives mission context, evidence, provider assignment, budget, and context. Workers never choose models.",
+      "timestamp": "2026-07-30T08:59:22.520Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401974596-570f287f": {
+      "type": "agent:decision",
+      "id": "dec-1785401974596-570f287f",
+      "agent": "hermes",
+      "summary": "hermes: run:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:34.596Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401974601-323527aa": {
+      "type": "agent:decision",
+      "id": "dec-1785401974601-323527aa",
+      "agent": "hermes",
+      "summary": "hermes: error:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:34.601Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401974640-1a46ba03": {
+      "type": "agent:decision",
+      "id": "dec-1785401974640-1a46ba03",
+      "agent": "ci-watcher",
+      "summary": "ci-watcher: run:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:34.640Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401976059-abb95d1a": {
+      "type": "agent:decision",
+      "id": "dec-1785401976059-abb95d1a",
+      "agent": "ci-watcher",
+      "summary": "ci-watcher: verification_complete",
+      "timestamp": "2026-07-30T08:59:36.059Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401976105-53a6754b": {
+      "type": "agent:decision",
+      "id": "dec-1785401976105-53a6754b",
+      "agent": "token-forge",
+      "summary": "token-forge: run:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:36.105Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401976110-aef9e08e": {
+      "type": "agent:decision",
+      "id": "dec-1785401976110-aef9e08e",
+      "agent": "token-forge",
+      "summary": "token-forge: error:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:36.110Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401976145-9b15e001": {
+      "type": "agent:decision",
+      "id": "dec-1785401976145-9b15e001",
+      "agent": "ledger-keeper",
+      "summary": "ledger-keeper: run:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:36.145Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785401976151-0af65ccb": {
+      "type": "agent:decision",
+      "id": "dec-1785401976151-0af65ccb",
+      "agent": "ledger-keeper",
+      "summary": "ledger-keeper: error:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+      "timestamp": "2026-07-30T08:59:36.151Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785402230456-871d7d86": {
+      "type": "agent:decision",
+      "id": "dec-1785402230456-871d7d86",
+      "agent": "sentinel",
+      "summary": "sentinel: run:AEO-1: Evaluate all 7 governance gates for PR #228. Report: PASS/FAIL/UNKNOWN with evidence. Current known: 6 PASS, 1 UNKNOWN (frontend-runtime-verified).",
+      "timestamp": "2026-07-30T09:03:50.457Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785402230463-e0647bfb": {
+      "type": "agent:decision",
+      "id": "dec-1785402230463-e0647bfb",
+      "agent": "sentinel",
+      "summary": "sentinel: error:AEO-1: Evaluate all 7 governance gates for PR #228. Report: PASS/FAIL/UNKNOWN with evidence. Current known: 6 PASS, 1 UNKNOWN (frontend-runtime-verified).",
+      "timestamp": "2026-07-30T09:03:50.463Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:360bb996-d256-4be2-b83f-5105552a9803": {
+      "type": "system:mission",
+      "id": "360bb996-d256-4be2-b83f-5105552a9803",
+      "agent": "system",
+      "summary": "AEO-1: PR #228 state verification complete. Health: OK. Gates: 6 PASS, 1 UNKNOWN. Promotion: BLOCKED.",
+      "timestamp": "2026-07-30T09:03:50.505Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785403348164-b19d254c": {
+      "type": "agent:decision",
+      "id": "dec-1785403348164-b19d254c",
+      "agent": "knowledge-curator",
+      "summary": "knowledge-curator: run:CES-1 DIVISION 1: Scan repository for duplicate code, dead modules, stale feature flags, unused env vars, orphaned routes, unused assets, dependency drift. Compare architecture against DTHINK manifest. Output: Engineering Findings — never patches.",
+      "timestamp": "2026-07-30T09:22:28.164Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785403348348-de37479e": {
+      "type": "agent:decision",
+      "id": "dec-1785403348348-de37479e",
+      "agent": "knowledge-curator",
+      "summary": "knowledge-curator: curation_complete",
+      "timestamp": "2026-07-30T09:22:28.349Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.918Z"
+    },
+    "event:dec-1785403348390-bd41473b": {
+      "type": "agent:decision",
+      "id": "dec-1785403348390-bd41473b",
+      "agent": "ci-watcher",
+      "summary": "ci-watcher: run:CES-1 DIVISION 2: Replay previous failures, re-run critical verification, verify deployment artifacts, verify staging health, detect flaky tests, compare current vs historical metrics. Output: Verification Certificates.",
+      "timestamp": "2026-07-30T09:22:28.391Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349486-4109f8ca": {
+      "type": "agent:decision",
+      "id": "dec-1785403349486-4109f8ca",
+      "agent": "ci-watcher",
+      "summary": "ci-watcher: verification_complete",
+      "timestamp": "2026-07-30T09:22:29.486Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349537-268624f6": {
+      "type": "agent:decision",
+      "id": "dec-1785403349537-268624f6",
+      "agent": "hermes",
+      "summary": "hermes: run:CES-1 DIVISION 3: Merge duplicate knowledge, promote validated patterns, retire obsolete, improve graph relationships, link missions to evidence, calculate confidence scores. Output: Knowledge Promotions.",
+      "timestamp": "2026-07-30T09:22:29.537Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349542-82d3950e": {
+      "type": "agent:decision",
+      "id": "dec-1785403349542-82d3950e",
+      "agent": "hermes",
+      "summary": "hermes: error:CES-1 DIVISION 3: Merge duplicate knowledge, promote validated patterns, retire obsolete, improve graph relationships, link missions to evidence, calculate confidence scores. Output: Knowledge Promotions.",
+      "timestamp": "2026-07-30T09:22:29.542Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349582-b630d20d": {
+      "type": "agent:decision",
+      "id": "dec-1785403349582-b630d20d",
+      "agent": "monitor",
+      "summary": "monitor: run:CES-1 DIVISION 4: Audit costs ($12/mo), dyno utilization, Redis usage (157B/64MB), storage growth, build frequency (32 attempts), deployment health. Output: Optimization Reports.",
+      "timestamp": "2026-07-30T09:22:29.582Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349587-f39ac9b8": {
+      "type": "agent:decision",
+      "id": "dec-1785403349587-f39ac9b8",
+      "agent": "monitor",
+      "summary": "monitor: error:CES-1 DIVISION 4: Audit costs ($12/mo), dyno utilization, Redis usage (157B/64MB), storage growth, build frequency (32 attempts), deployment health. Output: Optimization Reports.",
+      "timestamp": "2026-07-30T09:22:29.587Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349654-83863291": {
+      "type": "agent:decision",
+      "id": "dec-1785403349654-83863291",
+      "agent": "pipeline-guardian",
+      "summary": "pipeline-guardian: run:CES-1 DIVISION 6: Recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. Output: Architecture Review.",
+      "timestamp": "2026-07-30T09:22:29.655Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:dec-1785403349735-224000a7": {
+      "type": "agent:decision",
+      "id": "dec-1785403349735-224000a7",
+      "agent": "pipeline-guardian",
+      "summary": "pipeline-guardian: layer_scan_complete",
+      "timestamp": "2026-07-30T09:22:29.736Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:9e410930-c3af-4054-aed5-9c62e8a3ae01": {
+      "type": "system:verify",
+      "id": "9e410930-c3af-4054-aed5-9c62e8a3ae01",
+      "agent": "system",
+      "summary": "Pre-flight gates: FAIL — 0P 93F 0W — 93 unused lucide-react imports",
+      "timestamp": "2026-07-30T10:55:08.910Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
+    },
+    "event:ff348fce-b12a-407c-8f3f-118c5f50df1a": {
+      "type": "system:lesson",
+      "id": "ff348fce-b12a-407c-8f3f-118c5f50df1a",
+      "agent": "system",
+      "summary": "REDIS_LIMIT_LEARNED: Never let staging/CI share production Redis. Upstash free tier = 500K commands/month PER DATABASE. The whole-tapir primary hit 500K from 15h of staging server usage (BRPOP loop + SSE + health checks + 32 builds). creative-finch worker unaffected (1 key, 0B). Lesson: (1) Staging must use its own Redis instance. (2) app.json must NOT provision redis for CI test runs. (3) Add REDIS_COMMAND_COUNT env var monitoring. (4) Add auto-shutdown when 90% threshold reached. (5) REO-1 polling reduction was correct but too late. (6) Emergency error handler prevents server crash when limit hit.",
+      "timestamp": "2026-07-30T14:46:17.862Z",
+      "evidence": 3,
+      "created": "2026-07-30T14:46:17.919Z"
     }
   },
   "edges": [
@@ -1245,6 +1623,384 @@
       "valid_from": "2026-07-30T06:27:42.005Z",
       "valid_to": null,
       "confidence": 100,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:22960842-e9dd-4919-8b22-21ae83e69f70",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:6e2435c7-5ea3-451f-99cc-6c6403c8be3d",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:47099737-1d89-495a-8f98-ce0c4ab81202",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:ddda0d2e-d156-4db0-8448-ae6d859e167a",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:81cef52d-4bb1-42e4-bcb9-0689a80850ee",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:250b8a22-0cfa-4e1b-b782-5999a55d449a",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785395134912-1f4079c4",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:4f69d64d-7c78-4020-852a-de3f7adbdb3b",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401944330-2df664bb",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401944414-24d1af91",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401944418-d0a01875",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962114-08384699",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962198-9f605390",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962251-6af012f4",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962427-a61cea3f",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962478-ed6d45c0",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962483-0ce7ef84",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962516-ca887128",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.917Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401962520-325f1c34",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401974596-570f287f",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401974601-323527aa",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401974640-1a46ba03",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401976059-abb95d1a",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401976105-53a6754b",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401976110-aef9e08e",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401976145-9b15e001",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785401976151-0af65ccb",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785402230456-871d7d86",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785402230463-e0647bfb",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:360bb996-d256-4be2-b83f-5105552a9803",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403348164-b19d254c",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.918Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403348348-de37479e",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403348390-bd41473b",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349486-4109f8ca",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349537-268624f6",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349542-82d3950e",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349582-b630d20d",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349587-f39ac9b8",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349654-83863291",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:dec-1785403349735-224000a7",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:9e410930-c3af-4054-aed5-9c62e8a3ae01",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
+      "source": "graph-builder"
+    },
+    {
+      "from": "event:ff348fce-b12a-407c-8f3f-118c5f50df1a",
+      "to": "mission:active",
+      "relationship": "DEPENDS_ON",
+      "valid_from": "2026-07-30T14:46:17.919Z",
+      "valid_to": null,
+      "confidence": 90,
       "source": "graph-builder"
     }
   ]

@@ -238,8 +238,21 @@
       "id": "3e1626d3-ec6e-491e-b80d-cf38829b1e2f",
       "type": "system:mission",
       "agentId": "system",
+<<<<<<< ours
       "timestamp": "2026-07-30T14:26:46.915Z"
     }
   ],
   "totalEntries": 40
+=======
+      "timestamp": "2026-07-30T15:25:44.698Z"
+    },
+    {
+      "id": "d0ee6b77-0f21-4faa-b9f9-f211b2474b77",
+      "type": "system:template",
+      "agentId": "system",
+      "timestamp": "2026-07-30T15:30:32.325Z"
+    }
+  ],
+  "totalEntries": 47
+>>>>>>> theirs
 }

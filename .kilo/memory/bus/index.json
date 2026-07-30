@@ -1,5 +1,9 @@
 {
+<<<<<<< ours
   "sequence": 43,
+=======
+  "sequence": 45,
+>>>>>>> theirs
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -301,6 +305,23 @@
       "source": "cli",
       "sequence": 43,
       "timestamp": "2026-07-30T11:01:00.138Z"
+<<<<<<< ours
+=======
+    },
+    {
+      "id": "evt-1785424884186-d67bd9",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 44,
+      "timestamp": "2026-07-30T15:21:24.186Z"
+    },
+    {
+      "id": "evt-1785426358893-53a23c",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 45,
+      "timestamp": "2026-07-30T15:45:58.894Z"
+>>>>>>> theirs
     }
   ],
   "topicCounts": {
@@ -310,7 +331,11 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
+<<<<<<< ours
     "system:health": 12,
+=======
+    "system:health": 14,
+>>>>>>> theirs
     "agent:recall": 1,
     "agent:report": 1,
     "agent:persistence": 1,

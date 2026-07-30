@@ -32,3 +32,10 @@ When activated, this skill provides Kilo agents with:
 - Recall context: 0 snippets recalled
 - Execution patterns: 2 actions validated
 - Decision history: 2 decisions logged
+
+## Upstash Integration
+- Box SDK: browser verification, autonomous missions, CI/CD
+- QStash: replaces Redis BRPOP polling loops
+- Search: semantic search for DTHINK events (obliging-shad)
+- Workflow: durable execution for long-running missions
+- Agent Analytics: AI traffic tracking middleware

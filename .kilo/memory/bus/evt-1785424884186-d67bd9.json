@@ -1,0 +1,14 @@
+{
+  "id": "evt-1785424884186-d67bd9",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "diagnostic": "complete",
+    "ci": "disabled",
+    "codeql": "disabled",
+    "box": "active"
+  },
+  "timestamp": "2026-07-30T15:21:24.186Z",
+  "sequence": 44
+}

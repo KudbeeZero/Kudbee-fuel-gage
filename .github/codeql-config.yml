@@ -1,0 +1,4 @@
+# Disable CodeQL analysis — GitHub billing blocked
+disable-default-queries: true
+paths-ignore:
+  - '**'

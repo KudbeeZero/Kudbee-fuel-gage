@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785424455805-193487b2",
+  "agentId": "pipeline-guardian",
+  "decision": "run:CODE REVIEW: Verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. Check that all .kilo/schemas/ are JSON-valid. Report any issues.",
+  "context": {
+    "action": "execute",
+    "task": "CODE REVIEW: Verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. Check that all .kilo/schemas/ are JSON-valid. Report any issues.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T15:14:15.805Z",
+  "decoded": false
+}
