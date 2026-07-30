@@ -5650,10 +5650,12 @@ if (fs.existsSync(distPath)) {
       }
     },
   }));
+  app.get('*', fileLimiter, (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
-// Health endpoints MUST be before catch-all
-app.get('/health', apiLimiter, async (_req, res) => {
+if (process.env.CRUCIBLE_ENABLED === 'true') {
   try {
     const { startCrucibleScheduler } = await import('../agents/crucible.js');
     startCrucibleScheduler();
