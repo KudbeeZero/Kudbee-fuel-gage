@@ -7,15 +7,11 @@
   "buildpacks": [{ "url": "heroku/nodejs" }],
   "env": {
     "NODE_ENV": { "value": "production" },
-    "CI_MUTATION_BUDGET": { "value": "20" },
-    "MAX_REQUEST_BODY": { "value": "256kb" },
-    "DB_POOL_MAX": { "value": "5" },
-    "MONTHLY_DB_OPERATION_BUDGET": { "value": "500000" },
     "REDIS_URL": { "required": false },
     "REDIS_WORKER_URL": { "required": false },
     "UPSTASH_REDIS_REST_URL": { "required": false },
     "UPSTASH_REDIS_REST_TOKEN": { "required": false },
-    "DATABASE_URL": { "required": false },
+    "DATABASE_URL": { "required": true },
     "STREAM_SECRET": { "required": false },
     "GROQ_API_KEY": { "required": false }
   },
