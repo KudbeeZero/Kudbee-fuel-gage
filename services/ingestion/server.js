@@ -608,8 +608,15 @@ if (redis) {
     void logRedisEvent('end');
   });
   redis.on('error', (err) => {
-    console.warn(`[Redis] Error (logging SYSTEM_RESET):`, err.message);
+    console.warn(`[Redis] Error:`, err.message);
     void logRedisEvent('error');
+    // EMERGENCY: Upstash free tier 500K limit exceeded — disable Redis
+    // to prevent error flood. Server serves requests without Redis.
+    if (err.message && err.message.includes('max requests limit')) {
+      console.warn('[Redis] FATAL: max requests limit exceeded — disabling Redis');
+      process.env.KUDBEE_REDIS_DISABLED = 'true';
+      try { redis.disconnect(); } catch {}
+    }
   });
 
   initRedisFallbackQueue();
