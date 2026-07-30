@@ -27,6 +27,7 @@ type Deps = {
   getAlertsState: () => { alerts: any[] };
   getRouteLatencies: () => Record<string, any>;
   getMiddlewareStats: () => Array<{ name: string; healthy: boolean; state: string; failureCount: number; successCount: number; bypassedCount: number; lastFailureAt: string | null; cooldownUntil: string | null }>;
+  getDisruptionStats?: () => { guard: any; patternCount: number };
 };
 
 export function createSystemRouter({ runQuery, isDbHealthy, publishEvent, listProposed, getBootTime, getRedis, getPool, getProviderConfig, getAlertsState, getRouteLatencies, getMiddlewareStats }: Deps) {
