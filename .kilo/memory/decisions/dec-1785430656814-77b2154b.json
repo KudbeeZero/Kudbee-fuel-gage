@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785430656814-77b2154b",
+  "agentId": "ci-watcher",
+  "decision": "error:FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+  "context": {
+    "error": "spawnSync /bin/sh ETIMEDOUT"
+  },
+  "timestamp": "2026-07-30T16:57:36.814Z",
+  "decoded": false
+}

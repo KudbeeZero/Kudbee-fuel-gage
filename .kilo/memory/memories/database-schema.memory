@@ -75,8 +75,13 @@
       "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
       "timestamp": "2026-07-30T09:22:29.695Z",
       "score": 9
+    },
+    {
+      "query": "fleet_test: full system capability verification. report: status, current task, dependencies, health, last decision, next action.",
+      "timestamp": "2026-07-30T16:57:06.873Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-30T09:22:29.696Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-30T16:57:06.873Z",
+  "recallCount": 16
 }

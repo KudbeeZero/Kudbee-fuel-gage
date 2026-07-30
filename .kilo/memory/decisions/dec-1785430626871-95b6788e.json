@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785430626871-95b6788e",
+  "agentId": "monitor",
+  "decision": "error:FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+  "context": {
+    "error": "Command failed: ---\nid: monitor\ncategory: observability\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Monitor] Infrastructure watcher running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Script: services/monitor/agent.js\"\n  echo \"  Role: Polling loop — agent state + rate monitoring\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T16:57:06.871Z",
+  "decoded": false
+}

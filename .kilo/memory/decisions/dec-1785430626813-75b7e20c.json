@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785430626813-75b7e20c",
+  "agentId": "token-forge",
+  "decision": "error:FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+  "context": {
+    "error": "Command failed: ---\nid: token-forge\ncategory: training\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[TokenForge] Think token lifecycle manager\"\n  echo \"  Tokens forged: 17 | VERIFIED: 16 | PRUNED: 1\"\n  echo \"  SOR routing: IQR Tukey fence evaluation\"\n  echo \"  Quality gate: KD >= 96 → PROMOTE, KD < 85 → PRUNE\"\n  echo \"  DTHINK pipeline: 9 entries, 2.3 KB\"\n  echo \"  Status: active — token ecosystem healthy\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T16:57:06.813Z",
+  "decoded": false
+}

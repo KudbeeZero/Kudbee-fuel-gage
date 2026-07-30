@@ -130,8 +130,13 @@
       "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
       "timestamp": "2026-07-30T15:14:15.863Z",
       "score": 17
+    },
+    {
+      "query": "fleet_test: full system capability verification. report: status, current task, dependencies, health, last decision, next action.",
+      "timestamp": "2026-07-30T16:57:06.874Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-30T15:14:15.863Z",
-  "recallCount": 26
+  "lastRecall": "2026-07-30T16:57:06.874Z",
+  "recallCount": 27
 }

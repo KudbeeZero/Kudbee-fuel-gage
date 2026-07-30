@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785430626883-16db7523",
+  "agentId": "ledger-keeper",
+  "decision": "error:FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\nschedule: hourly\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T16:57:06.883Z",
+  "decoded": false
+}

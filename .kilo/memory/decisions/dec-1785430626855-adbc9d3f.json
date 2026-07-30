@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785430626855-adbc9d3f",
+  "agentId": "monitor",
+  "decision": "run:FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+  "context": {
+    "action": "execute",
+    "task": "FLEET_TEST: Full system capability verification. Report: status, current task, dependencies, health, last decision, next action.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T16:57:06.855Z",
+  "decoded": false
+}

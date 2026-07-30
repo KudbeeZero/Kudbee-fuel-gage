@@ -116,8 +116,13 @@
       "id": "dec-1785424455904-adceb26a",
       "decision": "layer_scan_complete",
       "timestamp": "2026-07-30T15:14:15.904Z"
+    },
+    {
+      "id": "dec-1785430626930-e68d4db2",
+      "decision": "layer_scan_complete",
+      "timestamp": "2026-07-30T16:57:06.930Z"
     }
   ],
-  "lastAction": "2026-07-30T15:14:15.904Z",
-  "totalActions": 46
+  "lastAction": "2026-07-30T16:57:06.930Z",
+  "totalActions": 48
 }
