@@ -1,8 +1,96 @@
 {
   "journal": [
     {
-      "session": "ses-1785467258324-e8c1704d",
-      "date": "2026-07-31T03:07:38.750Z",
+      "session": "ses-1785294254276-b80ca2b3",
+      "date": "2026-07-29T03:04:14.542Z",
+      "type": "bootstrap",
+      "agentsActive": 6,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785294347522-4b95d29f",
+      "date": "2026-07-29T03:05:47.780Z",
+      "type": "bootstrap",
+      "agentsActive": 6,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785297531116-e548210e",
+      "date": "2026-07-29T03:58:51.399Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785301045490-ecf663c4",
+      "date": "2026-07-29T04:57:25.777Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785305016207-a743e000",
+      "date": "2026-07-29T06:03:36.524Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785305642666-4f9fb565",
+      "date": "2026-07-29T06:14:02.947Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785306814908-f2733457",
+      "date": "2026-07-29T06:33:35.133Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785308078828-c52c46aa",
+      "date": "2026-07-29T06:54:39.111Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785312063275-c2926638",
+      "date": "2026-07-29T08:01:03.478Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785314247957-c1236f15",
+      "date": "2026-07-29T08:37:28.234Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785316203814-591927b0",
+      "date": "2026-07-29T09:10:04.057Z",
+      "type": "bootstrap",
+      "agentsActive": 10,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785364694404-88fff99a",
+      "date": "2026-07-29T22:38:14.695Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
@@ -174,11 +262,19 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785432545991-f0b92f84",
+      "date": "2026-07-30T17:29:06.254Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 80,
-    "ciPassRate": "82%"
+    "sessions": 45,
+    "ciPassRate": "100%"
   },
   "health": {
     "overall": "GREEN",
