@@ -5747,3 +5747,4 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
   }
 });
 
+// Trigger rebuild Thu Jul 30 19:19:12 UTC 2026
