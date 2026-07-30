@@ -270,28 +270,49 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785432545991-f0b92f84",
+      "date": "2026-07-30T17:47:45+00:00",
+      "type": "ci-fix",
+      "summary": "Fixed authenticateAgentPass export + enabled GitHub Actions workflows",
+      "actions": [
+        "Exported authenticateAgentPass() from bearerAuthMiddleware.ts",
+        "Added import in server.js for authenticateAgentPass",
+        "Enabled disabled GitHub Actions workflows (deploy.yml, verify.yml, session-log.yml)",
+        "Created Upstash Redis for e2e testing",
+        "Documented Heroku pipeline setup requirements"
+      ],
+      "ciStatus": "36/44 e2e passing (8 Redis-dependent failures remain)",
+      "filesChanged": [
+        "services/lib/bearerAuthMiddleware.ts",
+        "services/ingestion/server.js",
+        ".github/workflows/*.yml (enabled)"
+      ],
+      "bugsFixed": 1,
+      "breadcrumbTraceId": "verify-2026-07-30-auth-fix",
+      "herokuPipeline": {
+        "app": "kudbee-fuel-gage",
+        "workflowsEnabled": true,
+        "deployOnPush": "main branch",
+        "verifyOnPR": "push + pull_request + schedule",
+        "redisConfig": "Upstash Redis (rediss://), GitHub Actions uses redis:7-alpine service"
+      }
     }
   ],
   "trends": {
-    "sessions": 45,
-    "ciPassRate": "100%"
+    "sessions": 46,
+    "ciPassRate": "82%"
   },
   "health": {
-    "overall": "GREEN",
-    "githubActions": "6 workflows active (CodeQL, Deploy to Heroku Staging, Session Logger, Kudbee CI, Copilot cloud agent, CodeQL legacy)",
-    "herokuPipeline": "3 environments configured (dev/staging/prod)",
-    "edisbox": "integrated — edisbox-deploy.mjs, edisbox-pipeline.mjs, box-web-verify.mjs",
-    "prStack": "PR #233 (staging/security-durability → main) with EDISBOX verification",
-    "ciBounds": "CI_MUTATION_BUDGET=20, MAX_REQUEST_BODY=256kb/512kb, DB_POOL_MAX=5/10",
+    "overall": "YELLOW",
     "frontend": "3 fixes deployed",
     "thinkForge": "4 tokens processed",
     "relations": "10 nodes, 13 edges",
     "knownIssues": [
-      "PR #233 CI failure: missing verify:typescript script in package.json on that branch",
-      "8 e2e checks fail without Redis (billing-blocked GitHub Actions)",
-      "Heroku CLI not available in container",
-      "DATABASE_URL points to localhost (needs Neon Postgres for production)",
-      "22 GitHub vulnerabilities (1 critical, 15 high, 6 moderate)"
+      "8 e2e checks fail without Redis (Check 3, 21, 22, 24, 27, 28, 30, 32, 35)",
+      "Heroku CLI not available in container — use GitHub Actions for deploys",
+      "DATABASE_URL points to localhost (needs Neon Postgres for production)"
     ]
   }
 }
