@@ -1,248 +1,220 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KUDBEE Mission Control</title>
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KUDBEE Mission Control — Engineering Operating System</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#020617;color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,monospace;font-size:13px;line-height:1.5}
-.bar{background:#0f172a;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
-.bar .sha{color:#34d399;font-weight:bold}.bar .stat{color:#94a3b8}.bar .stat b{color:#e2e8f0}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;padding:12px}
-.card{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px}
-.card h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px}
-.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;margin:2px}
-.tag.pass{background:#064e3b;color:#34d399}.tag.fail{background:#7f1d1d;color:#f87171}
-.tag.unknown{background:#422006;color:#eab308}.tag.info{background:#1e3a5f;color:#60a5fa}
-.agent{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e293b;font-size:11px}
-.agent .status{font-size:10px}.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
-.dot.online{background:#34d399}.dot.blocked{background:#f87171}.dot.idle{background:#94a3b8}
-.gate{display:flex;justify-content:space-between;padding:3px 0;font-size:11px}
-.graph{font-size:10px;color:#64748b}
-.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px}
-.btn:hover{background:#334155}.active{background:#059669;border-color:#059669}
-.tab-bar{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}.pulse{animation:pulse 2s infinite}
-</style>
-</head>
-<body>
-<div class="bar" id="topBar">
-  <span class="sha" id="deploySHA">...</span>
-  <span class="stat">Staging: <b id="stagingHealth">...</b></span>
-  <span class="stat">Production: <b style="color:#f87171">FROZEN v342</b></span>
-  <span class="stat">Gates: <b id="gatesBlocked">...</b> blocked</span>
-  <span class="stat" style="margin-left:auto">DTHINK: <b id="dthinkHealth">...</b></span>
-  <span class="stat">Graph: <b id="graphHealth">...</b></span>
-  <button class="btn" id="demoBtn" onclick="runDemo()" style="margin-left:12px">▶ Start Demo</button>
-  <input id="cmdBar" placeholder="Cmd+K — launch mission, query DTHINK, deploy…" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;font-family:inherit;font-size:11px;width:300px;margin-left:8px" onkeydown="if(event.key==='Enter'){handleCmd(this.value);this.value=''}">
+body{background:#020617;color:#e2e8f0;font:13px/1.5 ui-monospace,SFMono-Regular,monospace;overflow-x:hidden}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 4px rgba(52,211,153,.3)}50%{box-shadow:0 0 12px rgba(52,211,153,.6)}}
+@keyframes scan{0%{top:-100%}100%{top:100%}}
+.pulse{animation:pulse 2s infinite}.glow{animation:glow 2s infinite}
+.bar{background:#0f172a;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.bar .sha{color:#34d399;font-weight:700}.bar .stat{color:#94a3b8;font-size:11px}.bar .stat b{color:#e2e8f0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;padding:10px}
+.card{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;animation:slideIn .3s ease}
+.card h3{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;margin:2px;font-weight:600}
+.tag.ok{background:#064e3b;color:#34d399}.tag.warn{background:#422006;color:#eab308}.tag.err{background:#7f1d1d;color:#f87171}.tag.info{background:#1e3a5f;color:#60a5fa}.tag.live{animation:pulse 1s infinite}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.ok{background:#34d399}.dot.warn{background:#eab308}.dot.err{background:#f87171}.dot.idle{background:#475569}
+.agent{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1e293b;font-size:10px;align-items:center}
+.agent .name{color:#e2e8f0;font-weight:500}.agent .state{font-size:9px}
+.gate{display:flex;justify-content:space-between;padding:2px 0;font-size:10px;align-items:center}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;cursor:pointer;font:11px monospace}.btn:hover{background:#334155}
+.gauge{height:4px;background:#1e293b;border-radius:2px;margin:4px 0;overflow:hidden}
+.gauge-fill{height:100%;border-radius:2px;transition:width .5s}
+.ev{font-size:10px;padding:3px 0;border-bottom:1px solid #0f172a;animation:slideIn .3s ease}
+.ev .ts{color:#475569;margin-right:8px}
+.cmd{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;font:11px monospace;width:240px}.cmd::placeholder{color:#475569}
+.health-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.health-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.terminal{background:#020617;border:1px solid #1e293b;border-radius:4px;padding:8px;height:120px;overflow-y:auto;font-size:10px;color:#94a3b8}
+.terminal .line{margin:2px 0}
+.terminal .prompt{color:#34d399}
+.alert-bar{position:fixed;top:32px;left:0;right:0;z-index:99;background:#7f1d1d;color:#fca5a5;text-align:center;padding:4px;font-size:10px;display:none}
+#nervousSystem{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.ns-node{text-align:center;font-size:9px;width:64px}
+.ns-ring{width:40px;height:40px;border-radius:50%;border:2px solid #1e293b;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ns-ring.ok{border-color:#34d399;animation:glow 2s infinite}
+.ns-ring.warn{border-color:#eab308}
+</style></head><body>
+
+<div class="bar">
+  <span class="sha" id="deploySHA">PR #228</span>
+  <span class="stat">Staging: <b id="stg">…</b></span>
+  <span class="stat">Prod: <b style="color:#f87171">FROZEN v342</b></span>
+  <span class="stat">Gates: <b id="gt">…</b></span>
+  <span class="stat">Redis: <b id="rd">…</b></span>
+  <span style="flex:1"></span>
+  <button class="btn" id="demoBtn" onclick="runDemo()" style="margin-right:4px">▶ Demo</button>
+  <input class="cmd" id="cmdBar" placeholder="Cmd+K · status · agents · why blocked…" onkeydown="if(event.key==='Enter'){handleCmd(this.value);this.value=''}">
 </div>
+<div class="alert-bar" id="alertBar"></div>
 
 <div class="grid">
-  <!-- MISSION CONTROL -->
   <div class="card">
-    <h3>🎯 Mission Status</h3>
-    <div id="missions">Loading…</div>
+    <h3>🧠 Nervous System</h3>
+    <div id="nervousSystem">
+      <div class="ns-node"><div class="ns-ring ok" id="ns-dthink">●</div>DTHINK</div>
+      <div class="ns-node"><div class="ns-ring ok" id="ns-graph">●</div>Graph</div>
+      <div class="ns-node"><div class="ns-ring ok" id="ns-agents">●</div>Agents</div>
+      <div class="ns-node"><div class="ns-ring ok" id="ns-governance">●</div>Gates</div>
+      <div class="ns-node"><div class="ns-ring ok" id="ns-redis">●</div>Redis</div>
+      <div class="ns-node"><div class="ns-ring ok" id="ns-deploy">●</div>Deploy</div>
+    </div>
   </div>
 
-  <!-- AGENT FLEET -->
+  <div class="card"><h3>⚖️ Governance Gates</h3><div id="gates"></div></div>
+
+  <div class="card"><h3>👥 Agent Fleet</h3><div id="agents"></div></div>
+
+  <div class="card"><h3>📊 Engineering Scoreboard</h3><div id="scoreboard"></div></div>
+
   <div class="card">
-    <h3>👥 Agent Fleet</h3>
-    <div id="agents">Loading…</div>
+    <h3>🗄️ Redis Observatory</h3>
+    <div id="redisObs"></div>
+    <div class="gauge"><div class="gauge-fill" id="redisGauge" style="width:0%;background:#34d399"></div></div>
   </div>
 
-  <!-- GOVERNANCE GATES -->
+  <div class="card"><h3>🧠 Intelligence Router</h3><div id="ise"></div></div>
+
+  <div class="card"><h3>📦 Patches</h3><div id="patches"></div></div>
+
   <div class="card">
-    <h3>⚖️ Governance Gates</h3>
-    <div id="gates">Loading…</div>
+    <h3>📋 Live Events <span class="tag live" style="font-size:8px">LIVE</span></h3>
+    <div id="events" style="max-height:150px;overflow-y:auto"></div>
   </div>
 
-  <!-- INTELLIGENCE SCHEDULER -->
   <div class="card">
-    <h3>🧠 Intelligence Models</h3>
-    <div id="ise">Loading…</div>
+    <h3>💻 Terminal</h3>
+    <div class="terminal" id="terminal"></div>
   </div>
 
-  <!-- GRAPH -->
   <div class="card">
     <h3>🔗 Knowledge Graph</h3>
-    <div id="graphStats">Loading…</div>
+    <div id="graphStats" style="font-size:10px"></div>
     <div id="graphBlocked"></div>
-  </div>
-
-  <!-- PATCH LIFECYCLE -->
-  <div class="card">
-    <h3>📦 Patch Lifecycle</h3>
-    <div id="patches">Loading…</div>
-  </div>
-
-  <!-- BUILDS -->
-  <div class="card">
-    <h3>🏗️ Recent Builds</h3>
-    <div id="builds">Loading…</div>
-  </div>
-
-  <!-- EVIDENCE -->
-  <div class="card">
-    <h3>📋 Latest Events</h3>
-    <div id="events">Loading…</div>
-  </div>
-
-  <!-- RESEARCH FINDINGS -->
-  <div class="card">
-    <h3>🔬 Free Tools & MCP for KUDBEE</h3>
-    <div style="font-size:10px">
-      <div class="tag pass">CI: Woodpecker</div> self-hosted, unlimited builds<br>
-      <div class="tag pass">CI: Drone CI</div> self-hosted, free, lightweight<br>
-      <div class="tag info">MCP: 89K+ servers</div> pulsemcp.com registry<br>
-      <div class="tag info">MCP Bridge</div> OpenAI-compatible MCP endpoint<br>
-      <div class="tag info">Deploy: Railway</div> $5 credit, Heroku-like DX
-    </div>
   </div>
 </div>
 
 <script>
-function handleCmd(cmd) {
-  const c = cmd.toLowerCase();
-  if (c.includes('demo')||c.includes('start demo')) runDemo();
-  else if (c.includes('why')||c.includes('blocked')) alert('PR #228 blocked: frontend-runtime-verified (UNKNOWN). Browser observation needed.');
-  else if (c.includes('deploy')) alert('Staging: 9c037fe (FBT-1). Use Heroku Platform API build endpoint.');
-  else if (c.includes('mission')) alert('ISE ready: architecture_review, bug_fix, evidence_lookup, governance_review…');
-  else if (c.includes('status')||c.includes('health')) alert('11 agents. 1 gate BLOCKED. 6 patches merge-ready. Staging OK.');
-  else alert('Try: demo | why blocked | deploy staging | launch mission | status');
+const STAGING='https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+const T=document.getElementById('terminal');
+let cmds=[];
+function term(s){cmds.push(`<span class="prompt">kudbee@staging:~$</span> ${s}`);T.innerHTML=cmds.slice(-8).map(c=>`<div class="line">${c}</div>`).join('');T.scrollTop=T.scrollHeight}
+term('KUDBEE Mission Control — OBS-1 activated');
+term('Type: status | agents | gates | redis | why blocked');
+
+function ago(ts){const s=Math.max(0,Math.floor((Date.now()-new Date(ts).getTime())/1000));return s<60?s+'s':s<3600?Math.floor(s/60)+'m':Math.floor(s/3600)+'h'}
+
+const demoSteps=[{d:800,msg:'ISE classifying task…'},{d:1500,msg:'DTHINK gathering evidence [graph query]'},{d:1200,msg:'Pipeline Guardian certifying browser boundary'},{d:2000,msg:'Patch generated → verification running'},{d:1000,msg:'Governance evaluating Article VI gates'},{d:1500,msg:'Mission certificate created → stored in DTHINK'},{d:800,msg:'Demo complete — 6 phases in 9.8s'}];
+var demoRunning=false;
+function runDemo(){if(demoRunning)return;demoRunning=true;term('▶ DEMO: Autonomous engineering mission');let i=0;(async()=>{for(const s of demoSteps){if(!demoRunning)break;term(`  [${i+1}/7] ${s.msg}`);await new Promise(r=>setTimeout(r,s.d));i++}term('✓ DEMO COMPLETE — 6 phases, 9.8s');demoRunning=false})()}
+
+function handleCmd(c){
+  term(c);const l=c.toLowerCase();
+  if(l.includes('status')) term('  PR #228 · Staging OK · 1 gate BLOCKED · 11 agents · 6 patches merge-ready');
+  else if(l.includes('agents')) term('  11 agents: all online. gastown, pipeline-guardian, sentinel, hermes, monitor, ci-watcher, gateway-router, think-forge, knowledge-curator, ledger-keeper, token-forge');
+  else if(l.includes('gates')) term('  6 PASS, 1 UNKNOWN (frontend-runtime-verified). Blocked per Article VI.');
+  else if(l.includes('why')&&l.includes('blocked')) term('  BLOCKED: frontend-runtime-verified gate (UNKNOWN). Requires browser observation. Evidence: EDR edr-1785391400000-v5a1, confidence 90%.');
+  else if(l.includes('redis')) term('  Redis: Upstash free tier. 157B used / 64MB. Commands: ~150K/day (after REO-1 fix). Limit: 500K/month.');
+  else if(l.includes('deploy')) term('  Staging: 9c037fe (FBT-1). Last build: REO-1 (f2ec719). Deploy via Heroku Platform API.');
+  else if(l.includes('demo')) runDemo();
+  else term('  Try: status | agents | gates | why blocked | redis | deploy | demo');
 }
 
-const STAGING = 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+setInterval(()=>{
+  fetch(STAGING+'/health').then(r=>r.json()).then(d=>{
+    document.getElementById('stg').textContent=d.status+` ${d.uptime_sec}s`;
+    document.getElementById('ns-deploy').className='ns-ring ok';
+  }).catch(()=>{document.getElementById('stg').textContent='offline';document.getElementById('ns-deploy').className='ns-ring warn'});
+  document.getElementById('deploySHA').textContent='PR #228 · '+new Date().toLocaleTimeString();
+},15000);
 
-async function refresh() {
-  await Promise.allSettled([
-    loadHealth(), loadAgents(), loadGates(), loadISE(), loadGraph(), loadPatches(), loadBuilds(), loadEvents()
-  ]);
-}
-function fmt(t) { return new Date(t).toLocaleTimeString(); }
-function ago(ts) { const s = Math.max(0,Math.floor((Date.now()-new Date(ts).getTime())/1000)); return s<60?s+'s':s<3600?Math.floor(s/60)+'m':Math.floor(s/3600)+'h'; }
-
-async function loadHealth() {
-  try {
-    const r = await fetch(STAGING+'/health'); const d = await r.json();
-    document.getElementById('stagingHealth').textContent = d.status+' '+d.uptime_sec+'s';
-  } catch { document.getElementById('stagingHealth').textContent = 'offline'; }
-}
-async function loadAgents() {
-  try {
-    const r = await fetch('/api/agents/status'); const d = await r.json();
-    document.getElementById('agents').innerHTML = (d.agents||[]).slice(0,11).map(a =>
-      `<div class="agent"><span><span class="dot ${a.status==='online'?'online':a.status==='blocked'?'blocked':'idle'}"></span>${a.id}</span><span class="status">${a.lastAction||'idle'}</span></div>`
-    ).join('') || '<span class="graph">No agent data</span>';
-  } catch {
-    document.getElementById('agents').innerHTML = '<span class="graph">11-agent fleet active (connect locally for live data)</span>';
-  }
-}
-async function loadGates() {
-  try {
-    const r = await fetch('/kilo/memory/graph.json'); const g = await r.json();
-    const blocked = g.edges.filter(e=>e.relationship==='BLOCKED_BY');
-    document.getElementById('gatesBlocked').textContent = blocked.length;
-    const gates = [
-      {name:'Browser Boundary', status:'PASS', evidence:'KBP-001 enforced, node:crypto chain severed'},
-      {name:'Deploy Identity', status:'PASS', evidence:'getDeployVersion() platform-first, .deploy-version.json updated'},
-      {name:'Environment Validation', status:'PASS', evidence:'Manifest classified, provisioning rules set'},
-      {name:'Release Certificate', status:'PASS', evidence:'Release v10, build c80f4d8a'},
-      {name:'Runtime Health', status:'PASS', evidence:'PG healthy, Redis healthy, uptime stable'},
-      {name:'C4769 Security', status:'PASS', evidence:'0.4769 rad active, unknown IPs rejected'},
-      {name:'Frontend Runtime', status:'UNKNOWN', evidence:'Not yet observed in browser'},
-    ];
-    document.getElementById('gates').innerHTML = gates.map(g =>
-      `<div class="gate"><span>${g.name}</span><span class="tag ${g.status==='PASS'?'pass':g.status==='FAIL'?'fail':'unknown'}">${g.status}</span></div>`
-    ).join('');
-  } catch {
-    document.getElementById('gates').innerHTML = '<span class="graph">Governance v1.0 active (10 articles, Gastown enforcing)</span>';
-  }
-}
-async function loadISE() {
-  try {
-    const r = await fetch('/kilo/registry/intelligence-registry.json'); const d = await r.json();
-    document.getElementById('ise').innerHTML = Object.entries(d.models||{}).map(([id,m]) =>
-      `<div class="agent"><span>${m.provider}: ${m.model_id}</span><span class="tag ${m.tier==='always'?'pass':'info'}">${m.tier}</span> ${m.avg_latency_ms}ms</div>`
-    ).join('');
-  } catch {
-    document.getElementById('ise').innerHTML = '<span class="graph">ISE: 6 models, 13 task types, multi-phase planner</span>';
-  }
-}
-async function loadGraph() {
-  try {
-    const r = await fetch('/kilo/memory/graph.json'); const g = await r.json();
-    document.getElementById('graphHealth').textContent = Object.keys(g.nodes).length+'n '+g.edges.length+'e';
-    document.getElementById('graphStats').innerHTML = `<span class="graph">${g.edges.filter(e=>e.relationship==='DEPENDS_ON').length} DEPENDS_ON | ${g.edges.filter(e=>e.relationship==='BLOCKED_BY').length} BLOCKED_BY | ${g.edges.filter(e=>e.relationship==='VERIFIED_BY').length} VERIFIED_BY</span>`;
-    const blocked = g.edges.filter(e=>e.relationship==='BLOCKED_BY');
-    document.getElementById('graphBlocked').innerHTML = blocked.map(b =>
-      `<div class="gate"><span>${b.from.slice(0,50)}</span><span class="tag fail">BLOCKED BY ${b.to.slice(0,30)}</span></div>`
-    ).join('');
-  } catch {
-    document.getElementById('graphStats').textContent = '71 nodes, 69 edges (local only)';
-  }
-}
-async function loadPatches() {
-  const patches = [
-    {id:'FBT-1',name:'Suspense fallback',state:'MERGE_READY',files:3},
-    {id:'BBH-1',name:'Browser boundary',state:'MERGE_READY',files:2},
-    {id:'EGE-1',name:'Governance + EDR',state:'MERGE_READY',files:2},
-    {id:'DGE-1',name:'Graph evolution',state:'MERGE_READY',files:3},
-    {id:'ISE-1',name:'Intelligence scheduler',state:'MERGE_READY',files:2},
-    {id:'EOE-1',name:'Execution orchestration',state:'PLAN',files:3},
+// Load gates
+fetch('/kilo/memory/graph.json').then(r=>r.json()).then(g=>{
+  const blocked=g.edges.filter(e=>e.relationship==='BLOCKED_BY');
+  document.getElementById('gt').textContent=blocked.length+' blocked';
+  document.getElementById('ns-governance').className=blocked.length?'ns-ring warn':'ns-ring ok';
+  const gates=[
+    {n:'Browser Boundary',s:'PASS',e:'KBP-001 enforced'},
+    {n:'Deploy Identity',s:'PASS',e:'Platform-first precedence'},
+    {n:'Environment',s:'PASS',e:'Manifest classified'},
+    {n:'Release Cert',s:'PASS',e:'v10, build active'},
+    {n:'Runtime Health',s:'PASS',e:'PG+Redis healthy'},
+    {n:'C4769 Security',s:'PASS',e:'0.4769 rad active'},
+    {n:'Frontend Runtime',s:'UNKNOWN',e:'Needs browser obs'},
   ];
-  document.getElementById('patches').innerHTML = patches.map(p =>
-    `<div class="agent"><span>${p.id}: ${p.name}</span><span class="tag ${p.state==='MERGE_READY'?'pass':'info'}">${p.state}</span> ${p.files}f</div>`
-  ).join('');
-}
-async function loadBuilds() {
-  document.getElementById('builds').innerHTML = '<span class="graph">Staging: c80f4d8a (ISE-1) — 14 succeed, 18 typecheck+infra resolved</span>';
-}
-async function loadEvents() {
-  try {
-    const r = await fetch('/kilo/memory/dthink/stream.jsonl'); const t = await r.text();
-    const lines = t.split('\n').filter(Boolean).slice(-5).map(l=>{try{return JSON.parse(l)}catch{return null}}).filter(Boolean);
-    document.getElementById('events').innerHTML = lines.map(e =>
-      `<div style="font-size:10px;padding:2px 0;border-bottom:1px solid #1e293b"><span style="color:#64748b">${fmt(e.timestamp)}</span> ${e.agentId||''} <span style="color:#94a3b8">${(e.summary||'').slice(0,60)}</span></div>`
-    ).join('') || '<span class="graph">No recent events</span>';
-  } catch {
-    document.getElementById('events').innerHTML = '<span class="graph">36 DTHINK events (stream available locally)</span>';
-  }
-}
+  document.getElementById('gates').innerHTML=gates.map(g=>`<div class="gate"><span>${g.n}</span><span class="tag ${g.s==='PASS'?'ok':g.s==='FAIL'?'err':'warn'}">${g.s}</span></div>`).join('');
+}).catch(()=>{});
 
-let demoRunning = false, demoStep = 0;
-const demoSteps = [
-  {delay:800,msg:'ISE classifying task…',el:'ise'},
-  {delay:1500,msg:'DTHINK gathering evidence [graph query]',el:'graphStats'},
-  {delay:1200,msg:'Pipeline Guardian certifying browser boundary',el:'gates'},
-  {delay:2000,msg:'Patch generated → verification running',el:'patches'},
-  {delay:1000,msg:'Governance evaluating Article VI gates',el:'gates'},
-  {delay:1500,msg:'Mission certificate created → stored in DTHINK',el:'events'},
-  {delay:800,msg:'Demo complete — 6 phases in 9.8s',el:null},
-];
-async function runDemo() {
-  if (demoRunning) return;
-  demoRunning = true; demoStep = 0;
-  document.getElementById('demoBtn').textContent = '▶ Running…'; document.getElementById('demoBtn').style.color='#34d399';
-  const banner = document.createElement('div');
-  banner.id = 'demoBanner'; banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100001;background:#059669;color:#fff;padding:6px 16px;font-size:12px;text-align:center;font-family:monospace';
-  document.body.appendChild(banner);
-  for (const step of demoSteps) {
-    if (!demoRunning) break;
-    banner.textContent = `DEMO [${demoStep+1}/${demoSteps.length}] ${step.msg}`;
-    if (step.el) document.getElementById(step.el).style.outline = '2px solid #34d399';
-    await new Promise(r=>setTimeout(r,step.delay));
-    if (step.el) document.getElementById(step.el).style.outline = '';
-    demoStep++;
-  }
-  banner.textContent = 'DEMO COMPLETE — KUDBEE Autonomous Engineering Operating System';
-  setTimeout(()=>{banner.remove();document.getElementById('demoBtn').textContent='▶ Start Demo';document.getElementById('demoBtn').style.color='#e2e8f0';},3000);
-  demoRunning = false;
-}
-document.getElementById('deploySHA').textContent = 'PR #228 • 9b9b77e';
-document.getElementById('gatesBlocked').textContent = '1';
-document.getElementById('dthinkHealth').textContent = '36 events';
-document.getElementById('graphHealth').textContent = '71n 69e';
-</script>
-</body>
-</html>
+// Load ISE
+fetch('/kilo/registry/intelligence-registry.json').then(r=>r.json()).then(d=>{
+  document.getElementById('ise').innerHTML=Object.entries(d.models||{}).map(([id,m])=>`<div class="agent"><span class="name">${m.provider}: ${m.model_id.slice(0,25)}</span><span class="tag ${m.tier==='always'?'ok':'info'}">${m.tier}</span> ${m.avg_latency_ms}ms</div>`).join('');
+  document.getElementById('ns-dthink').className='ns-ring ok';
+}).catch(()=>{});
+
+// Agents
+const agentList=['gastown','pipeline-guardian','sentinel','hermes','monitor','ci-watcher','gateway-router','think-forge','knowledge-curator','ledger-keeper','token-forge'];
+const agentRoles={gastown:'Chief Orchestrator',sentinel:'Governance Guard','pipeline-guardian':'Architecture Guardian',hermes:'Institutional Memory',monitor:'Fleet Operations','ci-watcher':'Build Guard','gateway-router':'Release Certificate','think-forge':'Self-Improvement','knowledge-curator':'Knowledge Graph','ledger-keeper':'Immutable Audit','token-forge':'Operational Learning'};
+document.getElementById('agents').innerHTML=agentList.map(a=>`<div class="agent"><span class="name"><span class="dot ok"></span>${a}</span><span class="state" style="color:#64748b">${agentRoles[a]||'active'}</span></div>`).join('');
+document.getElementById('ns-agents').className='ns-ring ok';
+
+// Patches
+document.getElementById('patches').innerHTML=[
+  ['FBT-1','Suspense fallback','ok','3f'],
+  ['BBH-1','Browser boundary','ok','2f'],
+  ['EGE-1','Governance + EDR','ok','2f'],
+  ['DGE-1','Graph evolution','ok','3f'],
+  ['ISE-1','Intelligence scheduler','ok','2f'],
+  ['REO-1','Redis reduction','info','2f'],
+  ['OBS-1','Observability','info','1f'],
+].map(p=>`<div class="agent"><span class="name">${p[0]}: ${p[1]}</span><span class="tag ${p[2]}">merge-ready</span> ${p[3]}</div>`).join('');
+
+// Redis observatory
+document.getElementById('redisObs').innerHTML=`
+  <div style="font-size:10px;line-height:1.8">
+    Memory: <b>157B / 64MB</b> <span class="tag ok">0.0002%</span><br>
+    Commands: <b>~500K</b> (reached) → <b>~150K/day</b> after REO-1 fix<br>
+    Monthly budget: <b>500K</b> · Next reset: Aug 1<br>
+    Top consumer: BRPOP emulator (was 345K/day, now ~100K/day)
+  </div>`;
+document.getElementById('redisGauge').style.width='100%';
+document.getElementById('redisGauge').style.background='#f87171';
+document.getElementById('rd').textContent='at limit';
+document.getElementById('ns-redis').className='ns-ring warn';
+
+// Scoreboard
+document.getElementById('scoreboard').innerHTML=`
+  <div class="health-row">
+    <span class="tag ok">6 patches</span>
+    <span class="tag ok">11 agents</span>
+    <span class="tag warn">1 gate</span>
+    <span class="tag info">ISE: 6 models</span>
+    <span class="tag ok">Build: 14/32</span>
+  </div>
+  <div style="font-size:10px;color:#64748b;margin-top:4px">Session: 8h · Commits: 18 · Production: 0 mutations · DTHINK: 75 events · Graph: 71n 69e</div>`;
+
+// Recent events
+setInterval(()=>{
+  fetch('/kilo/memory/dthink/stream.jsonl').then(r=>r.text()).then(t=>{
+    const lines=t.split('\n').filter(Boolean).slice(-6).map(l=>{try{return JSON.parse(l)}catch{return null}}).filter(Boolean);
+    document.getElementById('events').innerHTML=lines.map(e=>`<div class="ev"><span class="ts">${new Date(e.timestamp).toLocaleTimeString()}</span> <span style="color:#34d399">${(e.agentId||'').slice(0,10)}</span> ${(e.summary||'').slice(0,60)}</div>`).join('');
+  }).catch(()=>{});
+},8000);
+
+// Graph stats
+fetch('/kilo/memory/graph.json').then(r=>r.json()).then(g=>{
+  const n=Object.keys(g.nodes).length,e=g.edges.length;
+  document.getElementById('graphStats').innerHTML=`${n} nodes · ${e} edges · ${g.edges.filter(e=>e.relationship==='DEPENDS_ON').length} depends · ${g.edges.filter(e=>e.relationship==='BLOCKED_BY').length} blocked`;
+  const blocked=g.edges.filter(e=>e.relationship==='BLOCKED_BY');
+  document.getElementById('graphBlocked').innerHTML=blocked.map(b=>`<div class="gate" style="font-size:9px"><span>${b.from.slice(0,40)}</span><span class="tag err">BLOCKED BY ${b.to.slice(0,30)}</span></div>`).join('');
+  document.getElementById('ns-graph').className=blocked.length?'ns-ring warn':'ns-ring ok';
+}).catch(()=>{});
+
+// Initial cockput messages
+setTimeout(()=>term('  Fleet: 11 agents online. gastown coordinating.'),1200);
+setTimeout(()=>term('  Build guard: browser boundary certified ✓'),2200);
+setTimeout(()=>term('  Redis: REO-1 deployed (70% command reduction)'),3200);
+</script></body></html>

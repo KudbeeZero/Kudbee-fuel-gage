@@ -180,8 +180,8 @@ async function runLoop() {
     }
 
     try {
-      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 5);
-      if (!result) continue;
+      const result = await blockingRedis.blpop('kudbee:telemetry_feed', 3);
+      if (!result) { await new Promise(r => setTimeout(r, 1000)); continue; }
       resetRedisQuotaBackoff();
       errorBackoffMs = BASE_BACKOFF_MS;
       consecutiveErrors = 0;
