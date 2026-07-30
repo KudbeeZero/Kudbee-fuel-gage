@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785414321565-3f223fa1",
+  "agentId": "sentinel",
+  "decision": "error:BRV-001: Re-evaluate ALL 7 governance gates for PR-228. Current state: 6 PASS, 1 PENDING (frontend-runtime — no browser available in cloud). Confirm gate statuses with evidence. Do not change status without evidence.",
+  "context": {
+    "error": "Command failed: ---\nid: sentinel\ncategory: security\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Sentinel] Edge anomaly detection running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Channel: kudbee:stream:audit\"\n  echo \"  Publisher: services/sentinel/src/redisPublisher.ts\"\n  echo \"  Status: $(curl -s --max-time 3 https://kudbee-fuel-gage-330ade653a62.herokuapp.com/api/edge/anomalies/count 2>/dev/null | node -p 'JSON.parse(require(\"fs\").readFileSync(0,\"utf8\")).totalAlerts || \"0\"' 2>/dev/null || echo \"offline\") alerts\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T12:25:21.565Z",
+  "decoded": false
+}

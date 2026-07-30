@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785414319234-968fef94",
+  "agentId": "ci-watcher",
+  "decision": "run:BRV-001: Full verification sweep for PR-228 release. Run MJS syntax, unused imports, typecheck, build. Classify every gate PASS/FAIL/ENV_BLOCKED. Treat environment failures as documented limitations, not code defects. Produce evidence.",
+  "context": {
+    "action": "execute",
+    "task": "BRV-001: Full verification sweep for PR-228 release. Run MJS syntax, unused imports, typecheck, build. Classify every gate PASS/FAIL/ENV_BLOCKED. Treat environment failures as documented limitations, not code defects. Produce evidence.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T12:25:19.234Z",
+  "decoded": false
+}

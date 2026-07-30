@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785414321213-9c5ca77f",
+  "agentId": "knowledge-curator",
+  "decision": "run:BRV-001: Curate all session learnings into DTHINK. Promote verified patterns: ts-scanner-gap, deploy-identity-precedence, pipeline-fingerprint, browser-boundary, confidence-calibration. Merge duplicates. Retire obsolete. Generate knowledge promotion report.",
+  "context": {
+    "action": "execute",
+    "task": "BRV-001: Curate all session learnings into DTHINK. Promote verified patterns: ts-scanner-gap, deploy-identity-precedence, pipeline-fingerprint, browser-boundary, confidence-calibration. Merge duplicates. Retire obsolete. Generate knowledge promotion report.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T12:25:21.214Z",
+  "decoded": false
+}

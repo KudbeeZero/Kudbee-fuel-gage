@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785414321020-2253ff3f",
+  "agentId": "pipeline-guardian",
+  "decision": "run:BRV-001: Certify architecture. Verify browser boundary (KBP-001), deploy identity (platform-first), middleware layers (11/11 present), pipeline fingerprints (every stage classified). Block if any violation found.",
+  "context": {
+    "action": "execute",
+    "task": "BRV-001: Certify architecture. Verify browser boundary (KBP-001), deploy identity (platform-first), middleware layers (11/11 present), pipeline fingerprints (every stage classified). Block if any violation found.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T12:25:21.021Z",
+  "decoded": false
+}
