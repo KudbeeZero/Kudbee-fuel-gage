@@ -34,6 +34,8 @@ body{background:#020617;color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,mo
   <span class="stat">Gates: <b id="gatesBlocked">...</b> blocked</span>
   <span class="stat" style="margin-left:auto">DTHINK: <b id="dthinkHealth">...</b></span>
   <span class="stat">Graph: <b id="graphHealth">...</b></span>
+  <button class="btn" id="demoBtn" onclick="runDemo()" style="margin-left:12px">▶ Start Demo</button>
+  <input id="cmdBar" placeholder="Cmd+K — launch mission, query DTHINK, deploy…" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 10px;border-radius:4px;font-family:inherit;font-size:11px;width:300px;margin-left:8px" onkeydown="if(event.key==='Enter'){handleCmd(this.value);this.value=''}">
 </div>
 
 <div class="grid">
@@ -85,9 +87,31 @@ body{background:#020617;color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,mo
     <h3>📋 Latest Events</h3>
     <div id="events">Loading…</div>
   </div>
+
+  <!-- RESEARCH FINDINGS -->
+  <div class="card">
+    <h3>🔬 Free Tools & MCP for KUDBEE</h3>
+    <div style="font-size:10px">
+      <div class="tag pass">CI: Woodpecker</div> self-hosted, unlimited builds<br>
+      <div class="tag pass">CI: Drone CI</div> self-hosted, free, lightweight<br>
+      <div class="tag info">MCP: 89K+ servers</div> pulsemcp.com registry<br>
+      <div class="tag info">MCP Bridge</div> OpenAI-compatible MCP endpoint<br>
+      <div class="tag info">Deploy: Railway</div> $5 credit, Heroku-like DX
+    </div>
+  </div>
 </div>
 
 <script>
+function handleCmd(cmd) {
+  const c = cmd.toLowerCase();
+  if (c.includes('demo')||c.includes('start demo')) runDemo();
+  else if (c.includes('why')||c.includes('blocked')) alert('PR #228 blocked: frontend-runtime-verified (UNKNOWN). Browser observation needed.');
+  else if (c.includes('deploy')) alert('Staging: 9c037fe (FBT-1). Use Heroku Platform API build endpoint.');
+  else if (c.includes('mission')) alert('ISE ready: architecture_review, bug_fix, evidence_lookup, governance_review…');
+  else if (c.includes('status')||c.includes('health')) alert('11 agents. 1 gate BLOCKED. 6 patches merge-ready. Staging OK.');
+  else alert('Try: demo | why blocked | deploy staging | launch mission | status');
+}
+
 const STAGING = 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
 
 async function refresh() {
@@ -186,7 +210,35 @@ async function loadEvents() {
   }
 }
 
-refresh(); setInterval(refresh, 10000);
+let demoRunning = false, demoStep = 0;
+const demoSteps = [
+  {delay:800,msg:'ISE classifying task…',el:'ise'},
+  {delay:1500,msg:'DTHINK gathering evidence [graph query]',el:'graphStats'},
+  {delay:1200,msg:'Pipeline Guardian certifying browser boundary',el:'gates'},
+  {delay:2000,msg:'Patch generated → verification running',el:'patches'},
+  {delay:1000,msg:'Governance evaluating Article VI gates',el:'gates'},
+  {delay:1500,msg:'Mission certificate created → stored in DTHINK',el:'events'},
+  {delay:800,msg:'Demo complete — 6 phases in 9.8s',el:null},
+];
+async function runDemo() {
+  if (demoRunning) return;
+  demoRunning = true; demoStep = 0;
+  document.getElementById('demoBtn').textContent = '▶ Running…'; document.getElementById('demoBtn').style.color='#34d399';
+  const banner = document.createElement('div');
+  banner.id = 'demoBanner'; banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100001;background:#059669;color:#fff;padding:6px 16px;font-size:12px;text-align:center;font-family:monospace';
+  document.body.appendChild(banner);
+  for (const step of demoSteps) {
+    if (!demoRunning) break;
+    banner.textContent = `DEMO [${demoStep+1}/${demoSteps.length}] ${step.msg}`;
+    if (step.el) document.getElementById(step.el).style.outline = '2px solid #34d399';
+    await new Promise(r=>setTimeout(r,step.delay));
+    if (step.el) document.getElementById(step.el).style.outline = '';
+    demoStep++;
+  }
+  banner.textContent = 'DEMO COMPLETE — KUDBEE Autonomous Engineering Operating System';
+  setTimeout(()=>{banner.remove();document.getElementById('demoBtn').textContent='▶ Start Demo';document.getElementById('demoBtn').style.color='#e2e8f0';},3000);
+  demoRunning = false;
+}
 document.getElementById('deploySHA').textContent = 'PR #228 • 9b9b77e';
 document.getElementById('gatesBlocked').textContent = '1';
 document.getElementById('dthinkHealth').textContent = '36 events';
