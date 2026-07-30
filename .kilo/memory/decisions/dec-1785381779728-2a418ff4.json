@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785381779728-2a418ff4",
+  "agentId": "gateway-router",
+  "decision": "run:WORKSTREAM F: Implement release evidence package. Every deployment produces: candidate SHA, runtime SHA, release ID, build ID, branch, env, build result, release result, health, security, DB, Redis, observation, promotion state. Store immutably.",
+  "context": {
+    "action": "execute",
+    "task": "WORKSTREAM F: Implement release evidence package. Every deployment produces: candidate SHA, runtime SHA, release ID, build ID, branch, env, build result, release result, health, security, DB, Redis, observation, promotion state. Store immutably.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T03:22:59.728Z",
+  "decoded": false
+}
