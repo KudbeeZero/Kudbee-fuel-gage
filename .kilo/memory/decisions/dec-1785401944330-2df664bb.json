@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785401944330-2df664bb",
+  "agentId": "gastown",
+  "decision": "run:WFO-1 MISSION DIRECTOR: Organize all 11 agents into 6 divisions with clear ownership, roles, capabilities, and permissions. Establish Workforce Registry, Division Commanders, worker capability matrix, scorecards, mission planner, capacity estimator. Every worker has: owner, role, capabilities, permissions, health, utilization, current mission.",
+  "context": {
+    "action": "execute",
+    "task": "WFO-1 MISSION DIRECTOR: Organize all 11 agents into 6 divisions with clear ownership, roles, capabilities, and permissions. Establish Workforce Registry, Division Commanders, worker capability matrix, scorecards, mission planner, capacity estimator. Every worker has: owner, role, capabilities, permissions, health, utilization, current mission.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T08:59:04.330Z",
+  "decoded": false
+}

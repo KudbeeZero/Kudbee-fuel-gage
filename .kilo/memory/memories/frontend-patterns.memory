@@ -150,8 +150,13 @@
       "query": "orchestrated — dependency: none. pipeline fingerprint for every build attempt. stages: checkout→deps→typecheck→build→artifact→deploy→release→runtime→obs→promotion. each stage: pass/fail/blocked/unknown with evidence.",
       "timestamp": "2026-07-30T03:37:19.040Z",
       "score": 8
+    },
+    {
+      "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
+      "timestamp": "2026-07-30T08:59:22.160Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-30T03:37:19.040Z",
-  "recallCount": 30
+  "lastRecall": "2026-07-30T08:59:22.160Z",
+  "recallCount": 31
 }

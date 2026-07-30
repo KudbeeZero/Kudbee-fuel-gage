@@ -96,8 +96,13 @@
       "id": "dec-1785389768562-e170c5d2",
       "decision": "curation_complete",
       "timestamp": "2026-07-30T05:36:08.563Z"
+    },
+    {
+      "id": "dec-1785401962427-a61cea3f",
+      "decision": "curation_complete",
+      "timestamp": "2026-07-30T08:59:22.427Z"
     }
   ],
-  "lastAction": "2026-07-30T05:36:08.563Z",
-  "totalActions": 36
+  "lastAction": "2026-07-30T08:59:22.427Z",
+  "totalActions": 38
 }

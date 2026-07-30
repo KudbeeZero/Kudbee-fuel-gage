@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785401962427-a61cea3f",
+  "agentId": "knowledge-curator",
+  "decision": "curation_complete",
+  "context": {
+    "context": "knowledge graph healthy",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-30T08:59:22.427Z",
+  "decoded": false
+}

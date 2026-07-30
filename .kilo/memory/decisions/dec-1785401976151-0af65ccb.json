@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785401976151-0af65ccb",
+  "agentId": "ledger-keeper",
+  "decision": "error:SWARM CONVERGENCE: Report current status, dependencies, completed work, blockers, next action. Confirm division assignment. All 6 divisions now active: Engineering, Memory, Observation, Operations, Governance, Intelligence.",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\nschedule: hourly\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T08:59:36.151Z",
+  "decoded": false
+}

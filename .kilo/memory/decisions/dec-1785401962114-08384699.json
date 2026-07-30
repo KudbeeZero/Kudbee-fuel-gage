@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785401962114-08384699",
+  "agentId": "pipeline-guardian",
+  "decision": "run:WFO-1 ENGINEERING DIVISION: Manage mission planning, patch generation, verification. Establish worker profiles: Engineering Worker (patch generation), Verification Worker (tests), Architecture Worker (repo analysis). Each worker has defined role. Integrate with Dyno Manager for auto-provisioning.",
+  "context": {
+    "action": "execute",
+    "task": "WFO-1 ENGINEERING DIVISION: Manage mission planning, patch generation, verification. Establish worker profiles: Engineering Worker (patch generation), Verification Worker (tests), Architecture Worker (repo analysis). Each worker has defined role. Integrate with Dyno Manager for auto-provisioning.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T08:59:22.114Z",
+  "decoded": false
+}

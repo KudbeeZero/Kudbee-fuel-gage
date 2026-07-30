@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785401962516-ca887128",
+  "agentId": "gateway-router",
+  "decision": "run:WFO-1 INTELLIGENCE DIVISION: Model routing, prompt planning, reasoning allocation. Integrate ISE scheduler with workforce: every worker receives mission context, evidence, provider assignment, budget, and context. Workers never choose models.",
+  "context": {
+    "action": "execute",
+    "task": "WFO-1 INTELLIGENCE DIVISION: Model routing, prompt planning, reasoning allocation. Integrate ISE scheduler with workforce: every worker receives mission context, evidence, provider assignment, budget, and context. Workers never choose models.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T08:59:22.516Z",
+  "decoded": false
+}

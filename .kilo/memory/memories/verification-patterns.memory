@@ -90,8 +90,13 @@
       "query": "phase iii-e workstream b: deployment identity certification. verify: selected sha = built sha = released sha = runtime sha. if mismatch: auto-generate deployment_identity_mismatch in temporal. block promotion while ambiguous.",
       "timestamp": "2026-07-30T03:42:57.150Z",
       "score": 8
+    },
+    {
+      "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
+      "timestamp": "2026-07-30T08:59:22.160Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-30T03:42:57.150Z",
-  "recallCount": 18
+  "lastRecall": "2026-07-30T08:59:22.160Z",
+  "recallCount": 19
 }
