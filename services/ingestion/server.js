@@ -3499,7 +3499,7 @@ app.get('/api/sse/stream', async (req, res) => {
   sub.on('message', (_ch, msg) => { try { res.write(`data: ${msg}\n\n`); } catch {} });
 });
 
-app.get('/health', apiLimiter, async (_req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_TIME) / 1000);
 
