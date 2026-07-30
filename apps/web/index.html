@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="kudbee-version" content="v293" />
-    <meta name="kudbee-commit" content="HEAD" />
+    <meta name="kudbee-commit" content="9c037fec7be43feb9d6b97d01e64b1b9e0c8c0f3" />
     <meta name="kudbee-build-time" content="2026-07-29T05:00Z" />
     <title>Kudbee Fuel Gauge — AI Cost Intelligence</title>
     <style>
@@ -143,9 +143,11 @@
       });
 
       fetch('/api/system/deploy-status').then(function(r){return r.json()}).then(function(d){
-        _kud.health = d.status;
+        var expected = (document.querySelector('meta[name="kudbee-commit"]')||{}).content||'';
+        var running = (d.herokuRelease||'').slice(0,7);
+        var stale = expected && running && !expected.startsWith(running) && !running.startsWith(expected.slice(0,7));
         var f = document.getElementById('deploy-footer');
-        if (f) { f.className = d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.herokuRelease||'—') + ' | ' + d.status + ' | ' + d.uptimeSec + 's'; }
+        if (f) { f.className = stale ? 'error' : d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.herokuRelease||'—') + ' | ' + d.status + ' | ' + (stale?'STALE — expected ' + expected.slice(0,7):d.uptimeSec+'s'); }
       }).catch(function(){var f=document.getElementById('deploy-footer');if(f){f.className='error';f.textContent='Backend unreachable';}});
     </script>
     <script type="module" src="/src/main.tsx"></script>
