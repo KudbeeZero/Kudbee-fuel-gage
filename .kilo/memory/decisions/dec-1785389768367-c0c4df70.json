@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768367-c0c4df70",
+  "agentId": "monitor",
+  "decision": "run:ECA-1: WORKSTREAM D: AGENT OBSERVABILITY. Expose each agent state: Idle/Investigating/Blocked/Waiting/Complete/Error. Current objective, elapsed time, dependencies, evidence produced.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM D: AGENT OBSERVABILITY. Expose each agent state: Idle/Investigating/Blocked/Waiting/Complete/Error. Current objective, elapsed time, dependencies, evidence produced.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.367Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768355-f223928d",
+  "agentId": "ci-watcher",
+  "decision": "run:ECA-1: WORKSTREAM B: ENGINEERING TIMELINE. Every engineering event is searchable: deployments, CI runs, decisions, knowledge promotions, runtime events, boundary violations, build certificates. Links to evidence.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM B: ENGINEERING TIMELINE. Every engineering event is searchable: deployments, CI runs, decisions, knowledge promotions, runtime events, boundary violations, build certificates. Links to evidence.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.361Z",
+  "decoded": false
+}

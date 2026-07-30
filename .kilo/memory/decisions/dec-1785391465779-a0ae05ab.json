@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785391465779-a0ae05ab",
+  "agentId": "gastown",
+  "decision": "run:CONSTITUTIONAL AUTHORITY ACTIVATED. Enforce 10 articles of KUDBEE Constitution v1.0. Article VI: No promotion without all governance gates passing. Article II: Production inviolable. Article VIII: Humans decide, KILO advises. Current state: 2 gates pass (browser-boundary, deploy-identity), 1 gate fails (frontend-runtime-verified). PROMOTION BLOCKED. Execute enforcement.",
+  "context": {
+    "action": "execute",
+    "task": "CONSTITUTIONAL AUTHORITY ACTIVATED. Enforce 10 articles of KUDBEE Constitution v1.0. Article VI: No promotion without all governance gates passing. Article II: Production inviolable. Article VIII: Humans decide, KILO advises. Current state: 2 gates pass (browser-boundary, deploy-identity), 1 gate fails (frontend-runtime-verified). PROMOTION BLOCKED. Execute enforcement.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T06:04:25.779Z",
+  "decoded": false
+}

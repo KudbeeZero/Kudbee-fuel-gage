@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785391470938-fe0596a1",
+  "agentId": "sentinel",
+  "decision": "run:GOVERNANCE GATE VALIDATOR (Article VI). Evaluate all mandatory gates: architecture, browser-boundary, environment, release-certificate, runtime-health, deploy-identity, security (C4769), regression, knowledge-updated, decision-recorded. Block promotion on any UNKNOWN or FAIL.",
+  "context": {
+    "action": "execute",
+    "task": "GOVERNANCE GATE VALIDATOR (Article VI). Evaluate all mandatory gates: architecture, browser-boundary, environment, release-certificate, runtime-health, deploy-identity, security (C4769), regression, knowledge-updated, decision-recorded. Block promotion on any UNKNOWN or FAIL.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T06:04:30.938Z",
+  "decoded": false
+}

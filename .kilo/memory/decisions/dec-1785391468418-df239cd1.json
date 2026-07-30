@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785391468418-df239cd1",
+  "agentId": "pipeline-guardian",
+  "decision": "run:ARCHITECTURAL GUARDIAN ACTIVE (Article VII). Certify: browser boundary (KBP-001 enforced), deployment identity (source=build=release=runtime), pipeline fingerprint (every stage classified). Report governance gate status. Block deployment on violation.",
+  "context": {
+    "action": "execute",
+    "task": "ARCHITECTURAL GUARDIAN ACTIVE (Article VII). Certify: browser boundary (KBP-001 enforced), deployment identity (source=build=release=runtime), pipeline fingerprint (every stage classified). Report governance gate status. Block deployment on violation.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T06:04:28.418Z",
+  "decoded": false
+}

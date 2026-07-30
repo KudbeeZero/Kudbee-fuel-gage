@@ -1,0 +1,56 @@
+{
+  "$schema": "kudbee-engineering-decision/1.0",
+  "description": "Engineering Decision Record (EDR) — canonical schema for every significant engineering action. Every deployment, rollback, architecture change, investigation, and promotion leaves behind an EDR. The decision is more valuable than the code change itself.",
+  "fields": {
+    "id": { "type": "string", "format": "edr-{timestamp}-{random}", "description": "Globally unique decision identifier" },
+    "timestamp": { "type": "datetime", "format": "ISO8601", "description": "When the decision was made" },
+    "mission": { "type": "string", "description": "Mission phase, e.g. 'Phase-IV-B', 'FBT-1'" },
+    "author": { "type": "string", "description": "Human or agent that authored this decision" },
+    "participants": { "type": "array<string>", "description": "All agents and humans participating" },
+    "intent": {
+      "objective": { "type": "string", "description": "What are we trying to achieve?" },
+      "success_criteria": { "type": "array<string>", "description": "How will we know it worked?" },
+      "constraints": { "type": "array<string>", "description": "e.g. 'Production frozen', 'PR #228 only'" },
+      "evidence_required": { "type": "array<string>", "description": "What proof is needed before completion?" }
+    },
+    "decision": {
+      "choice": { "type": "enum", "values": ["APPROVED", "DENIED", "PENDING", "REVERSED", "SUPERSEDED"], "description": "The decision outcome" },
+      "rationale": { "type": "string", "description": "Why was this decision made?" },
+      "alternatives": { "type": "array<string>", "description": "Alternatives considered and rejected" },
+      "risks": { "type": "array<string>", "description": "Risks accepted with this decision" }
+    },
+    "evidence": {
+      "level": { "type": "integer", "range": "1-4", "description": "1=Platform, 2=App, 3=Correlation, 4=Inference" },
+      "confidence": { "type": "integer", "range": "0-100", "description": "Percentage confidence" },
+      "supporting": { "type": "array<string>", "description": "Supporting evidence" },
+      "contradicting": { "type": "array<string>", "description": "Contradicting evidence" },
+      "unknowns": { "type": "array<string>", "description": "Known unknowns at decision time" }
+    },
+    "impact": {
+      "deployment": { "type": "boolean", "description": "Does this decision change what's deployed?" },
+      "production": { "type": "boolean", "description": "Does this affect production?" },
+      "rollback": { "type": "string", "description": "How to reverse this decision if needed" },
+      "artifacts": { "type": "array<string>", "description": "Files, commits, or builds affected" }
+    },
+    "governance": {
+      "gates_passed": { "type": "array<string>", "description": "Governance gates that were evaluated" },
+      "gates_failed": { "type": "array<string>", "description": "Governance gates that blocked" },
+      "constitution_articles": { "type": "array<integer>", "description": "Constitution articles referenced" },
+      "approval_chain": { "type": "array<string>", "description": "Who approved this decision" }
+    },
+    "related": {
+      "events": { "type": "array<string>", "description": "Linked engineering event IDs" },
+      "certificates": { "type": "array<string>", "description": "Linked certificates" },
+      "previous_decisions": { "type": "array<string>", "description": "Superseded or related EDRs" }
+    },
+    "outcome": {
+      "expected": { "type": "string", "description": "What did we expect to happen?" },
+      "actual": { "type": "string", "description": "What actually happened?" },
+      "deviation": { "type": "string", "description": "Difference from expectation, if any" },
+      "lesson": { "type": "string", "description": "What should future engineers learn?" }
+    },
+    "status": { "type": "enum", "values": ["DRAFT", "PENDING_REVIEW", "APPROVED", "EXECUTED", "VERIFIED", "SUPERSEDED", "WITHDRAWN"], "description": "Decision lifecycle stage" }
+  },
+  "required": ["id", "timestamp", "intent_objective", "decision_choice", "status"],
+  "indexes": ["id", "timestamp", "mission", "status", "decision_choice"]
+}

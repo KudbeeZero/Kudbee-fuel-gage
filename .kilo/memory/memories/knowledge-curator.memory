@@ -88,21 +88,16 @@
       "timestamp": "2026-07-29T08:45:49.130Z"
     },
     {
-      "id": "dec-1785366799467-01aeb379",
+      "id": "dec-1785357687473-d16f1193",
       "decision": "curation_complete",
-      "timestamp": "2026-07-29T23:13:19.468Z"
+      "timestamp": "2026-07-29T20:41:27.473Z"
     },
     {
-      "id": "dec-1785381773539-fb875664",
+      "id": "dec-1785389768562-e170c5d2",
       "decision": "curation_complete",
-      "timestamp": "2026-07-30T03:22:53.540Z"
-    },
-    {
-      "id": "dec-1785382658881-b84ee247",
-      "decision": "curation_complete",
-      "timestamp": "2026-07-30T03:37:38.881Z"
+      "timestamp": "2026-07-30T05:36:08.563Z"
     }
   ],
-  "lastAction": "2026-07-30T03:37:38.881Z",
-  "totalActions": 38
+  "lastAction": "2026-07-30T05:36:08.563Z",
+  "totalActions": 36
 }

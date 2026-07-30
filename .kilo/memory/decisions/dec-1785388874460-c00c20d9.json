@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785388874460-c00c20d9",
+  "agentId": "ci-watcher",
+  "decision": "run:PHASE IV-B (BBH-1): Build Guard. Before every browser build: verify no node:* imports, no prohibited workspace paths, no server-only transitive dependencies. Produce Browser Boundary Certificate. Deployment only when certified.",
+  "context": {
+    "action": "execute",
+    "task": "PHASE IV-B (BBH-1): Build Guard. Before every browser build: verify no node:* imports, no prohibited workspace paths, no server-only transitive dependencies. Produce Browser Boundary Certificate. Deployment only when certified.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:21:14.460Z",
+  "decoded": false
+}

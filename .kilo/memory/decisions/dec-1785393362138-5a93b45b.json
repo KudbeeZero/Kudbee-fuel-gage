@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785393362138-5a93b45b",
+  "agentId": "hermes",
+  "decision": "run:ISE-1 WORKSTREAM A+I: Intelligence Registry maintained. Every model has strengths/weaknesses/cost/latency. Record every reasoning session: task, models chosen, outcome, verification, lessons. Future scheduling improves from historical evidence.",
+  "context": {
+    "action": "execute",
+    "task": "ISE-1 WORKSTREAM A+I: Intelligence Registry maintained. Every model has strengths/weaknesses/cost/latency. Record every reasoning session: task, models chosen, outcome, verification, lessons. Future scheduling improves from historical evidence.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T06:36:02.138Z",
+  "decoded": false
+}

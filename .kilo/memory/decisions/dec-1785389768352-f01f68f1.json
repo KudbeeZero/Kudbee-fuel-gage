@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768352-f01f68f1",
+  "agentId": "sentinel",
+  "decision": "run:ECA-1: WORKSTREAM G: COMMAND PALETTE. Universal command interface: open mission, find deployment, show certificate, explain failure, search think tokens, search investigations. Every action begins here.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM G: COMMAND PALETTE. Universal command interface: open mission, find deployment, show certificate, explain failure, search think tokens, search investigations. Every action begins here.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.352Z",
+  "decoded": false
+}

@@ -1,0 +1,13 @@
+{
+  "id": "test",
+  "recalls": [],
+  "decisions": [
+    {
+      "id": "dec-1785389741546-73afca00",
+      "decision": "eca-1:verify:bridge",
+      "timestamp": "2026-07-30T05:35:41.546Z"
+    }
+  ],
+  "lastAction": "2026-07-30T05:35:41.546Z",
+  "totalActions": 1
+}

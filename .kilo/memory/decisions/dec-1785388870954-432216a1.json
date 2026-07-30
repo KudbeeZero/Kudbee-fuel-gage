@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785388870954-432216a1",
+  "agentId": "gastown",
+  "decision": "run:PHASE IV-B MISSION: Browser Boundary Hardening. Priority: execute changes in dependency order. [1] Remove unused @kudbee/utils from opencode deps (DONE). [2] Add Vite optimizeDeps.exclude (DONE). [3] Boundary protocol written (.kilo/protocols/browser-boundary.md). [4] Deploy 4d8b050 base + package/vite changes. [5] Verify build succeeds without node:crypto. [6] Certify boundary. Mission exit: build succeeds + boundary certificate PASS.",
+  "context": {
+    "action": "execute",
+    "task": "PHASE IV-B MISSION: Browser Boundary Hardening. Priority: execute changes in dependency order. [1] Remove unused @kudbee/utils from opencode deps (DONE). [2] Add Vite optimizeDeps.exclude (DONE). [3] Boundary protocol written (.kilo/protocols/browser-boundary.md). [4] Deploy 4d8b050 base + package/vite changes. [5] Verify build succeeds without node:crypto. [6] Certify boundary. Mission exit: build succeeds + boundary certificate PASS.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:21:10.954Z",
+  "decoded": false
+}

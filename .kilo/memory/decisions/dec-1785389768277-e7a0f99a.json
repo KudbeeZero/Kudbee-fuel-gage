@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768277-e7a0f99a",
+  "agentId": "knowledge-curator",
+  "decision": "run:ECA-1: WORKSTREAM F: KNOWLEDGE GRAPH. Visualize relationships between think tokens, deployments, build failures, investigations, knowledge artifacts, engineering decisions.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM F: KNOWLEDGE GRAPH. Visualize relationships between think tokens, deployments, build failures, investigations, knowledge artifacts, engineering decisions.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.277Z",
+  "decoded": false
+}

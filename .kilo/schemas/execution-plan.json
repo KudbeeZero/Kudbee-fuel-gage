@@ -1,0 +1,35 @@
+{
+  "$schema": "eoe-execution-plan/1.0",
+  "description": "Execution Plan — every engineering request becomes a structured plan before execution begins. No execution without a plan.",
+  "fields": {
+    "mission_id": { "type": "string", "description": "Unique mission identifier" },
+    "task_id": { "type": "string", "description": "Task within this mission" },
+    "priority": { "type": "enum", "values": ["critical", "high", "normal", "low"] },
+    "intent": { "type": "string", "description": "What are we trying to achieve?" },
+    "task_class": { "type": "string", "description": "From ISE task classifier" },
+    "selected_models": { "type": "array", "description": "Models selected by ISE per phase" },
+    "phases": {
+      "type": "array",
+      "description": "Multi-phase execution plan",
+      "items": {
+        "phase": "integer",
+        "label": "string",
+        "agent": "string",
+        "model": "string",
+        "purpose": "string",
+        "deliverables": "array<string>"
+      }
+    },
+    "evidence_lock": {
+      "repo_sha": "string",
+      "graph_snapshot_nodes": "integer",
+      "graph_snapshot_edges": "integer",
+      "certificates": "array<string>"
+    },
+    "verification_strategy": { "type": "string" },
+    "success_criteria": { "type": "array<string>" },
+    "rollback_plan": { "type": "string" },
+    "estimated_cost": { "type": "number" },
+    "estimated_tokens": { "type": "integer" }
+  }
+}

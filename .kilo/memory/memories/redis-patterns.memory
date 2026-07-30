@@ -12,11 +12,11 @@
       "score": 7
     },
     {
-      "query": "phase iii-e workstream b: deployment identity certification. verify: selected sha = built sha = released sha = runtime sha. if mismatch: auto-generate deployment_identity_mismatch in temporal. block promotion while ambiguous.",
-      "timestamp": "2026-07-30T03:42:57.151Z",
-      "score": 7
+      "query": "eca-1: workstream h: mission dashboard. display actionable work only: blocked/investigating/ready/waiting/completed/confidence-below-threshold. no informational noise.",
+      "timestamp": "2026-07-30T05:36:08.331Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-30T03:42:57.151Z",
+  "lastRecall": "2026-07-30T05:36:08.331Z",
   "recallCount": 3
 }

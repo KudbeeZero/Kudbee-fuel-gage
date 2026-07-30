@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768306-d69b2652",
+  "agentId": "hermes",
+  "decision": "run:ECA-1: WORKSTREAM C: THINK QUERY ENGINE. Answer: 'Why is PR #228 blocked?' 'What changed since last deploy?' 'Show all boundary violations.' Return evidence before conclusions.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM C: THINK QUERY ENGINE. Answer: 'Why is PR #228 blocked?' 'What changed since last deploy?' 'Show all boundary violations.' Return evidence before conclusions.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.307Z",
+  "decoded": false
+}

@@ -27,7 +27,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -88,6 +88,28 @@ function logDecision(agentId, decision, context) {
   const d = { id: `dec-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
     agentId, decision, context, timestamp: new Date().toISOString(), decoded: false };
   writeFileSync(join(DECISIONS_DIR, `${d.id}.json`), JSON.stringify(d, null, 2), 'utf8');
+
+  // DTHINK bridge: every agent decision → structured memory record
+  try {
+    const DTHINK_STREAM = join(REPO_ROOT, '.kilo', 'memory', 'dthink', 'stream.jsonl');
+    const dthinkEntry = {
+      id: d.id,
+      type: 'agent:decision',
+      agentId,
+      timestamp: d.timestamp,
+      severity: context?.error ? 'error' : 'info',
+      trigger: decision.split(':')[0] || 'decision',
+      summary: `${agentId}: ${decision}`,
+      data: {
+        decision: decision,
+        context: context,
+        evidenceLevel: context?.evidenceLevel || 3,
+        confidence: context?.confidence || null,
+      },
+      contractVersion: '1.0'
+    };
+    appendFileSync(DTHINK_STREAM, JSON.stringify(dthinkEntry) + '\n', 'utf8');
+  } catch (e) { /* DTHINK bridge failure is non-fatal */ }
   return d;
 }
 

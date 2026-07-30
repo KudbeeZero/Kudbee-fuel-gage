@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785388911894-67376f93",
+  "agentId": "pipeline-guardian",
+  "decision": "run:DEPUTY: Run the browser boundary certification scan against the current deployed branch (3fd30a1). Exclude *.md and *.kilo directories from the scan scope. Verify no path from apps/web/ reaches node:crypto, node:fs, or any server-only package.",
+  "context": {
+    "action": "execute",
+    "task": "DEPUTY: Run the browser boundary certification scan against the current deployed branch (3fd30a1). Exclude *.md and *.kilo directories from the scan scope. Verify no path from apps/web/ reaches node:crypto, node:fs, or any server-only package.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:21:51.894Z",
+  "decoded": false
+}

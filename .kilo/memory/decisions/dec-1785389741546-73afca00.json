@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785389741546-73afca00",
+  "agentId": "test",
+  "decision": "eca-1:verify:bridge",
+  "context": {
+    "context": "{\"test\":true,\"phase\":\"ECA-1\"}",
+    "source": "terminal"
+  },
+  "timestamp": "2026-07-30T05:35:41.546Z",
+  "decoded": false
+}

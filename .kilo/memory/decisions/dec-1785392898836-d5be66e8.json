@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785392898836-d5be66e8",
+  "agentId": "gastown",
+  "decision": "run:DGE-1 MISSION: DTHINK is now a temporal knowledge graph (71 nodes, 69 edges). The graph answers 'Why is PR #228 blocked?' in milliseconds. Continue evolving — mission nodes, temporal confidence engine, query language. Block promotion: 1 gate FAILS (frontend-runtime-verified). Production frozen.",
+  "context": {
+    "action": "execute",
+    "task": "DGE-1 MISSION: DTHINK is now a temporal knowledge graph (71 nodes, 69 edges). The graph answers 'Why is PR #228 blocked?' in milliseconds. Continue evolving — mission nodes, temporal confidence engine, query language. Block promotion: 1 gate FAILS (frontend-runtime-verified). Production frozen.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T06:28:18.836Z",
+  "decoded": false
+}

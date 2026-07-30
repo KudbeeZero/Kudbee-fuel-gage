@@ -1,0 +1,27 @@
+{
+  "$schema": "kudbee-engineering-event/1.0",
+  "description": "Unified Engineering Event — canonical schema for all KUDBEE operational data. Every deployment, build, decision, certificate, think token, and boundary event uses this structure.",
+  "fields": {
+    "id": { "type": "string", "format": "evt-{timestamp}-{random}", "description": "Globally unique event identifier" },
+    "type": { "type": "enum", "values": ["deployment", "build", "decision", "think", "certificate", "boundary", "investigation", "knowledge", "runtime", "promotion"], "description": "Event classification" },
+    "subtype": { "type": "string", "description": "Granular subtype, e.g. 'build:failed', 'deploy:verified'" },
+    "timestamp": { "type": "datetime", "format": "ISO8601", "description": "When the event occurred" },
+    "agent": { "type": "string", "description": "Agent or system that produced this event" },
+    "mission": { "type": "string", "description": "Mission phase context, e.g. 'Phase-IV-B', 'FBT-1'" },
+    "sha": { "type": "string", "description": "Associated commit SHA if applicable" },
+    "evidence": {
+      "level": { "type": "integer", "range": "1-4", "description": "1=Platform, 2=App, 3=Correlation, 4=Inference" },
+      "confidence": { "type": "integer", "range": "0-100", "description": "Percentage confidence in this event's conclusions" },
+      "supporting": { "type": "array<string>", "description": "Evidence supporting this conclusion" },
+      "contradicting": { "type": "array<string>", "description": "Evidence contradicting this conclusion" },
+      "unknowns": { "type": "array<string>", "description": "Known unknowns related to this event" }
+    },
+    "outcome": { "type": "enum", "values": ["PASS", "FAIL", "BLOCKED", "UNKNOWN", "PARTIAL", "IN_PROGRESS"], "description": "Event outcome classification" },
+    "related": { "type": "array<string>", "description": "IDs of related events" },
+    "artifacts": { "type": "array<string>", "description": "File paths of related artifacts" },
+    "summary": { "type": "string", "maxLength": 500, "description": "Human-readable summary" },
+    "data": { "type": "object", "description": "Event-specific payload" }
+  },
+  "required": ["id", "type", "timestamp", "summary"],
+  "indexes": ["type", "timestamp", "sha", "agent", "outcome"]
+}

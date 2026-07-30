@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785388866093-bbb55e91",
+  "agentId": "pipeline-guardian",
+  "decision": "run:PHASE IV-B (BBH-1): ARCHITECTURE GUARDIAN DEPUTIZED. Enforce new browser boundary protocol (KBP-001). Certify that no browser path reaches node:crypto. All workspace packages classified: BROWSER_SAFE / SHARED / SERVER_ONLY / PROHIBITED. Deployment proceeds only when boundary certificate passes. Generate Browser Dependency Certificate for current state.",
+  "context": {
+    "action": "execute",
+    "task": "PHASE IV-B (BBH-1): ARCHITECTURE GUARDIAN DEPUTIZED. Enforce new browser boundary protocol (KBP-001). Certify that no browser path reaches node:crypto. All workspace packages classified: BROWSER_SAFE / SHARED / SERVER_ONLY / PROHIBITED. Deployment proceeds only when boundary certificate passes. Generate Browser Dependency Certificate for current state.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:21:06.093Z",
+  "decoded": false
+}

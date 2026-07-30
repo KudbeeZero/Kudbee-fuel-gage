@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785389768375-b87b7002",
+  "agentId": "gateway-router",
+  "decision": "error:ECA-1: WORKSTREAM E: RELEASE CERTIFICATE. Live certificate: candidate SHA, runtime SHA, boundary cert, pipeline cert, deploy identity, health, confidence, promotion decision. Auto-updating.",
+  "context": {
+    "error": "Command failed: ---\nid: gateway-router\ncategory: orchestration\nschedule: on-demand\nstatus: active\nscript: |\n  echo \"[GatewayRouter] Inter-agent call dispatcher\"\n  echo \"  Role: Message routing, priority queuing, dead-letter handling\"\n  echo \"  Rate limit endpoint: /api/system/rate-limit-stats\"\n  echo \"  Phone tree: 6 agents, full mesh, 2-hop max\"\n  echo \"  Status: active — 7 routes registered\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T05:36:08.375Z",
+  "decoded": false
+}

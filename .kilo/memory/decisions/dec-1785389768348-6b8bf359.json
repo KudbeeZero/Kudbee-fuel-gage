@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768348-6b8bf359",
+  "agentId": "gateway-router",
+  "decision": "run:ECA-1: WORKSTREAM E: RELEASE CERTIFICATE. Live certificate: candidate SHA, runtime SHA, boundary cert, pipeline cert, deploy identity, health, confidence, promotion decision. Auto-updating.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM E: RELEASE CERTIFICATE. Live certificate: candidate SHA, runtime SHA, boundary cert, pipeline cert, deploy identity, health, confidence, promotion decision. Auto-updating.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.348Z",
+  "decoded": false
+}

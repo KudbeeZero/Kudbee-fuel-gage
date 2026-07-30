@@ -11,13 +11,16 @@
   "environments": {
     "test": {
       "scripts": {
-        "test": "node scripts/verify-gates.mjs --quick && node scripts/verify-agents.mjs"
+        "test": "node scripts/verify-gates.mjs --quick && node --check scripts/*.mjs && node scripts/verify-agents.mjs"
       },
       "env": {
         "NODE_ENV": "test",
         "PORT": "9876"
       },
-      "addons": ["heroku-postgresql:mini", "heroku-redis:mini"]
+      "addons": ["heroku-postgresql:mini", "heroku-redis:mini"],
+      "formation": {
+        "test": { "quantity": 1, "size": "eco" }
+      }
     }
   },
   "formation": {

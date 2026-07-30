@@ -50,28 +50,47 @@ function renderFallback(message: string) {
   }).catch(() => {});
 }
 
-const App = React.lazy(() => {
-  const loadPromise = import('./App.tsx');
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('App load timed out after ' + (APP_LOAD_TIMEOUT/1000) + 's')), APP_LOAD_TIMEOUT)
-  );
-  return Promise.race([loadPromise, timeoutPromise]).catch((err) => {
-    retries++;
-    const msg = err instanceof Error ? err.message : String(err);
-    renderFallback(msg);
-    if (retries < MAX_RETRIES) {
-      setTimeout(() => location.reload(), 3000 * retries);
-    }
-    return { default: () => null as any };
-  }) as Promise<{ default: React.ComponentType<object> }>;
-});
+  const App = React.lazy(() => {
+    if (typeof window !== 'undefined') console.log('[BOOT 05] Lazy App.tsx import started', { ts: Date.now() });
+    const loadPromise = import('./App.tsx');
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('App load timed out after ' + (APP_LOAD_TIMEOUT/1000) + 's')), APP_LOAD_TIMEOUT)
+    );
+    return Promise.race([loadPromise, timeoutPromise]).catch((err) => {
+      retries++;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (typeof window !== 'undefined') console.error('[BOOT ERR] App load failed', { retries, msg });
+      renderFallback(msg);
+      if (retries < MAX_RETRIES) {
+        setTimeout(() => location.reload(), 3000 * retries);
+      }
+      return { default: () => null as any };
+    }).then((mod) => {
+      if (typeof window !== 'undefined') console.log('[BOOT 06] Lazy App.tsx import resolved', { ts: Date.now() });
+      return mod;
+    }) as Promise<{ default: React.ComponentType<object> }>;
+  });
+
+  const BootFallback = React.memo(function BootFallback() {
+    React.useEffect(() => {
+      if (typeof window !== 'undefined') console.log('[BOOT 04] Suspense fallback mounted — waiting for App', { ts: Date.now() });
+      return () => { if (typeof window !== 'undefined') console.log('[BOOT 07] Suspense exited — App ready'); };
+    }, []);
+    return (
+      <div style={{position:'fixed',inset:0,zIndex:50000,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#020617',color:'#e2e8f0',fontFamily:'monospace',textAlign:'center'}}>
+        <h1 style={{color:'#34d399',fontSize:'1.5rem',marginBottom:'.25rem'}}>Kudbee Fuel Gauge</h1>
+        <p style={{color:'#64748b',fontSize:'.75rem',marginBottom:'1.5rem'}}>Preparing dashboard…</p>
+        <div style={{width:'2.5rem',height:'2.5rem',border:'3px solid #1e293b',borderTopColor:'#34d399',borderRadius:'50%',animation:'kud-spin .8s linear infinite'}} />
+      </div>
+    );
+  });
 
 const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
     <StrictMode>
       <ErrorBoundary>
-        <Suspense fallback={<></>}>
+        <Suspense fallback={<BootFallback />}>
           <OsStreamProvider>
             <App />
           </OsStreamProvider>

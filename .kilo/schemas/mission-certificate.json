@@ -1,0 +1,42 @@
+{
+  "$schema": "eoe-mission-certificate/1.0",
+  "description": "Mission Certificate — every completed mission produces an immutable certificate stored in DTHINK. Evidence, models used, verification results, and governance decision are all captured.",
+  "fields": {
+    "mission_id": { "type": "string" },
+    "timestamp": { "type": "datetime", "format": "ISO8601" },
+    "intent": { "type": "string" },
+    "evidence_used": {
+      "dthink_events": "integer",
+      "graph_nodes": "integer",
+      "certificates": "array<string>",
+      "repo_sha": "string"
+    },
+    "models_used": {
+      "type": "array",
+      "items": {
+        "phase": "integer",
+        "provider": "string",
+        "model": "string",
+        "tokens": "integer",
+        "cost_usd": "number",
+        "latency_ms": "integer"
+      }
+    },
+    "files_modified": { "type": "array<string>" },
+    "verification": {
+      "typecheck": "PASS|FAIL|NOT_RUN",
+      "lint": "PASS|FAIL|NOT_RUN",
+      "tests": "PASS|FAIL|NOT_RUN",
+      "build": "PASS|FAIL|NOT_RUN"
+    },
+    "governance": {
+      "gates_passed": "array<string>",
+      "gates_failed": "array<string>",
+      "constitutional": true,
+      "decision_record": "string"
+    },
+    "outcome": { "type": "enum", "values": ["SUCCESS", "PARTIAL", "FAILED", "BLOCKED"] },
+    "confidence": { "type": "integer", "range": "0-100" },
+    "lessons": { "type": "string" }
+  }
+}

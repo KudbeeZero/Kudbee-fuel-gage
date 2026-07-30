@@ -12,16 +12,11 @@
       "score": 6
     },
     {
-      "query": "workstream a: pipeline certification. break the release pipeline into independently verifiable stages: checkout → deps → typecheck → build → artifact → deploy → release → runtime → observation. every stage reports pass/fail/blocked/unknown. never allow one stage to hide another.",
-      "timestamp": "2026-07-30T03:30:15.354Z",
-      "score": 8
-    },
-    {
-      "query": "orchestrated — dependency: none. pipeline fingerprint for every build attempt. stages: checkout→deps→typecheck→build→artifact→deploy→release→runtime→obs→promotion. each stage: pass/fail/blocked/unknown with evidence.",
-      "timestamp": "2026-07-30T03:37:19.040Z",
-      "score": 9
+      "query": "eca-1: workstream h: mission dashboard. display actionable work only: blocked/investigating/ready/waiting/completed/confidence-below-threshold. no informational noise.",
+      "timestamp": "2026-07-30T05:36:08.331Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-30T03:37:19.040Z",
-  "recallCount": 4
+  "lastRecall": "2026-07-30T05:36:08.331Z",
+  "recallCount": 3
 }

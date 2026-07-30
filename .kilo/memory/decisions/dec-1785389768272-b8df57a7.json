@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785389768272-b8df57a7",
+  "agentId": "pipeline-guardian",
+  "decision": "run:ECA-1: WORKSTREAM H: MISSION DASHBOARD. Display actionable work only: Blocked/Investigating/Ready/Waiting/Completed/Confidence-below-threshold. No informational noise.",
+  "context": {
+    "action": "execute",
+    "task": "ECA-1: WORKSTREAM H: MISSION DASHBOARD. Display actionable work only: Blocked/Investigating/Ready/Waiting/Completed/Confidence-below-threshold. No informational noise.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T05:36:08.272Z",
+  "decoded": false
+}
