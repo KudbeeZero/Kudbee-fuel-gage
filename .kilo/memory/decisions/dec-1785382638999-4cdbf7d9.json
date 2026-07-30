@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785382638999-4cdbf7d9",
+  "agentId": "pipeline-guardian",
+  "decision": "run:ORCHESTRATED — Dependency: none. Pipeline Fingerprint for every build attempt. Stages: Checkout→Deps→Typecheck→Build→Artifact→Deploy→Release→Runtime→Obs→Promotion. Each stage: PASS/FAIL/BLOCKED/UNKNOWN with evidence.",
+  "context": {
+    "action": "execute",
+    "task": "ORCHESTRATED — Dependency: none. Pipeline Fingerprint for every build attempt. Stages: Checkout→Deps→Typecheck→Build→Artifact→Deploy→Release→Runtime→Obs→Promotion. Each stage: PASS/FAIL/BLOCKED/UNKNOWN with evidence.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T03:37:18.999Z",
+  "decoded": false
+}
