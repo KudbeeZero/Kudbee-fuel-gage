@@ -85,8 +85,13 @@
       "query": "orchestrated — dependency: none. pipeline fingerprint for every build attempt. stages: checkout→deps→typecheck→build→artifact→deploy→release→runtime→obs→promotion. each stage: pass/fail/blocked/unknown with evidence.",
       "timestamp": "2026-07-30T03:37:19.041Z",
       "score": 7
+    },
+    {
+      "query": "phase iii-e workstream b: deployment identity certification. verify: selected sha = built sha = released sha = runtime sha. if mismatch: auto-generate deployment_identity_mismatch in temporal. block promotion while ambiguous.",
+      "timestamp": "2026-07-30T03:42:57.152Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-30T03:37:19.041Z",
-  "recallCount": 17
+  "lastRecall": "2026-07-30T03:42:57.152Z",
+  "recallCount": 18
 }

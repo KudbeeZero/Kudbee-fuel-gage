@@ -65,8 +65,13 @@
       "query": "full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
       "timestamp": "2026-07-29T08:45:49.218Z",
       "score": 9
+    },
+    {
+      "query": "phase iii-e workstream b: deployment identity certification. verify: selected sha = built sha = released sha = runtime sha. if mismatch: auto-generate deployment_identity_mismatch in temporal. block promotion while ambiguous.",
+      "timestamp": "2026-07-30T03:42:57.151Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-29T08:45:49.218Z",
-  "recallCount": 13
+  "lastRecall": "2026-07-30T03:42:57.151Z",
+  "recallCount": 14
 }

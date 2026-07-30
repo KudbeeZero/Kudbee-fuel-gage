@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785382990398-624be007",
+  "agentId": "hermes",
+  "decision": "run:PHASE III-E WORKSTREAM D: Knowledge Promotion. Review all knowledge artifacts from this session. Promote only those with repeated evidence. Current artifacts: ts-scanner-gap, deploy-identity-precedence, pipeline-fingerprint, release-certificate, confidence-index.",
+  "context": {
+    "action": "execute",
+    "task": "PHASE III-E WORKSTREAM D: Knowledge Promotion. Review all knowledge artifacts from this session. Promote only those with repeated evidence. Current artifacts: ts-scanner-gap, deploy-identity-precedence, pipeline-fingerprint, release-certificate, confidence-index.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T03:43:10.399Z",
+  "decoded": false
+}
