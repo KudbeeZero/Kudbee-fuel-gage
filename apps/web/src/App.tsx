@@ -152,7 +152,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  const [activeTab, setActiveTab] = useState('TELEMETRY');
+  const [activeTab, setActiveTab] = useState('STUDIO');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
