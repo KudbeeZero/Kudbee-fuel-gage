@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785402230456-871d7d86",
+  "agentId": "sentinel",
+  "decision": "run:AEO-1: Evaluate all 7 governance gates for PR #228. Report: PASS/FAIL/UNKNOWN with evidence. Current known: 6 PASS, 1 UNKNOWN (frontend-runtime-verified).",
+  "context": {
+    "action": "execute",
+    "task": "AEO-1: Evaluate all 7 governance gates for PR #228. Report: PASS/FAIL/UNKNOWN with evidence. Current known: 6 PASS, 1 UNKNOWN (frontend-runtime-verified).",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T09:03:50.457Z",
+  "decoded": false
+}
