@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785434383490-6c96c2c1",
+  "agentId": "knowledge-curator",
+  "decision": "run:curate after CI fix and TNS analysis",
+  "context": {
+    "action": "execute",
+    "task": "curate after CI fix and TNS analysis",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T17:59:43.490Z",
+  "decoded": false
+}
