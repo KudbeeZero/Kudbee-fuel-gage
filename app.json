@@ -19,7 +19,7 @@
       },
       "addons": ["heroku-postgresql:mini"],
       "formation": {
-        "test": { "quantity": 1, "size": "eco" }
+        "test": { "quantity": 1, "size": "standard-1x" }
       }
     }
   },
