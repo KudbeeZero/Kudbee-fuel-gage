@@ -247,19 +247,19 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
-// Dynamic deploy version — reads from build-time metadata, then env vars.
-// Never hardcoded. Build script writes version to .deploy-version.json.
+// Dynamic deploy version — platform truth first, then local fallbacks.
+// Heroku sets HEROKU_SLUG_COMMIT at build time — this IS the deployed SHA.
+// Static .deploy-version.json is local-development only (never override platform).
 function getDeployVersion() {
+  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
+  if (process.env.HEROKU_RELEASE_VERSION) return process.env.HEROKU_RELEASE_VERSION;
+  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
   try {
-    // Read from build-time artifact (written by build script)
     const deployFile = fs.readFileSync('.deploy-version.json', 'utf8');
     const meta = JSON.parse(deployFile);
     if (meta.commit) return meta.commit.slice(0, 7);
     if (meta.version) return meta.version;
   } catch {}
-  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
-  if (process.env.HEROKU_RELEASE_VERSION) return process.env.HEROKU_RELEASE_VERSION;
-  if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
   return 'dev';
 }
 const _state = {
