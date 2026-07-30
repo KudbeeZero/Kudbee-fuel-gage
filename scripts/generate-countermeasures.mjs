@@ -238,9 +238,8 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-import crypto from 'node:crypto';
-
 function hashString(str) {
+  const crypto = await import('node:crypto');
   return crypto.createHash('sha256').update(str).digest('hex');
 }
 

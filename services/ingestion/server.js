@@ -74,6 +74,7 @@ import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
 import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
 import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
+import { disruptionLayer, disruptionGuard, getDisruptionStats } from '../lib/disruptionLayer.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const HIGH_VALUE_MODELS = new Set(
@@ -135,6 +136,7 @@ registerGuard(validationGuard);
 registerGuard(ecpGuard);
 registerGuard(budgetGuard);
 registerGuard(spheroidGuard);
+registerGuard(disruptionGuard);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -213,6 +215,12 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// --- Phase 67: Disruption Layer — Antifragile Security Middleware ---
+// Intercepts suspicious requests, logs attack patterns, auto-generates
+// countermeasures. Must run FIRST to catch all injections before they
+// reach other middleware. Fails open to avoid blocking legitimate traffic.
+app.use(disruptionLayer());
 
 // --- Phase 66: Spheroid Audit Ledger — logs all mutating requests ---
 app.use(spheroidAudit());
