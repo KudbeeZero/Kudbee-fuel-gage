@@ -187,10 +187,37 @@
         "verifyOnPR": "push + pull_request + schedule",
         "redisConfig": "Upstash Redis (rediss://), GitHub Actions uses redis:7-alpine service"
       }
+    },
+    {
+      "session": "ses-1785432545991-f0b92f84",
+      "date": "2026-07-30T18:01:06.607Z",
+      "type": "think-benchmark",
+      "summary": "THINK Protocol Benchmark specification + Heroku pipeline fixes",
+      "actions": [
+        "Fixed authenticateAgentPass export in bearerAuthMiddleware.ts",
+        "Enabled GitHub Actions workflows for Heroku deploy",
+        "Created heroku-pipeline-setup.md knowledge snippet",
+        "Analyzed TNS Opus 5 vs Fable 5 article for benchmark methodology",
+        "Created THINK Protocol Benchmark (TPB-001) specification",
+        "Pushed 3 commits to remote branch"
+      ],
+      "ciStatus": "36/44 e2e passing (8 Redis-dependent failures)",
+      "filesChanged": [
+        "services/lib/bearerAuthMiddleware.ts",
+        "services/ingestion/server.js",
+        ".github/workflows/*.yml (enabled)",
+        ".kilo/memory/snippets/heroku-pipeline-setup.md",
+        ".kilo/memory/snippets/think-protocol-benchmark.md"
+      ],
+      "bugsFixed": 1,
+      "commitsPushed": 3,
+      "remoteBranch": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
+      "herokuApp": "kudbee-fuel-gage-staging",
+      "redisConfig": "Upstash Redis created for e2e testing"
     }
   ],
   "trends": {
-    "sessions": 46,
+    "sessions": 47,
     "ciPassRate": "82%"
   },
   "health": {
@@ -199,9 +226,10 @@
     "thinkForge": "4 tokens processed",
     "relations": "10 nodes, 13 edges",
     "knownIssues": [
-      "8 e2e checks fail without Redis (Check 3, 21, 22, 24, 27, 28, 30, 32, 35)",
-      "Heroku CLI not available in container — use GitHub Actions for deploys",
-      "DATABASE_URL points to localhost (needs Neon Postgres for production)"
+      "8 e2e checks fail without Redis (billing-blocked GitHub Actions)",
+      "Heroku CLI not available in container",
+      "DATABASE_URL points to localhost (needs Neon Postgres for production)",
+      "22 GitHub vulnerabilities (1 critical, 15 high, 6 moderate)"
     ]
   }
 }
