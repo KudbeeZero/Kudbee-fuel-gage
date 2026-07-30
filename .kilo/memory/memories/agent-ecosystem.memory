@@ -10,8 +10,13 @@
       "query": "audit pr #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
       "timestamp": "2026-07-29T07:57:34.218Z",
       "score": 6
+    },
+    {
+      "query": "workstream a: pipeline certification. break the release pipeline into independently verifiable stages: checkout → deps → typecheck → build → artifact → deploy → release → runtime → observation. every stage reports pass/fail/blocked/unknown. never allow one stage to hide another.",
+      "timestamp": "2026-07-30T03:30:15.354Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-29T07:57:34.218Z",
-  "recallCount": 2
+  "lastRecall": "2026-07-30T03:30:15.354Z",
+  "recallCount": 3
 }

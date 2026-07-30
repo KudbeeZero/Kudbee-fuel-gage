@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785382223968-c94e7984",
+  "agentId": "monitor",
+  "decision": "run:WORKSTREAM E+J: Agent Operations Center + CI Reliability Matrix. Every agent publishes: current assignment, blocked reason, last success, confidence, queue length, next objective. Track CI gates over time: success rate, failure rate, blocked rate, median duration.",
+  "context": {
+    "action": "execute",
+    "task": "WORKSTREAM E+J: Agent Operations Center + CI Reliability Matrix. Every agent publishes: current assignment, blocked reason, last success, confidence, queue length, next objective. Track CI gates over time: success rate, failure rate, blocked rate, median duration.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T03:30:23.968Z",
+  "decoded": false
+}

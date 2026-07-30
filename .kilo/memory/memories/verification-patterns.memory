@@ -75,8 +75,13 @@
       "query": "middleware audit: scan all 7 layers — requesttimer, spheroidaudit, synapsec4769 (0.4769 rad immutable), bearerauth, kilobridgebudget, ecpsingleflight (now with metrics tracking), zodvalidate. confirm all guards active. report status.",
       "timestamp": "2026-07-29T23:13:16.159Z",
       "score": 9
+    },
+    {
+      "query": "workstream a: pipeline certification. break the release pipeline into independently verifiable stages: checkout → deps → typecheck → build → artifact → deploy → release → runtime → observation. every stage reports pass/fail/blocked/unknown. never allow one stage to hide another.",
+      "timestamp": "2026-07-30T03:30:15.354Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-29T23:13:16.159Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-30T03:30:15.354Z",
+  "recallCount": 16
 }
