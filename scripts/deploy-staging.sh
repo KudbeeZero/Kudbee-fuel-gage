@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Kudbee Staging Deploy Script
+# Kudbee Staging Deploy Script (Heroku CLI-based, bypasses GitHub Actions billing)
 # Usage: ./scripts/deploy-staging.sh [branch]
 # Branch defaults to current branch
 
@@ -29,27 +29,45 @@ if ! heroku auth:whoami &>/dev/null; then
   exit 1
 fi
 
+# Add heroku remote if not present
+if ! git remote | grep -q heroku; then
+  echo "[0/5] Adding heroku remote..."
+  heroku git:remote --app $APP
+fi
+
 # Deploy
 echo ""
-echo "[1/4] Pushing branch to Heroku..."
+echo "[1/5] Pushing branch to Heroku..."
 git push heroku "$BRANCH:main" --force
 
-echo "[2/4] Waiting for dyno restart..."
-sleep 10
+echo "[2/5] Waiting for dyno restart..."
+sleep 15
 
-echo "[3/4] Checking health..."
+echo "[3/5] Checking health..."
 HEALTH=$(curl -fsS https://$APP.herokuapp.com/health 2>&1 || echo "FAILED")
 if [ "$HEALTH" = "FAILED" ]; then
   echo "ERROR: Health check failed"
-  heroku logs --tail --lines 20 --app $APP
+  echo ""
+  echo "[4/5] Fetching recent logs..."
+  heroku logs --tail --lines 30 --app $APP
   exit 1
 fi
 
-echo "[4/4] Health check passed"
+echo "[4/5] Health check passed: $HEALTH"
+
+echo "[5/5] Verifying Redis connection..."
+REDIS_CHECK=$(curl -fsS https://$APP.herokuapp.com/api/system/redis 2>&1 || echo "FAILED")
+if [ "$REDIS_CHECK" = "FAILED" ]; then
+  echo "WARNING: Redis health check failed"
+else
+  echo "Redis status: $REDIS_CHECK"
+fi
+
 echo ""
 echo "╔══════════════════════════════════════════════╗"
 echo "║  DEPLOY COMPLETE                            ║"
 echo "╠══════════════════════════════════════════════╣"
 echo "║  URL: https://$APP.herokuapp.com"
-echo "║  Health: $HEALTH"
+echo "║  Health: OK"
+echo "║  Branch: $BRANCH"
 echo "╚══════════════════════════════════════════════╝"
