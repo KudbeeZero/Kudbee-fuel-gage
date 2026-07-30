@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785412785050-341606b3",
+  "agentId": "token-forge",
+  "decision": "run:MISSION F: What has KUDBEE learned during this 14-hour session? Not logs — actual learning. Recurring failures, repeated recommendations, inaccurate confidence, architectural evolution, documentation drift. Derive from DTHINK events and decision history.",
+  "context": {
+    "action": "execute",
+    "task": "MISSION F: What has KUDBEE learned during this 14-hour session? Not logs — actual learning. Recurring failures, repeated recommendations, inaccurate confidence, architectural evolution, documentation drift. Derive from DTHINK events and decision history.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T11:59:45.051Z",
+  "decoded": false
+}

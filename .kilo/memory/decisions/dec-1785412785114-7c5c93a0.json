@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785412785114-7c5c93a0",
+  "agentId": "monitor",
+  "decision": "run:MISSION G: If nobody changes the code for 6 months, what becomes the biggest engineering risk? Consider: Eco dyno sleep, Redis limit recurrence, stale deploys, dependency drift, build pipeline instability. Requires reasoning across accumulated evidence.",
+  "context": {
+    "action": "execute",
+    "task": "MISSION G: If nobody changes the code for 6 months, what becomes the biggest engineering risk? Consider: Eco dyno sleep, Redis limit recurrence, stale deploys, dependency drift, build pipeline instability. Requires reasoning across accumulated evidence.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T11:59:45.114Z",
+  "decoded": false
+}

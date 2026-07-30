@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785412785121-b36285b5",
+  "agentId": "monitor",
+  "decision": "error:MISSION G: If nobody changes the code for 6 months, what becomes the biggest engineering risk? Consider: Eco dyno sleep, Redis limit recurrence, stale deploys, dependency drift, build pipeline instability. Requires reasoning across accumulated evidence.",
+  "context": {
+    "error": "Command failed: ---\nid: monitor\ncategory: observability\nschedule: on-deploy\nstatus: active\nscript: |\n  echo \"[Monitor] Infrastructure watcher running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Script: services/monitor/agent.js\"\n  echo \"  Role: Polling loop — agent state + rate monitoring\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-07-30T11:59:45.121Z",
+  "decoded": false
+}

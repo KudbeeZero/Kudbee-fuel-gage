@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785412770011-2827d8ce",
+  "agentId": "knowledge-curator",
+  "decision": "run:MISSION A: Draw the complete architecture of KUDBEE from first principles. For every subsystem (DTHINK, Mission Control, THINK, Knowledge Graph, Evidence, Governance, Browser Verifier, Verification, Memory, Agent Scheduler) provide: Purpose, Inputs, Outputs, Dependencies, Failure modes. Do not describe what we said it should be — describe what the code and evidence actually show.",
+  "context": {
+    "action": "execute",
+    "task": "MISSION A: Draw the complete architecture of KUDBEE from first principles. For every subsystem (DTHINK, Mission Control, THINK, Knowledge Graph, Evidence, Governance, Browser Verifier, Verification, Memory, Agent Scheduler) provide: Purpose, Inputs, Outputs, Dependencies, Failure modes. Do not describe what we said it should be — describe what the code and evidence actually show.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T11:59:30.011Z",
+  "decoded": false
+}

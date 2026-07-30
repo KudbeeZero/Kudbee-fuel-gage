@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785412770424-f5180b2f",
+  "agentId": "hermes",
+  "decision": "run:MISSION D: Pick the BBH-1 mission (browser boundary). Explain: Why was it created? Why was it prioritized? Why was it safe? Why wasn't another mission chosen? What evidence justified it? Trace every decision back to evidence in DTHINK.",
+  "context": {
+    "action": "execute",
+    "task": "MISSION D: Pick the BBH-1 mission (browser boundary). Explain: Why was it created? Why was it prioritized? Why was it safe? Why wasn't another mission chosen? What evidence justified it? Trace every decision back to evidence in DTHINK.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T11:59:30.424Z",
+  "decoded": false
+}
