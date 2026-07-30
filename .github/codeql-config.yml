@@ -1,10 +1,4 @@
 # Disable CodeQL analysis — GitHub billing blocked
-# Independent CI is authoritative for code quality verification
-# Restore when billing is resolved
 disable-default-queries: true
 paths-ignore:
-  - '**/*.test.ts'
-  - '**/*.test.tsx'
-  - '**/*.spec.ts'
-  - 'node_modules/**'
-  - 'dist/**'
+  - '**'
