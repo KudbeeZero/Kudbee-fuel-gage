@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785395134912-1f4079c4",
+  "agentId": "gastown",
+  "decision": "run:EOE-1 MISSION CHECK: Confirm Execution Orchestration patch lifecycle is enforced. Show current mission certificates, patch inventory, and token budget tracker.",
+  "context": {
+    "action": "execute",
+    "task": "EOE-1 MISSION CHECK: Confirm Execution Orchestration patch lifecycle is enforced. Show current mission certificates, patch inventory, and token budget tracker.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T07:05:34.912Z",
+  "decoded": false
+}
