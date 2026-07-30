@@ -17,7 +17,7 @@
         "NODE_ENV": "test",
         "PORT": "9876"
       },
-      "addons": ["heroku-postgresql:mini", "heroku-redis:mini"],
+      "addons": ["heroku-postgresql:mini"],
       "formation": {
         "test": { "quantity": 1, "size": "eco" }
       }
