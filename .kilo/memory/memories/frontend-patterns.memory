@@ -160,8 +160,13 @@
       "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
       "timestamp": "2026-07-30T09:22:29.698Z",
       "score": 8
+    },
+    {
+      "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
+      "timestamp": "2026-07-30T15:14:15.863Z",
+      "score": 15
     }
   ],
-  "lastRecall": "2026-07-30T09:22:29.698Z",
-  "recallCount": 32
+  "lastRecall": "2026-07-30T15:14:15.863Z",
+  "recallCount": 33
 }

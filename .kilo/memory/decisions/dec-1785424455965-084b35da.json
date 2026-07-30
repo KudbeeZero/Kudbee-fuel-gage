@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785424455965-084b35da",
+  "agentId": "hermes",
+  "decision": "run:RESEARCH: Analyze the @upstash/box SDK capabilities (Box, Agent, files, git, exec, snapshots, schedules, labels). Document how each can replace existing KUDBEE systems (Heroku CI, BRPOP workers, browser verifier, health pings).",
+  "context": {
+    "action": "execute",
+    "task": "RESEARCH: Analyze the @upstash/box SDK capabilities (Box, Agent, files, git, exec, snapshots, schedules, labels). Document how each can replace existing KUDBEE systems (Heroku CI, BRPOP workers, browser verifier, health pings).",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T15:14:15.966Z",
+  "decoded": false
+}

@@ -95,8 +95,13 @@
       "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
       "timestamp": "2026-07-30T08:59:22.160Z",
       "score": 12
+    },
+    {
+      "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
+      "timestamp": "2026-07-30T15:14:15.864Z",
+      "score": 13
     }
   ],
-  "lastRecall": "2026-07-30T08:59:22.160Z",
-  "recallCount": 19
+  "lastRecall": "2026-07-30T15:14:15.864Z",
+  "recallCount": 20
 }
