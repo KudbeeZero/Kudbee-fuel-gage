@@ -1,95 +1,106 @@
-# Heroku Pipeline Setup — 3-Environment CI/CD Workflow
+# Heroku Pipeline Setup — CI/CD Workflow
 
-## Architecture
+## Problem
+When testing new Heroku server deployments, the CI/CD pipeline must be properly configured with:
+1. GitHub Actions workflows enabled
+2. Redis configured (Upstash for production, redis:7-alpine for CI)
+3. Heroku app linked via git remote
+4. Environment variables set
 
-Three-environment Heroku pipeline with EDISBOX verification at every stage:
+## Solution
 
-| Environment | App | Branch | Deploy Script | EDISBOX |
-|:---|:---|:---|:---|:---|
-| **Development** | `kudbee-fuel-gage-dev` | `session/agent_*` | `scripts/deploy-dev.sh` | ✓ verify |
-| **Staging** | `kudbee-fuel-gage-staging` | `staging/security-durability` | `scripts/deploy-staging.sh` | ✓ verify |
-| **Production** | `kudbee-fuel-gage` | `main` | `scripts/deploy-prod.sh` | ✓ verify |
-
-## CI Bounds (Enforced in All Environments)
-
-| Bound | CI/Dev | Staging | Production |
-|:---|:---|:---|:---|
-| `CI_MUTATION_BUDGET` | 20 | 20 | 20 |
-| `MAX_REQUEST_BODY` | 256kb | 512kb | 512kb |
-| `DB_POOL_MAX` | 5 | 10 | 10 |
-| `MONTHLY_DB_OPERATION_BUDGET` | 500000 | 2000000 | 5000000 |
-
-## Deploy Scripts
-
-### Development Deploy
+### 1. Enable GitHub Actions Workflows
+Workflows in `.github/workflows/` may be disabled (`.disabled` extension). Enable them:
 ```bash
-./scripts/deploy-dev.sh [branch]
+for f in .github/workflows/*.disabled; do mv "$f" "${f%.disabled}"; done
 ```
-- Pushes session branch to `kudbee-fuel-gage-dev`
-- Runs quick CI gates (`verify-gates.mjs --quick`)
-- Logs deploy trigger and feeds DTHINK
 
-### Staging Deploy
+### 2. Heroku Git Remote
 ```bash
-./scripts/deploy-staging.sh [branch]
+heroku git:remote -a kudbee-fuel-gage
 ```
-- Pushes branch to `kudbee-fuel-gage-staging`
-- Health check + Redis verification
-- Feeds deploy event to DTHINK pipeline
+Verify with `git remote -v` — should show heroku remote.
 
-### Production Deploy
+### 3. Redis Configuration
+**Production (Upstash):**
 ```bash
-./scripts/deploy-prod.sh [branch]
+# Create Redis database
+curl -X POST -H "Idempotency-Key: $(uuidgen)" https://upstash.com/start-redis
+
+# Set env vars
+heroku config:set REDIS_URL=rediss://default:TOKEN@HOST:6379
+heroku config:set UPSTASH_REDIS_REST_URL=https://HOST.upstash.io
+heroku config:set UPSTASH_REDIS_REST_TOKEN=TOKEN
 ```
-- **Requires staging health check** before proceeding
-- Runs full CI gates
-- Pushes to `kudbee-fuel-gage` production app
-- Feeds deploy event to DTHINK pipeline
 
-## EDISBOX Integration (Upstash Box)
+**CI (GitHub Actions):** Uses `redis:7-alpine` service container on port 6379.
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    ports: [6379:6379]
+env:
+  REDIS_URL: 'redis://localhost:6379'
+```
 
-### Scripts
-- `scripts/edisbox-deploy.mjs` — isolated HTTP health check inside Upstash Box container
-- `scripts/edisbox-pipeline.mjs` — full pipeline verification (API key check, box-web-verify, package check, DTHINK feed)
-- `scripts/box-web-verify.mjs` — staging HTTP verification via Upstash Box
+### 4. Deploy Pipeline
+**Automatic (on push to main):**
+- `.github/workflows/deploy.yml` triggers
+- Runs `npm ci` → `npm run build` → Heroku deploy
+- Post-deploy health check on `/health`
 
-### How It Works
-1. Creates an isolated Upstash Box container
-2. Runs HTTP health check against staging URL
-3. Verifies response status and root element
-4. Records result in DTHINK pipeline
-5. Cleans up Box container
+**Manual:**
+```bash
+git push heroku main
+# or
+heroku deploy --app kudbee-fuel-gage
+```
 
-### Environment
-- `UPSTASH_BOX_API_KEY` — required for EDISBOX verification (set in Heroku config)
-- `STAGING_URL` — target URL for HTTP verification (default: `https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com`)
+### 5. Verify Pipeline
+```bash
+# Check workflow status
+gh run list --workflow=deploy.yml
 
-## Configuration Files
+# Check Heroku logs
+heroku logs --tail --app kudbee-fuel-gage
 
-- `heroku-pipelines.json` — pipeline configuration (dev/staging/prod environments, EDISBOX verification flags)
-- `app.json` — Heroku app configuration (environments, formation, review apps, CI bounds)
-- `config/pr/stack.json` — PR stack configuration (PR #233, EDISBOX verification rule)
-- `Procfile` — Heroku process definitions (web, monitor-worker, hermes-worker, sentinel, release phase)
+# Check dyno status
+heroku ps --app kudbee-fuel-gage
+```
 
-## PR Stack Workflow
+## Common Issues
 
-Current stack: PR #233 (`staging/security-durability` → `main`)
-- Single layer (session branch was squashed into main)
-- EDISBOX verification rule enabled
-- Bottom-up merge enforced
-- Production deploy from trunk only
+### Redis Connection Refused (ECONNREFUSED 127.0.0.1:6379)
+- **Cause:** `REDIS_URL` not set or pointing to localhost
+- **Fix:** Set `REDIS_URL` env var to Upstash URL or start local Redis
+
+### Heroku CLI Not Found
+- **Cause:** Heroku CLI not installed in container
+- **Fix:** Use GitHub Actions for deploys, or install Heroku CLI:
+  ```bash
+  curl https://cli-assets.heroku.com/install.sh | sh
+  ```
+
+### authenticateAgentPass is not defined
+- **Cause:** Function not exported from `bearerAuthMiddleware.ts`
+- **Fix:** Export `authenticateAgentPass()` and import in `server.js`:
+  ```ts
+  // bearerAuthMiddleware.ts
+  export function authenticateAgentPass(headerValue: string): string | null { ... }
+  
+  // server.js
+  import { authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
+  ```
+
+## Pipeline Status
+- **deploy.yml:** Push to main → Heroku deploy
+- **verify.yml:** Push/PR → typecheck + lint + build + e2e (38 checks)
+- **session-log.yml:** Session archival
 
 ## Key Files
-- `scripts/deploy-dev.sh` — development deploy
-- `scripts/deploy-staging.sh` — staging deploy
-- `scripts/deploy-prod.sh` — production deploy
-- `scripts/edisbox-deploy.mjs` — EDISBOX deploy verification
-- `scripts/edisbox-pipeline.mjs` — EDISBOX pipeline verification
-- `scripts/box-web-verify.mjs` — Upstash Box HTTP verification
-- `scripts/deploy-log.mjs` — deploy logging with DTHINK integration
-- `scripts/verify-gates.mjs` — pre-flight CI gate runner
-- `scripts/verify-stack.mjs` — PR stack verification
-- `heroku-pipelines.json` — pipeline configuration
-- `app.json` — Heroku app configuration
-- `config/pr/stack.json` — PR stack configuration
+- `.github/workflows/deploy.yml` — Heroku deployment
+- `.github/workflows/verify.yml` — CI verification
 - `Procfile` — Heroku process definitions
+- `app.json` — Heroku app configuration
+- `services/lib/bearerAuthMiddleware.ts` — Auth middleware
+- `services/ingestion/server.js` — Main server entrypoint
