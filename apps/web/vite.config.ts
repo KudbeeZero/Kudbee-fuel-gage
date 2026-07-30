@@ -12,6 +12,12 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, 'src'),
       },
     },
+    optimizeDeps: {
+      exclude: [
+        "@kudbee/utils",
+        "@kudbee/opencode",
+      ],
+    },
     server: {
       port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
