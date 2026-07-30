@@ -108,16 +108,11 @@
       "timestamp": "2026-07-30T09:22:28.349Z"
     },
     {
-      "id": "dec-1785412770285-9b621428",
+      "id": "dec-1785421606856-c3cdf16c",
       "decision": "curation_complete",
-      "timestamp": "2026-07-30T11:59:30.285Z"
-    },
-    {
-      "id": "dec-1785414321486-efd6dcb1",
-      "decision": "curation_complete",
-      "timestamp": "2026-07-30T12:25:21.486Z"
+      "timestamp": "2026-07-30T14:26:46.857Z"
     }
   ],
-  "lastAction": "2026-07-30T12:25:21.486Z",
-  "totalActions": 44
+  "lastAction": "2026-07-30T14:26:46.857Z",
+  "totalActions": 42
 }

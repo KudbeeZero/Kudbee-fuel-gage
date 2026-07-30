@@ -10,7 +10,14 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+        'node:crypto': path.resolve(__dirname, 'src/lib/browser-crypto.ts'),
       },
+    },
+    optimizeDeps: {
+      exclude: [
+        "@kudbee/utils",
+        "@kudbee/opencode",
+      ],
     },
     server: {
       port: 5173,

@@ -83,12 +83,12 @@
       "timestamp": "2026-07-30T09:22:29.486Z"
     },
     {
-      "id": "dec-1785414320950-f2b92bbd",
+      "id": "dec-1785421606538-4fae3b05",
       "decision": "verification_complete",
-      "timestamp": "2026-07-30T12:25:20.951Z"
+      "timestamp": "2026-07-30T14:26:46.538Z"
     }
   ],
   "totalActions": 37,
-  "lastAction": "2026-07-30T12:25:20.951Z",
+  "lastAction": "2026-07-30T14:26:46.538Z",
   "discoveredAt": "2026-07-27T18:44:38.562Z"
 }
