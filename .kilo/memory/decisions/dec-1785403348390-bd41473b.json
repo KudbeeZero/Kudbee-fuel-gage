@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785403348390-bd41473b",
+  "agentId": "ci-watcher",
+  "decision": "run:CES-1 DIVISION 2: Replay previous failures, re-run critical verification, verify deployment artifacts, verify staging health, detect flaky tests, compare current vs historical metrics. Output: Verification Certificates.",
+  "context": {
+    "action": "execute",
+    "task": "CES-1 DIVISION 2: Replay previous failures, re-run critical verification, verify deployment artifacts, verify staging health, detect flaky tests, compare current vs historical metrics. Output: Verification Certificates.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T09:22:28.391Z",
+  "decoded": false
+}

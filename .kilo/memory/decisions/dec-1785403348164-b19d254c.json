@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785403348164-b19d254c",
+  "agentId": "knowledge-curator",
+  "decision": "run:CES-1 DIVISION 1: Scan repository for duplicate code, dead modules, stale feature flags, unused env vars, orphaned routes, unused assets, dependency drift. Compare architecture against DTHINK manifest. Output: Engineering Findings — never patches.",
+  "context": {
+    "action": "execute",
+    "task": "CES-1 DIVISION 1: Scan repository for duplicate code, dead modules, stale feature flags, unused env vars, orphaned routes, unused assets, dependency drift. Compare architecture against DTHINK manifest. Output: Engineering Findings — never patches.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T09:22:28.164Z",
+  "decoded": false
+}

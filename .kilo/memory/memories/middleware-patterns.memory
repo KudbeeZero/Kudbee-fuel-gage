@@ -120,8 +120,13 @@
       "query": "phase iv-b (bbh-1): architecture guardian deputized. enforce new browser boundary protocol (kbp-001). certify that no browser path reaches node:crypto. all workspace packages classified: browser_safe / shared / server_only / prohibited. deployment proceeds only when boundary certificate passes. generate browser dependency certificate for current state.",
       "timestamp": "2026-07-30T05:21:06.159Z",
       "score": 11
+    },
+    {
+      "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
+      "timestamp": "2026-07-30T09:22:29.697Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-30T05:21:06.159Z",
-  "recallCount": 24
+  "lastRecall": "2026-07-30T09:22:29.697Z",
+  "recallCount": 25
 }

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785403349537-268624f6",
+  "agentId": "hermes",
+  "decision": "run:CES-1 DIVISION 3: Merge duplicate knowledge, promote validated patterns, retire obsolete, improve graph relationships, link missions to evidence, calculate confidence scores. Output: Knowledge Promotions.",
+  "context": {
+    "action": "execute",
+    "task": "CES-1 DIVISION 3: Merge duplicate knowledge, promote validated patterns, retire obsolete, improve graph relationships, link missions to evidence, calculate confidence scores. Output: Knowledge Promotions.",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-30T09:22:29.537Z",
+  "decoded": false
+}

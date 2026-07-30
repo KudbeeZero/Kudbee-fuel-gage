@@ -155,8 +155,13 @@
       "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
       "timestamp": "2026-07-30T08:59:22.160Z",
       "score": 12
+    },
+    {
+      "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
+      "timestamp": "2026-07-30T09:22:29.698Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-30T08:59:22.160Z",
-  "recallCount": 31
+  "lastRecall": "2026-07-30T09:22:29.698Z",
+  "recallCount": 32
 }

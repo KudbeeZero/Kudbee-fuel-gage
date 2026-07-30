@@ -70,8 +70,13 @@
       "query": "phase iii-e workstream b: deployment identity certification. verify: selected sha = built sha = released sha = runtime sha. if mismatch: auto-generate deployment_identity_mismatch in temporal. block promotion while ambiguous.",
       "timestamp": "2026-07-30T03:42:57.151Z",
       "score": 6
+    },
+    {
+      "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
+      "timestamp": "2026-07-30T09:22:29.695Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-30T03:42:57.151Z",
-  "recallCount": 14
+  "lastRecall": "2026-07-30T09:22:29.696Z",
+  "recallCount": 15
 }
