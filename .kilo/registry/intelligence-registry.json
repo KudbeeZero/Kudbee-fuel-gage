@@ -1,0 +1,26 @@
+{
+  "models": {
+    "groq-llama": { "provider": "Groq", "model_id": "llama-3.3-70b-versatile", "context_window": 128000, "strengths": ["fast_inference","cost_efficient","code_generation","summarization"], "weaknesses": ["complex_reasoning","multi_file_editing"], "avg_latency_ms":800, "est_cost_per_1k_chars":0.0005, "supports":["tools","streaming","json_mode"], "tier":"primary", "status":"available" },
+    "deepseek-chat": { "provider": "DeepSeek", "model_id": "deepseek-chat", "context_window": 128000, "strengths": ["reasoning","code_explanation","planning","best_value"], "weaknesses": ["fast_inference"], "avg_latency_ms":1500, "est_cost_per_1k_chars":0.0002, "supports":["streaming","json_mode"], "tier":"primary", "status":"available" },
+    "grok-xai": { "provider": "xAI", "model_id": "grok-2-latest", "context_window": 128000, "strengths": ["reasoning","architecture_review","planning"], "weaknesses": ["cost","fast_inference"], "avg_latency_ms":2000, "est_cost_per_1k_chars":0.002, "supports":["tools","streaming"], "tier":"secondary", "status":"available" },
+    "groq-fast": { "provider": "Groq", "model_id": "llama-3.1-8b-instant", "context_window": 128000, "strengths": ["fastest_inference","cost_efficient","simple_tasks"], "weaknesses": ["complex_reasoning","planning","architecture"], "avg_latency_ms":400, "est_cost_per_1k_chars":0.00005, "supports":["tools","streaming"], "tier":"budget", "status":"available" },
+    "gemini": { "provider": "Google", "model_id": "gemini-2.5-pro", "context_window": 1000000, "strengths": ["long_context","repository_analysis","architecture","reasoning","planning"], "weaknesses": ["cost","fast_inference"], "avg_latency_ms":3000, "est_cost_per_1k_chars":0.001, "supports":["tools","streaming","json_mode","vision","long_context"], "tier":"premium", "status":"available" },
+    "dthink-deterministic": { "provider": "KUDBEE", "model_id": "dthink-graph-v1", "context_window": 0, "strengths": ["graph_traversal","evidence_lookup","deterministic","governance"], "weaknesses": ["generation","explanation"], "avg_latency_ms":5, "est_cost_per_1k_chars":0, "supports":["deterministic","graph_search"], "tier":"always", "status":"available" }
+  },
+  "task_capability_map": {
+    "health_check": { "required":["deterministic"], "primary":"dthink-deterministic", "fallback":null, "intelligence_level":0 },
+    "evidence_lookup": { "required":["deterministic"], "primary":"dthink-deterministic", "fallback":null, "intelligence_level":0 },
+    "governance_review": { "required":["deterministic"], "primary":"dthink-deterministic", "fallback":null, "intelligence_level":0 },
+    "code_generation": { "required":["code_generation"], "primary":"groq-llama", "fallback":"deepseek-chat", "intelligence_level":3 },
+    "bug_fix": { "required":["code_generation","fast_inference"], "primary":"groq-llama", "fallback":"deepseek-chat", "intelligence_level":3 },
+    "architecture_review": { "required":["long_context","reasoning"], "primary":"gemini", "fallback":"grok-xai", "intelligence_level":2 },
+    "repository_analysis": { "required":["long_context","reasoning"], "primary":"gemini", "fallback":"grok-xai", "intelligence_level":2 },
+    "refactoring": { "required":["code_generation","reasoning"], "primary":"deepseek-chat", "fallback":"grok-xai", "intelligence_level":2 },
+    "root_cause_analysis": { "required":["reasoning","long_context"], "primary":"gemini", "fallback":"grok-xai", "intelligence_level":2 },
+    "summarization": { "required":["summarization","fast_inference"], "primary":"groq-llama", "fallback":"deepseek-chat", "intelligence_level":1 },
+    "documentation": { "required":["summarization"], "primary":"deepseek-chat", "fallback":"groq-llama", "intelligence_level":1 },
+    "planning": { "required":["planning","reasoning"], "primary":"gemini", "fallback":"grok-xai", "intelligence_level":2 },
+    "research": { "required":["reasoning","long_context"], "primary":"gemini", "fallback":"deepseek-chat", "intelligence_level":2 },
+    "default": { "required":["fast_inference"], "primary":"groq-llama", "fallback":"deepseek-chat", "intelligence_level":0 }
+  }
+}
