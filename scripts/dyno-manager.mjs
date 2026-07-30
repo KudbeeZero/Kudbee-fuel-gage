@@ -39,12 +39,32 @@ async function teardown() {
   console.log('All workers terminated. Idle cost: $0.');
 }
 
+const DYNOS = {CI:['standard-2x','standard-1x'],staging:['eco','basic'],production:['standard-1x'],emergency:['performance-m']};
+
+async function detectCapabilities() {
+  const app = await api('');
+  const formation = await api('/formation');
+  const sizes = [...new Set(formation.map(f=>f.size))];
+  console.log(`Platform: ${app.stack?.name||'?'} region:${app.region?.name||'?'}`);
+  console.log(`Allowed sizes on ${APP}: ${sizes.join(', ')}`);
+  return sizes;
+}
+
+async function cheapestFor(profile) {
+  const allowed = await detectCapabilities();
+  const prefer = DYNOS[profile] || ['eco'];
+  const match = prefer.find(s => allowed.includes(s));
+  const chosen = match || allowed[0] || 'standard-1x';
+  console.log(`Profile: ${profile} → ${chosen} (reason: ${match?'cheapest compatible':'fallback'})`);
+  return chosen;
+}
 const cmd = process.argv[3] || process.argv[2] || 'status';
 (async () => {
   if (cmd === 'status') await status();
+  else if (cmd === 'detect') await detectCapabilities();
   else if (cmd === 'scale') await scale(process.argv[3] || process.argv[4] || 'unknown', process.argv[4] || process.argv[5] || 1);
   else if (cmd === 'provision') await provision(process.argv.slice(3).join(' ') || 'unknown-mission');
   else if (cmd === 'teardown') await teardown();
   else if (cmd === 'up') { await scale('monitor-worker', 1); await scale('hermes-worker', 1); await scale('sentinel', 1); console.log('All workers scaled to 1'); }
-  else console.log('Usage: dyno-manager.mjs <app> status|scale|provision|teardown|up');
+  else console.log('Usage: dyno-manager.mjs <app> status|detect|scale|provision|teardown|up');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });
