@@ -15,7 +15,11 @@
       },
       "env": {
         "NODE_ENV": "test",
-        "PORT": "9876"
+        "PORT": "9876",
+        "REDIS_URL": "",
+        "REDIS_WORKER_URL": "",
+        "UPSTASH_REDIS_REST_URL": "",
+        "UPSTASH_REDIS_REST_TOKEN": ""
       },
       "addons": ["heroku-postgresql:mini"],
       "formation": {
