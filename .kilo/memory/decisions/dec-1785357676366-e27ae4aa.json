@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785357676366-e27ae4aa",
+  "agentId": "pipeline-guardian",
+  "decision": "run:Audit all 7 middleware layers, verify synapse C4769, check recovery engine, report guard status",
+  "context": {
+    "action": "execute",
+    "task": "Audit all 7 middleware layers, verify synapse C4769, check recovery engine, report guard status",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T20:41:16.367Z",
+  "decoded": false
+}

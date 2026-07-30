@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Check, X, Shield } from 'lucide-react';
+import { Bell, Check, X, ChevronRight, Shield } from 'lucide-react';
 import { useFocusTrap } from '../lib/focusTrap';
 
 export interface PendingItem {

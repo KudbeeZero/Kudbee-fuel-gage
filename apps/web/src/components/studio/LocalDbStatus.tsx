@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Wifi, WifiOff, Shield } from 'lucide-react';
+import { Database, RefreshCw, Wifi, WifiOff, Clock, Shield } from 'lucide-react';
 import { getSyncCount } from '../../db/localDb';
 import { getSyncState } from '../../db/syncEngine';
 import { getThinkTokenQueueLength } from '../../db/thinkTokenBridge';

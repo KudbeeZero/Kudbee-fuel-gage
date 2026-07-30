@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Activity, Shield, ShieldCheck, ShieldAlert, Terminal, Copy, Check } from 'lucide-react';
+import { Activity, Shield, ShieldCheck, ShieldAlert, ShieldX, Terminal, Copy, Check } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
 
 interface InterceptedRequest {

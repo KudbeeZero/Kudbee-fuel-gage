@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight, Loader2, WifiOff, Database, Server, FileSearch, X, ShieldCheck } from 'lucide-react';
+import { Calculator, Activity, Zap, AlertTriangle, CheckCircle2, Sliders, Terminal, ChevronRight, Loader2, WifiOff, Database, Server, FileSearch, ChevronLeft, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MultiModelSelector } from './MultiModelSelector';
 import { TokenEstimator } from './TokenEstimator';

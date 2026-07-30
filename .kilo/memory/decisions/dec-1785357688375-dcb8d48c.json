@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785357688375-dcb8d48c",
+  "agentId": "web-doctor",
+  "decision": "run:Diagnose production frontend: check boot state, verify spine.html, test terminal commands, report mobile compatibility",
+  "context": {
+    "action": "execute",
+    "task": "Diagnose production frontend: check boot state, verify spine.html, test terminal commands, report mobile compatibility",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T20:41:28.375Z",
+  "decoded": false
+}

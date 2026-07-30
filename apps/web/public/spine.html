@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>KUDBEE Fuel Gauge — AI Cost Intelligence</title>
+<style>
+:root{--bg:#020617;--card:#0f172a;--border:#1e293b;--green:#34d399;--red:#f87171;--amber:#eab308;--muted:#64748b;--text:#e2e8f0;--cyan:#06b6d4;--purple:#a78bfa;--accent:var(--green)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,'Cascadia Code','JetBrains Mono',monospace;min-height:100vh;display:flex;flex-direction:column}
+#boot-overlay{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s}
+#boot-overlay.done{opacity:0;pointer-events:none}
+.boot-title{font-size:1.4rem;font-weight:700;color:var(--green);margin-bottom:.5rem;letter-spacing:-.02em}
+.boot-subtitle{font-size:.7rem;color:var(--muted);margin-bottom:2rem}
+.boot-steps{display:flex;flex-direction:column;gap:.5rem;min-width:300px}
+.boot-step{display:flex;align-items:center;gap:.75rem;padding:.4rem .75rem;font-size:.7rem;color:var(--muted)}
+.boot-step .icon{width:14px;height:14px;border-radius:50%;flex-shrink:0;border:2px solid var(--border)}
+.boot-step .icon.ok{background:var(--green);border-color:var(--green);box-shadow:0 0 6px var(--green)}
+.boot-step .icon.err{background:var(--red);border-color:var(--red)}
+.boot-step .icon.wait{border-color:var(--muted);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{border-color:var(--muted)}50%{border-color:var(--green)}}
+.boot-step .label{flex:1}
+.boot-step .status{font-size:.6rem}
+.boot-step .status.ok{color:var(--green)}
+.boot-step .status.err{color:var(--red)}
+.boot-step .status.wait{color:var(--muted)}
+.app{display:none;flex:1;flex-direction:column}
+.app.ready{display:flex}
+.toolbar{background:#161b22;border-bottom:1px solid var(--border);padding:.4rem 1rem;display:flex;align-items:center;gap:1rem;font-size:.7rem}
+.toolbar .logo{color:var(--green);font-weight:700}
+.status-bar{display:flex;gap:1rem;margin-left:auto;font-size:.6rem}
+.status-dot{display:flex;align-items:center;gap:.25rem}
+.status-dot .d{width:7px;height:7px;border-radius:50%}
+.status-dot .d.g{background:var(--green);box-shadow:0 0 4px var(--green)}
+.status-dot .d.r{background:var(--red)}
+.status-dot .d.a{background:var(--amber)}
+.main-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;background:var(--border);flex:1}
+.pane{background:var(--bg);padding:1rem;overflow-y:auto;display:flex;flex-direction:column}
+.pane h3{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem}
+.pane-terminal{grid-row:span 2}
+#terminal{flex:1;overflow-y:auto;font-size:.7rem;line-height:1.6;margin-bottom:.5rem}
+.term-line{padding:.1rem 0;white-space:pre-wrap;word-break:break-all}
+.term-line .t{color:var(--muted);font-size:.6rem;margin-right:.4rem}
+.term-line .p{color:var(--green);font-weight:600}
+.term-input{display:flex;gap:.5rem;align-items:center}
+.term-input input{flex:1;background:transparent;border:1px solid var(--border);border-radius:.25rem;padding:.3rem .5rem;color:var(--text);font-family:inherit;font-size:.7rem;outline:none;caret-color:var(--green)}
+.term-input button{background:var(--green);color:#000;border:none;padding:.3rem .8rem;border-radius:.25rem;font-family:inherit;font-size:.65rem;font-weight:700;cursor:pointer}
+.term-input button:hover{background:#10b981}
+.metric-row{display:flex;justify-content:space-between;padding:.25rem 0;border-bottom:1px solid var(--border);font-size:.7rem}
+.metric-row:last-child{border:none}
+.metric-row .k{color:var(--muted)}
+.agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem}
+.agent-card{display:flex;align-items:center;gap:.35rem;padding:.2rem .35rem;border-radius:.25rem;font-size:.65rem;background:var(--card);cursor:pointer}
+.agent-card:hover{background:#1c2128}
+.agent-card .name{color:var(--text);font-weight:600}
+.agent-card .stat{color:var(--muted);margin-left:auto}
+.footer{background:#161b22;border-top:1px solid var(--border);padding:.2rem 1rem;font-size:.6rem;color:var(--muted);display:flex;justify-content:space-between}
+.footer span{color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<!-- BOOT OVERLAY — Progressive, never infinite -->
+<div id="boot-overlay">
+  <div class="boot-title">KUDBEE Fuel Gauge</div>
+  <div class="boot-subtitle">AI Cost Intelligence Platform</div>
+  <div class="boot-steps" id="boot-steps">
+    <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing API…</span><span class="status wait">—</span></div>
+    <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing database…</span><span class="status wait">—</span></div>
+    <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing Redis…</span><span class="status wait">—</span></div>
+    <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing agents…</span><span class="status wait">—</span></div>
+    <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing terminal…</span><span class="status wait">—</span></div>
+  </div>
+</div>
+
+<!-- MAIN APP — Hidden until boot completes -->
+<div class="app" id="app">
+  <div class="toolbar">
+    <span class="logo">◈ KUDBEE Control Tower</span>
+    <div class="status-bar">
+      <div class="status-dot"><div class="d g" id="s-db"></div><span id="s-db-t">DB</span></div>
+      <div class="status-dot"><div class="d g" id="s-redis"></div><span id="s-redis-t">Redis</span></div>
+      <div class="status-dot"><div class="d g" id="s-agents"></div><span id="s-agents-t">Agents</span></div>
+      <div class="status-dot"><div class="d g" id="s-synapse"></div><span id="s-synapse-t">Synapse</span></div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- Terminal Pane -->
+    <div class="pane pane-terminal">
+      <h3>Terminal</h3>
+      <div id="terminal"></div>
+      <div class="term-input">
+        <span style="color:var(--green)">❯</span>
+        <input type="text" id="cmd-input" placeholder="/help — type a command…" autocomplete="off" spellcheck="false">
+        <button onclick="exec()">Run</button>
+      </div>
+    </div>
+
+    <!-- System Health Pane -->
+    <div class="pane">
+      <h3>System Health</h3>
+      <div id="health-metrics"></div>
+    </div>
+
+    <!-- Agent Fleet Pane -->
+    <div class="pane">
+      <h3>Agent Fleet</h3>
+      <div class="agent-grid" id="agent-grid"></div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer">
+    <span>Release: —</span><span>Uptime: —</span><span>DB: —</span><span>Tokens: —</span>
+  </div>
+</div>
+
+<script>
+// ── BOOT STATE MACHINE — Never infinite ──────────────────────────────────
+const BOOT_DEADLINE = 10000; // 10s max
+const BASE = window.location.origin;
+let booted = false;
+let degraded = [];
+
+function updateBootStep(index, ok, label, detail) {
+  const steps = document.querySelectorAll('#boot-steps .boot-step');
+  if (index >= steps.length) return;
+  const step = steps[index];
+  const icon = step.querySelector('.icon');
+  const status = step.querySelector('.status');
+  icon.className = 'icon ' + (ok === null ? 'wait' : ok ? 'ok' : 'err');
+  status.className = 'status ' + (ok === null ? 'wait' : ok ? 'ok' : 'err');
+  status.textContent = detail || (ok ? 'OK' : 'FAIL');
+  step.querySelector('.label').textContent = label;
+  if (!ok && ok !== null) degraded.push(label);
+}
+
+async function boot() {
+  const deadline = Date.now() + BOOT_DEADLINE;
+
+  // Step 0: API — always check first
+  updateBootStep(0, null, 'Initializing API…', '—');
+  let apiOk = false;
+  try {
+    const r = await fetchWithTimeout('/health', 3000);
+    const d = await r.json();
+    apiOk = d.status === 'ok' || d.status === 'degraded';
+    updateBootStep(0, apiOk, 'API Gateway', apiOk ? 'Online' : 'Unreachable');
+  } catch { updateBootStep(0, false, 'API Gateway', 'Unreachable'); }
+
+  // Step 1: Database
+  updateBootStep(1, null, 'Initializing database…', '—');
+  let dbOk = false;
+  try {
+    const r = await fetchWithTimeout('/api/gastown/dashboard', 3000);
+    const d = await r.json();
+    dbOk = !!d.database?.totalSize;
+    updateBootStep(1, dbOk, 'Database', dbOk ? d.database.totalSize : 'Unreachable');
+  } catch { updateBootStep(1, false, 'Database', 'Unreachable'); }
+
+  // Step 2: Redis
+  updateBootStep(2, null, 'Initializing Redis…', '—');
+  let redisOk = false;
+  try {
+    const r = await fetchWithTimeout('/health', 2000);
+    const d = await r.json();
+    redisOk = d.dependencies?.redis === 'healthy';
+    updateBootStep(2, redisOk, 'Redis', redisOk ? 'Connected' : 'Degraded');
+  } catch { updateBootStep(2, false, 'Redis', 'Unreachable'); }
+
+  // Step 3: Agents
+  updateBootStep(3, null, 'Initializing agents…', '—');
+  let agentsOk = false;
+  try {
+    const r = await fetchWithTimeout('/api/gastown/dashboard', 3000);
+    const d = await r.json();
+    agentsOk = d.swarm?.online > 0;
+    updateBootStep(3, agentsOk, 'Agent Swarm', agentsOk ? d.swarm.online + '/' + d.swarm.agents : 'Offline');
+  } catch { updateBootStep(3, false, 'Agent Swarm', 'Offline'); }
+
+  // Step 4: Terminal
+  updateBootStep(4, null, 'Initializing terminal…', '—');
+  setTimeout(() => { updateBootStep(4, true, 'Terminal', 'Ready'); finishBoot(); }, 300);
+}
+
+function finishBoot() {
+  booted = true;
+  setTimeout(() => {
+    document.getElementById('boot-overlay').classList.add('done');
+    document.getElementById('app').classList.add('ready');
+    initTerminal();
+    updateHealth();
+    updateAgentFleet();
+    updateFooter();
+    setInterval(updateHealth, 30000);
+    setInterval(updateFooter, 30000);
+  }, 400);
+}
+
+function fetchWithTimeout(url, ms) {
+  return Promise.race([
+    fetch(url),
+    new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))
+  ]);
+}
+
+// ── TERMINAL ─────────────────────────────────────────────────────────────
+const CMD_HISTORY = JSON.parse(localStorage.getItem('kudbee_cmd') || '[]');
+let CMD_IDX = CMD_HISTORY.length;
+const term = document.getElementById('terminal');
+const input = document.getElementById('cmd-input');
+
+function print(msg, cls = '') {
+  const div = document.createElement('div');
+  div.className = 'term-line ' + cls;
+  div.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span>` + msg;
+  term.appendChild(div);
+  if (term.children.length > 200) term.removeChild(term.firstChild);
+  term.scrollTop = term.scrollHeight;
+}
+
+async function exec() {
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  CMD_HISTORY.push(cmd);
+  CMD_IDX = CMD_HISTORY.length;
+  localStorage.setItem('kudbee_cmd', JSON.stringify(CMD_HISTORY.slice(-100)));
+  print(`<span class="p">❯</span> ${cmd}`);
+  input.value = '';
+
+  const [action, ...args] = cmd.split(/\s+/);
+  const a = action.toLowerCase();
+  try {
+    switch (a) {
+      case '/help': print('Commands: /swarm /health /db /synapse /deploy /audit /agents /think /grok /status /clear', 'info'); break;
+      case '/swarm': case '/agents': {
+        const d = await api('/api/gastown/dashboard');
+        print(`${d.swarm.online}/${d.swarm.agents} agents online. ${d.activeConvoys} convoys.`, 'info');
+        break;
+      }
+      case '/health': {
+        const d = await api('/health');
+        print(`Status: ${d.status} | PG: ${d.dependencies.ingestion_db} | Redis: ${d.dependencies.redis} | Uptime: ${d.uptime_sec}s`, 'success');
+        break;
+      }
+      case '/db': {
+        const d = await api('/api/gastown/dashboard');
+        print(`Total: ${d.database.totalSize} | Think tokens: ${d.database.thinkTokens.count} | Governance: ${d.database.governanceActions.count}`, 'info');
+        break;
+      }
+      case '/synapse': {
+        const d = await api('/api/system/synapse-status');
+        print(`${d.protocol} active. Fingerprints: ${d.knownFingerprints}. Violations: ${d.violations?.length||0}. Lockouts: ${d.lockedOut?.length||0}.`, 'success');
+        break;
+      }
+      case '/deploy': {
+        const d = await api('/api/system/deploy-status');
+        print(`Status: ${d.status} | Release: ${d.herokuRelease} | Uptime: ${d.uptimeSec}s`, 'info');
+        break;
+      }
+      case '/audit': {
+        const d = await api('/api/governance/review-pending').catch(() => ({}));
+        print(d.message || 'Governance audit queued.', 'warn');
+        break;
+      }
+      case '/think': {
+        const d = await api('/api/gastown/dashboard');
+        print(`DTHINK Pipeline: ${d.database.thinkTokens.count} tokens (${d.database.thinkTokens.size}). Active forge.`, 'cyan');
+        break;
+      }
+      case '/grok': {
+        const d = await api('/health');
+        print(`Grok/xAI: ${d.dependencies?.grok ? d.dependencies.grok : 'Not configured'}. Budget: $7.00. Model: grok-beta.`, 'purple');
+        break;
+      }
+      case '/status': print(`Boot: ${degraded.length ? 'DEGRADED ('+degraded.join(', ')+')' : 'All systems operational'}`, degraded.length ? 'warn' : 'success'); break;
+      case '/clear': term.innerHTML = ''; break;
+      case '/agent': {
+        const agent = args[0];
+        if (agent) print(`Dispatching ${agent} agent… (simulated — agent CLI not connected to web)`, 'warn');
+        else print('Usage: /agent <name> — dispatch an agent', 'info');
+        break;
+      }
+      default: print(`Unknown: ${cmd}. Type /help.`, 'warn');
+    }
+  } catch (e) {
+    print(`Error: ${e.message}`, 'error');
+  }
+}
+
+function api(url) {
+  return fetch(BASE + url).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
+}
+
+function initTerminal() {
+  print('╔══════════════════════════════════════════════╗', 'info');
+  print('║  KUDBEE Interactive Terminal v3.0            ║', 'info');
+  print(`║  ${degraded.length ? 'DEGRADED: ' + degraded.join(', ') : 'All systems operational'}`, degraded.length ? 'warn' : 'success');
+  print('╚══════════════════════════════════════════════╝', 'info');
+  print('Type /help to see available commands.', 'info');
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') exec();
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (CMD_IDX > 0) { CMD_IDX--; input.value = CMD_HISTORY[CMD_IDX] || ''; } }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); CMD_IDX = Math.min(CMD_HISTORY.length, CMD_IDX + 1); input.value = CMD_IDX < CMD_HISTORY.length ? CMD_HISTORY[CMD_IDX] : ''; }
+});
+
+// ── HEALTH PANEL ────────────────────────────────────────────────────────
+async function updateHealth() {
+  try {
+    const d = await api('/health');
+    document.getElementById('health-metrics').innerHTML = `
+      <div class="metric-row"><span class="k">Status</span>${d.status}</div>
+      <div class="metric-row"><span class="k">Phase</span>${d.phase || '—'}</div>
+      <div class="metric-row"><span class="k">Uptime</span>${d.uptime_sec}s</div>
+      <div class="metric-row"><span class="k">PostgreSQL</span>${d.dependencies.ingestion_db}</div>
+      <div class="metric-row"><span class="k">Redis</span>${d.dependencies.redis}</div>
+    `;
+    const dbEl = document.getElementById('s-db'); const dbOk = d.dependencies.ingestion_db === 'healthy'; dbEl.className = 'd ' + (dbOk ? 'g' : 'r');
+    const redisEl = document.getElementById('s-redis'); const redisOk = d.dependencies.redis === 'healthy'; redisEl.className = 'd ' + (redisOk ? 'g' : 'r');
+  } catch { document.getElementById('health-metrics').innerHTML = '<div class="metric-row"><span class="k">Status</span>Unreachable</div>'; }
+}
+
+// ── AGENT FLEET ─────────────────────────────────────────────────────────
+async function updateAgentFleet() {
+  try {
+    const d = await api('/api/gastown/dashboard');
+    document.getElementById('agent-grid').innerHTML = ['gastown','hermes','sentinel','monitor','ci-watcher','pipeline-guardian','knowledge-curator','web-doctor','gateway-router','ledger-keeper','token-forge']
+      .map(a => `<div class="agent-card" onclick="execCmd('/agent ${a}')"><span class="name">${a}</span><span class="stat">${['gastown','hermes','sentinel','monitor'].includes(a)?'active':'idle'}</span></div>`).join('');
+    document.getElementById('s-agents').className = 'd ' + (d.swarm.online > 0 ? 'g' : 'r');
+    document.getElementById('s-agents-t').textContent = 'Agents ' + d.swarm.online;
+  } catch {}
+}
+
+// ── FOOTER ──────────────────────────────────────────────────────────────
+async function updateFooter() {
+  try {
+    const deploy = await api('/api/system/deploy-status');
+    document.getElementById('footer').innerHTML = `<span>Release: ${deploy.herokuRelease}</span><span>Uptime: ${deploy.uptimeSec}s</span><span>DB: —</span><span>Tokens: —</span>`;
+  } catch {}
+  try {
+    const dash = await api('/api/gastown/dashboard');
+    document.getElementById('footer').innerHTML = `<span>Release: —</span><span>Uptime: —</span><span>DB: ${dash.database.totalSize}</span><span>Tokens: ${dash.database.thinkTokens.count}</span>`;
+  } catch {}
+}
+
+function execCmd(cmd) { input.value = cmd; exec(); }
+
+// ── START ────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>

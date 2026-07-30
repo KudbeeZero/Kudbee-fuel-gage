@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Activity, ArrowRight, RotateCcw, Server, Zap, AlertTriangle, Clock } from 'lucide-react';
+import { Activity, ArrowRight, RotateCcw, Server, ShieldCheck, Zap, AlertTriangle, Clock } from 'lucide-react';
 import { useProviderStatus, type ProviderStatus, type RouterDecision } from '../../hooks/useProviderStatus';
 
 function statusClasses(status: ProviderStatus['status']): { wrap: string; dot: string; label: string } {

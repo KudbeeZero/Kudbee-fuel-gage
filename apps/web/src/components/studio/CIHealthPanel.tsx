@@ -7,6 +7,8 @@ import {
   RefreshCw,
   GitBranch,
   ExternalLink,
+  TrendingUp,
+  TrendingDown,
   Clock,
 } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';

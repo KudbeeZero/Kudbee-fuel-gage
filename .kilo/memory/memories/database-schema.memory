@@ -65,13 +65,8 @@
       "query": "full 11-layer middleware scan — audit spheroid, rate-limit, timeout, bearer-auth, kilo-bridge, ecp-singleflight, zod-validator, global-error, and report guard status",
       "timestamp": "2026-07-29T08:45:49.218Z",
       "score": 9
-    },
-    {
-      "query": "middleware audit: scan all 7 layers — requesttimer, spheroidaudit, synapsec4769 (0.4769 rad immutable), bearerauth, kilobridgebudget, ecpsingleflight (now with metrics tracking), zodvalidate. confirm all guards active. report status.",
-      "timestamp": "2026-07-29T23:13:16.158Z",
-      "score": 12
     }
   ],
-  "lastRecall": "2026-07-29T23:13:16.158Z",
-  "recallCount": 14
+  "lastRecall": "2026-07-29T08:45:49.218Z",
+  "recallCount": 13
 }

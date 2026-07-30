@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Cpu } from 'lucide-react';
+import { CheckCircle2, XCircle, Cpu, Tag, Clock, Zap } from 'lucide-react';
 import type { ApprovalRequest, ApprovalDecision } from '@kudbee/types';
 
 interface ApprovalQueueTrayProps {

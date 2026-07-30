@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785357687209-f1b4ee6c",
+  "agentId": "knowledge-curator",
+  "decision": "run:Curate this session's learnings: PR #228 consolidation protocol, System Spine architecture, Recovery Engine, progressive boot pattern",
+  "context": {
+    "action": "execute",
+    "task": "Curate this session's learnings: PR #228 consolidation protocol, System Spine architecture, Recovery Engine, progressive boot pattern",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T20:41:27.210Z",
+  "decoded": false
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "snapshot_id": "snap-ms6n7z1d",
+    "timestamp": "2026-07-29T22:15:15.745Z",
+    "release_sha": "f423c14",
+    "environment": "production",
+    "application_health": "HEALTHY",
+    "postgres_health": "HEALTHY",
+    "redis_health": "HEALTHY",
+    "security_state": "HOLDING",
+    "staging_state": "GREEN",
+    "ci_state": "BLOCKED",
+    "promotion_state": "FROZEN",
+    "dyno_count": 4,
+    "notes": "BASELINE from 2026-07-29T22:10Z. Application stable. No new events. Production frozen.",
+    "active_incidents": 0
+  },
+  {
+    "snapshot_id": "snap-ms6ngiko",
+    "timestamp": "2026-07-29T22:21:54.312Z",
+    "release_sha": "f423c14",
+    "environment": "production",
+    "application_health": "HEALTHY",
+    "postgres_health": "HEALTHY",
+    "redis_health": "HEALTHY",
+    "security_state": "HOLDING",
+    "staging_state": "GREEN",
+    "ci_state": "BLOCKED",
+    "promotion_state": "FROZEN",
+    "dyno_count": 4,
+    "notes": "Phase II-A Sync: Heroku historical evidence ingested. 200 builds, 200 releases, formation confirmed at 21:53:49Z. SCALE_RESTART confirmed. DEPLOY_RESTART confirmed.",
+    "active_incidents": 0
+  }
+]

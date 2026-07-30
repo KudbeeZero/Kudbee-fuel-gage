@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785363860917-2c83148b",
+  "agentId": "gastown",
+  "decision": "run:Deploy full swarm: coordinate all 11 agents, CI forensics audit, Heroku evidence verification, THINK token minting",
+  "context": {
+    "action": "execute",
+    "task": "Deploy full swarm: coordinate all 11 agents, CI forensics audit, Heroku evidence verification, THINK token minting",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-07-29T22:24:20.918Z",
+  "decoded": false
+}

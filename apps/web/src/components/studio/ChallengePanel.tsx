@@ -4,10 +4,15 @@ import {
   Trophy,
   Shield,
   Target,
+  Zap,
+  TrendingUp,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   RefreshCw,
+  Search,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 

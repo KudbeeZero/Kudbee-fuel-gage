@@ -1,18 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
+  Activity,
   History,
+  Bell,
   Settings,
   TerminalSquare,
+  Zap,
   Copy,
+  Calculator,
+  Search,
+  FileSpreadsheet,
   ChevronDown,
+  ChevronRight,
+  ShieldAlert,
+  XCircle,
   Scale,
   Wifi,
   WifiOff,
+  Ban,
+  Shield,
+  Network,
   Server,
   Lock,
+  Globe,
   X,
+  Maximize2,
   Radio,
+  Monitor,
   Gauge
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';

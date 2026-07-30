@@ -75,8 +75,13 @@
       "query": "synapse protection audit: scan all middleware layers for security gaps, verify auth guards, check receptor gating, report threat surface",
       "timestamp": "2026-07-29T10:17:35.118Z",
       "score": 11
+    },
+    {
+      "query": "audit all 7 middleware layers, verify synapse c4769, check recovery engine, report guard status",
+      "timestamp": "2026-07-29T20:41:16.431Z",
+      "score": 14
     }
   ],
-  "lastRecall": "2026-07-29T10:17:35.118Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-29T20:41:16.431Z",
+  "recallCount": 16
 }

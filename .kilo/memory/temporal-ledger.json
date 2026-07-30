@@ -1,0 +1,155 @@
+[
+  {
+    "timestamp": "2026-07-29T21:17:04Z",
+    "event_type": "DEPLOY",
+    "source": "KILO",
+    "target": "production",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "DEPLOY_RESTART",
+    "confidence": 0.99,
+    "observed": "git push heroku HEAD:main deployed release f423c14. All 4 dynos received SIGTERM and restarted on v342. Health restored within 15 seconds.",
+    "inferred": "DEPLOY_RESTART: Normal deployment lifecycle. Expected SIGTERM during rollout. No crash. Health check passed after restart.",
+    "evidence": [
+      "Heroku release v342 created",
+      "All dynos transitioned to starting → up",
+      "/health returned 200 after restart",
+      "PostgreSQL: healthy",
+      "Redis: healthy"
+    ],
+    "metadata": {
+      "user": "KILO",
+      "deploy_method": "git push"
+    },
+    "event_id": "evt-ms6n7z1c-elkm92"
+  },
+  {
+    "timestamp": "2026-07-29T21:53:49Z",
+    "event_type": "SCALE",
+    "source": "dominick.ziola@gmail.com",
+    "target": "production",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "SCALE_RESTART",
+    "confidence": 0.98,
+    "observed": "Heroku formation scaling operation by dominick.ziola@gmail.com. Dynos received SIGTERM and restarted. Health restored.",
+    "inferred": "SCALE_RESTART: User-initiated scaling/reconfiguration. Not a crash. Expected lifecycle interruption.",
+    "evidence": [
+      "Heroku log: \"Scaled to hermes-worker@1 ... by user dominick.ziola@gmail.com\"",
+      "SIGTERM received by all dynos",
+      "Processes exited gracefully",
+      "Processes restarted and returned UP",
+      "Health check passing after restart"
+    ],
+    "metadata": {
+      "user": "dominick",
+      "action": "scale"
+    },
+    "event_id": "evt-ms6n7z1c-blbk43"
+  },
+  {
+    "timestamp": "2026-07-29T21:17:10Z",
+    "event_type": "SECURITY_REJECTION",
+    "source": "44.193.9.210",
+    "target": "POST /api/telemetry/ingest",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "SECURITY_REJECTION",
+    "confidence": 0.95,
+    "observed": "AWS EC2 IP 44.193.9.210 sent POST /api/telemetry/ingest without agent authentication headers. Synapse C4769 rejected with escalating blocks: level 1 (60s) → level 2 (300s) → level 3 (900s).",
+    "inferred": "LEGITIMATE SECURITY REJECTION: IP not whitelisted, no agent-pass header present. C4769 behaving correctly. Likely Sentinel egress probe misconfigured to hit telemetry endpoint without auth.",
+    "evidence": [
+      "Synapse violation record: IP=44.193.9.210, agent=UNKNOWN, score=0.4752",
+      "Escalation: level 1 → level 2 → level 3 confirmed",
+      "C4769 threshold maintained at 0.4769 rad",
+      "No other security anomalies detected"
+    ],
+    "metadata": {
+      "ip": "44.193.9.210",
+      "provider": "AWS/EC2",
+      "region": "us-east-1"
+    },
+    "event_id": "evt-ms6n7z1c-dgg50j"
+  },
+  {
+    "timestamp": "2026-07-29T21:17:15Z",
+    "event_type": "SSE_EVENT",
+    "source": "logplex",
+    "target": "production",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "EXPECTED",
+    "confidence": 0.9,
+    "observed": "L10 output buffer overflow — 1 message dropped during startup. Likely caused by SSE reconnection burst after deployment restart.",
+    "inferred": "LOW PRIORITY: One-time startup burst. Not recurring. Monitor for recurrence.",
+    "evidence": [
+      "Heroku log: \"Error L10 (output buffer overflow): 1 messages dropped\"",
+      "Single occurrence observed",
+      "No recurrence in subsequent observation windows",
+      "SSE connections stabilized after initial burst"
+    ],
+    "metadata": {
+      "type": "L10_overflow",
+      "count": "1"
+    },
+    "event_id": "evt-ms6n7z1d-l5ksjh"
+  },
+  {
+    "timestamp": "2026-07-29T22:21:54.306Z",
+    "event_type": "PLATFORM_EVENT",
+    "source": "HEROKU",
+    "target": "formation",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "EXPECTED",
+    "confidence": 1,
+    "observed": "HEROKU PLATFORM API CONFIRMS: formation updated at 2026-07-29T21:53:49Z. All 4 dynos (web, sentinel, hermes-worker, monitor-worker) at quantity=1, size=Basic. Release dyno at quantity=0.",
+    "inferred": "DIRECT PLATFORM EVIDENCE (Level 1): Corroborates SCALE_RESTART classification. Formation update timestamp matches scaling event exactly. 0.0 second delta.",
+    "evidence": [
+      "Heroku API: /apps/kudbee-fuel-gage/formation",
+      "monitor-worker qty=1 size=Basic updated_at=2026-07-29T21:53:49Z",
+      "hermes-worker qty=1 size=Basic updated_at=2026-07-29T21:53:49Z",
+      "sentinel qty=1 size=Basic updated_at=2026-07-29T21:53:49Z",
+      "web qty=1 size=Basic updated_at=2026-07-29T21:53:49Z",
+      "Timestamp delta from observation: 0 seconds"
+    ],
+    "metadata": {
+      "evidence_level": "1_DIRECT_PLATFORM",
+      "source_api": "Heroku Platform API /formation",
+      "corroborates": "evt-ms6n7z1c-blbk43"
+    },
+    "event_id": "evt-ms6ngikj-pyg689"
+  },
+  {
+    "timestamp": "2026-07-29T22:21:54.311Z",
+    "event_type": "PLATFORM_EVENT",
+    "source": "HEROKU",
+    "target": "builds",
+    "environment": "production",
+    "release_sha": "f423c14",
+    "severity": "P3",
+    "classification": "EXPECTED",
+    "confidence": 0.95,
+    "observed": "HEROKU BUILD HISTORY: 200 builds on file, all succeeded. Built by dominick.ziola@gmail.com. Buildpacks: heroku/nodejs. App: kudbee-fuel-gage. Build history spans July 18-23, 2026.",
+    "inferred": "DIRECT PLATFORM EVIDENCE (Level 1): Build history corroborates normal deployment lifecycle. No failed builds on record. Current production release (v342) is the active release on all 4 dynos.",
+    "evidence": [
+      "Heroku API: /apps/kudbee-fuel-gage/builds",
+      "Total builds: 200",
+      "All builds: succeeded",
+      "User: dominick.ziola@gmail.com",
+      "No failed builds in history"
+    ],
+    "metadata": {
+      "evidence_level": "1_DIRECT_PLATFORM",
+      "source_api": "Heroku Platform API /builds",
+      "build_count": "200",
+      "corrobrates": "evt-ms6n7z1c-elkm92"
+    },
+    "event_id": "evt-ms6ngikn-63vdx7"
+  }
+]

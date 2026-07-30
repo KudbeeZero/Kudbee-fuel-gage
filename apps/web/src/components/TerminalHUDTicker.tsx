@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, RefreshCw } from 'lucide-react';
+import { Terminal, Zap, Scale, ShieldAlert, RefreshCw } from 'lucide-react';
 import { apiGet } from '../lib/apiClient';
 
 interface Headline {

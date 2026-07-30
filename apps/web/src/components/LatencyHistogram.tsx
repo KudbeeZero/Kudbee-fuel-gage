@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion } from 'motion/react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Activity, Info, Clock } from 'lucide-react';
 
 interface LatencyLog {
   model?: string;
