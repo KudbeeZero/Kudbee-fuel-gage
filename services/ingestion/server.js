@@ -2684,6 +2684,32 @@ app.post('/api/think/synthesize', async (req, res) => {
 });
 
 // --- Phase 40: Self-Boot Kernel Rollover — System Lifecycle ---------------
+// --- Frontend Error Reporter — live debugging bridge to terminal/agents ---
+const errorRateLimit = new Map(); // IP → [timestamps]
+const ERROR_RATE_WINDOW_MS = 60000; // 1 minute window
+const ERROR_RATE_MAX = 10; // max 10 errors per minute per IP
+const ERROR_DAILY_CAP = 1000; // max 1000 total per day
+let errorDailyCount = 0; let errorDailyReset = Date.now();
+app.post('/api/error-report', async (req, res) => {
+  try {
+    // Reset daily counter
+    if (Date.now() - errorDailyReset > 86400000) { errorDailyCount = 0; errorDailyReset = Date.now(); }
+    // Rate limit: max 10/min per IP
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (!errorRateLimit.has(ip)) errorRateLimit.set(ip, []);
+    const now = Date.now();
+    const window = ERROR_RATE_WINDOW_MS;
+    errorRateLimit.set(ip, errorRateLimit.get(ip).filter(t => now - t < window));
+    if (errorRateLimit.get(ip).length >= ERROR_RATE_MAX || errorDailyCount >= ERROR_DAILY_CAP) {
+      return res.json({ ok: false, reason: 'rate-limited' });
+    }
+    errorRateLimit.get(ip).push(now); errorDailyCount++;
+    const { msg, stack } = req.body || {};
+    console.warn('[FRONTEND-ERR]', (msg||'').slice(0,100));
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false }); }
+});
+
 app.post('/api/system/lifecycle', async (req, res) => {
   try {
     const { action } = req.body || {};
