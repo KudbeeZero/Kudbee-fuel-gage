@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785409260138-a1d91e",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "diagnostic": "complete"
+  },
+  "timestamp": "2026-07-30T11:01:00.138Z",
+  "sequence": 43
+}

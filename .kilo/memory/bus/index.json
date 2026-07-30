@@ -1,5 +1,5 @@
 {
-  "sequence": 42,
+  "sequence": 43,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -294,6 +294,13 @@
       "source": "cli",
       "sequence": 42,
       "timestamp": "2026-07-30T08:42:16.279Z"
+    },
+    {
+      "id": "evt-1785409260138-a1d91e",
+      "topic": "system:health",
+      "source": "cli",
+      "sequence": 43,
+      "timestamp": "2026-07-30T11:01:00.138Z"
     }
   ],
   "topicCounts": {
@@ -303,7 +310,7 @@
     "agent:decide": 1,
     "knowledge:relate": 1,
     "cache:warm": 1,
-    "system:health": 11,
+    "system:health": 12,
     "agent:recall": 1,
     "agent:report": 1,
     "agent:persistence": 1,
