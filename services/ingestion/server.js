@@ -67,7 +67,16 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
-import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
+import {
+  bearerAuth,
+  authGuard,
+  authenticateAgentPass,
+  authenticateAgentPassPrincipal,
+  createSessionToken,
+  SESSION_TTL_MS,
+  serializeSessionCookie,
+  serializeClearedSessionCookie,
+} from '../lib/bearerAuthMiddleware.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -264,6 +273,54 @@ const ingestLimiter = rateLimit({
   },
 });
 app.use('/api/telemetry/ingest', ingestLimiter);
+
+// --- DS-01: server-issued browser session -----------------------------------
+// The browser may exchange a short-lived, registry-validated agent pass for
+// an HttpOnly session. The pass never needs to be stored by the frontend.
+const sessionCookieSecure = process.env.NODE_ENV === 'production';
+
+app.post('/api/auth/session', (req, res) => {
+  const principal = authenticateAgentPassPrincipal(req.get('X-Agent-Pass') || '');
+  if (!principal) {
+    res.setHeader('WWW-Authenticate', 'Bearer realm="kudbee"');
+    return res.status(401).json({ error: 'unauthorized', message: 'Valid agent pass required' });
+  }
+
+  try {
+    const token = createSessionToken(principal);
+    res.setHeader(
+      'Set-Cookie',
+      serializeSessionCookie(token, {
+        maxAgeSeconds: Math.floor(SESSION_TTL_MS / 1000),
+        secure: sessionCookieSecure,
+      }),
+    );
+    return res.status(201).json({
+      principal: { ...principal, authenticated: true },
+      expiresIn: SESSION_TTL_MS,
+    });
+  } catch (err) {
+    console.error('[Auth] Session issuance unavailable:', err?.message || err);
+    return res.status(503).json({ error: 'session_unavailable' });
+  }
+});
+
+app.get('/api/auth/session', (req, res) => {
+  if (!req.authenticated || !req.agentId) {
+    return res.status(401).json({ error: 'unauthorized', message: 'Authenticated session required' });
+  }
+
+  return res.json({
+    agentId: req.agentId,
+    roles: req.roles || req.agentRoles || [],
+    authenticated: true,
+  });
+});
+
+app.delete('/api/auth/session', (_req, res) => {
+  res.setHeader('Set-Cookie', serializeClearedSessionCookie({ secure: sessionCookieSecure }));
+  return res.json({ ok: true });
+});
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
@@ -4065,15 +4122,14 @@ if (redis) {
 // --- SSE Stream Ticket (zero-trust handshake) ---
 const STREAM_TICKETS = new Map();
 const TICKET_TTL_MS = 30000;
-const STREAM_SECRET = process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex');
+const STREAM_SECRET = process.env.STREAM_SECRET || (process.env.NODE_ENV === 'production' ? null : crypto.randomBytes(32).toString('hex'));
 
 if (!process.env.STREAM_SECRET) {
-  console.warn(
-    '[SSE] STREAM_SECRET not set — using ephemeral in-memory fallback (signatures reset on restart)'
-  );
+  console.warn('[SSE] STREAM_SECRET not set — SSE ticket issuance is disabled outside production');
 }
 
 app.post('/api/auth/stream-ticket', (req, res) => {
+  if (!STREAM_SECRET) return res.status(503).json({ error: 'stream_secret_unavailable' });
   const ticket = 'sse_ticket_' + crypto.randomUUID();
   STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
   const sig = crypto
