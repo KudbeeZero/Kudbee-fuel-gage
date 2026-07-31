@@ -1,7 +1,7 @@
 {
   "phase": "security-durability-foundation",
   "version": 2,
-  "status": "ready-to-start",
+  "status": "in-progress",
   "governancePolicy": "config/phase/next/governance-policy.json",
   "sopManifest": "config/phase/next/sop-manifest.json",
   "models": {
