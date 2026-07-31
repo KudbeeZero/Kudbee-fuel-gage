@@ -95,8 +95,13 @@
       "query": "secret safe box redis credential workflow",
       "timestamp": "2026-07-31T03:50:13.910Z",
       "score": 8
+    },
+    {
+      "query": "72 hour database connection budget neon monitor",
+      "timestamp": "2026-07-31T04:52:04.348Z",
+      "score": 7
     }
   ],
-  "lastRecall": "2026-07-31T03:50:13.910Z",
-  "recallCount": 19
+  "lastRecall": "2026-07-31T04:52:04.348Z",
+  "recallCount": 20
 }
