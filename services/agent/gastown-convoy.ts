@@ -110,7 +110,12 @@ export function startConvoy(convoyId: string): GastownConvoy | null {
   return convoy;
 }
 
-export function updateTaskStatus(convoyId: string, taskId: string, status: ConvoyTask['status'], result?: string): GastownConvoy | null {
+export function updateTaskStatus(
+  convoyId: string,
+  taskId: string,
+  status: ConvoyTask['status'],
+  result?: string
+): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
   const task = convoy.tasks.find((t) => t.id === taskId);
