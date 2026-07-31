@@ -14,8 +14,9 @@ delete worktrees automatically without an explicit human instruction.
    - `git status --short`
 
 3. Run PR preflight before create/review:
-   - `git diff --check`
-   - `node scripts/phase-governor.mjs check <model> <task-id>`
+    - `git diff --check`
+    - `npm run verify:secrets`
+    - `node scripts/phase-governor.mjs check <model> <task-id>`
    - `node scripts/verify-operating-model.mjs`
    - `node scripts/verify-next-phase.mjs --full`
    - `node scripts/dthink-pipeline.mjs stats`

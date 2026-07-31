@@ -27,10 +27,11 @@ Verify with `git remote -v` — should show heroku remote.
 # Create Redis database
 curl -X POST -H "Idempotency-Key: $(uuidgen)" https://upstash.com/start-redis
 
-# Set env vars
-heroku config:set REDIS_URL=rediss://default:TOKEN@HOST:6379
-heroku config:set UPSTASH_REDIS_REST_URL=https://HOST.upstash.io
-heroku config:set UPSTASH_REDIS_REST_TOKEN=TOKEN
+# Set env vars from the hosting secret manager; never place values in commands,
+# source control, logs, memory, DTHINK, or THINK.
+heroku config:set REDIS_URL="$REDIS_URL"
+heroku config:set UPSTASH_REDIS_REST_URL="$UPSTASH_REDIS_REST_URL"
+heroku config:set UPSTASH_REDIS_REST_TOKEN="$UPSTASH_REDIS_REST_TOKEN"
 ```
 
 **CI (GitHub Actions):** Uses `redis:7-alpine` service container on port 6379.

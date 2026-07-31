@@ -8,6 +8,7 @@ Use this command for every DeepSeek V4 or Qwen 3.6 Pro task.
 node scripts/session-bootstrap.mjs
 node scripts/phase-governor.mjs check <model> <task-id>
 node scripts/model-task-packet.mjs <model> <task-id>
+npm run verify:secrets
 git status --short
 ```
 
@@ -30,6 +31,7 @@ Run every task-specific check and validate a structured report:
 
 ```bash
 git diff --check
+npm run verify:secrets
 npm run typecheck
 bun test
 node scripts/verify-system-integrity.mjs

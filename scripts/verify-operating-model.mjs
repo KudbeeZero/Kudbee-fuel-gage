@@ -36,7 +36,7 @@ if (exists('.github/workflows')) {
   else pass('github-actions', 'workflow directory contains no active YAML workflows');
 } else pass('github-actions', 'workflow directory removed');
 
-for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-e2e.mjs']) {
+for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-e2e.mjs', 'scripts/verify-secret-hygiene.mjs', 'scripts/box-web-verify.mjs', 'config/secrets/manifest.json']) {
   if (exists(required)) pass(`self-hosted:${required}`, 'present');
   else fail(`self-hosted:${required}`, 'missing');
 }

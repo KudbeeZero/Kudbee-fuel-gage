@@ -25,6 +25,8 @@
     "verify:browser-matrix": "node scripts/verify-browser-matrix.mjs",
     "phase:govern": "node scripts/phase-governor.mjs",
     "phase:ops-audit": "node scripts/verify-operating-model.mjs",
+    "verify:secrets": "node scripts/verify-secret-hygiene.mjs",
+    "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
     "ingest:topology": "tsx scripts/ingest-topology.ts",
     "heroku-postbuild": "npm run build"

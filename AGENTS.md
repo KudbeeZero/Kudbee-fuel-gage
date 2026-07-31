@@ -164,6 +164,14 @@ cd apps/mobile && npx tsc --noEmit  # Mobile type-check
 cd packages/opencode && bun run typecheck && bun test
 ```
 
+### Secret-Safe Workflow
+
+- Secret values belong only in the hosting provider's secret manager or an ignored local `.env`.
+- Run `npm run verify:secrets` for a name-only presence and tracked-file leak check.
+- Run `npm run verify:box-web` when `UPSTASH_BOX_API_KEY` is configured; it uses the official Upstash Box API without printing the key.
+- Redis MCP is for operational Redis commands, not secret discovery or secret storage.
+- Never place credentials in GitHub comments, PR bodies, logs, DTHINK, THINK, screenshots, or agent prompts.
+
 ## Terminal Entrypoints
 
 - **CLI orchestrator:** `npx tsx services/agent/cli.ts "your prompt"` — Kudbee Group 7 Multi-Agent Orchestrator.

@@ -6,7 +6,7 @@
     "frontend-web": { "owner": "qwen-3.6-pro", "sop": ["responsive desktop/mobile", "keyboard and reduced motion", "freshness and durability labels", "browser matrix"] },
     "frontend-mobile": { "owner": "qwen-3.6-pro", "sop": ["iPhone safe areas", "Android back/navigation", "offline state", "mobile typecheck"] },
     "backend": { "owner": "deepseek-v4", "sop": ["contract first", "single route owner", "structured errors", "typecheck and E2E"] },
-    "security": { "owner": "deepseek-v4", "sop": ["principal before permission", "tenant from server identity", "no default secrets", "authorization matrix"] },
+    "security": { "owner": "deepseek-v4", "sop": ["principal before permission", "tenant from server identity", "no default secrets", "authorization matrix", "secret names only", "hosting secret manager"] },
     "data-platform": { "owner": "deepseek-v4", "sop": ["durability state", "idempotency", "migration rollback", "outage test"] },
     "agents-and-gastown": { "owner": "deepseek-v4", "sop": ["Safe-Zone gate", "isolated worktree", "PENDING_APPROVAL", "convoy recovery"] },
     "quality-and-ci": { "owner": "ci-watcher", "sop": ["typecheck", "lint", "build", "E2E", "mobile", "browser evidence"] },
@@ -15,6 +15,6 @@
     "human-review": { "owner": "operator", "sop": ["review P0/P1", "approve deployment", "resolve handoff", "confirm rollback authority"] }
   },
   "requiredArtifacts": ["config/phase/next/phase-manifest.json", "config/phase/next/governance-policy.json", "config/phase/next/sop-manifest.json", ".kilo/docs/deepseek-v4-qwen-3.6-pro-roadmap.md", ".kilo/command/pr.md", ".kilo/command/report.md", ".kilo/command/handoff.md"],
-  "requiredGates": ["node scripts/phase-governor.mjs check <model> <task>", "git diff --check", "npm run typecheck", "bun test", "npm run build --workspace=@kudbee/web", "cd apps/mobile && npx tsc --noEmit", "node scripts/verify-system-integrity.mjs", "node scripts/verify-e2e.mjs", "npm run verify:browser-matrix", "node scripts/verify-agents.mjs", "node scripts/verify-drift.mjs", "node scripts/dthink-pipeline.mjs stats"],
+  "requiredGates": ["node scripts/phase-governor.mjs check <model> <task>", "git diff --check", "npm run verify:secrets", "npm run typecheck", "bun test", "npm run build --workspace=@kudbee/web", "cd apps/mobile && npx tsc --noEmit", "node scripts/verify-system-integrity.mjs", "node scripts/verify-e2e.mjs", "npm run verify:browser-matrix", "node scripts/verify-agents.mjs", "node scripts/verify-drift.mjs", "node scripts/dthink-pipeline.mjs stats"],
   "prStates": ["DRAFT", "READY_FOR_REVIEW", "CHANGES_REQUESTED", "APPROVED", "MERGED", "ROLLED_BACK"]
 }
