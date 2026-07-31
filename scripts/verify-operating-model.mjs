@@ -30,14 +30,15 @@ for (const required of ['phase-governor', 'verify-next-phase', 'git diff --check
   else fail(`pr:${required}`, 'missing from PR workflow');
 }
 
-for (const workflow of ['.github/workflows/verify.yml', '.github/workflows/deploy.yml', '.github/workflows/deploy-staging.yml']) {
-  if (!exists(workflow)) { fail(`workflow:${workflow}`, 'missing'); continue; }
-  const content = read(workflow);
-  for (const required of ['npm ci', 'npm run typecheck', 'verify-e2e']) {
-    if (content.includes(required)) pass(`${workflow}:${required}`, 'present');
-    else warn(`${workflow}:${required}`, 'not present in this workflow');
-  }
-  if (content.includes('kudbee-fuel-gage-staging.herokuapp.com')) fail(`${workflow}:staging-host`, 'obsolete guessed hostname');
+if (exists('.github/workflows')) {
+  const workflows = fs.readdirSync(path.join(root, '.github/workflows')).filter((file) => /\.(yml|yaml)$/.test(file));
+  if (workflows.length) fail('github-actions', `${workflows.length} workflow files remain`);
+  else pass('github-actions', 'workflow directory contains no active YAML workflows');
+} else pass('github-actions', 'workflow directory removed');
+
+for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-e2e.mjs']) {
+  if (exists(required)) pass(`self-hosted:${required}`, 'present');
+  else fail(`self-hosted:${required}`, 'missing');
 }
 
 const agentFiles = fs.readdirSync(path.join(root, '.kilo/agents')).filter((file) => file.endsWith('.agent'));
