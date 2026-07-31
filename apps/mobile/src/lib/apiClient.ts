@@ -3,6 +3,14 @@ import { API_URL } from '../config/api';
 const DEFAULT_TIMEOUT_MS = 15_000;
 const POST_TIMEOUT_MS = 30_000;
 
+const MOBILE_AGENT_ID = 'kudbee-agent-01';
+
+function getAgentHeaders(): Record<string, string> {
+  return {
+    'x-agent-id': MOBILE_AGENT_ID,
+  };
+}
+
 export class NetworkError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -130,6 +138,7 @@ export async function apiGet<T = unknown>(
       ...init,
       headers: {
         Accept: 'application/json',
+        ...getAgentHeaders(),
         ...(init?.headers || {}),
       },
     },
@@ -157,6 +166,7 @@ export async function apiPost<T = unknown>(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...getAgentHeaders(),
         ...(init?.headers || {}),
       },
       body: JSON.stringify(body),
@@ -191,6 +201,7 @@ export async function apiPatch<T = unknown>(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...getAgentHeaders(),
         ...(init?.headers || {}),
       },
       body: JSON.stringify(body),

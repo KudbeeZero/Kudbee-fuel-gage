@@ -580,36 +580,37 @@ async function check25_SubRouterIntegrity() {
 }
 
 async function check26_LazyBundleLoading() {
-  const distCandidates = [
-    `${__dirname}/../apps/web/dist/index.html`,
-    `${__dirname}/../apps/web/dist/assets`,
-    `${__dirname}/../../apps/web/dist/index.html`,
-  ];
-  let distPath = null;
-  for (const candidate of distCandidates) {
-    try {
-      const fs = await import('fs');
-      if (fs.existsSync(candidate)) {
-        distPath = candidate;
-        break;
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  if (!distPath) {
-    return true;
-  }
-
   const fs = await import('fs');
   const path = await import('path');
-  const assetsDir = path.dirname(distPath) + '/assets';
-  if (!fs.existsSync(assetsDir)) {
-    return true;
-  }
-  const files = fs.readdirSync(assetsDir);
-  const jsFiles = files.filter((f) => f.endsWith('.js'));
-  return jsFiles.length >= 1;
+  const distCandidates = [
+    `${__dirname}/../apps/web/dist`,
+    `${__dirname}/../../apps/web/dist`,
+  ];
+  const distRoot = distCandidates.find((candidate) => fs.existsSync(candidate));
+  if (!distRoot) return false;
+
+  const terminalHtmlPath = path.join(distRoot, 'terminal.html');
+  if (!fs.existsSync(terminalHtmlPath)) return false;
+  const terminalHtml = fs.readFileSync(terminalHtmlPath, 'utf8');
+  const terminalAsset = [...terminalHtml.matchAll(/(?:src|href)=["']([^"']+\.js)["']/g)]
+    .map((match) => match[1])
+    .find((asset) => /(?:^|\/)terminal-[^/]+\.js$/.test(asset));
+  if (!terminalAsset) return false;
+
+  const terminalPath = path.join(distRoot, terminalAsset.replace(/^\//, ''));
+  if (!fs.existsSync(terminalPath) || fs.statSync(terminalPath).size <= 0) return false;
+  const terminalSource = fs.readFileSync(terminalPath, 'utf8');
+  const vendorAssets = [
+    ...new Set(
+      [...terminalSource.matchAll(/(?:\/assets\/|\.\.?\/)?vendor-react-[^"'\s]+\.js/g)].map(
+        (match) => match[0].replace(/^.*\//, ''),
+      ),
+    ),
+  ];
+  return vendorAssets.length > 0 && vendorAssets.every((asset) => {
+    const assetPath = path.join(distRoot, 'assets', asset);
+    return fs.existsSync(assetPath) && fs.statSync(assetPath).size > 0;
+  });
 }
 
 async function check27_TaskEnqueueAndConsumption() {

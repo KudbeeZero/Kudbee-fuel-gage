@@ -4352,6 +4352,14 @@ function resolveDistPath() {
   return candidates.find((p) => fs.existsSync(p)) || candidates[0];
 }
 
+function resolveMobileDistPath() {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'apps', 'mobile', 'dist'),
+    path.join(process.cwd(), 'apps', 'mobile', 'dist'),
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+}
+
 // --- Phase 20: Dynamic Policy Engine, Vector Sync, and Live Alerts -----------
 // In-memory state for the governance policy engine. Persists across the
 // process lifetime and is exposed to the UI through REST endpoints.
@@ -5582,11 +5590,19 @@ app.get('/api/system/deploy-status', (_req, res) => {
 });
 
 // --- Interactive Terminal Command Dispatcher ---
-app.post('/api/terminal/execute', async (req, res) => {
+app.post('/api/terminal/execute', bearerAuth(), async (req, res) => {
   try {
     const { command } = req.body || {};
     if (!command || typeof command !== 'string') {
       return res.status(400).json({ error: 'Missing command string in body.command' });
+    }
+    const requiresAuth = /^\/(?:agent\s+kill|threshold\s+set|scheduler\s+run)\b/i.test(command.trim());
+    if (requiresAuth && !req.authenticated) {
+      return res.status(401).json({
+        type: 'terminal:error',
+        error: 'authentication_required',
+        message: 'This terminal command requires an authenticated agent session',
+      });
     }
     const { dispatchCommand } = await import('../terminal/commandDispatcher.mjs');
     const result = await dispatchCommand(command);
@@ -5649,6 +5665,20 @@ app.get('/middleware/health', (_req, res) => {
 });
 
 const distPath = resolveDistPath();
+const mobileDistPath = resolveMobileDistPath();
+
+if (fs.existsSync(mobileDistPath)) {
+  app.use('/mobile', express.static(mobileDistPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+    },
+  }));
+  app.use('/mobile', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    return res.sendFile(path.join(mobileDistPath, 'index.html'));
+  });
+}
 
 if (fs.existsSync(distPath)) {
   const fileLimiter = rateLimit({
