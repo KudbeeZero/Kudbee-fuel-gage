@@ -1,0 +1,31 @@
+{
+  "taskId": "TS7-COMPLIANCE",
+  "status": "PASS",
+  "compiler": {
+    "cli": "7.0.2",
+    "nativeAlias": "@typescript/native -> typescript@7.0.2",
+    "apiAlias": "typescript -> @typescript/typescript6@6.0.2",
+    "apiRuntime": "6.0.3"
+  },
+  "evidence": {
+    "workspaceDeclarations": "13 of 13 contain both aliases",
+    "fullTypecheck": "12 of 12 tasks passed",
+    "webLint": "passed; 0 errors, 179 existing warnings",
+    "webBuild": "passed; App bundle 337.80 kB",
+    "secretHygiene": "passed; 0 failures",
+    "systemIntegrity": "5 passed, 0 failed",
+    "routeDrift": "1 passed, 0 failed",
+    "parserCompatibility": "passed through official TypeScript 6 API alias"
+  },
+  "policy": {
+    "typescriptFiveOrLower": "forbidden",
+    "futureFollowUp": "Remove the TypeScript 6 API alias after typescript-eslint publishes TypeScript 7 API support",
+    "secrets": "No credentials are present in this report"
+  },
+  "rollback": [
+    "Revert the TypeScript aliases in all workspace package manifests",
+    "Regenerate package-lock.json and bun.lock from restored manifests",
+    "Remove scripts/verify-typescript-version.mjs and its required gates",
+    "Restore the previous agent and phase documentation"
+  ]
+}
