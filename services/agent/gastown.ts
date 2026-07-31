@@ -19,7 +19,7 @@
 
 import { SupervisorOrchestrator } from './orchestrator.js';
 import type { TaskResult } from './types.js';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 const AGENT_ID = `gastown-manager-${process.pid}`;
 const PREFIX = '[GASTOWN]';

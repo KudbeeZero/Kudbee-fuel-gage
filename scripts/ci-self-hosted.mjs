@@ -109,7 +109,7 @@ async function main() {
     log(e2ePass ? 'PASS' : 'FAIL', `E2E: ${e2ePass ? 'OK' : 'FAILED'}`);
   } else {
     log('INFO', 'Gate 5/7: E2E skipped (no DATABASE_URL)');
-    results.push({ gate: 'e2e', pass: true, detail: 'skipped' });
+    results.push({ gate: 'e2e', pass: false, status: 'skipped', detail: 'DATABASE_URL unavailable; release evidence incomplete' });
   }
 
   // 6. Agent verify
