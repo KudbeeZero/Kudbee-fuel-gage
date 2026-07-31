@@ -1643,6 +1643,7 @@ app.get('/api/think/anomalies', async (req, res) => {
 // --- Resurrect dead endpoints: ProbationDocket + ThreatHeatmap ---
 app.get('/api/governance/probation/docket', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const items = redis ? await redis.zrange('kudbee:probation:pending', 0, -1) : [];
     const docket = items.map((i) => {
       try {
@@ -1684,6 +1685,7 @@ app.get('/api/interceptor/threat-heatmap', async (req, res) => {
 // --- DLQ Resurrection: Dead Letter Queue endpoints ---
 app.get('/api/governance/failed', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const { listFailed } = await import('../../agents/worker.ts');
     let items = await listFailed();
@@ -1706,6 +1708,7 @@ app.get('/api/governance/failed', async (req, res) => {
 });
 app.post('/api/governance/failed/retry', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id required' });
     const { retryFailed } = await import('../../agents/worker.ts');
@@ -1718,6 +1721,7 @@ app.post('/api/governance/failed/retry', async (req, res) => {
 });
 app.post('/api/governance/failed/discard', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'ADMIN')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id required' });
     const { discardFailed } = await import('../../agents/worker.ts');
@@ -2450,6 +2454,7 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
 
 app.get('/api/governance/feed', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
     if (redis) {
       try {
@@ -2502,6 +2507,7 @@ app.get('/api/governance/feed', async (req, res) => {
 
 app.get('/api/governance/proposed', async (_req, res) => {
   try {
+    if (!requireRole(_req, res, 'OPERATOR')) return;
     const proposed = await listProposed();
     return res.json(proposed);
   } catch (err) {
@@ -2516,6 +2522,7 @@ app.get('/api/governance/proposed', async (_req, res) => {
 // First: a router/DB failure returns an empty list + a warning, never a crash.
 app.get('/api/governance/pending', async (_req, res) => {
   try {
+    if (!requireRole(_req, res, 'OPERATOR')) return;
     const proposed = await listProposed();
     const pending = proposed
       .filter((p) => !p || p.status === 'PROPOSED' || p.status === 'PENDING_APPROVAL')
@@ -2546,6 +2553,7 @@ app.get('/api/governance/pending', async (_req, res) => {
 
 app.post('/api/governance/approve', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const proven = await approveActionAndBroadcast(String(id));
@@ -2561,6 +2569,7 @@ app.post('/api/governance/approve', async (req, res) => {
 
 app.post('/api/governance/reject', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const rejected = await rejectActionAndBroadcast(String(id));
@@ -2580,6 +2589,7 @@ app.post('/api/governance/reject', async (req, res) => {
 // by creating a governance record on the fly.
 app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id, decision } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing required field: id' });
     if (decision !== 'APPROVE' && decision !== 'REJECT') {
@@ -2630,11 +2640,7 @@ app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
-  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
-  if (!agentId)
-    return res
-      .status(401)
-      .json({ error: 'Unauthorized — agent pass required to mint think tokens' });
+  if (!requireRole(req, res, 'OPERATOR')) return;
   try {
     const {
       traceId,
@@ -2895,6 +2901,7 @@ app.get('/api/think/energy-mesh', async (req, res) => {
 // --- Phase 55: Nash Token Unions ---
 app.post('/api/governance/union/form', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { agentIds } = req.body || {};
     if (!Array.isArray(agentIds)) return res.status(400).json({ error: 'agentIds array required' });
     const state = await formUnion(agentIds);
@@ -2905,6 +2912,7 @@ app.post('/api/governance/union/form', async (req, res) => {
 });
 app.post('/api/governance/union/negotiate', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { unionId, requestedTokens } = req.body || {};
     const result = await negotiateAllocation(unionId, Number(requestedTokens) || 100);
     return res.status(200).json(result);
@@ -2914,6 +2922,7 @@ app.post('/api/governance/union/negotiate', async (req, res) => {
 });
 app.get('/api/governance/union/active', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     return res.status(200).json({ unions: await getActiveUnions() });
   } catch {
     return res.status(200).json({ unions: [] });
@@ -2923,6 +2932,7 @@ app.get('/api/governance/union/active', async (req, res) => {
 // --- Phase 56: Assume-Guarantee Contracts ---
 app.post('/api/governance/contract/sign', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const parsed = AGCSchema.safeParse(req.body ?? {});
     if (!parsed.success)
       return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
@@ -2934,6 +2944,7 @@ app.post('/api/governance/contract/sign', async (req, res) => {
 });
 app.post('/api/governance/contract/verify/:id', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     const { id } = req.params ?? {};
     const token = req.body ?? {};
     const result = await verifyContract(id, token);
@@ -2944,6 +2955,7 @@ app.post('/api/governance/contract/verify/:id', async (req, res) => {
 });
 app.get('/api/governance/contract/active', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     return res.status(200).json({ contracts: await getActiveContracts() });
   } catch {
     return res.status(200).json({ contracts: [] });
@@ -3037,8 +3049,9 @@ const tenantSettings = Object.create(null);
 
 app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
+    const ctx = requireRole(req, res, 'ADMIN');
+    if (!ctx) return;
+    const id = ctx.tenantId;
     const {
       rateLimitWindow,
       rateLimitMax,
@@ -3062,16 +3075,19 @@ app.patch('/api/settings/tenant/:id', async (req, res) => {
 });
 
 app.get('/api/settings/tenant/:id', async (req, res) => {
-  const { id } = req.params;
-  if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
+  const ctx = requireRole(req, res, 'AUDITOR');
+  if (!ctx) return;
+  const id = ctx.tenantId;
   return res.status(200).json({ settings: tenantSettings[id] || {} });
 });
 
 // --- Settings persistence via settingsStore.ts ---
 app.put('/api/settings/preferences', async (req, res) => {
   try {
-    const { tenantId, ...settings } = req.body || {};
-    const saved = await saveSettings(tenantId || 'default', settings);
+    const ctx = requireRole(req, res, 'OPERATOR');
+    if (!ctx) return;
+    const { tenantId: _ignoredTenantId, ...settings } = req.body || {};
+    const saved = await saveSettings(ctx.tenantId, settings);
     return res.status(200).json({ success: true, settings: saved });
   } catch {
     return res.status(500).json({ error: 'Settings save failed' });
@@ -3079,7 +3095,9 @@ app.put('/api/settings/preferences', async (req, res) => {
 });
 app.get('/api/settings/preferences', async (req, res) => {
   try {
-    const settings = await getSettings(req.query.tenantId || 'default');
+    const ctx = requireRole(req, res, 'AUDITOR');
+    if (!ctx) return;
+    const settings = await getSettings(ctx.tenantId);
     return res.status(200).json({ settings });
   } catch {
     return res.status(200).json({ settings: {} });
@@ -3158,6 +3176,7 @@ app.get('/api/groq/archives', async (req, res) => {
 });
 app.post('/api/agents/dispatch', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { task, agentId } = req.body || {};
     if (!task) return res.status(400).json({ error: 'Task required' });
     const id = agentId || `agent-${Date.now()}`;
@@ -3219,6 +3238,7 @@ app.get('/api/governance/health', async (_req, res) => {
 // --- Phase 28: Manual Crucible Dispatch --------------------------------------
 app.post('/api/governance/dispatch', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { task } = req.body || {};
     let result = {
       success: false,
@@ -3256,6 +3276,7 @@ app.post('/api/governance/dispatch', async (req, res) => {
 
 app.post('/api/agents/crucible/run', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'ADMIN')) return;
     if (process.env.CRUCIBLE_ENABLED !== 'true') {
       return res.status(200).json({
         success: false,
@@ -3351,6 +3372,7 @@ app.post('/api/health', async (req, res) => {
 // Stream of [HERMES:AUDITOR] log lines published by the worker process.
 app.get('/api/governance/hermes-logs', async (_req, res) => {
   try {
+    if (!requireRole(_req, res, 'AUDITOR')) return;
     if (!redis) return res.json([]);
     const raw = await redis.lrange('kudbee:hermes:log', 0, 49);
     const logs = raw
@@ -4521,6 +4543,7 @@ function evaluatePolicies(prompt) {
 
 app.get('/api/governance/policies', async (_req, res) => {
   try {
+    if (!requireRole(_req, res, 'OPERATOR')) return;
     res.json({ policies: Object.values(policyState) });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4529,6 +4552,7 @@ app.get('/api/governance/policies', async (_req, res) => {
 
 app.post('/api/governance/policies', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id, enabled, severity, config } = req.body || {};
     if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid policy id' });
     const policy = policyState[id];
@@ -4560,6 +4584,7 @@ app.post('/api/governance/policies', async (req, res) => {
 
 app.post('/api/governance/policies/evaluate', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const prompt = req.body?.prompt || req.body?.messages?.map((m) => m.content).join(' ') || '';
     res.json(evaluatePolicies(prompt));
   } catch (err) {
@@ -5137,6 +5162,7 @@ app.get('/api/telemetry/search', async (req, res) => {
 
 app.get('/api/audit/export', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     const format = String(req.query.format || 'json').toLowerCase() === 'csv' ? 'csv' : 'json';
     const from = String(req.query.from || '').trim();
     const to = String(req.query.to || '').trim();
@@ -5360,6 +5386,7 @@ const feedbackState = {
 
 app.post('/api/governance/feedback', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const { traceId, verdict, policyTag, expectedBehavior, notes } = req.body || {};
     if (!traceId || !verdict) {
       return res.status(400).json({ error: 'traceId and verdict are required' });
@@ -5387,6 +5414,7 @@ app.post('/api/governance/feedback', async (req, res) => {
 
 app.get('/api/governance/feedback', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
     const traceId = String(req.query.traceId || '').trim();
     let results = feedbackState.feedback;
@@ -5407,6 +5435,7 @@ const autoTuneState = {
 
 app.post('/api/governance/tune', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'OPERATOR')) return;
     const lookbackHours = Math.min(
       168,
       Math.max(1, parseInt(String(req.body?.lookbackHours || '24'), 10) || 24)
@@ -5480,6 +5509,7 @@ app.post('/api/governance/tune', async (req, res) => {
 
 app.get('/api/governance/tune', async (_req, res) => {
   try {
+    if (!requireRole(_req, res, 'OPERATOR')) return;
     res.json({
       lastAnalysis: autoTuneState.lastAnalysis,
       recommendations: autoTuneState.recommendations,
@@ -5523,17 +5553,17 @@ app.post('/api/governance/tune/apply', async (req, res) => {
 // here so the modular sub-routers (mounted at the top of this file) can share
 // the same source of truth without circular-init errors.
 
-import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantId } from './lib/tenants.ts';
+import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantContext } from './lib/tenants.ts';
 
 function resolveTenant(req) {
-  return resolveTenantId(req);
+  return resolveTenantContext(req);
 }
 
-app.get('/api/governance/tenants', (_req, res) => {
+app.get('/api/governance/tenants', (req, res) => {
   try {
     res.json({
       tenants: Object.values(TENANTS).map((t) => ({ id: t.id, name: t.name, role: t.role })),
-      current: 'tenant-prod',
+      current: resolveTenantContext(req)?.tenantId || null,
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -5558,7 +5588,7 @@ function hashTraceRow(row) {
 
 app.post('/api/audit/vault/anchor', async (req, res) => {
   try {
-    const ctx = req.tenantCtx || requireRole(req, res, 'ADMIN');
+    const ctx = requireRole(req, res, 'ADMIN');
     if (!ctx) return;
 
     const limit = Math.min(500, Math.max(1, parseInt(String(req.body?.limit || '50'), 10) || 50));
@@ -5589,8 +5619,9 @@ app.post('/api/audit/vault/anchor', async (req, res) => {
   }
 });
 
-app.get('/api/audit/vault', async (_req, res) => {
+app.get('/api/audit/vault', async (req, res) => {
   try {
+    if (!requireRole(req, res, 'AUDITOR')) return;
     res.json({
       count: auditVaultState.anchors.length,
       anchors: auditVaultState.anchors.slice(-25).reverse(),
@@ -5602,7 +5633,7 @@ app.get('/api/audit/vault', async (_req, res) => {
 
 app.post('/api/audit/vault/verify', async (req, res) => {
   try {
-    const ctx = req.tenantCtx || requireRole(req, res, 'AUDITOR');
+    const ctx = requireRole(req, res, 'AUDITOR');
     if (!ctx) return;
 
     const anchorId = String(req.body?.anchorId || '');

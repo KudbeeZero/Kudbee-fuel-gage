@@ -29,6 +29,9 @@ type Deps = {
 export function createAuditRouter({ runQuery, publishEvent, requireRole }: Deps) {
   const router = express.Router();
   const auditVaultState: { anchors: any[] } = { anchors: [] };
+  const authorize = (role: string) => (req: any, res: any, next: any) => {
+    if (requireRole(req, res, role)) next();
+  };
 
   function hashTraceRow(row: any) {
     const canonical = JSON.stringify({
@@ -42,7 +45,7 @@ export function createAuditRouter({ runQuery, publishEvent, requireRole }: Deps)
     return crypto.createHash('sha256').update(canonical).digest('hex');
   }
 
-  router.get('/export', async (req, res) => {
+  router.get('/export', authorize('AUDITOR'), async (req, res) => {
     try {
       const format = String(req.query.format || 'json').toLowerCase() === 'csv' ? 'csv' : 'json';
       const from = String(req.query.from || '').trim();
@@ -104,7 +107,7 @@ export function createAuditRouter({ runQuery, publishEvent, requireRole }: Deps)
     }
   });
 
-  router.get('/vault', async (_req, res) => {
+  router.get('/vault', authorize('AUDITOR'), async (_req, res) => {
     try {
       res.json({
         count: auditVaultState.anchors.length,
@@ -117,7 +120,7 @@ export function createAuditRouter({ runQuery, publishEvent, requireRole }: Deps)
 
   router.post('/vault/anchor', async (req, res) => {
     try {
-      const ctx = (req as any).tenantCtx || requireRole(req, res, 'ADMIN');
+      const ctx = requireRole(req, res, 'ADMIN');
       if (!ctx) return;
 
       const limit = Math.min(500, Math.max(1, parseInt(String(req.body?.limit || '50'), 10) || 50));
@@ -153,7 +156,7 @@ export function createAuditRouter({ runQuery, publishEvent, requireRole }: Deps)
 
   router.post('/vault/verify', async (req, res) => {
     try {
-      const ctx = (req as any).tenantCtx || requireRole(req, res, 'AUDITOR');
+      const ctx = requireRole(req, res, 'AUDITOR');
       if (!ctx) return;
 
       const anchorId = String(req.body?.anchorId || '');
