@@ -24,3 +24,6 @@ Canonical files:
 No agent may claim completion from typecheck alone. The PR lifecycle requires
 scope review, required gates, browser/mobile evidence, rollback details, human
 approval where applicable, and a memory/DTHINK record.
+
+GitHub Actions workflows are intentionally removed. `scripts/ci-self-hosted.mjs`
+and the phase readiness scripts are the authoritative verification path.

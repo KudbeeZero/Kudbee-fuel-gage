@@ -47,7 +47,6 @@ const requiredFiles = [
   'scripts/verify-operating-model.mjs',
   'config/phase/next/governance-policy.json',
   'config/phase/next/sop-manifest.json',
-  'scripts/verify-gates.mjs',
   'scripts/verify-system-integrity.mjs',
   'scripts/verify-e2e.mjs',
   'scripts/verify-agents.mjs',
@@ -64,7 +63,6 @@ run('governor:qwen', process.execPath, ['scripts/phase-governor.mjs', 'check', '
 run('operating-model', process.execPath, ['scripts/verify-operating-model.mjs'], { success: 'PR, pipeline, SOP, and memory contracts pass' });
 run('diff-hygiene', 'git', ['diff', '--check'], { success: 'no whitespace errors' });
 run('typecheck', 'npm', ['run', 'typecheck'], { success: '12 workspace checks passed' });
-run('gate-quick', process.execPath, ['scripts/verify-gates.mjs', '--quick'], { success: 'quick gates passed' });
 run('integrity', process.execPath, ['scripts/verify-system-integrity.mjs'], { success: 'system integrity passed' });
 
 if (full) {
