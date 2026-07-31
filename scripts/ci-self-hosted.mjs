@@ -15,12 +15,13 @@
  *   3. Learning protocol — verify-learning-protocol.mjs
  *   4. Secret hygiene — verify-secret-hygiene.mjs
  *   5. TypeScript side-by-side version — native TS7 compiler + TS6 API alias
- *   6. Typecheck — turbo run typecheck
- *   7. Lint — turbo run lint
- *   8. Build — turbo run build --filter=@kudbee/web
- *   9. E2E — bounded smoke by default; full E2E only with E2E_ALLOW_DATABASE_WRITES=1
- *   10. Agent verify — verify-agents.mjs
- *   11. Operating model — verify-operating-model.mjs
+ *   6. Node crypto runtime — verify-crypto-runtime.mjs
+ *   7. Typecheck — turbo run typecheck
+ *   8. Lint — turbo run lint
+ *   9. Build — turbo run build --filter=@kudbee/web
+ *   10. E2E — bounded smoke by default; full E2E only with E2E_ALLOW_DATABASE_WRITES=1
+ *   11. Agent verify — verify-agents.mjs
+ *   12. Operating model — verify-operating-model.mjs
  *
  * Reports results to /api/ci/status endpoint on the Kudbee server.
  * Feeds every run into DTHINK pipeline for learning.
@@ -108,22 +109,28 @@ async function main() {
   results.push({ gate: 'typescript-version', pass: tsVersionPass, detail: tsVersion.out.slice(-60) });
   log(tsVersionPass ? 'PASS' : 'FAIL', `TypeScript side-by-side version: ${tsVersionPass ? 'OK' : 'FAILED'}`);
 
-  // 6. Typecheck
-  log('INFO', 'Gate 6/11: Typecheck');
+  // 6. Node crypto runtime.
+  log('INFO', 'Gate 6/12: Node crypto runtime');
+  const cryptoRuntime = sh('npm run verify:crypto', 'crypto-runtime');
+  results.push({ gate: 'crypto-runtime', pass: cryptoRuntime.ok, detail: cryptoRuntime.out.slice(-60) });
+  log(cryptoRuntime.ok ? 'PASS' : 'FAIL', `Crypto runtime: ${cryptoRuntime.ok ? 'OK' : 'FAILED'}`);
+
+  // 7. Typecheck
+  log('INFO', 'Gate 7/12: Typecheck');
   const tc = sh('npx turbo run typecheck', 'typecheck');
   const tcPass = tc.ok && !tc.out.includes('Failed');
   results.push({ gate: 'typecheck', pass: tcPass, detail: tc.out.slice(-60) });
   log(tcPass ? 'PASS' : 'FAIL', `Typecheck: ${tcPass ? 'OK' : 'FAILED'}`);
 
   // 7. Lint
-  log('INFO', 'Gate 7/11: Lint');
+  log('INFO', 'Gate 8/12: Lint');
   const lint = sh('npx turbo run lint', 'lint');
   const lintPass = lint.ok && !lint.out.includes('error');
   results.push({ gate: 'lint', pass: lintPass, detail: lint.out.slice(-60) });
   log(lintPass ? 'PASS' : 'WARN', `Lint: ${lintPass ? 'OK' : 'warnings'}`);
 
   // 8. Build
-  log('INFO', 'Gate 8/11: Build');
+  log('INFO', 'Gate 9/12: Build');
   const build = sh('npx turbo run build --filter=@kudbee/web', 'build');
   const buildPass = build.ok;
   results.push({ gate: 'build', pass: buildPass, detail: build.out.slice(-60) });
@@ -131,7 +138,7 @@ async function main() {
 
   // 9. E2E is isolated smoke unless the explicit write opt-in is present.
   if (process.env.E2E_ALLOW_DATABASE_WRITES === '1') {
-    log('INFO', 'Gate 9/11: Full E2E (database-writing opt-in enabled)');
+     log('INFO', 'Gate 10/12: Full E2E (database-writing opt-in enabled)');
     const e2e = sh('node scripts/verify-e2e.mjs', 'e2e');
     const e2ePass = e2e.ok;
     results.push({ gate: 'e2e', pass: e2ePass, detail: e2e.out.slice(-60) });
@@ -142,14 +149,14 @@ async function main() {
   }
 
   // 10. Agent verify
-  log('INFO', 'Gate 10/11: Agent verify');
+  log('INFO', 'Gate 11/12: Agent verify');
   const agents = sh('node scripts/verify-agents.mjs', 'agents');
   const agentsPass = agents.ok;
   results.push({ gate: 'agents', pass: agentsPass, detail: agents.out.slice(-60) });
   log(agentsPass ? 'PASS' : 'FAIL', `Agents: ${agentsPass ? 'OK' : 'FAILED'}`);
 
   // 11. Operating model
-  log('INFO', 'Gate 11/11: Operating model');
+  log('INFO', 'Gate 12/12: Operating model');
   const ops = sh('node scripts/verify-operating-model.mjs', 'operating-model');
   const opsPass = ops.ok;
   results.push({ gate: 'operating-model', pass: opsPass, detail: ops.out.slice(-60) });

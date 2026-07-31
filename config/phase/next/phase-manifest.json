@@ -21,6 +21,7 @@
     "Human approval is required for authentication, tenant, data, and deployment changes"
   ],
   "requiredCommands": [
+    "npm run verify:crypto",
     "npm run verify:typescript",
     "npm run verify:agent-contracts",
     "npm run verify:integrations",

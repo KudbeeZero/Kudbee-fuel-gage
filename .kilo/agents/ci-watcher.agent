@@ -21,11 +21,15 @@ echo "  Gate 2: Integration availability"
 npm run verify:integrations
 
 echo ""
-echo "  Gate 3: Learning protocol"
+echo "  Gate 3: Node crypto runtime"
+npm run verify:crypto
+
+echo ""
+echo "  Gate 4: Learning protocol"
 npm run verify:learning-protocol
 
 echo ""
-echo "  Gate 4: E2E smoke (provider writes disabled)"
+echo "  Gate 5: E2E smoke (provider writes disabled)"
 if [ "${E2E_ALLOW_DATABASE_WRITES:-0}" = "1" ]; then
   echo "  E2E_ALLOW_DATABASE_WRITES=1; running full database-writing E2E"
   node scripts/verify-e2e.mjs
