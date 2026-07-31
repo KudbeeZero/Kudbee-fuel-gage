@@ -1,93 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785432545991-f0b92f84",
-      "date": "2026-07-30T17:29:06.254Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785432545991-f0b92f84",
-      "date": "2026-07-30T17:47:45+00:00",
-      "type": "ci-fix",
-      "summary": "Fixed authenticateAgentPass export + enabled GitHub Actions workflows",
-      "actions": [
-        "Exported authenticateAgentPass() from bearerAuthMiddleware.ts",
-        "Added import in server.js for authenticateAgentPass",
-        "Enabled disabled GitHub Actions workflows (deploy.yml, verify.yml, session-log.yml)",
-        "Created Upstash Redis for e2e testing",
-        "Documented Heroku pipeline setup requirements"
-      ],
-      "ciStatus": "36/44 e2e passing (8 Redis-dependent failures remain)",
-      "filesChanged": [
-        "services/lib/bearerAuthMiddleware.ts",
-        "services/ingestion/server.js",
-        ".github/workflows/*.yml (enabled)"
-      ],
-      "bugsFixed": 1,
-      "breadcrumbTraceId": "verify-2026-07-30-auth-fix",
-      "herokuPipeline": {
-        "app": "kudbee-fuel-gage",
-        "workflowsEnabled": true,
-        "deployOnPush": "main branch",
-        "verifyOnPR": "push + pull_request + schedule",
-        "redisConfig": "Upstash Redis (rediss://), GitHub Actions uses redis:7-alpine service"
-      }
-    },
-    {
-      "session": "ses-1785432545991-f0b92f84",
-      "date": "2026-07-30T18:01:06.607Z",
-      "type": "think-benchmark",
-      "summary": "THINK Protocol Benchmark specification + Heroku pipeline fixes",
-      "actions": [
-        "Fixed authenticateAgentPass export in bearerAuthMiddleware.ts",
-        "Enabled GitHub Actions workflows for Heroku deploy",
-        "Created heroku-pipeline-setup.md knowledge snippet",
-        "Analyzed TNS Opus 5 vs Fable 5 article for benchmark methodology",
-        "Created THINK Protocol Benchmark (TPB-001) specification",
-        "Pushed 3 commits to remote branch"
-      ],
-      "ciStatus": "36/44 e2e passing (8 Redis-dependent failures)",
-      "filesChanged": [
-        "services/lib/bearerAuthMiddleware.ts",
-        "services/ingestion/server.js",
-        ".github/workflows/*.yml (enabled)",
-        ".kilo/memory/snippets/heroku-pipeline-setup.md",
-        ".kilo/memory/snippets/think-protocol-benchmark.md"
-      ],
-      "bugsFixed": 1,
-      "commitsPushed": 3,
-      "remoteBranch": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
-      "herokuApp": "kudbee-fuel-gage-staging",
-      "redisConfig": "Upstash Redis created for e2e testing"
-    },
-    {
-      "session": "ses-1785461210510-119dcad8",
-      "date": "2026-07-31T01:26:50.972Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785462197707-626a50c2",
-      "date": "2026-07-31T01:43:18.067Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785462232893-17ac489c",
-      "date": "2026-07-31T01:43:53.257Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785462235036-cf5b438e",
       "date": "2026-07-31T01:43:55.324Z",
       "type": "bootstrap",
@@ -198,10 +111,58 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740577-3c591027",
+      "date": "2026-07-31T06:35:40.861Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740782-42350ab0",
+      "date": "2026-07-31T06:35:41.050Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740841-f990ebd6",
+      "date": "2026-07-31T06:35:41.117Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479741530-0bc543c6",
+      "date": "2026-07-31T06:35:41.788Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479742004-e50bb6d4",
+      "date": "2026-07-31T06:35:42.279Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479753152-a072f75d",
+      "date": "2026-07-31T06:35:53.404Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 64,
+    "sessions": 70,
     "ciPassRate": "82%"
   },
   "health": {
