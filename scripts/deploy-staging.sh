@@ -38,7 +38,7 @@ fi
 # Deploy
 echo ""
 echo "[1/5] Pushing branch to Heroku..."
-git push heroku "$BRANCH:main" --force
+git push heroku "$BRANCH:main"
 
 echo "[2/5] Waiting for dyno restart..."
 sleep 15
@@ -49,14 +49,14 @@ if [ "$HEALTH" = "FAILED" ]; then
   echo "ERROR: Health check failed"
   echo ""
   echo "[4/5] Fetching recent logs..."
-  heroku logs --tail --lines 30 --app $APP
+  heroku logs --num 30 --app "$APP"
   exit 1
 fi
 
 echo "[4/5] Health check passed: $HEALTH"
 
 echo "[5/5] Verifying Redis connection..."
-REDIS_CHECK=$(curl -fsS https://$APP.herokuapp.com/api/system/redis 2>&1 || echo "FAILED")
+REDIS_CHECK=$(curl -fsS "https://$APP.herokuapp.com/api/system/health-deep" 2>&1 || echo "FAILED")
 if [ "$REDIS_CHECK" = "FAILED" ]; then
   echo "WARNING: Redis health check failed"
 else
