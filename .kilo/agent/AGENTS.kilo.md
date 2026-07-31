@@ -9,6 +9,26 @@ This document is the single source of truth for autonomous and semi-autonomous c
 ## 1. Repository Topology
 
 ```
+
+## 0.1 Universal Operating SOP
+
+Every agent and department follows the executable governance contract in
+`config/phase/next/governance-policy.json` and the ownership map in
+`config/phase/next/sop-manifest.json`. Before editing, validate the task with
+`node scripts/phase-governor.mjs check <model> <task-id>`. Before handoff,
+validate the structured report with `node scripts/phase-governor.mjs report
+<report.json>`.
+
+The mandatory layers are: intent, preconditions, authority, isolation,
+execution, evidence, review, handoff, and memory. Authentication, tenant,
+secret, data, deployment, and destructive changes always require human
+approval. The implementer cannot be the sole reviewer. Browser or mobile
+verification that was not run must be reported as unavailable, never implied.
+
+The PR lifecycle is evidence-first: inspect status and diff, run operating
+model and readiness audits, run required checks, record DTHINK/memory, review,
+then create or merge only with explicit authorization. Never use a destructive
+branch switch, reset, or worktree deletion as an automatic cleanup step.
 kudbee/
   apps/
     web/            # Control Tower dashboard (Vite + React)

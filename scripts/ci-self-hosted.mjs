@@ -22,7 +22,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -60,7 +60,7 @@ async function reportToAPI(runId, results) {
 
 async function feedDTHINK(msg) {
   try {
-    execSync(`node scripts/dthink-pipeline.mjs feed "system:ci" "${msg.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+    execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', 'system:ci', msg], { timeout: 5000 });
   } catch {}
 }
 

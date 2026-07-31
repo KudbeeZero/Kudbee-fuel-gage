@@ -17,7 +17,14 @@ const quickActions = [
   { label: 'Crucible Dispatch', runner: mobileCommandRunners.crucibleDispatch },
 ];
 
-export default function DashboardScreen() {
+export { default } from './workspace';
+
+/*
+ * The previous dashboard implementation remains below during the migration so
+ * its command lifecycle can be compared against the new workspace surface.
+ * The route now renders workspace.tsx.
+ */
+function LegacyDashboardScreen() {
   const commands = useCommandStore((s) => s.commands);
 
   return (

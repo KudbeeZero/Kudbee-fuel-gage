@@ -1,7 +1,8 @@
 ---
 description: PR lifecycle — show status, review changes, create PR, verify + PR
 ---
-Execute the PR lifecycle workflow:
+Execute the PR lifecycle workflow. Never merge, switch branches, reset, or
+delete worktrees automatically without an explicit human instruction.
 
 1. Show current PR status:
    - `gh pr list --state open`
@@ -12,14 +13,34 @@ Execute the PR lifecycle workflow:
    - `git diff origin/main..HEAD --stat`
    - `git status --short`
 
-3. If `$1` is "create":
-   - Run `/verify` first
-   - If uncommitted changes exist, commit with conventional commit format
-   - Push and create PR: `gh pr create --base main --title "$2" --body "$3"`
-   - Report the PR URL
+3. Run PR preflight before create/review:
+   - `git diff --check`
+   - `node scripts/phase-governor.mjs check <model> <task-id>`
+   - `node scripts/verify-operating-model.mjs`
+   - `node scripts/verify-next-phase.mjs --full`
+   - `node scripts/dthink-pipeline.mjs stats`
 
-4. If `$1` is "merge":
-   - Switch to main: `git checkout main && git pull origin main`
-   - Report merged PRs from `gh pr list --state merged --limit 5`
+4. If `$1` is "create":
+   - Require a clean or intentionally staged worktree.
+   - Run the preflight and stop on any failure.
+   - Create a conventional commit only when explicitly requested.
+   - Push the current branch and create the PR with scope, tests, browser evidence, risks, rollback, and human approval status.
+   - Report the PR URL and required reviewers.
 
-5. If no args, just show status (steps 1-2).
+5. If `$1` is "review":
+   - Inspect the full diff against the base branch.
+   - Check authorization, tenant isolation, durability, browser/mobile impact, tests, and rollback.
+   - Mark `CHANGES_REQUESTED` for any unsupported claim or missing evidence.
+
+6. If `$1` is "merge":
+   - Confirm approved review, passing checks, and explicit human authorization.
+   - Use `gh pr merge` only for the identified PR.
+   - Do not switch branches or delete worktrees as part of this command.
+   - Report the merge commit and post-merge verification required.
+
+7. If `$1` is "rollback":
+   - Stop deployment promotion.
+   - Record the reason in DTHINK and the handoff trail.
+   - Require human selection of the rollback target.
+
+8. If no args, just show status (steps 1-2).

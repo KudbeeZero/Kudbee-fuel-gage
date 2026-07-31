@@ -19,6 +19,12 @@
     "start:agent": "node services/monitor/agent.js",
     "sim:traffic": "node scripts/traffic-sim.mjs",
     "verify:flow": "node scripts/verify-flow.mjs",
+    "phase:readiness": "node scripts/verify-next-phase.mjs",
+    "phase:readiness:full": "node scripts/verify-next-phase.mjs --full",
+    "phase:task": "node scripts/model-task-packet.mjs",
+    "verify:browser-matrix": "node scripts/verify-browser-matrix.mjs",
+    "phase:govern": "node scripts/phase-governor.mjs",
+    "phase:ops-audit": "node scripts/verify-operating-model.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
     "ingest:topology": "tsx scripts/ingest-topology.ts",
     "heroku-postbuild": "npm run build"
