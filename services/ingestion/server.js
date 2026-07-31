@@ -140,6 +140,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
+// Parse JSON before inline POST routes and mounted routers. Without this,
+// dictionary, lifecycle, governance, and telemetry requests see an empty body.
+app.use(express.json({ limit: '10mb' }));
 
 // --- CORS Handling (must be first middleware) ---
 const corsAllowOrigin = (process.env.CORS_ALLOW_ORIGINS || '*').split(',')[0].trim();

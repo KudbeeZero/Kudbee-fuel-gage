@@ -101,6 +101,20 @@ Add "Knowledge Query" panel to OBSERVABILITY tab:
 4. **Compliance**: "SHOW evidence for auth decisions" provides audit trail
 5. **Continuous Learning**: System accumulates verified knowledge over time
 
+### External Pattern Review (2026-07-31)
+
+Lemonade and Crush research supports adopting workspace-scoped resumable state,
+attention indicators, reconnectable event streams, thin agent adapters, and
+explicit per-tool permissions. Kudbee should reject global dangerous mode and
+uncoordinated same-worktree parallel edits. These patterns are useful only when
+backed by DTHINK evidence, Safe-Zone policy, tenant isolation, and durable
+session/event identifiers.
+
+The last-ten-PR review found that Gastown required release-blocking hardening:
+shell-safe DTHINK feeds, strict Safe-Zone dispatch, correct THINK recall,
+PENDING_APPROVAL token promotion, and validated convoy transitions. Those fixes
+are now recorded as evidence-linked knowledge rather than treated as claims.
+
 ### Integration with Existing Systems
 - **DTHINK**: Source of decision trail and mission outcomes
 - **think_tokens**: Verified reasoning with confidence scores

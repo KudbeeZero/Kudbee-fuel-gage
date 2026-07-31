@@ -110,21 +110,16 @@ export function startConvoy(convoyId: string): GastownConvoy | null {
   return convoy;
 }
 
-export function updateTaskStatus(
-  convoyId: string,
-  taskId: string,
-  status: ConvoyTask['status'],
-  result?: string
-): GastownConvoy | null {
+export function updateTaskStatus(convoyId: string, taskId: string, status: ConvoyTask['status'], result?: string): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
   const task = convoy.tasks.find((t) => t.id === taskId);
   if (!task) return null;
   if (!['DISPATCHED', 'IN_FLIGHT'].includes(convoy.status)) return null;
+  if (status === 'running' && convoy.status === 'DISPATCHED') convoy.status = 'IN_FLIGHT';
   if (status === 'running' && task.status !== 'pending') return null;
   if (status === 'completed' && task.status !== 'running') return null;
   if (status === 'failed' && !['pending', 'running'].includes(task.status)) return null;
-  if (status === 'running' && convoy.status === 'DISPATCHED') convoy.status = 'IN_FLIGHT';
   task.status = status;
   if (result !== undefined) task.result = result;
   if (status === 'completed' || status === 'failed')
