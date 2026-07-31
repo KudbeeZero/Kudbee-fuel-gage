@@ -7,10 +7,18 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785505349789-aaf40752",
+      "date": "2026-07-31T13:42:30.597Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 1
+    "sessions": 2
   },
   "health": {
     "overall": "UNKNOWN"
