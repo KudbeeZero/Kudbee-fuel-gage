@@ -45,15 +45,33 @@ export default defineConfig(() => {
           terminal: path.resolve(__dirname, 'terminal.html'),
         },
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-router': ['react-router'],
-            'vendor-lucide': ['lucide-react'],
-            'vendor-recharts': ['recharts'],
-            'vendor-d3': ['d3'],
-            'vendor-motion': ['motion'],
-            'vendor-zustand': ['zustand'],
-            'vendor-crypto': ['@noble/ed25519'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('/react-dom/') || id.includes('/react/')) {
+                return 'vendor-react';
+              }
+              if (id.includes('/react-router/')) {
+                return 'vendor-router';
+              }
+              if (id.includes('/lucide-react/')) {
+                return 'vendor-lucide';
+              }
+              if (id.includes('/recharts/')) {
+                return 'vendor-recharts';
+              }
+              if (id.includes('/d3/')) {
+                return 'vendor-d3';
+              }
+              if (id.includes('/motion/')) {
+                return 'vendor-motion';
+              }
+              if (id.includes('/zustand/')) {
+                return 'vendor-zustand';
+              }
+              if (id.includes('/@noble/ed25519/')) {
+                return 'vendor-crypto';
+              }
+            }
           },
         },
       },
