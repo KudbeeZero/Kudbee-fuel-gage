@@ -66,8 +66,17 @@ if (exists('scripts/verify-typescript-version.mjs')) {
 
 if (exists('.github/workflows')) {
   const workflows = fs.readdirSync(path.join(root, '.github/workflows')).filter((file) => /\.(yml|yaml)$/.test(file));
-  if (workflows.length) fail('github-actions', `${workflows.length} workflow files remain`);
-  else pass('github-actions', 'workflow directory contains no active YAML workflows');
+  const verifyWorkflow = workflows.find((file) => file === 'verify.yml');
+  if (!verifyWorkflow) fail('github-actions', 'bounded verify.yml workflow is missing');
+  else {
+    const workflow = read(path.join('.github/workflows', verifyWorkflow));
+    const bounded = workflow.includes('npm run verify:ci-smoke') &&
+      workflow.includes('E2E_ALLOW_DATABASE_WRITES: \'0\'') &&
+      !workflow.includes('services:') &&
+      !workflow.includes('DATABASE_URL:');
+    if (bounded) pass('github-actions', 'bounded CI workflow has no database or Redis service');
+    else fail('github-actions', 'CI workflow is not bounded or includes database services');
+  }
 } else pass('github-actions', 'workflow directory removed');
 
 for (const required of [

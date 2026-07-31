@@ -31,6 +31,7 @@
     "verify:agent-contracts": "node scripts/verify-agent-contracts.mjs",
     "verify:integrations": "node scripts/verify-integrations.mjs",
     "verify:learning-protocol": "node scripts/verify-learning-protocol.mjs",
+    "verify:ci-smoke": "node scripts/verify-ci-smoke.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
     "ingest:topology": "tsx scripts/ingest-topology.ts",
