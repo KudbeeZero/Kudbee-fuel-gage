@@ -1,38 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785312063275-c2926638",
-      "date": "2026-07-29T08:01:03.478Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785314247957-c1236f15",
-      "date": "2026-07-29T08:37:28.234Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785316203814-591927b0",
-      "date": "2026-07-29T09:10:04.057Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785364694404-88fff99a",
-      "date": "2026-07-29T22:38:14.695Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785365124765-b48f5e99",
       "date": "2026-07-29T22:45:25.050Z",
       "type": "bootstrap",
@@ -198,10 +166,42 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785464177706-ef9b32c0",
+      "date": "2026-07-31T02:16:18.160Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785464189787-97621fd4",
+      "date": "2026-07-31T02:16:30.130Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785464193823-3ac0b2b4",
+      "date": "2026-07-31T02:16:34.125Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785464961489-f067bc71",
+      "date": "2026-07-31T02:29:21.876Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 53,
+    "sessions": 57,
     "ciPassRate": "82%"
   },
   "health": {
