@@ -75,6 +75,22 @@ import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const HIGH_VALUE_MODELS = new Set(
+  (
+    process.env.HIGH_VALUE_MODELS ||
+    'gpt-4o,claude-3-5-sonnet,gemini-1.5-pro,deepseek-r1,deepseek-v3,o1-preview,o1-mini'
+  )
+    .split(',')
+    .map((model) => model.trim().toLowerCase())
+    .filter(Boolean),
+);
+const MAX_REASONING_LENGTH = 500;
+
+function truncatePayload(value, limit) {
+  if (typeof value !== 'string') return value;
+  if (value.length <= limit) return value;
+  return `${value.slice(0, limit)}…[truncated]`;
+}
 
 function isSafeKey(key) {
   if (typeof key !== 'string' && typeof key !== 'number') return false;
@@ -339,7 +355,7 @@ app.post('/api/ci/status', (req, res) => {
 
 // ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
 import { getConvoyStats, listConvoys, getDatabaseMetrics } from '../agent/gastown-convoy.ts';
-app.get("/api/gastown/dashboard", async (_req, res) => {
+app.get("/api/gastown/dashboard", bearerAuth({ required: true }), async (_req, res) => {
   try {
     const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
       getConvoyStats(),
@@ -366,7 +382,7 @@ app.get("/api/gastown/dashboard", async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get("/api/gastown/convoys", (_req, res) => {
+app.get("/api/gastown/convoys", bearerAuth({ required: true }), (_req, res) => {
   res.json(listConvoys());
 });
 
@@ -959,7 +975,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
 
     const isHeartbeatPing =
       Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
-    const isHighValueModel = HIGH_VALUE_MODELS.has(model);
+    const isHighValueModel = HIGH_VALUE_MODELS.has(String(model || '').toLowerCase());
     const shouldSave = !isHeartbeatPing && (effectiveStatus !== 'OK' || isHighValueModel);
 
     if (!shouldSave) {
@@ -1178,7 +1194,7 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
       const effectiveStatus = agentId ? status || 'authenticated_bypass' : status || 'OK';
       const isHeartbeatPing =
         Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
-      const isHighValue = HIGH_VALUE_MODELS.has(model);
+      const isHighValue = HIGH_VALUE_MODELS.has(String(model || '').toLowerCase());
       if (!isHeartbeatPing || isHighValue) {
         await runInsert(
           `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
