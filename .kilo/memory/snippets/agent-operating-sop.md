@@ -31,3 +31,9 @@ and the phase readiness scripts are the authoritative verification path.
 This is a temporary billing bypass, not a permanent rejection of GitHub CI.
 Reconsider GitHub Actions only after billing is restored and a clean
 non-production comparison run passes.
+
+PR precedent: keep changes focused, normally 1-10 commits. More than 15
+commits or 1,000 changed lines is a split candidate unless the change is
+intrinsically atomic. Never force-merge a billing-blocked PR; require a
+non-draft PR, approved review, passing authoritative self-hosted checks, and
+explicit human authorization.
