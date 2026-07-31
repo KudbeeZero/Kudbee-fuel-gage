@@ -99,6 +99,11 @@ export class StreamChunkProcessor {
     // 2. Handle `content`. This may contain inline `</think>` tags that we
     //    need to split on, or it may be plain visible content.
     if (typeof message.content === "string" && message.content.length > 0) {
+      // Ollama's dedicated thinking field is already complete for this chunk;
+      // subsequent content is visible output unless it opens an inline block.
+      if (typeof message.thinking === "string" && message.thinking.length > 0) {
+        this.inThinking = false;
+      }
       if (this.options.parseInlineThinkTags) {
         this.parseInline(message.content);
       } else {
