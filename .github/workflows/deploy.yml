@@ -30,6 +30,12 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+      - name: Run operating model audit
+        run: npm run phase:ops-audit
+
+      - name: Run typecheck
+        run: npm run typecheck
+
       - name: Deploy to Heroku Staging
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' || github.ref == 'refs/heads/main'
         uses: akhileshns/heroku-deploy@v3.14.15
@@ -58,7 +64,7 @@ jobs:
         run: |
           sleep 15
           if [ "${{ github.event.inputs.target }}" == "staging" ] || [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            curl --fail --show-error --silent https://kudbee-fuel-gage-staging.herokuapp.com/health
+             curl --fail --show-error --silent https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/health
           else
             curl --fail --show-error --silent https://kudbee-fuel-gage-330ade653a62.herokuapp.com/health
           fi

@@ -143,6 +143,8 @@ credentials are reported as warnings; real test failures remain failures.
 ```bash
 npm run typecheck
 bun test
+node scripts/verify-gates.mjs --quick
+node scripts/verify-gates.mjs
 node scripts/verify-system-integrity.mjs
 node scripts/verify-e2e.mjs
 node scripts/verify-agents.mjs
@@ -192,22 +194,3 @@ The next phase is ready when:
 The phase is not ready merely because typecheck or E2E passes. Authentication,
 tenant isolation, durability, and truthful operational metrics remain release
 blocking even when functional tests are green.
-
-## CI Operating Decision
-
-GitHub Actions workflow files are temporarily bypassed because GitHub billing
-is currently blocking Actions and producing non-actionable failures. They are
-not the source of release truth during this incident. The authoritative path
-is the self-hosted runner:
-
-```bash
-node scripts/ci-self-hosted.mjs
-npm run phase:ops-audit
-npm run phase:readiness:full
-```
-
-GitHub remains the source-control and pull-request host. PR checks are based on
-the committed self-hosted evidence, DTHINK record, and human review.
-
-When billing is restored, GitHub Actions must be re-evaluated and pass one
-non-production run before any workflow is restored or marked required.

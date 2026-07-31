@@ -22,9 +22,6 @@ import {
   Monitor,
   Gauge,
   Sparkles,
-  LayoutDashboard,
-  Network,
-  Shield,
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
@@ -58,7 +55,6 @@ import { LoginView } from './components/LoginView';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
 import { WorkspacePage } from './pages/workspace';
-import { OverviewPage } from './pages/overview';
 
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost } from './utils/currency';
@@ -438,7 +434,6 @@ export default function App() {
   }, [dbLogs]);
 
   const primaryNavItems = [
-    { icon: LayoutDashboard, label: 'OVERVIEW' },
     { icon: Sparkles, label: 'WORKSPACE' },
     { icon: Monitor, label: 'STUDIO' },
     { icon: Activity, label: 'TELEMETRY' },
@@ -739,8 +734,6 @@ export default function App() {
           </div>
 
            {/* ACTIVE VIEW ROUTER */}
-          {activeTab === 'OVERVIEW' && <PanelErrorBoundary panel={activeTab}><OverviewPage onNavigate={setActiveTab} /></PanelErrorBoundary>}
-
           {activeTab === 'WORKSPACE' && <PanelErrorBoundary panel={activeTab}><WorkspacePage /></PanelErrorBoundary>}
 
           {activeTab === 'OBSERVABILITY' && <PanelErrorBoundary panel={activeTab}><ObservabilityPage /></PanelErrorBoundary>}

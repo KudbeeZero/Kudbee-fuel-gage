@@ -20,6 +20,12 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+      - name: Run operating model audit
+        run: npm run phase:ops-audit
+
+      - name: Run typecheck
+        run: npm run typecheck
+
       - name: Deploy to Heroku Staging
         uses: akhileshns/heroku-deploy@v3.14.15
         with:
@@ -34,4 +40,4 @@ jobs:
       - name: Run release verification
         run: |
           sleep 15
-          curl --fail --show-error --silent https://kudbee-fuel-gage-staging.herokuapp.com/health
+           curl --fail --show-error --silent https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/health
