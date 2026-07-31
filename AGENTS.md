@@ -122,9 +122,19 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 ### CI Gates
 
 1. `npm run verify:typescript` — required TypeScript 7.0.2 direct-constraint and lockfile gate.
-2. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
-3. `npm run lint` — Turbo-routed linting.
-4. `node scripts/verify-e2e.mjs` — End-to-end verification suite (38 checks).
+2. `npm run verify:agent-contracts` — all 11 discovered company agents have metadata and authority records.
+3. `npm run verify:integrations` — command/package availability and environment names only; optional provider capabilities skip explicitly.
+4. `npm run verify:learning-protocol` — structured THINK/DTHINK learning loop and safety rules.
+5. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
+6. `npm run lint` — Turbo-routed linting.
+7. `node scripts/verify-e2e.mjs --smoke` — bounded smoke with provider URLs disabled.
+8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full database-writing E2E only with explicit opt-in.
+
+The self-hosted runner remains authoritative while GitHub Actions are bounded
+by the existing billing decision. Standard CI never uses a configured
+`DATABASE_URL` or Redis endpoint for database-writing E2E unless the explicit
+write opt-in is present. Authentication, tenant authorization, and deployment
+commands are outside this workflow and remain unchanged.
 
 All agents must run `npm run verify:typescript` before handoff and may not
 introduce TypeScript 5.x or lower anywhere in direct constraints or resolved
@@ -184,6 +194,13 @@ cd packages/opencode && bun run typecheck && bun test
 - Run `npm run verify:box-web` when `UPSTASH_BOX_API_KEY` is configured; it uses the official Upstash Box API without printing the key.
 - Redis MCP is for operational Redis commands, not secret discovery or secret storage.
 - Never place credentials in GitHub comments, PR bodies, logs, DTHINK, THINK, screenshots, or agent prompts.
+
+### Company Agent and Integration Rules
+
+- `config/agents/company-manifest.json` is required for every discovered `.kilo/agents/*.agent`; stable ids equal filename stems.
+- `config/integrations/manifest.json` declares GitHub CLI/API, Heroku CLI/API, Neon `DATABASE_URL`/`pg` plus optional provider API, Upstash Redis MCP, and Upstash Box SDK boundaries.
+- `npm run verify:integrations` reports only names and statuses. Missing Box, Neon admin/API, provider CLIs, or MCP package resolution are explicit optional skips.
+- Follow `config/think/protocol.json` for recall, preconditions, bounded execution, evidence, quality signal, pending token, DTHINK, memory update, and bounded follow-up.
 
 ## Terminal Entrypoints
 

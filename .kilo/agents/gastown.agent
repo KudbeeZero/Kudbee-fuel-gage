@@ -1,3 +1,14 @@
+---
+id: gastown
+category: orchestration
+description: THINK-aware coordinator for bounded multi-agent execution
+triggers: orchestration, delegate, convoy, safe-zone, agent
+schedule: on-demand
+actions: recall, dispatch, review, update
+uuid: orch-001
+memoryId: agent-ecosystem
+created: 2026-07-31
+---
 /**
  * .kilo/agents/gastown.agent
  * ---------------------------------------------------------------------------

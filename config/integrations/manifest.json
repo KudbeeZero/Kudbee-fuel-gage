@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "name": "kudbee-integration-boundaries",
+  "policy": {
+    "valuesStoredInRepository": false,
+    "valuesPrintedToLogs": false,
+    "presenceChecksPrintNamesOnly": true,
+    "providerWriteApisCalledByVerifier": false,
+    "optionalProviderCredentialsAreSkips": true
+  },
+  "integrations": [
+    {
+      "id": "github",
+      "name": "GitHub CLI/API",
+      "commands": ["gh", "gh api"],
+      "packages": [],
+      "environment": [{ "name": "GITHUB_TOKEN", "purpose": "scoped GitHub CLI/API access", "optional": true }],
+      "readCapabilities": ["repository metadata", "pull request metadata", "check and issue metadata"],
+      "writeCapabilities": ["pull request or issue mutation only with explicit approval"],
+      "secretSafeRules": ["Use scoped runtime credentials only", "Never print or persist token values", "Never put credentials in PR text, prompts, THINK, or DTHINK"],
+      "optional": true
+    },
+    {
+      "id": "heroku",
+      "name": "Heroku CLI/API",
+      "commands": ["heroku", "heroku auth:whoami"],
+      "packages": [],
+      "environment": [{ "name": "HEROKU_API_KEY", "purpose": "scoped Heroku inspection/API access", "optional": true }],
+      "readCapabilities": ["app and dyno metadata", "release and log metadata", "config-var names only when explicitly approved"],
+      "writeCapabilities": ["release or config mutation only with explicit human approval"],
+      "secretSafeRules": ["Do not print config-var values", "Do not run deploy commands as part of verification", "Never persist the API key"],
+      "optional": true
+    },
+    {
+      "id": "neon",
+      "name": "Neon Postgres and pgvector",
+      "commands": ["node"],
+      "packages": [{ "name": "pg", "optional": false }],
+      "environment": [
+        { "name": "DATABASE_URL", "purpose": "application Postgres/pgvector connection", "optional": true },
+        { "name": "NEON_API_KEY", "purpose": "optional Neon provider API access", "optional": true }
+      ],
+      "readCapabilities": ["bounded application queries", "schema and pgvector health", "migration status inspection"],
+      "writeCapabilities": ["application writes only in explicitly authorized tests", "migration execution only with explicit approval"],
+      "secretSafeRules": ["Never print DATABASE_URL or provider API values", "Use the shared pg pool and bounded timeouts", "Missing DATABASE_URL or NEON_API_KEY is an explicit optional skip"],
+      "optional": true
+    },
+    {
+      "id": "upstash-redis-mcp",
+      "name": "Upstash Redis MCP",
+      "commands": ["npx -y @upstash/redis-mcp"],
+      "packages": [{ "name": "@upstash/redis-mcp", "optional": true }],
+      "environment": [
+        { "name": "UPSTASH_REDIS_REST_URL", "purpose": "Redis MCP target URL", "optional": true },
+        { "name": "UPSTASH_REDIS_REST_TOKEN", "purpose": "Redis MCP runtime credential", "optional": true }
+      ],
+      "readCapabilities": ["bounded Redis key/type/health inspection", "approved stream and queue diagnostics"],
+      "writeCapabilities": ["only explicitly approved bounded operational Redis commands"],
+      "secretSafeRules": ["Redis MCP is not a credential vault", "Never search for or store secret values", "Do not run destructive or unbounded commands during verification"],
+      "optional": true
+    },
+    {
+      "id": "upstash-box",
+      "name": "Upstash Box SDK",
+      "commands": ["node"],
+      "packages": [{ "name": "@upstash/box", "optional": true }],
+      "environment": [{ "name": "UPSTASH_BOX_API_KEY", "purpose": "optional Box browser verification credential", "optional": true }],
+      "readCapabilities": ["bounded staging/browser verification", "health and console evidence when provisioned"],
+      "writeCapabilities": ["staging browser actions only with explicit approval"],
+      "secretSafeRules": ["Missing Box credentials are an explicit optional skip", "Never print or persist the Box key", "Do not claim browser evidence when Box is unavailable"],
+      "optional": true
+    }
+  ],
+  "mcpCapabilityBoundaries": {
+    "upstash-redis": {
+      "server": "upstash-redis",
+      "launch": "npx -y @upstash/redis-mcp",
+      "allowed": ["bounded operational inspection", "explicitly approved non-destructive Redis operation"],
+      "forbidden": ["secret discovery", "secret storage", "unbounded key scans", "destructive flush or deletion", "provider credential output"]
+    }
+  }
+}

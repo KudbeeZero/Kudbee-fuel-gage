@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "id": "company-agent-learning-protocol",
+  "name": "Company Agent Self-Improvement Loop",
+  "purpose": "Turn bounded, reviewed evidence into durable agent learning without granting production authority.",
+  "steps": [
+    { "id": "recall-memory", "action": "Recall relevant agent memory and prior decisions before planning." },
+    { "id": "declare-preconditions", "action": "Declare task intent, non-goals, dependencies, authority, isolation, rollback, and measurable acceptance." },
+    { "id": "execute-bounded-job", "action": "Execute one bounded job within the manifest write authority and approval boundary." },
+    { "id": "collect-evidence", "action": "Collect command results, changed files, runtime observations, and environment-gated skips." },
+    { "id": "receive-quality-signal", "action": "Receive an independent reviewer, test, CI, or quality signal; the implementer is not the sole reviewer." },
+    { "id": "mint-think-token", "action": "Mint a structured PENDING_APPROVAL THINK token containing task, evidence, failure, correction, quality signal, and confidence metadata." },
+    { "id": "feed-dthink", "action": "Feed the structured token metadata into DTHINK without credential or sensitive payload values." },
+    { "id": "update-agent-memory", "action": "Update the owning agent memory with the reviewed result, limitations, and source evidence." },
+    { "id": "create-bounded-follow-up", "action": "Create at most one bounded follow-up with explicit owner, dependency, acceptance condition, and approval boundary." }
+  ],
+  "tokenContract": {
+    "requiredFields": ["tokenId", "agentId", "taskId", "memoryId", "preconditions", "jobBoundary", "evidence", "qualitySignal", "correctionDelta", "confidence", "status", "followUp"],
+    "initialStatus": "PENDING_APPROVAL",
+    "promotionRequires": ["independent review", "current evidence", "explicit approval where required"]
+  },
+  "safetyRules": {
+    "secretsInThinkOrDthink": false,
+    "autonomousProductionOrDestructiveChanges": false,
+    "unverifiedSelfModification": false,
+    "credentialValuesInMemory": false,
+    "missingEvidenceMeansStop": true
+  },
+  "forbidden": [
+    "Place secrets, tokens, connection strings, or credential values in THINK or DTHINK.",
+    "Make autonomous production, deployment, destructive, authentication, tenant, or authorization changes.",
+    "Self-modify agent directives or authority without an independent review and explicit approval.",
+    "Promote a token or claim from incomplete or unverified evidence."
+  ]
+}

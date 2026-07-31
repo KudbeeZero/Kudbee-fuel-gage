@@ -72,7 +72,7 @@ const memoryStore: MemoryEntry[] = [];
 
 function cappedPush(entry: MemoryEntry): void {
   if (memoryStore.length >= MAX_MEMORY_STORE) memoryStore.shift();
-  cappedPush(entry);
+  memoryStore.push(entry);
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

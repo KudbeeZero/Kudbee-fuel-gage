@@ -10,6 +10,9 @@ node scripts/phase-governor.mjs check <model> <task-id>
 node scripts/model-task-packet.mjs <model> <task-id>
 npm run verify:secrets
 npm run verify:typescript
+npm run verify:agent-contracts
+npm run verify:integrations
+npm run verify:learning-protocol
 git status --short
 ```
 
@@ -33,6 +36,8 @@ scope.
 - Do not skip a failing check.
 - Do not report a local fallback as durable success.
 - Do not claim browser screenshots without saved image evidence.
+- Do not run database-writing E2E unless `E2E_ALLOW_DATABASE_WRITES=1`.
+- Do not call provider write APIs from integration verification; missing optional capability is a named skip.
 
 ## After Editing
 
@@ -42,6 +47,9 @@ Run every task-specific check and validate a structured report:
 git diff --check
 npm run verify:secrets
 npm run verify:typescript
+npm run verify:agent-contracts
+npm run verify:integrations
+npm run verify:learning-protocol
 npm run typecheck
 bun test
 node scripts/verify-system-integrity.mjs
@@ -65,3 +73,7 @@ The enforced layers are defined in `config/phase/next/governance-policy.json`:
 9. Memory
 
 No task is complete until all nine layers are represented in its report.
+
+The company-agent and integration validators are required phase gates. The
+default E2E path is bounded smoke; full database-writing E2E requires the
+explicit `E2E_ALLOW_DATABASE_WRITES=1` opt-in.

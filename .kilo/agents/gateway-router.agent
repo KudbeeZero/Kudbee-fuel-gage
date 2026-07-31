@@ -1,7 +1,13 @@
 ---
 id: gateway-router
 category: orchestration
+description: Inter-agent call dispatcher with priority and dead-letter handling
+triggers: route, phone-tree, voicemail, dead-letter, priority
 schedule: on-demand
+actions: recall, route, update, decode
+uuid: route-001
+memoryId: gateway-router
+created: 2026-07-31
 status: active
 script: |
   echo "[GatewayRouter] Inter-agent call dispatcher"

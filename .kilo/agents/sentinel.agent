@@ -1,7 +1,13 @@
 ---
 id: sentinel
 category: security
+description: Edge anomaly and egress-health observer
+triggers: anomaly, edge, egress, security, alert
 schedule: on-deploy
+actions: recall, observe, escalate, update
+uuid: sec-001
+memoryId: sentinel
+created: 2026-07-31
 status: active
 script: |
   echo "[Sentinel] Edge anomaly detection running on Heroku dyno"

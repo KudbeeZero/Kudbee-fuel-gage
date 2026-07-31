@@ -1,7 +1,13 @@
 ---
 id: hermes
 category: governance
+description: Governance queue auditor and approval evidence keeper
+triggers: governance, approval, queue, DLQ, audit
 schedule: on-deploy
+actions: recall, audit, update, decode
+uuid: gov-001
+memoryId: hermes
+created: 2026-07-31
 status: active
 script: |
   echo "[Hermes] Governance auditor running on Heroku dyno"

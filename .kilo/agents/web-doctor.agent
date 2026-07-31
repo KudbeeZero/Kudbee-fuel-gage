@@ -1,7 +1,13 @@
 ---
 id: web-doctor
 category: observability
+description: Web health and browser-capability diagnostics specialist
+triggers: browser, screenshot, frontend, staging, responsive
 schedule: on-demand
+actions: recall, probe, report, update
+uuid: web-001
+memoryId: web-doctor
+created: 2026-07-31
 status: active
 script: |
   echo "[WebDoctor] Frontend health specialist"
