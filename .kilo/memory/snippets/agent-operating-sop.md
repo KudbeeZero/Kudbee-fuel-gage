@@ -27,3 +27,7 @@ approval where applicable, and a memory/DTHINK record.
 
 GitHub Actions workflows are intentionally removed. `scripts/ci-self-hosted.mjs`
 and the phase readiness scripts are the authoritative verification path.
+
+This is a temporary billing bypass, not a permanent rejection of GitHub CI.
+Reconsider GitHub Actions only after billing is restored and a clean
+non-production comparison run passes.

@@ -195,9 +195,10 @@ blocking even when functional tests are green.
 
 ## CI Operating Decision
 
-GitHub Actions workflow files have been removed. They were producing noisy or
-billing-blocked failures and are not the source of release truth. The
-authoritative path is the self-hosted runner:
+GitHub Actions workflow files are temporarily bypassed because GitHub billing
+is currently blocking Actions and producing non-actionable failures. They are
+not the source of release truth during this incident. The authoritative path
+is the self-hosted runner:
 
 ```bash
 node scripts/ci-self-hosted.mjs
@@ -207,3 +208,6 @@ npm run phase:readiness:full
 
 GitHub remains the source-control and pull-request host. PR checks are based on
 the committed self-hosted evidence, DTHINK record, and human review.
+
+When billing is restored, GitHub Actions must be re-evaluated and pass one
+non-production run before any workflow is restored or marked required.
