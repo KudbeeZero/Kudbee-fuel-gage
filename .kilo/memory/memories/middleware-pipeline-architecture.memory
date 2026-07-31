@@ -90,8 +90,13 @@
       "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
       "timestamp": "2026-07-30T15:14:15.862Z",
       "score": 20
+    },
+    {
+      "query": "secret safe box redis credential workflow",
+      "timestamp": "2026-07-31T03:50:13.910Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-07-30T15:14:15.862Z",
-  "recallCount": 18
+  "lastRecall": "2026-07-31T03:50:13.910Z",
+  "recallCount": 19
 }

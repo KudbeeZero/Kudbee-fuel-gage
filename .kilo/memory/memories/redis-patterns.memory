@@ -20,8 +20,13 @@
       "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
       "timestamp": "2026-07-30T08:59:22.159Z",
       "score": 24
+    },
+    {
+      "query": "secret safe box redis credential workflow",
+      "timestamp": "2026-07-31T03:50:13.908Z",
+      "score": 9
     }
   ],
-  "lastRecall": "2026-07-30T08:59:22.159Z",
-  "recallCount": 4
+  "lastRecall": "2026-07-31T03:50:13.908Z",
+  "recallCount": 5
 }

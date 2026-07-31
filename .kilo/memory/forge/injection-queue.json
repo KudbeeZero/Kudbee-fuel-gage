@@ -48,6 +48,12 @@
       "snippetId": "verification-patterns",
       "processedAt": "2026-07-28T19:39:50.066Z",
       "status": "injected"
+    },
+    {
+      "id": "tk-1785469754177-9c7a1410",
+      "snippetId": "secret-safe-integration-workflow",
+      "processedAt": "2026-07-31T03:49:14.184Z",
+      "status": "injected"
     }
   ],
   "failed": []
