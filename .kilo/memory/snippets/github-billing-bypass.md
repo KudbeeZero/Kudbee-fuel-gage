@@ -21,6 +21,19 @@ while this condition remains unresolved.
   - `npm run verify:browser-matrix`
 - Draft PRs may proceed with explicit local evidence and human review.
 - Production promotion still requires staging and release verification.
+- A billing-blocked PR must not be force-merged or administratively bypassed.
+- Merge requires a non-draft PR, approved review, passing authoritative
+  self-hosted checks, and explicit human authorization.
+
+## PR sizing precedent
+
+- Prefer one focused change per PR, normally 1-10 commits.
+- Treat more than 15 commits or more than 1,000 changed lines as a split
+  candidate unless the work is intrinsically atomic.
+- Split by independently verifiable concern rather than by arbitrary commit
+  count.
+- Do not create an empty follow-up PR; create the next PR only for a bounded,
+  independently tested change.
 
 ## Reinstatement trigger
 

@@ -33,10 +33,22 @@ delete worktrees automatically without an explicit human instruction.
    - Mark `CHANGES_REQUESTED` for any unsupported claim or missing evidence.
 
 6. If `$1` is "merge":
-   - Confirm approved review, passing checks, and explicit human authorization.
+   - Confirm the PR is non-draft, has approved review, passing authoritative
+     checks, and explicit human authorization.
+   - Do not merge a PR with unresolved billing-blocked checks by force or
+     administrative bypass. Record the blocker and keep the PR draft/open.
    - Use `gh pr merge` only for the identified PR.
    - Do not switch branches or delete worktrees as part of this command.
    - Report the merge commit and post-merge verification required.
+
+9. PR sizing precedent:
+   - Prefer one focused change per PR, normally 1-10 commits.
+   - Treat more than 15 commits or more than 1,000 changed lines as a split
+     candidate unless the work is intrinsically atomic.
+   - Split by independently verifiable concern: product feature, backend,
+     security, CI/operations, documentation, and generated memory artifacts.
+   - Do not create an empty follow-up PR. Create the next PR only when there
+     is a bounded, independently tested change ready for review.
 
 7. If `$1` is "rollback":
    - Stop deployment promotion.
