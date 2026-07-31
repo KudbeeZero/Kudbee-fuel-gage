@@ -82,7 +82,7 @@ if (exists('.github/workflows')) {
 for (const required of [
   'scripts/ci-self-hosted.mjs',
   'scripts/verify-next-phase.mjs',
-  'scripts/verify-typescript-version.mjs',
+    'scripts/verify-typescript-version.mjs', 'scripts/verify-crypto-runtime.mjs',
   'scripts/verify-e2e.mjs',
   'scripts/verify-secret-hygiene.mjs',
   'scripts/verify-agent-contracts.mjs',
