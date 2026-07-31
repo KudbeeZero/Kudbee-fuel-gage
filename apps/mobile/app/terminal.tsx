@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
-import { useCommandStore } from '../store/useCommandStore';
-import { mobileCommandRunners } from '../sdk/commands';
+import { useCommandStore } from '../src/store/useCommandStore';
+import { mobileCommandRunners } from '../src/sdk/commands';
 
 const commands = [
   { label: 'System Probe', runner: mobileCommandRunners.systemProbe },

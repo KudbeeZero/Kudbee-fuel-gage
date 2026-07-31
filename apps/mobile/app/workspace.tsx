@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { mobileCommandRunners } from '../sdk/commands';
-import { useCommandStore } from '../store/useCommandStore';
+import { mobileCommandRunners } from '../src/sdk/commands';
+import { useCommandStore } from '../src/store/useCommandStore';
 
 type Session = {
   id: string;
