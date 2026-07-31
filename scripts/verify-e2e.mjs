@@ -5,15 +5,45 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
+import { createHmac } from 'crypto';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const require = createRequire(import.meta.url);
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
+const TEST_STREAM_SECRET = 'ds02-e2e-stream-secret';
+const TEST_SESSION_SECRET = 'ds02-e2e-session-secret';
+const TEST_PRINCIPALS = Object.freeze({
+  admin: Object.freeze({ agentId: 'e2e-admin', roles: ['ADMIN'] }),
+  operator: Object.freeze({ agentId: 'e2e-operator', roles: ['OPERATOR'] }),
+  auditor: Object.freeze({ agentId: 'e2e-auditor', roles: ['AUDITOR'] }),
+});
+const TEST_TENANT_MEMBERSHIPS = JSON.stringify({
+  'e2e-admin': { tenantId: 'tenant-prod', role: 'ADMIN' },
+  'e2e-operator': { tenantId: 'tenant-staging', role: 'OPERATOR' },
+  'e2e-auditor': { tenantId: 'tenant-audit', role: 'AUDITOR' },
+});
 let serverProcess = null;
 let passed = 0;
 let failed = 0;
+
+function signedBearer(principal) {
+  const issuedAt = Date.now();
+  const payload = Buffer.from(
+    JSON.stringify({ agentId: principal.agentId, iat: issuedAt, roles: principal.roles }),
+  ).toString('base64url');
+  const signature = createHmac('sha256', TEST_STREAM_SECRET)
+    .update(`${principal.agentId}:${issuedAt}`)
+    .digest('hex');
+  return `Bearer ${payload}.${signature}`;
+}
+
+function authHeaders(principalName, extra = {}) {
+  const principal = TEST_PRINCIPALS[principalName];
+  if (!principal) throw new Error(`Unknown E2E principal: ${principalName}`);
+  return { ...extra, Authorization: signedBearer(principal) };
+}
 
 function assert(check, label) {
   if (check) {
@@ -44,7 +74,14 @@ async function startServer() {
   const tsxPath = require.resolve('tsx/cli');
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
-    env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
+    env: {
+      ...process.env,
+      PORT: String(PORT),
+      NODE_ENV: 'test',
+      STREAM_SECRET: TEST_STREAM_SECRET,
+      SESSION_SECRET: TEST_SESSION_SECRET,
+      KUDBEE_TENANT_MEMBERSHIPS: TEST_TENANT_MEMBERSHIPS,
+    },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -148,7 +185,9 @@ async function check7_GovernanceHealth() {
 }
 
 async function check8_HermesLogs() {
-  const res = await fetch(`${BASE}/api/governance/hermes-logs`);
+  const res = await fetch(`${BASE}/api/governance/hermes-logs`, {
+    headers: authHeaders('auditor'),
+  });
   const data = await res.json();
   return (
     (res.status === 200 || res.status === 500) && (Array.isArray(data) || typeof data === 'object')
@@ -335,7 +374,9 @@ async function check18_TelemetrySearchEndpoint() {
 }
 
 async function check19_AuditExportJsonEndpoint() {
-  const res = await fetch(`${BASE}/api/audit/export?format=json`);
+  const res = await fetch(`${BASE}/api/audit/export?format=json`, {
+    headers: authHeaders('auditor'),
+  });
   const data = await res.json();
   return (
     res.status === 200 && typeof data.hash === 'string' && typeof data.recordCount === 'number'
@@ -358,7 +399,7 @@ async function check21_AgentFeedbackEndpoint() {
 
   const submitRes = await fetch(`${BASE}/api/governance/feedback`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('operator') },
     body: JSON.stringify({
       traceId,
       verdict: 'thumbs_up',
@@ -378,7 +419,7 @@ async function check21_AgentFeedbackEndpoint() {
 
   const invalidRes = await fetch(`${BASE}/api/governance/feedback`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('operator') },
     body: JSON.stringify({ traceId, verdict: 'maybe' }),
   });
   if (invalidRes.status !== 400) {
@@ -386,7 +427,8 @@ async function check21_AgentFeedbackEndpoint() {
   }
 
   const listRes = await fetch(
-    `${BASE}/api/governance/feedback?traceId=${encodeURIComponent(traceId)}`
+    `${BASE}/api/governance/feedback?traceId=${encodeURIComponent(traceId)}`,
+    { headers: authHeaders('operator') },
   );
   const listData = await listRes.json();
   return (
@@ -401,7 +443,7 @@ async function check21_AgentFeedbackEndpoint() {
 async function check22_PolicyAutoTuneEndpoint() {
   const tuneRes = await fetch(`${BASE}/api/governance/tune`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('operator') },
     body: JSON.stringify({ lookbackHours: 24 }),
   });
   const tuneData = await tuneRes.json();
@@ -417,7 +459,9 @@ async function check22_PolicyAutoTuneEndpoint() {
     return false;
   }
 
-  const getRes = await fetch(`${BASE}/api/governance/tune`);
+  const getRes = await fetch(`${BASE}/api/governance/tune`, {
+    headers: authHeaders('operator'),
+  });
   const getData = await getRes.json();
   if (!(getRes.status === 200 && getData.available === true && getData.lastAnalysis)) {
     return false;
@@ -425,7 +469,7 @@ async function check22_PolicyAutoTuneEndpoint() {
 
   const applyRes = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('admin') },
     body: JSON.stringify({ recommendations: tuneData.recommendations }),
   });
   const applyData = await applyRes.json();
@@ -433,12 +477,15 @@ async function check22_PolicyAutoTuneEndpoint() {
 }
 
 async function check23_RBACPermissionEnforcement() {
-  const tenantsRes = await fetch(`${BASE}/api/governance/tenants`);
+  const tenantsRes = await fetch(`${BASE}/api/governance/tenants`, {
+    headers: authHeaders('auditor', { 'X-Tenant-Id': 'tenant-prod' }),
+  });
   const tenantsData = await tenantsRes.json();
   if (!(
     tenantsRes.status === 200 &&
     Array.isArray(tenantsData.tenants) &&
-    tenantsData.tenants.length >= 2
+    tenantsData.tenants.length >= 2 &&
+    tenantsData.current === 'tenant-audit'
   )) {
     return false;
   }
@@ -449,7 +496,10 @@ async function check23_RBACPermissionEnforcement() {
 
   const auditorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': auditor.id },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders('auditor', { 'X-Tenant-Id': 'tenant-prod' }),
+    },
     body: JSON.stringify({
       recommendations: { token_budget_cap: { recommendedThreshold: 12345 } },
     }),
@@ -458,7 +508,10 @@ async function check23_RBACPermissionEnforcement() {
 
   const operatorTuneApply = await fetch(`${BASE}/api/governance/tune/apply`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders('operator', { 'X-Tenant-Id': 'tenant-prod' }),
+    },
     body: JSON.stringify({
       recommendations: { token_budget_cap: { recommendedThreshold: 12345 } },
     }),
@@ -467,7 +520,10 @@ async function check23_RBACPermissionEnforcement() {
 
   const operatorAnchor = await fetch(`${BASE}/api/audit/vault/anchor`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': operator.id },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders('operator', { 'X-Tenant-Id': 'tenant-prod' }),
+    },
     body: JSON.stringify({ limit: 5 }),
   });
   if (operatorAnchor.status !== 403) return false;
@@ -478,7 +534,7 @@ async function check23_RBACPermissionEnforcement() {
 async function check24_AuditVaultHashing() {
   const anchorRes = await fetch(`${BASE}/api/audit/vault/anchor`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('admin') },
     body: JSON.stringify({ limit: 10 }),
   });
   const anchorData = await anchorRes.json();
@@ -492,7 +548,9 @@ async function check24_AuditVaultHashing() {
     return false;
   }
 
-  const listRes = await fetch(`${BASE}/api/audit/vault`);
+  const listRes = await fetch(`${BASE}/api/audit/vault`, {
+    headers: authHeaders('auditor'),
+  });
   const listData = await listRes.json();
   if (!(listRes.status === 200 && Array.isArray(listData.anchors) && listData.count >= 1)) {
     return false;
@@ -500,7 +558,7 @@ async function check24_AuditVaultHashing() {
 
   const verifyRes = await fetch(`${BASE}/api/audit/vault/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-audit' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('auditor') },
     body: JSON.stringify({ anchorId: anchorData.anchor.anchorId }),
   });
   const verifyData = await verifyRes.json();
@@ -517,36 +575,42 @@ async function check25_SubRouterIntegrity() {
     {
       method: 'GET',
       path: '/api/audit/export?format=json',
+      principal: 'auditor',
       expectStatus: 200,
       expectFields: ['hash', 'recordCount', 'records'],
     },
     {
       method: 'GET',
       path: '/api/audit/vault',
+      principal: 'auditor',
       expectStatus: 200,
       expectFields: ['anchors', 'count'],
     },
     {
       method: 'GET',
       path: '/api/governance/policies',
+      principal: 'operator',
       expectStatus: 200,
       expectFields: ['policies'],
     },
     {
       method: 'GET',
       path: '/api/governance/tenants',
+      principal: 'auditor',
       expectStatus: 200,
       expectFields: ['tenants', 'current'],
     },
     {
       method: 'GET',
       path: '/api/governance/tune',
+      principal: 'operator',
       expectStatus: 200,
       expectFields: ['lastAnalysis', 'available'],
     },
     {
       method: 'GET',
       path: '/api/governance/feedback?limit=5',
+      principal: 'operator',
       expectStatus: 200,
       expectFields: ['feedback', 'count'],
     },
@@ -567,7 +631,8 @@ async function check25_SubRouterIntegrity() {
   ];
 
   for (const c of subRouterCases) {
-    const res = await fetch(`${BASE}${c.path}`, { headers: { 'X-Tenant-Id': 'tenant-prod' } });
+    const options = c.principal ? { headers: authHeaders(c.principal) } : {};
+    const res = await fetch(`${BASE}${c.path}`, options);
     if (res.status !== c.expectStatus) return false;
     if (c.expectFields && c.expectFields.length > 0) {
       const body = await res.json();
@@ -619,7 +684,7 @@ async function check27_TaskEnqueueAndConsumption() {
   // workerRunning=false. We treat either as a graceful degrade.
   const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('operator') },
     body: JSON.stringify({ kind: 'E2E_HEALTH_CHECK', payload: {} }),
   });
   if (enqRes.status === 503 || enqRes.status === 500) return true; // graceful degrade
@@ -628,7 +693,9 @@ async function check27_TaskEnqueueAndConsumption() {
   if (!enqData.success || typeof enqData.id !== 'string') return false;
 
   await new Promise((r) => setTimeout(r, 1500));
-  const dlqRes = await fetch(`${BASE}/api/governance/failed`);
+  const dlqRes = await fetch(`${BASE}/api/governance/failed`, {
+    headers: authHeaders('operator'),
+  });
   if (dlqRes.status !== 200) return false;
   const dlqData = await dlqRes.json();
   if (typeof dlqData.count !== 'number') return false;
@@ -641,7 +708,7 @@ async function check28_DLQRetryPolicy() {
   const es = await import('child_process');
   const enqRes = await fetch(`${BASE}/api/governance/tasks/enqueue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('operator') },
     body: JSON.stringify({
       kind: 'E2E_FAILURE_TEST',
       payload: { failureMessage: 'synthetic E2E failure' },
@@ -658,7 +725,9 @@ async function check28_DLQRetryPolicy() {
   let dlqRes, dlqData, found;
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
-    dlqRes = await fetch(`${BASE}/api/governance/failed`);
+    dlqRes = await fetch(`${BASE}/api/governance/failed`, {
+      headers: authHeaders('operator'),
+    });
     if (dlqRes.status !== 200) {
       await new Promise((r) => setTimeout(r, 500));
       continue;
@@ -695,7 +764,7 @@ async function check28_DLQRetryPolicy() {
 
   await fetch(`${BASE}/api/governance/failed/discard`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': 'tenant-prod' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders('admin') },
     body: JSON.stringify({ id: taskId }),
   }).catch(() => {});
 

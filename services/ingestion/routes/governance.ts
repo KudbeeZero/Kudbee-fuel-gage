@@ -22,7 +22,7 @@
  */
 
 import express from 'express';
-import { TENANTS } from '../lib/tenants.ts';
+import { TENANTS, resolveTenantContext } from '../lib/tenants.ts';
 
 type Deps = {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
@@ -36,19 +36,22 @@ type Deps = {
 
 export function createGovernanceRouter({ runQuery, publishEvent, requireRole, getPolicyState, getFeedbackState, getAutoTuneState, getEvaluatePolicies }: Deps) {
   const router = express.Router();
+  const authorize = (role: string) => (req: any, res: any, next: any) => {
+    if (requireRole(req, res, role)) next();
+  };
 
-  router.get('/tenants', (_req, res) => {
+  router.get('/tenants', (req, res) => {
     try {
       res.json({
         tenants: Object.values(TENANTS).map((t) => ({ id: t.id, name: t.name, role: t.role })),
-        current: 'tenant-prod'
+        current: resolveTenantContext(req)?.tenantId || null
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
-  router.get('/policies', async (_req, res) => {
+  router.get('/policies', authorize('OPERATOR'), async (_req, res) => {
     try {
       const policyState = getPolicyState();
       res.json({ policies: Object.values(policyState) });
@@ -57,7 +60,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/policies', async (req, res) => {
+  router.post('/policies', authorize('OPERATOR'), async (req, res) => {
     try {
       const policyState = getPolicyState();
       const { id, enabled, severity, config } = req.body || {};
@@ -75,7 +78,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/policies/evaluate', async (req, res) => {
+  router.post('/policies/evaluate', authorize('OPERATOR'), async (req, res) => {
     try {
       const evaluatePolicies = getEvaluatePolicies();
       const prompt = req.body?.prompt || req.body?.messages?.map((m: any) => m.content).join(' ') || '';
@@ -85,7 +88,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/feedback', async (req, res) => {
+  router.post('/feedback', authorize('OPERATOR'), async (req, res) => {
     try {
       const feedbackState = getFeedbackState();
       const { traceId, verdict, policyTag, expectedBehavior, notes } = req.body || {};
@@ -113,7 +116,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.get('/feedback', async (req, res) => {
+  router.get('/feedback', authorize('OPERATOR'), async (req, res) => {
     try {
       const feedbackState = getFeedbackState();
       const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
@@ -129,7 +132,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/tune', async (req, res) => {
+  router.post('/tune', authorize('OPERATOR'), async (req, res) => {
     try {
       const policyState = getPolicyState();
       const autoTuneState = getAutoTuneState();
@@ -191,7 +194,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.get('/tune', async (_req, res) => {
+  router.get('/tune', authorize('OPERATOR'), async (_req, res) => {
     try {
       const autoTuneState = getAutoTuneState();
       res.json({
@@ -204,11 +207,9 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/tune/apply', async (req, res) => {
+  router.post('/tune/apply', authorize('ADMIN'), async (req, res) => {
     try {
       const policyState = getPolicyState();
-      const ctx = requireRole(req, res, 'ADMIN');
-      if (!ctx) return;
 
       const { recommendations } = req.body || {};
       if (!recommendations || typeof recommendations !== 'object') {
@@ -234,7 +235,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
 
   // --- Phase 26: Background task queue & DLQ endpoints ---------------------
 
-  router.post('/tasks/enqueue', async (req, res) => {
+  router.post('/tasks/enqueue', authorize('OPERATOR'), async (req, res) => {
     try {
       const { enqueueTask, isAvailable: workerAvailable } = await import('../../agents/worker.ts');
       if (!workerAvailable()) {
@@ -258,7 +259,7 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.get('/failed', async (_req, res) => {
+  router.get('/failed', authorize('OPERATOR'), async (_req, res) => {
     try {
       const { listFailed, getDlqName, isRunning } = await import('../../agents/worker.ts');
       const items = await listFailed();
@@ -273,10 +274,8 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/failed/retry', async (req, res) => {
+  router.post('/failed/retry', authorize('OPERATOR'), async (req, res) => {
     try {
-      const ctx = requireRole(req, res, 'OPERATOR');
-      if (!ctx) return;
       const { retryFailed } = await import('../../agents/worker.ts');
       const id = String(req.body?.id || '');
       if (!id) return res.status(400).json({ error: 'id required' });
@@ -288,10 +287,8 @@ export function createGovernanceRouter({ runQuery, publishEvent, requireRole, ge
     }
   });
 
-  router.post('/failed/discard', async (req, res) => {
+  router.post('/failed/discard', authorize('ADMIN'), async (req, res) => {
     try {
-      const ctx = requireRole(req, res, 'ADMIN');
-      if (!ctx) return;
       const { discardFailed } = await import('../../agents/worker.ts');
       const id = String(req.body?.id || '');
       if (!id) return res.status(400).json({ error: 'id required' });
