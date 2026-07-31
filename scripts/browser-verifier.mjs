@@ -9,7 +9,10 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const STAGING = (process.env.STAGING_URL || 'https://kudbee-fuel-gage-staging.herokuapp.com').replace(/\/$/, '');
+const STAGING = (
+  process.env.STAGING_URL ||
+  'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com'
+).replace(/\/$/, '');
 
 async function verify() {
   console.log('══════════════════════════════════════════════');
