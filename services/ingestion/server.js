@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestRequestSchema } from '@kudbee/types';
-import {
-  deserializePass,
-  verifyAgentPass,
-  verifySignature,
-  AGENT_PASS_MAX_AGE_MS,
-} from '@kudbee/utils';
+import { verifySignature } from '@kudbee/utils';
 import { embedTrace, cosineSimilarity } from './embedder.js';
+import {
+  loadAgentRegistry,
+  authenticateAgentPass,
+  verifyAgentPassFromKey,
+  verifyAgentSignature,
+} from './agentAuth.js';
 import { createDegradationRouter } from '../telemetry/degradation-monitor.js';
 import {
   listProposed,
@@ -121,6 +122,8 @@ registerGuard(spheroidGuard);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const AGENT_REGISTRY = loadAgentRegistry();
+
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 
@@ -5772,4 +5775,3 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
     res.json({ error: e.message, timestamp: new Date().toISOString() });
   }
 });
-
