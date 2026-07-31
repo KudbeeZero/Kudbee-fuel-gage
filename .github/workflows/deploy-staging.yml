@@ -34,4 +34,4 @@ jobs:
       - name: Run release verification
         run: |
           sleep 15
-          curl -fsS https://kudbee-fuel-gage-staging.herokuapp.com/health || true
+          curl --fail --show-error --silent https://kudbee-fuel-gage-staging.herokuapp.com/health
