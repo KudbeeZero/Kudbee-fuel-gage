@@ -1,22 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785382618438-97cda8dd",
-      "date": "2026-07-30T03:36:58.636Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785400894873-be1a0bd0",
-      "date": "2026-07-30T08:41:44.896Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785401835499-84e5266e",
       "date": "2026-07-30T08:57:15.748Z",
       "type": "bootstrap",
@@ -198,10 +182,26 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785467088694-4b14261b",
+      "date": "2026-07-31T03:04:49.016Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785467258324-e8c1704d",
+      "date": "2026-07-31T03:07:38.750Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 59,
+    "sessions": 61,
     "ciPassRate": "82%"
   },
   "health": {
