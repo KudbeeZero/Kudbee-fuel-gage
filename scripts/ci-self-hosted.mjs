@@ -11,12 +11,13 @@
  *
  * Checks:
  *   1. Secret hygiene — verify-secret-hygiene.mjs
- *   2. Typecheck — turbo run typecheck
- *   3. Lint — turbo run lint
- *   4. Build — turbo run build --filter=@kudbee/web
- *   5. E2E — verify-e2e.mjs (if DATABASE_URL set)
- *   6. Agent verify — verify-agents.mjs
- *   7. Operating model — verify-operating-model.mjs
+ *   2. TypeScript side-by-side version — native TS7 compiler + TS6 API alias
+ *   3. Typecheck — turbo run typecheck
+ *   4. Lint — turbo run lint
+ *   5. Build — turbo run build --filter=@kudbee/web
+ *   6. E2E — verify-e2e.mjs (if DATABASE_URL set)
+ *   7. Agent verify — verify-agents.mjs
+ *   8. Operating model — verify-operating-model.mjs
  *
  * Reports results to /api/ci/status endpoint on the Kudbee server.
  * Feeds every run into DTHINK pipeline for learning.
@@ -73,36 +74,43 @@ async function main() {
   const results = [];
 
   // 1. Secret hygiene. The child process only reports names and status.
-  log('INFO', 'Gate 1/7: Secret hygiene');
+  log('INFO', 'Gate 1/8: Secret hygiene');
   const secrets = sh('npm run verify:secrets', 'secret-hygiene');
   const secretsPass = secrets.ok;
   results.push({ gate: 'secret-hygiene', pass: secretsPass, detail: secrets.out.slice(-60) });
   log(secretsPass ? 'PASS' : 'FAIL', `Secret hygiene: ${secretsPass ? 'OK' : 'FAILED'}`);
 
-  // 2. Typecheck
-  log('INFO', 'Gate 2/7: Typecheck');
+  // 2. TypeScript side-by-side version
+  log('INFO', 'Gate 2/8: TypeScript 7 native compiler + TypeScript 6 API alias');
+  const tsVersion = sh('npm run verify:typescript', 'typescript-version');
+  const tsVersionPass = tsVersion.ok;
+  results.push({ gate: 'typescript-version', pass: tsVersionPass, detail: tsVersion.out.slice(-60) });
+  log(tsVersionPass ? 'PASS' : 'FAIL', `TypeScript side-by-side version: ${tsVersionPass ? 'OK' : 'FAILED'}`);
+
+  // 3. Typecheck
+  log('INFO', 'Gate 3/8: Typecheck');
   const tc = sh('npx turbo run typecheck', 'typecheck');
   const tcPass = tc.ok && !tc.out.includes('Failed');
   results.push({ gate: 'typecheck', pass: tcPass, detail: tc.out.slice(-60) });
   log(tcPass ? 'PASS' : 'FAIL', `Typecheck: ${tcPass ? 'OK' : 'FAILED'}`);
 
-  // 3. Lint
-  log('INFO', 'Gate 3/7: Lint');
+  // 4. Lint
+  log('INFO', 'Gate 4/8: Lint');
   const lint = sh('npx turbo run lint', 'lint');
   const lintPass = lint.ok && !lint.out.includes('error');
   results.push({ gate: 'lint', pass: lintPass, detail: lint.out.slice(-60) });
   log(lintPass ? 'PASS' : 'WARN', `Lint: ${lintPass ? 'OK' : 'warnings'}`);
 
-  // 4. Build
-  log('INFO', 'Gate 4/7: Build');
+  // 5. Build
+  log('INFO', 'Gate 5/8: Build');
   const build = sh('npx turbo run build --filter=@kudbee/web', 'build');
   const buildPass = build.ok;
   results.push({ gate: 'build', pass: buildPass, detail: build.out.slice(-60) });
   log(buildPass ? 'PASS' : 'FAIL', `Build: ${buildPass ? 'OK' : 'FAILED'}`);
 
-  // 5. E2E (only if DATABASE_URL is set)
+  // 6. E2E (only if DATABASE_URL is set)
   if (process.env.DATABASE_URL) {
-    log('INFO', 'Gate 5/7: E2E');
+    log('INFO', 'Gate 6/8: E2E');
     const e2e = sh('node scripts/verify-e2e.mjs', 'e2e');
     const e2ePass = e2e.ok;
     results.push({ gate: 'e2e', pass: e2ePass, detail: e2e.out.slice(-60) });
@@ -112,15 +120,15 @@ async function main() {
     results.push({ gate: 'e2e', pass: false, status: 'skipped', detail: 'DATABASE_URL unavailable; release evidence incomplete' });
   }
 
-  // 6. Agent verify
-  log('INFO', 'Gate 6/7: Agent verify');
+  // 7. Agent verify
+  log('INFO', 'Gate 7/8: Agent verify');
   const agents = sh('node scripts/verify-agents.mjs', 'agents');
   const agentsPass = agents.ok;
   results.push({ gate: 'agents', pass: agentsPass, detail: agents.out.slice(-60) });
   log(agentsPass ? 'PASS' : 'FAIL', `Agents: ${agentsPass ? 'OK' : 'FAILED'}`);
 
-  // 7. Operating model
-  log('INFO', 'Gate 7/7: Operating model');
+  // 8. Operating model
+  log('INFO', 'Gate 8/8: Operating model');
   const ops = sh('node scripts/verify-operating-model.mjs', 'operating-model');
   const opsPass = ops.ok;
   results.push({ gate: 'operating-model', pass: opsPass, detail: ops.out.slice(-60) });

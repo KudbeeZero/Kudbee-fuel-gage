@@ -152,9 +152,21 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 
 ### CI Gates
 
-1. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
-2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — End-to-end verification suite (38 checks).
+1. `npm run verify:typescript` — required TypeScript 7.0.2 direct-constraint and lockfile gate.
+2. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
+3. `npm run lint` — Turbo-routed linting.
+4. `node scripts/verify-e2e.mjs` — End-to-end verification suite (38 checks).
+
+All agents must run `npm run verify:typescript` before handoff and may not
+introduce TypeScript 5.x or lower anywhere in direct constraints or resolved
+compiler entries. The side-by-side contract is intentional: `npx tsc` resolves
+the `@typescript/native` alias and runs TypeScript 7, while
+`require('typescript').version` resolves the `@typescript/typescript6` alias and
+uses TypeScript 6 only for compiler-API consumers such as typescript-eslint.
+The current typescript-eslint peer range `>=4.8.4 <6.1.0` is satisfied by that
+API alias, so parser compatibility is a passing gate. The bounded follow-up is
+to remove the TypeScript 6 API alias only after typescript-eslint publishes
+TypeScript 7 API support.
 
 ### Safe-Zone Engine Lifecycle
 
@@ -182,7 +194,8 @@ The governance task worker (`services/agents/worker.ts`) polls the task queue us
 
 ```bash
 npm ci                              # install at repo root (never inside workspace packages)
-npm run typecheck                   # Turbo-routed TS strict check
+npm run typecheck                   # Turbo-routed TS7 strict check
+npm run verify:typescript            # TS7 native compiler + TS6 API alias gate
 npm run lint                        # Turbo-routed linting
 node scripts/verify-e2e.mjs         # 38-check E2E suite (needs REDIS_URL + DATABASE_URL)
 npm run build                       # Turbo build (dependsOn typecheck + lint)

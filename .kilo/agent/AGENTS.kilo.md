@@ -76,6 +76,8 @@ kudbee/
 - **Node:** `>=22.0.0` (enforced in root `package.json` engines).
 - **Package manager:** `npm@10.9.8` (workspace-aware, turbo monorepo).
 - Install dependencies at the **repo root** with `npm install`. Do not run `npm install` inside individual workspace packages unless debugging isolated dependency trees.
+- Every compiler workspace must declare `@typescript/native: "npm:typescript@^7.0.2"` and `typescript: "npm:@typescript/typescript6@^6.0.2"`. `npx tsc` is the TypeScript 7 compiler; `require('typescript')` is intentionally TypeScript 6 for compiler-API consumers such as typescript-eslint. Run `npm run verify:typescript` before handoff and never add TypeScript 5.x or lower in direct constraints or resolved compiler entries.
+- The current `@typescript-eslint` 8.65.0 parser/plugin declares `typescript: ">=4.8.4 <6.1.0"`; the TypeScript 6 API alias satisfies that range without falsifying lock metadata or suppressing errors. Parser compatibility is a passing gate. Remove the API alias only after typescript-eslint publishes TypeScript 7 API support.
 
 ### Environment Variables
 
@@ -260,9 +262,10 @@ All scripts live in `scripts/` and are `.mjs` (native ESM).
 
 ### CI Gates (must pass before PR merge)
 
-1. `npm run typecheck` — Turbo-routed TypeScript strict check.
-2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — 43/43 checks (38 core + 5 inter-agent phone tree).
+1. `npm run verify:typescript` — TypeScript 7 native compiler, TypeScript 6 API alias, direct declarations, and lockfiles.
+2. `npm run typecheck` — Turbo-routed TypeScript 7 strict check.
+3. `npm run lint` — Turbo-routed linting.
+4. `node scripts/verify-e2e.mjs` — 43/43 checks (38 core + 5 inter-agent phone tree).
 
 ### Common Test Failure Causes
 
@@ -454,7 +457,7 @@ gh pr create --draft --title "feat(think): Mint Official Think Token #001 & Vect
 
 - **Code review required for:** auth changes, DB schema migrations, receptor gating logic, `groqClient.ts` modifications.
 - **Can be self-merged:** documentation, verification scripts, test fixtures, dependency patches that do not alter runtime behavior.
-- **Never merge without:** `npm run typecheck`, `npm run lint`, and `node scripts/verify-e2e.mjs` all passing.
+- **Never merge without:** `npm run verify:typescript`, `npm run typecheck`, `npm run lint`, and `node scripts/verify-e2e.mjs` all passing. The TypeScript 6 API alias is an intentional compatibility bridge and must not be removed before typescript-eslint supports the TypeScript 7 API.
 
 ---
 

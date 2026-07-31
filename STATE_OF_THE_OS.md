@@ -105,13 +105,13 @@ This document catalogs every production fix applied across the codebase, organiz
 - **Fix**: Added `console.warn` with descriptive prefixes to all previously-silent catch blocks.
 - **PR**: campaign PR
 
-#### FIX-012: TypeScript Version ^7.0.0
+#### FIX-012: TypeScript 7 Side-by-Side Compiler and API
 
 - **Date**: 2026-07-23
 - **Severity**: HIGH
-- **Sites**: 9 package.json files
-- **Problem**: All workspaces specified `"typescript": "^7.0.0"` — TypeScript 7 does not exist. npm would silently install 5.x.
-- **Fix**: Changed all to `"^5.7.0"`.
+- **Sites**: 13 compiler workspace package.json files plus npm and Bun lockfiles
+- **Problem**: TypeScript 7 is the required compiler, while the current typescript-eslint release requires a TypeScript 6 compiler API. A single `typescript` resolution cannot satisfy both contracts.
+- **Fix**: `@typescript/native: "npm:typescript@^7.0.2"` owns `npx tsc`; `typescript: "npm:@typescript/typescript6@^6.0.2"` supplies the TypeScript 6 compiler API. The compatibility alias remains until typescript-eslint publishes TypeScript 7 API support.
 - **PR**: campaign PR
 
 #### FIX-013: CI Node Version Inconsistency

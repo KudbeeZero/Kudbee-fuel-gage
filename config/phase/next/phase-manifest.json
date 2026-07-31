@@ -10,6 +10,8 @@
   },
   "sharedRules": [
     "Use a dedicated worktree per model task",
+    "Use @typescript/native for the TypeScript 7 npx tsc compiler and typescript only as the TypeScript 6 compiler-API alias",
+    "Never introduce TypeScript 5.x or lower in direct constraints or resolved compiler entries",
     "Do not edit production secrets",
     "Do not treat localStorage as authentication",
     "Do not claim a check passed without current command evidence",
@@ -17,6 +19,7 @@
     "Human approval is required for authentication, tenant, data, and deployment changes"
   ],
   "requiredCommands": [
+    "npm run verify:typescript",
     "npm run typecheck",
     "bun test",
     "node scripts/verify-system-integrity.mjs",
