@@ -4,9 +4,261 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KUDBEE Terminal — Ollama Chat</title>
+    <style>
+      #terminal-boot { 
+        position: fixed; 
+        inset: 0; 
+        z-index: 10; 
+        display: grid; 
+        place-items: center; 
+        padding: 24px; 
+        color: #cbd5e1; 
+        background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        transition: opacity 0.5s ease-out;
+      }
+      #terminal-boot[hidden] { display: none; }
+      #terminal-boot.fade-out { opacity: 0; pointer-events: none; }
+      #terminal-boot-card { 
+        width: min(560px, 100%); 
+        border: 1px solid #334155; 
+        border-radius: 12px; 
+        padding: 20px; 
+        background: #111827; 
+        box-shadow: 0 18px 60px #0008;
+        position: relative;
+        overflow: hidden;
+      }
+      #terminal-boot-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+        animation: pulse 3s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: rotate(0deg); opacity: 0.5; }
+        50% { transform: rotate(180deg); opacity: 1; }
+      }
+      #terminal-boot-title { 
+        color: #f8fafc; 
+        font-size: 14px; 
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+      }
+      #terminal-boot-detail { 
+        margin-top: 8px; 
+        color: #94a3b8; 
+        white-space: pre-wrap; 
+        overflow-wrap: anywhere;
+        position: relative;
+        z-index: 1;
+      }
+      #terminal-snippet {
+        margin-top: 16px;
+        padding: 12px;
+        background: rgba(59, 130, 246, 0.1);
+        border-left: 3px solid #3b82f6;
+        border-radius: 4px;
+        color: #60a5fa;
+        font-size: 11px;
+        position: relative;
+        z-index: 1;
+        animation: fadeIn 0.5s ease-in;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      #terminal-progress {
+        margin-top: 16px;
+        height: 4px;
+        background: #1e293b;
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+      }
+      #terminal-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        width: 0%;
+        transition: width 0.3s ease-out;
+        animation: progressPulse 2s ease-in-out infinite;
+      }
+      @keyframes progressPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      #terminal-diagnostic-panel { margin-top: 16px; position: relative; z-index: 1; }
+      #terminal-diagnostic-panel[hidden] { display: none; }
+      #terminal-diagnostic-panel button { 
+        margin-right: 8px; 
+        border: 1px solid #475569; 
+        border-radius: 6px; 
+        padding: 6px 10px; 
+        color: #e2e8f0; 
+        background: #1e293b; 
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      #terminal-diagnostic-panel button:hover {
+        background: #334155;
+        border-color: #64748b;
+      }
+      .kudbee-logo {
+        font-size: 24px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 12px;
+        position: relative;
+        z-index: 1;
+      }
+    </style>
   </head>
   <body style="margin:0; background:#0a0a0f; height:100vh">
     <div id="root" style="height:100%"></div>
+    <div id="terminal-boot" role="status" aria-live="polite">
+      <div id="terminal-boot-card">
+        <div class="kudbee-logo">KUDBEE</div>
+        <div id="terminal-boot-title">Initializing Terminal...</div>
+        <div id="terminal-boot-detail">Loading the interactive runtime environment.</div>
+        <div id="terminal-snippet">THINK: Knowledge is the bridge between data and wisdom.</div>
+        <div id="terminal-progress">
+          <div id="terminal-progress-bar"></div>
+        </div>
+        <div id="terminal-diagnostic-panel" hidden>
+          <button id="terminal-copy-diagnostics" type="button">Copy diagnostics</button>
+          <button id="terminal-retry" type="button">Retry</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const boot = document.getElementById('terminal-boot');
+        const title = document.getElementById('terminal-boot-title');
+        const detail = document.getElementById('terminal-boot-detail');
+        const snippet = document.getElementById('terminal-snippet');
+        const progressBar = document.getElementById('terminal-progress-bar');
+        const panel = document.getElementById('terminal-diagnostic-panel');
+        const diagnostics = { startedAt: new Date().toISOString(), mounted: false, events: [] };
+        let mounted = false;
+        let progressInterval;
+        let snippetInterval;
+
+        const snippets = [
+          'THINK: Knowledge is the bridge between data and wisdom.',
+          'KUDBEE: Orchestrating intelligence across distributed systems.',
+          'THINK: Every agent is a node in the collective consciousness.',
+          'KUDBEE: Building the future of autonomous collaboration.',
+          'THINK: From chaos emerges order, from data emerges insight.',
+          'KUDBEE: Where artificial meets authentic intelligence.',
+          'THINK: The swarm thinks as one, yet each agent knows itself.',
+          'KUDBEE: Transforming complexity into clarity.',
+          'THINK: Memory is the foundation of learning.',
+          'KUDBEE: Empowering agents with persistent knowledge.',
+          'THINK: In the network of minds, no thought is isolated.',
+          'KUDBEE: Scaling intelligence through distributed wisdom.',
+          'THINK: Every decision is a step toward optimization.',
+          'KUDBEE: The architecture of autonomous excellence.',
+          'THINK: Data flows like rivers through the neural landscape.',
+          'KUDBEE: Where agents become architects of possibility.'
+        ];
+
+        const redact = (value) => String(value || '').slice(0, 240).replace(/(api[_-]?key|token|secret|password)=?[^\s&]+/gi, '$1=[redacted]');
+        const persist = () => { try { sessionStorage.setItem('kudbee-terminal-diagnostics', JSON.stringify(diagnostics)); } catch {} };
+        const record = (event) => { diagnostics.events.push({ at: new Date().toISOString(), ...event }); diagnostics.events = diagnostics.events.slice(-20); persist(); };
+        
+        const showFailure = (message) => {
+          if (mounted) return;
+          clearInterval(progressInterval);
+          clearInterval(snippetInterval);
+          title.textContent = 'Terminal startup needs attention';
+          detail.textContent = `${message}\n\nUse Copy diagnostics before retrying. No credentials are included.`;
+          snippet.textContent = 'ERROR: System initialization interrupted.';
+          snippet.style.borderLeftColor = '#ef4444';
+          snippet.style.background = 'rgba(239, 68, 68, 0.1)';
+          snippet.style.color = '#fca5a5';
+          panel.hidden = false;
+        };
+
+        // Animate progress bar
+        let progress = 0;
+        progressInterval = setInterval(() => {
+          progress += Math.random() * 15;
+          if (progress > 90) progress = 90;
+          progressBar.style.width = progress + '%';
+        }, 300);
+
+        // Rotate snippets
+        let snippetIndex = 0;
+        snippetInterval = setInterval(() => {
+          snippetIndex = (snippetIndex + 1) % snippets.length;
+          snippet.style.animation = 'none';
+          setTimeout(() => {
+            snippet.textContent = snippets[snippetIndex];
+            snippet.style.animation = 'fadeIn 0.5s ease-in';
+          }, 50);
+        }, 3000);
+
+        window.__KUDBEE_TERMINAL_DIAGNOSTICS__ = diagnostics;
+        window.__KUDBEE_TERMINAL_DIAGNOSTICS__.getReport = () => JSON.stringify(diagnostics, null, 2);
+        
+        window.addEventListener('error', (event) => {
+          const target = event.target;
+          const asset = target && (target.src || target.href);
+          record({ kind: asset ? 'asset-error' : 'runtime-error', message: redact(event.message || 'resource failed'), asset: asset || undefined });
+          showFailure(asset ? `Unable to load terminal asset: ${asset}` : `Runtime error: ${redact(event.message || 'unknown error')}`);
+        }, true);
+        
+        window.addEventListener('unhandledrejection', (event) => {
+          const message = redact(event.reason?.message || event.reason || 'unhandled promise rejection');
+          record({ kind: 'unhandled-rejection', message });
+          showFailure(`Unhandled startup error: ${message}`);
+        });
+        
+        window.addEventListener('kudbee:terminal_error', (event) => {
+          const message = redact(event.detail?.message || 'terminal component error');
+          record({ kind: 'component-error', panel: event.detail?.panel, message });
+          showFailure(`Terminal component error: ${message}`);
+        });
+        
+        window.addEventListener('kudbee:terminal_mounted', () => {
+          mounted = true;
+          diagnostics.mounted = true;
+          diagnostics.mountedAt = new Date().toISOString();
+          persist();
+          clearInterval(progressInterval);
+          clearInterval(snippetInterval);
+          progressBar.style.width = '100%';
+          setTimeout(() => {
+            boot.classList.add('fade-out');
+            setTimeout(() => boot.hidden = true, 500);
+          }, 300);
+        }, { once: true });
+        
+        document.getElementById('terminal-copy-diagnostics').addEventListener('click', async () => {
+          const report = window.__KUDBEE_TERMINAL_DIAGNOSTICS__.getReport();
+          try { await navigator.clipboard.writeText(report); } catch { detail.textContent = `${detail.textContent}\n\n${report}`; }
+        });
+        
+        document.getElementById('terminal-retry').addEventListener('click', () => window.location.reload());
+        
+        setTimeout(() => {
+          if (!mounted) {
+            record({ kind: 'mount-timeout', message: 'React terminal did not mount within 12 seconds' });
+            showFailure('The terminal did not finish mounting within 12 seconds.');
+          }
+        }, 12000);
+      })();
+    </script>
     <script type="module" src="/src/terminal.tsx"></script>
   </body>
 </html>
