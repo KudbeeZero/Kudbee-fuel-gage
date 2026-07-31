@@ -1,7 +1,13 @@
 ---
 id: monitor
 category: observability
+description: Infrastructure health, connection, and rate-boundary monitor
+triggers: monitor, health, dyno, connection, rate
 schedule: on-deploy
+actions: recall, probe, report, update
+uuid: ops-001
+memoryId: monitor
+created: 2026-07-31
 status: active
 script: |
   echo "[Monitor] Infrastructure watcher running on Heroku dyno"

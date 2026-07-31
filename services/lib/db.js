@@ -19,6 +19,25 @@
 import { Pool } from 'pg';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
+const DEFAULT_DB_POOL_MAX = 5;
+const MIN_DB_POOL_MAX = 1;
+const MAX_DB_POOL_MAX = 20;
+
+function parseClampedInteger(value, fallback, min, max) {
+  if (value === undefined || value === null || String(value).trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.min(Math.max(parsed, min), max);
+}
+
+// Neon free-tier safety default. The upper bound prevents an environment
+// typo from creating more connections than the shared database can support.
+export const DB_POOL_MAX = parseClampedInteger(
+  process.env.DB_POOL_MAX,
+  DEFAULT_DB_POOL_MAX,
+  MIN_DB_POOL_MAX,
+  MAX_DB_POOL_MAX
+);
 
 let _pool = null;
 // Optimistically assume healthy until proven otherwise: Neon's Pool lazily
@@ -76,7 +95,7 @@ export function getDbPool() {
 
   const pool = new Pool({
     connectionString: DATABASE_URL,
-    max: 20,
+    max: DB_POOL_MAX,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
     ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
@@ -147,6 +166,20 @@ function startHealthReprobe() {
 /** True when the Neon pool is configured AND has not reported an error. */
 export function isDbHealthy() {
   return Boolean(DATABASE_URL) && _healthy;
+}
+
+/** Return live counters for the shared pool without creating a new pool. */
+export function getDbPoolStats() {
+  const totalCount = Number(_pool?.totalCount || 0);
+  const idleCount = Number(_pool?.idleCount || 0);
+  const waitingCount = Number(_pool?.waitingCount || 0);
+  return {
+    totalCount,
+    activeCount: Math.max(0, totalCount - idleCount),
+    idleCount,
+    waitingCount,
+    max: DB_POOL_MAX,
+  };
 }
 
 /** Release the pool (used on graceful shutdown). Safe to call when disabled. */
@@ -408,7 +441,7 @@ function runInsertMemory(sql, params = []) {
     return { id: row.id, changes: 1 };
   }
   if (/INTO think_tokens/.test(s)) {
-    const [original_trace_id, task_context, failed_state, correction_delta, status, embedding, token_cost, kd = 0, efficacy = 0, locked_by = null] = params;
+    const [original_trace_id, task_context, failed_state, correction_delta, embedding, status, token_cost, kd = 0, efficacy = 0, locked_by = null] = params;
     const row = {
       id: nextId(), original_trace_id, task_context, failed_state, correction_delta,
       embedding: embedding || null,

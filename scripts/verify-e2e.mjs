@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url);
 const INGESTION_DIR = `${__dirname}/../services/ingestion`;
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
+const smokeMode = process.argv.includes('--smoke') || process.env.E2E_ALLOW_DATABASE_WRITES !== '1';
 const TEST_STREAM_SECRET = 'ds02-e2e-stream-secret';
 const TEST_SESSION_SECRET = 'ds02-e2e-session-secret';
 const TEST_PRINCIPALS = Object.freeze({
@@ -70,7 +71,7 @@ async function waitForServer(url, timeoutMs = 10000) {
 }
 
 async function startServer() {
-  console.log('[E2E] Starting ingestion server...');
+  console.log(smokeMode ? '[E2E] Starting isolated smoke server...' : '[E2E] Starting ingestion server...');
   const tsxPath = require.resolve('tsx/cli');
   serverProcess = spawn(process.execPath, [tsxPath, 'server.js'], {
     cwd: INGESTION_DIR,
@@ -81,6 +82,15 @@ async function startServer() {
       STREAM_SECRET: TEST_STREAM_SECRET,
       SESSION_SECRET: TEST_SESSION_SECRET,
       KUDBEE_TENANT_MEMBERSHIPS: TEST_TENANT_MEMBERSHIPS,
+      ...(smokeMode
+        ? {
+            DATABASE_URL: '',
+            REDIS_URL: '',
+            REDIS_WORKER_URL: '',
+            REDIS_SLOW_URL: '',
+            E2E_ALLOW_DATABASE_WRITES: '0',
+          }
+        : {}),
     },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
@@ -1193,6 +1203,22 @@ async function check43_BusToCacheFlush() {
 async function run() {
   try {
     await startServer();
+    if (smokeMode) {
+      await runCheck('Smoke: health endpoint', check1_HealthEndpoint);
+      await runCheck('Smoke: health-check API endpoint', check2_HealthCheckApi);
+      await runCheck('Smoke: deep health endpoint', check12_DeepHealthEndpoint);
+      await stopServer();
+      console.log('\n========================================');
+      console.log(`Smoke results: ${passed} passed, ${failed} failed out of 3`);
+      console.log('========================================');
+      if (failed > 0) {
+        console.error('[E2E] SMOKE VERIFICATION FAILED');
+        process.exitCode = 1;
+      } else {
+        console.log('[E2E] BOUNDED SMOKE PASSED (database and provider writes disabled)');
+      }
+      return;
+    }
     await runCheck('Check 1: Health endpoint', check1_HealthEndpoint);
     await runCheck('Check 2: Health-check API endpoint', check2_HealthCheckApi);
     await runCheck('Check 3: Valid telemetry ingest', check3_ValidIngest);

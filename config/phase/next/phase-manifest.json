@@ -16,10 +16,15 @@
     "Do not treat localStorage as authentication",
     "Do not claim a check passed without current command evidence",
     "Record changed files, tests, risks, and rollback steps",
+    "Use company agent and integration manifests as required authority boundaries",
+    "Run bounded E2E smoke by default; database-writing E2E requires E2E_ALLOW_DATABASE_WRITES=1",
     "Human approval is required for authentication, tenant, data, and deployment changes"
   ],
   "requiredCommands": [
     "npm run verify:typescript",
+    "npm run verify:agent-contracts",
+    "npm run verify:integrations",
+    "npm run verify:learning-protocol",
     "npm run typecheck",
     "bun test",
     "node scripts/verify-system-integrity.mjs",

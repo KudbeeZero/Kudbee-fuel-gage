@@ -8,26 +8,51 @@ uuid: ver-001
 memoryId: verification-patterns
 created: 2026-07-27
 ---
-echo "[ci-watcher] Running verification..."
+set -eu
+
+echo "[ci-watcher] Running bounded verification smoke..."
 
 echo ""
-echo "  Gate 1: Typecheck"
-npm run typecheck 2>&1 | tail -1
+echo "  Gate 1: Agent contracts"
+npm run verify:agent-contracts
 
 echo ""
-echo "  Gate 2: Tests"
-(cd services/lib && npx -y bun test test/ 2>&1 | tail -3)
+echo "  Gate 2: Integration availability"
+npm run verify:integrations
 
 echo ""
-echo "  Gate 3: Build"
-npm run build --workspace=@kudbee/web 2>&1 | tail -1
+echo "  Gate 3: Learning protocol"
+npm run verify:learning-protocol
 
 echo ""
-echo "  Gate 4: E2E"
-node scripts/verify-e2e.mjs 2>&1 | tail -3
+echo "  Gate 4: E2E smoke (provider writes disabled)"
+if [ "${E2E_ALLOW_DATABASE_WRITES:-0}" = "1" ]; then
+  echo "  E2E_ALLOW_DATABASE_WRITES=1; running full database-writing E2E"
+  node scripts/verify-e2e.mjs
+else
+  echo "  E2E_ALLOW_DATABASE_WRITES is not 1; running isolated bounded smoke"
+  node scripts/verify-e2e.mjs --smoke
+fi
+
+if [ "${CI_WATCHER_FULL:-0}" = "1" ]; then
+  echo ""
+  echo "  Extended gates: Typecheck"
+  npm run typecheck
+
+  echo ""
+  echo "  Extended gates: Tests"
+  (cd services/lib && npx -y bun test test/)
+
+  echo ""
+  echo "  Extended gates: Build"
+  npm run build --workspace=@kudbee/web
+else
+  echo ""
+  echo "  Extended gates skipped by default; set CI_WATCHER_FULL=1 for local extended checks"
+fi
 
 echo ""
-echo "  Gate 5: Knowledge"
-node scripts/snippet-agent.mjs health 2>&1 | tail -5
+echo "  Gate 5: Knowledge health"
+node scripts/snippet-agent.mjs health
 
-node scripts/agents.mjs decide ci-watcher "verification_complete" "all 5 gates executed"
+node scripts/agents.mjs decide ci-watcher "verification_complete" "bounded contract, integration, learning, smoke, and knowledge gates executed"

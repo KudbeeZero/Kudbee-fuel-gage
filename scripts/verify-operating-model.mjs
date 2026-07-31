@@ -36,6 +36,19 @@ if (rootPackage.scripts?.['verify:typescript'] === 'node scripts/verify-typescri
   pass('typescript-script', 'npm run verify:typescript is registered');
 } else fail('typescript-script', 'npm run verify:typescript is not registered correctly');
 
+const requiredOperatingGates = [
+  ['verify:agent-contracts', 'node scripts/verify-agent-contracts.mjs'],
+  ['verify:integrations', 'node scripts/verify-integrations.mjs'],
+  ['verify:learning-protocol', 'node scripts/verify-learning-protocol.mjs'],
+];
+for (const [name, command] of requiredOperatingGates) {
+  if (rootPackage.scripts?.[name] === command) pass(`script:${name}`, `${name} is registered`);
+  else fail(`script:${name}`, `${name} is not registered correctly`);
+  const gate = spawnSync('npm', ['run', name], { cwd: root, encoding: 'utf8', timeout: 120_000 });
+  if (gate.status === 0) pass(`gate:${name}`, `${name} passed`);
+  else fail(`gate:${name}`, `${name} failed`);
+}
+
 if (exists('scripts/verify-typescript-version.mjs')) {
   const result = spawnSync('npm', ['run', 'verify:typescript'], {
     cwd: root,
@@ -57,7 +70,23 @@ if (exists('.github/workflows')) {
   else pass('github-actions', 'workflow directory contains no active YAML workflows');
 } else pass('github-actions', 'workflow directory removed');
 
-for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-typescript-version.mjs', 'scripts/verify-e2e.mjs', 'scripts/verify-secret-hygiene.mjs', 'scripts/box-web-verify.mjs', 'config/secrets/manifest.json']) {
+for (const required of [
+  'scripts/ci-self-hosted.mjs',
+  'scripts/verify-next-phase.mjs',
+  'scripts/verify-typescript-version.mjs',
+  'scripts/verify-e2e.mjs',
+  'scripts/verify-secret-hygiene.mjs',
+  'scripts/verify-agent-contracts.mjs',
+  'scripts/verify-integrations.mjs',
+  'scripts/verify-learning-protocol.mjs',
+  'scripts/box-web-verify.mjs',
+  'config/secrets/manifest.json',
+  'config/agents/company-manifest.json',
+  'config/integrations/manifest.json',
+  'config/think/protocol.json',
+  '.kilo/memory/snippets/company-agent-learning-protocol.md',
+  '.kilo/memory/tokens/company-agent-learning.token',
+]) {
   if (exists(required)) pass(`self-hosted:${required}`, 'present');
   else fail(`self-hosted:${required}`, 'missing');
 }

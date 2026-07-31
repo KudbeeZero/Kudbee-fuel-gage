@@ -24,6 +24,7 @@ import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governan
 import { archive_thought } from '../agents/hermes.js';
 import {
   getDbPool,
+  getDbPoolStats,
   isDbHealthy,
   runQuery,
   runInsert,
@@ -652,12 +653,62 @@ async function ensureSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS vector_memory_embedding_idx
-        ON vector_memory
-        USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 16, ef_construction = 64)
-    `);
+
+    const ensureIndex = async (name, sql, optional = false) => {
+      try {
+        await pool.query(sql);
+      } catch (err) {
+        const prefix = optional ? 'Optional index' : 'Index';
+        console.warn(`[DB] ${prefix} ${name} unavailable:`, err.message);
+      }
+    };
+
+    await ensureIndex(
+      'idx_user_memories_agent_created_at',
+      'CREATE INDEX IF NOT EXISTS idx_user_memories_agent_created_at ON user_memories (agent_id, created_at)'
+    );
+    await ensureIndex(
+      'idx_think_agent_created_at',
+      'CREATE INDEX IF NOT EXISTS idx_think_agent_created_at ON think (agent_id, created_at)'
+    );
+    await ensureIndex(
+      'idx_think_tokens_status_created_at',
+      'CREATE INDEX IF NOT EXISTS idx_think_tokens_status_created_at ON think_tokens (status, created_at)'
+    );
+    await ensureIndex(
+      'idx_think_tokens_original_trace_id',
+      'CREATE INDEX IF NOT EXISTS idx_think_tokens_original_trace_id ON think_tokens (original_trace_id)'
+    );
+    await ensureIndex(
+      'idx_telemetry_traces_trace_id',
+      'CREATE INDEX IF NOT EXISTS idx_telemetry_traces_trace_id ON telemetry_traces (trace_id)'
+    );
+    await ensureIndex(
+      'idx_governance_actions_agent_timestamp',
+      'CREATE INDEX IF NOT EXISTS idx_governance_actions_agent_timestamp ON governance_actions (agent_id, timestamp)'
+    );
+    await ensureIndex(
+      'vector_memory_metadata_agent_id_idx',
+      "CREATE INDEX IF NOT EXISTS vector_memory_metadata_agent_id_idx ON vector_memory ((metadata->>'agent_id'))"
+    );
+    // HNSW is supported only by some pgvector installations. A failed optional
+    // index must not make schema boot fail or take the service offline.
+    await ensureIndex(
+      'vector_memory_embedding_idx',
+      `CREATE INDEX IF NOT EXISTS vector_memory_embedding_idx
+         ON vector_memory
+         USING hnsw (embedding vector_cosine_ops)
+         WITH (m = 16, ef_construction = 64)`,
+      true
+    );
+    await ensureIndex(
+      'think_tokens_embedding_idx',
+      `CREATE INDEX IF NOT EXISTS think_tokens_embedding_idx
+         ON think_tokens
+         USING hnsw (embedding vector_cosine_ops)
+         WITH (m = 16, ef_construction = 64)`,
+      true
+    );
     console.log('[DB] Neon schema ensured.');
   } catch (err) {
     console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
@@ -5721,10 +5772,18 @@ app.post('/api/terminal/execute', bearerAuth(), async (req, res) => {
 
 // --- Kilo API Telemetry: Captures ALL thoughts, processes, decisions, tokens ---
 app.get('/api/kilo/telemetry', async (_req, res) => {
+  const poolStats = getDbPoolStats();
+  const configuredMonthlyBudget = process.env.MONTHLY_DB_OPERATION_BUDGET?.trim()
+    ? Number(process.env.MONTHLY_DB_OPERATION_BUDGET)
+    : Number.NaN;
+  const monthlyDbOperationBudget = Number.isSafeInteger(configuredMonthlyBudget) && configuredMonthlyBudget >= 0
+    ? configuredMonthlyBudget
+    : 500_000;
+  const providerMeteringStatus = 'provider-metered/unavailable';
   const telemetry = {
     timestamp: new Date().toISOString(),
     databases: {
-      postgresql: { status: 'healthy', type: 'Neon Serverless', tables: 'ingestion_db + vector_memory', dimension: '1536' },
+      postgresql: { status: isDbHealthy() ? 'healthy' : 'unavailable', type: 'Neon Serverless', tables: 'ingestion_db + vector_memory', dimension: '1536' },
       redisFast: { status: 'healthy', endpoint: 'whole-tapir-175740.upstash.io', keys: 24, role: 'UI telemetry + terminal agents' },
       redisSlow: { status: 'healthy', endpoint: 'creative-finch-182843.upstash.io', keys: 1, role: 'governance workers' },
       pgvector: { status: 'healthy', dimension: 1536, role: 'embedding storage' },
@@ -5754,9 +5813,21 @@ app.get('/api/kilo/telemetry', async (_req, res) => {
     infrastructure: {
       nodeEnv: process.env.NODE_ENV || 'production',
       memory: '3.2 MB (Redis Fast)',
-      connections: 93,
+      connections: {
+        active: poolStats.activeCount,
+        idle: poolStats.idleCount,
+        waiting: poolStats.waitingCount,
+        total: poolStats.totalCount,
+        max: poolStats.max,
+      },
       opsPerSec: 4,
-      quotaUsage: '0.8% (4,000/500,000)',
+      quotaUsage: providerMeteringStatus,
+      dbOperationBudget: {
+        status: providerMeteringStatus,
+        monthlyLimit: monthlyDbOperationBudget,
+        used: null,
+        remaining: null,
+      },
     },
   };
   res.json(telemetry);

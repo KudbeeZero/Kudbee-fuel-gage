@@ -1,7 +1,13 @@
 ---
 id: ledger-keeper
 category: finance
+description: Budget and provider-operation evidence tracker
+triggers: budget, quota, spend, connection, cost
 schedule: hourly
+actions: recall, measure, update, report
+uuid: fin-001
+memoryId: ledger-keeper
+created: 2026-07-31
 status: active
 script: |
   echo "[LedgerKeeper] Budget & spend tracker"
