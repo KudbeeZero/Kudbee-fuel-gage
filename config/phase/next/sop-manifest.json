@@ -10,8 +10,8 @@
     "data-platform": { "owner": "deepseek-v4", "sop": ["durability state", "idempotency", "migration rollback", "outage test"] },
     "agents-and-gastown": { "owner": "deepseek-v4", "sop": ["Safe-Zone gate", "isolated worktree", "PENDING_APPROVAL", "convoy recovery"] },
     "quality-and-ci": { "owner": "ci-watcher", "sop": ["typecheck", "lint", "build", "E2E", "mobile", "browser evidence"] },
-    "operations-and-release": { "owner": "pipeline-guardian", "sop": ["staging first", "canonical URL", "health probe", "rollback plan", "release evidence"] },
-    "memory-and-knowledge": { "owner": "knowledge-curator", "sop": ["DTHINK record", "decision record", "snippet update", "no unsupported claims"] },
+    "operations-and-release": { "owner": "pipeline-guardian", "sop": ["staging first", "canonical URL", "health probe", "rollback plan", "release evidence", "upstash box verification", "redis state audit", "terminal diagnostic sweep"] },
+    "memory-and-knowledge": { "owner": "knowledge-curator", "sop": ["DTHINK record", "decision record", "snippet update", "no unsupported claims", "box investigation log", "redis key inventory"] },
     "human-review": { "owner": "operator", "sop": ["review P0/P1", "approve deployment", "resolve handoff", "confirm rollback authority"] }
   },
   "requiredArtifacts": ["config/phase/next/phase-manifest.json", "config/phase/next/governance-policy.json", "config/phase/next/sop-manifest.json", ".kilo/docs/deepseek-v4-qwen-3.6-pro-roadmap.md", ".kilo/command/pr.md", ".kilo/command/report.md", ".kilo/command/handoff.md"],
