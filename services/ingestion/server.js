@@ -124,6 +124,61 @@ const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 
+function loadAgentRegistry() {
+  const defaultPath = path.resolve(__dirname, '../../config/agents.json');
+  const registryPath = process.env.AGENT_REGISTRY_PATH || defaultPath;
+  try {
+    const raw = fs.readFileSync(registryPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    const map = new Map();
+    for (const agent of parsed.registry || []) {
+      if (agent?.status === 'active' && agent?.agentId && agent?.publicKey) {
+        map.set(agent.agentId, agent.publicKey);
+      }
+    }
+    return map;
+  } catch (error) {
+    console.warn(`[Auth] Failed to load agent registry at ${registryPath}:`, error?.message);
+    return new Map();
+  }
+}
+
+const AGENT_REGISTRY = loadAgentRegistry();
+
+function verifyAgentPassFromKey(headerValue, publicKey, expectedAgentId = null) {
+  if (!headerValue || !publicKey) return null;
+  try {
+    const pass = deserializePass(headerValue);
+    if (!pass) return null;
+    if (expectedAgentId && pass.agentId !== expectedAgentId) return null;
+    const isValid = verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS);
+    return isValid ? pass.agentId : null;
+  } catch {
+    return null;
+  }
+}
+
+function authenticateAgentPass(headerValue) {
+  if (!headerValue) return null;
+  try {
+    const pass = deserializePass(headerValue);
+    if (!pass) return null;
+    const publicKey = AGENT_REGISTRY.get(pass.agentId);
+    if (!publicKey) return null;
+    const isValid = verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS);
+    return isValid ? pass.agentId : null;
+  } catch {
+    return null;
+  }
+}
+
+function verifyAgentSignature(agentId, payload, signature) {
+  if (!agentId || !payload || !signature) return null;
+  const publicKey = AGENT_REGISTRY.get(agentId);
+  if (!publicKey) return null;
+  return verifySignature(publicKey, payload, signature) ? agentId : null;
+}
+
 // --- Phase 45: Request duration tracking and structured logging ---
 // Also records per-route latencies for the Middleware Inspector console.
 const ROUTE_LATENCY_BUFFER = new Map();
@@ -5772,4 +5827,3 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
     res.json({ error: e.message, timestamp: new Date().toISOString() });
   }
 });
-
