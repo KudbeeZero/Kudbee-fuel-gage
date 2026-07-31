@@ -1,0 +1,50 @@
+{
+  "taskId": "QW-02",
+  "model": "qwen-3.6-pro",
+  "status": "PASS",
+  "changedFiles": [
+    "apps/web/src/App.tsx",
+    "apps/web/src/pages/overview.tsx",
+    "apps/web/src/hooks/useOverviewHealth.ts",
+    "config/phase/next/phase-manifest.json",
+    ".kilo/memory/snippets/security-durability-foundation-phase.md"
+  ],
+  "commands": [
+    "node scripts/session-bootstrap.mjs",
+    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-02",
+    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-02",
+    "npm run phase:readiness:full",
+    "git diff --check",
+    "npm run typecheck --workspace=@kudbee/web",
+    "npm run build --workspace=@kudbee/web",
+    "node scripts/browser-verifier.mjs",
+    "npm run verify:browser-matrix",
+    "npm run phase:ops-audit"
+  ],
+  "evidence": {
+    "readiness": "25 passed, 0 failed, 2 environment warnings",
+    "webTypecheck": "passed",
+    "webBuild": "passed; main app bundle 337.80 kB",
+    "browserVerifier": "4 of 4 HTTP checks passed; no screenshot claimed",
+    "responsiveMatrix": "HTTP fallback reached local UI with status 200",
+    "operatingModel": "READY; 0 warnings; 0 failures",
+    "warnings": [
+      "Think-loop verification is environment-gated",
+      "Governance-loop verification is environment-gated",
+      "Playwright visual evidence is unavailable in the current host"
+    ]
+  },
+  "risks": [
+    "Overview health depends on existing diagnostics, governance, and SSE signals",
+    "Current probes and stream snapshots are not durable incident history",
+    "DS-01 authentication remains a P0 release blocker"
+  ],
+  "rollback": [
+    "Revert the OVERVIEW import, navigation entry, default tab, and render block in apps/web/src/App.tsx",
+    "Remove apps/web/src/pages/overview.tsx",
+    "Remove apps/web/src/hooks/useOverviewHealth.ts",
+    "Restore config/phase/next/phase-manifest.json status to ready-to-start",
+    "Remove the phase memory snippet and evidence artifact if the transition is rolled back"
+  ],
+  "nextDependency": "Human approval for deepseek-v4 DS-01 before editing authentication code"
+}
