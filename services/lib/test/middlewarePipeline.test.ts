@@ -2,10 +2,20 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test';
 
 describe('bearerAuthMiddleware', () => {
   let bearerAuth: typeof import('../bearerAuthMiddleware').bearerAuth;
+  let createSessionToken: typeof import('../bearerAuthMiddleware').createSessionToken;
+  let parseCookies: typeof import('../bearerAuthMiddleware').parseCookies;
+  let serializeSessionCookie: typeof import('../bearerAuthMiddleware').serializeSessionCookie;
+  let sessionCookieName: typeof import('../bearerAuthMiddleware').SESSION_COOKIE_NAME;
 
   beforeEach(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.SESSION_SECRET = 'middleware-test-session-secret';
     const mod = await import('../bearerAuthMiddleware');
     bearerAuth = mod.bearerAuth;
+    createSessionToken = mod.createSessionToken;
+    parseCookies = mod.parseCookies;
+    serializeSessionCookie = mod.serializeSessionCookie;
+    sessionCookieName = mod.SESSION_COOKIE_NAME;
   });
 
   function mockReq(overrides: Record<string, unknown> = {}): any {
@@ -62,6 +72,95 @@ describe('bearerAuthMiddleware', () => {
     await middleware(req, res, () => { called = true; });
 
     expect(called).toBe(true);
+  });
+
+  it('should authenticate a valid signed session cookie and attach the principal', async () => {
+    const token = createSessionToken({ agentId: 'session-agent', roles: ['viewer'] });
+    const middleware = bearerAuth({ required: true });
+    const req = mockReq({ headers: { cookie: `${sessionCookieName}=${encodeURIComponent(token)}` } });
+    const res = mockRes();
+    let called = false;
+
+    await middleware(req, res, () => { called = true; });
+
+    expect(called).toBe(true);
+    expect(req.agentId).toBe('session-agent');
+    expect(req.roles).toEqual(['viewer']);
+    expect(req.agentRoles).toEqual(['viewer']);
+    expect(req.authenticated).toBe(true);
+  });
+
+  it('should reject an expired session cookie on required routes', async () => {
+    const issuedAt = Date.now() - 8 * 60 * 60 * 1000 - 1000;
+    const token = createSessionToken({ agentId: 'expired-agent', roles: [] }, issuedAt);
+    const middleware = bearerAuth({ required: true });
+    const req = mockReq({ headers: { cookie: `${sessionCookieName}=${token}` } });
+    const res = mockRes();
+    let called = false;
+
+    await middleware(req, res, () => { called = true; });
+
+    expect(called).toBe(false);
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should reject a tampered session cookie on required routes', async () => {
+    const token = createSessionToken({ agentId: 'tampered-agent', roles: [] });
+    const [encodedClaims, signature] = token.split('.');
+    const tamperedSignature = `${signature![0] === 'a' ? 'b' : 'a'}${signature!.slice(1)}`;
+    const tamperedToken = `${encodedClaims}.${tamperedSignature}`;
+    const middleware = bearerAuth({ required: true });
+    const req = mockReq({ headers: { cookie: `${sessionCookieName}=${tamperedToken}` } });
+    const res = mockRes();
+    let called = false;
+
+    await middleware(req, res, () => { called = true; });
+
+    expect(called).toBe(false);
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should keep optional routes public when a session cookie is invalid', async () => {
+    const middleware = bearerAuth({ required: false });
+    const req = mockReq({ headers: { cookie: `${sessionCookieName}=tampered` } });
+    const res = mockRes();
+    let called = false;
+
+    await middleware(req, res, () => { called = true; });
+
+    expect(called).toBe(true);
+    expect(req.authenticated).toBe(false);
+    expect(req.agentId).toBeNull();
+  });
+
+  it('should parse cookies and serialize the required session attributes', () => {
+    const parsed = parseCookies('theme=dark; kudbee_session=token%2Evalue; empty=');
+    const serialized = serializeSessionCookie('token.value', { maxAgeSeconds: 60, secure: true });
+
+    expect(parsed.theme).toBe('dark');
+    expect(parsed[sessionCookieName]).toBe('token.value');
+    expect(parsed.empty).toBe('');
+    expect(serialized).toContain(`${sessionCookieName}=token.value`);
+    expect(serialized).toContain('Max-Age=60');
+    expect(serialized).toContain('Path=/');
+    expect(serialized).toContain('HttpOnly');
+    expect(serialized).toContain('SameSite=Lax');
+    expect(serialized).toContain('Secure');
+  });
+
+  it('should fail closed instead of using a production fallback session secret', () => {
+    const previousEnvironment = process.env.NODE_ENV;
+    const previousSecret = process.env.SESSION_SECRET;
+    process.env.NODE_ENV = 'production';
+    delete process.env.SESSION_SECRET;
+
+    expect(() => createSessionToken({ agentId: 'production-agent', roles: [] })).toThrow(
+      'SESSION_SECRET must be configured in production',
+    );
+
+    process.env.NODE_ENV = previousEnvironment;
+    if (previousSecret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = previousSecret;
   });
 });
 
