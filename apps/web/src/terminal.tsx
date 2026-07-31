@@ -15,5 +15,3 @@ if (!rootElement) {
     </StrictMode>,
   );
 }
-
-queueMicrotask(() => window.dispatchEvent(new CustomEvent('kudbee:terminal_mounted')));
