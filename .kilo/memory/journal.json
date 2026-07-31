@@ -1,133 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785405160747-ba2b2c05",
-      "date": "2026-07-30T09:52:41.004Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479741530-0bc543c6",
-      "date": "2026-07-31T06:35:41.788Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479742004-e50bb6d4",
-      "date": "2026-07-31T06:35:42.279Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479753152-a072f75d",
-      "date": "2026-07-31T06:35:53.404Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785480236272-8e2f32e3",
-      "date": "2026-07-31T06:43:56.556Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785480383062-106e4e24",
-      "date": "2026-07-31T06:46:23.341Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785482719794-570d61b4",
-      "date": "2026-07-31T07:25:20.054Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785486660097-e78529d3",
-      "date": "2026-07-31T08:31:00.361Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785553139987-b2421762",
-      "date": "2026-08-01T02:59:00.247Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785553318281-29061429",
-      "date": "2026-08-01T03:01:58.585Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785558722432-db856912",
-      "date": "2026-08-01T04:32:02.708Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785559051260-28ef4088",
-      "date": "2026-08-01T04:37:31.506Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785559051260-28ef4088",
-      "date": "2026-08-01T04:57:03.000Z",
-      "type": "heroku-pipeline",
-      "summary": "Heroku pipeline workflow perfected: 3 environments (dev/staging/prod), EDISBOX integration, CI bounds, deploy scripts, PR stack config updated to PR #233",
-      "filesChanged": [
-        "AGENTS.md",
-        "TERMINAL.md",
-        "BUILD.md",
-        "README.md",
-        "app.json",
-        "heroku-pipelines.json",
-        "config/pr/stack.json",
-        "scripts/deploy-dev.sh",
-        "scripts/deploy-prod.sh",
-        "scripts/edisbox-deploy.mjs",
-        "scripts/edisbox-pipeline.mjs",
-        ".kilo/memory/snippets/heroku-pipeline-setup.md"
-      ],
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785566092483-63741287",
-      "date": "2026-08-01T06:34:52.723Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785432545991-f0b92f84",
       "date": "2026-07-30T17:29:06.254Z",
       "type": "bootstrap",
@@ -309,10 +182,26 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785469967955-02ae41d1",
+      "date": "2026-07-31T03:52:48.286Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785478933764-d7e4536f",
+      "date": "2026-07-31T06:22:14.052Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 62,
+    "sessions": 64,
     "ciPassRate": "82%"
   },
   "health": {
