@@ -4,11 +4,12 @@
  * Pre-flight CI Gate Runner — catches issues before they hit GitHub CI.
  *
  * Runs the same checks as the `Verify` job in Kudbee CI workflow:
- *   1. Typecheck — turbo typecheck across all workspaces
- *   2. Lint — turbo lint (unused imports, format violations)
- *   3. Build — turbo build (verifies bundle integrity)
- *   4. Unused imports — scans frontend for dead lucide-react imports
- *   5. Decision log — records gate results to agent memory
+ *   1. TypeScript version — native TypeScript 7 compiler + TypeScript 6 API alias
+ *   2. Typecheck — turbo typecheck across all workspaces
+ *   3. Lint — turbo lint (unused imports, format violations)
+ *   4. Build — turbo build (verifies bundle integrity)
+ *   5. Unused imports — scans frontend for dead lucide-react imports
+ *   6. Decision log — records gate results to agent memory
  *
  * Usage:
  *   node scripts/verify-gates.mjs              # Run all gates
@@ -120,6 +121,16 @@ async function main() {
   if (unusedOnly) {
     report(results, errors);
     return;
+  }
+
+  // ── TypeScript version ─────────────────────────────────────────
+  console.log('\n  [TypeScript] Running repository version gate...');
+  const tsVersion = spin('npm run verify:typescript', 'typescript-version');
+  if (tsVersion.ok) {
+    results.push(gateStatus('typescript-version', 'PASS', 'TypeScript 7 native compiler + TypeScript 6 API alias passed'));
+  } else {
+    results.push(gateStatus('typescript-version', 'FAIL', 'TypeScript 7 contract failed'));
+    errors.push('TypeScript version gate failed');
   }
 
   // ── Typecheck ─────────────────────────────────────────────────

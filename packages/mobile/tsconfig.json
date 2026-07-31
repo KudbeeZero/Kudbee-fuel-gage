@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "types": ["bun"],
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true

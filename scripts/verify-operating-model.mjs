@@ -2,6 +2,7 @@
 /** Audit PR, pipeline, SOP, agent, and memory operating contracts. */
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const root = process.cwd();
 const failures = [];
@@ -25,10 +26,30 @@ else {
 }
 
 const pr = read('.kilo/command/pr.md');
-for (const required of ['phase-governor', 'verify-next-phase', 'git diff --check', 'review', 'rollback']) {
+for (const required of ['phase-governor', 'verify-next-phase', 'git diff --check', 'npm run verify:typescript', 'review', 'rollback']) {
   if (pr.includes(required)) pass(`pr:${required}`, 'documented');
   else fail(`pr:${required}`, 'missing from PR workflow');
 }
+
+const rootPackage = JSON.parse(read('package.json'));
+if (rootPackage.scripts?.['verify:typescript'] === 'node scripts/verify-typescript-version.mjs') {
+  pass('typescript-script', 'npm run verify:typescript is registered');
+} else fail('typescript-script', 'npm run verify:typescript is not registered correctly');
+
+if (exists('scripts/verify-typescript-version.mjs')) {
+  const result = spawnSync('npm', ['run', 'verify:typescript'], {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: 120_000,
+  });
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`;
+  if (result.status === 0) {
+    pass('typescript-gate', 'TypeScript 7 native compiler + TypeScript 6 API alias gate passed');
+    if (output.includes('[WARN] parser-compatibility')) {
+      warn('typescript-parser-compatibility', 'TypeScript 6 API alias is absent; typescript-eslint compatibility follow-up is required');
+    }
+  } else fail('typescript-gate', 'TypeScript 7 version gate failed');
+} else fail('typescript-gate', 'scripts/verify-typescript-version.mjs missing');
 
 if (exists('.github/workflows')) {
   const workflows = fs.readdirSync(path.join(root, '.github/workflows')).filter((file) => /\.(yml|yaml)$/.test(file));
@@ -36,7 +57,7 @@ if (exists('.github/workflows')) {
   else pass('github-actions', 'workflow directory contains no active YAML workflows');
 } else pass('github-actions', 'workflow directory removed');
 
-for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-e2e.mjs', 'scripts/verify-secret-hygiene.mjs', 'scripts/box-web-verify.mjs', 'config/secrets/manifest.json']) {
+for (const required of ['scripts/ci-self-hosted.mjs', 'scripts/verify-next-phase.mjs', 'scripts/verify-typescript-version.mjs', 'scripts/verify-e2e.mjs', 'scripts/verify-secret-hygiene.mjs', 'scripts/box-web-verify.mjs', 'config/secrets/manifest.json']) {
   if (exists(required)) pass(`self-hosted:${required}`, 'present');
   else fail(`self-hosted:${required}`, 'missing');
 }

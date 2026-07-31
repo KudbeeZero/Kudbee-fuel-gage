@@ -45,6 +45,7 @@ const requiredFiles = [
   'scripts/model-task-packet.mjs',
   'scripts/phase-governor.mjs',
   'scripts/verify-operating-model.mjs',
+  'scripts/verify-typescript-version.mjs',
   'config/phase/next/governance-policy.json',
   'config/phase/next/sop-manifest.json',
   'scripts/verify-system-integrity.mjs',
@@ -62,6 +63,7 @@ run('governor:deepseek', process.execPath, ['scripts/phase-governor.mjs', 'check
 run('governor:qwen', process.execPath, ['scripts/phase-governor.mjs', 'check', 'qwen-3.6-pro', 'QW-06'], { success: 'QW-06 governance passes' });
 run('operating-model', process.execPath, ['scripts/verify-operating-model.mjs'], { success: 'PR, pipeline, SOP, and memory contracts pass' });
 run('diff-hygiene', 'git', ['diff', '--check'], { success: 'no whitespace errors' });
+run('typescript-version', 'npm', ['run', 'verify:typescript'], { success: 'TypeScript 7 native compiler + TypeScript 6 API alias gate passed' });
 run('typecheck', 'npm', ['run', 'typecheck'], { success: '12 workspace checks passed' });
 run('integrity', process.execPath, ['scripts/verify-system-integrity.mjs'], { success: 'system integrity passed' });
 

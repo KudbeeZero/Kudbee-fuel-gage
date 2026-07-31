@@ -3,27 +3,32 @@ description: Full CI verification gate with breadcrumb tracing — run all gates
 ---
 Run the full verification suite with embedded breadcrumbs:
 
-## Gate 1: Typecheck
+## Gate 1: TypeScript Version
+Run: `npm run verify:typescript`
+If passed: log breadcrumb `[verify] typescript-version PASS native 7.0.2 / API 6.x`
+If failed: log breadcrumb `[verify] typescript-version FAIL` with the violating declaration or lock entry, STOP
+
+## Gate 2: Typecheck
 Run: `npm run typecheck`
 If passed: log breadcrumb `[verify] typecheck PASS 12/12`
 If failed: log breadcrumb `[verify] typecheck FAIL` with error details, STOP
 
-## Gate 2: Tests
+## Gate 3: Tests
 Run: `cd services/lib && bun test test/`
 If passed: log breadcrumb `[verify] tests PASS (46/46)`
 If failed: log breadcrumb `[verify] tests FAIL` with failing test names, ASK "Fix or continue?"
 
-## Gate 3: Build
+## Gate 4: Build
 Run: `npm run build --workspace=@kudbee/web`
 If passed: log breadcrumb `[verify] build PASS 290kB chunk`
 If failed: log breadcrumb `[verify] build FAIL` with error summary, STOP
 
-## Gate 4: E2E
+## Gate 5: E2E
 Run: `node scripts/verify-e2e.mjs`
 If passed: log breadcrumb `[verify] e2e PASS 38/38`
 If failed: log breadcrumb `[verify] e2e FAIL` with failed check details, STOP
 
-## Gate 5: Knowledge Extraction
+## Gate 6: Knowledge Extraction
 Run: `node scripts/extract-codebase-knowledge.mjs`
 Run: `node scripts/snippet-manager.mjs verify`
 If passed: log breadcrumb `[verify] knowledge PASS (X tokens, Y snippets)`
