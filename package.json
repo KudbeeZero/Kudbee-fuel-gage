@@ -55,6 +55,7 @@
     "express-rate-limit": "^8.6.0",
     "ioredis": "^5.11.1",
     "pg": "^8.22.0",
+    "react-dom": "^19.2.8",
     "zod": "^4.4.3"
   }
 }
