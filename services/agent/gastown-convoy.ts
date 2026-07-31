@@ -93,11 +93,23 @@ export function dispatchConvoy(convoyId: string): GastownConvoy | null {
   return convoy;
 }
 
+export function startConvoy(convoyId: string): GastownConvoy | null {
+  const convoy = _convoys.get(convoyId);
+  if (!convoy || convoy.status !== 'DISPATCHED') return null;
+  convoy.status = 'IN_FLIGHT';
+  return convoy;
+}
+
 export function updateTaskStatus(convoyId: string, taskId: string, status: ConvoyTask['status'], result?: string): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
   const task = convoy.tasks.find((t) => t.id === taskId);
   if (!task) return null;
+  if (!['DISPATCHED', 'IN_FLIGHT'].includes(convoy.status)) return null;
+  if (status === 'running' && convoy.status === 'DISPATCHED') convoy.status = 'IN_FLIGHT';
+  if (status === 'running' && task.status !== 'pending') return null;
+  if (status === 'completed' && task.status !== 'running') return null;
+  if (status === 'failed' && !['pending', 'running'].includes(task.status)) return null;
   task.status = status;
   if (result !== undefined) task.result = result;
   if (status === 'completed' || status === 'failed') task.duration = Date.now() - new Date(convoy.createdAt).getTime();
@@ -119,6 +131,8 @@ export function updateTaskStatus(convoyId: string, taskId: string, status: Convo
 export function completeConvoy(convoyId: string, synthesis: string, mergedBranch?: string): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
+  if (convoy.status !== 'REFINING') return null;
+  if (convoy.tasks.some((task) => task.status !== 'completed')) return null;
   convoy.status = 'MERGED';
   convoy.completedAt = new Date().toISOString();
   convoy.synthesis = synthesis;

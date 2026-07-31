@@ -66,7 +66,7 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
-import { bearerAuth, authGuard } from '../lib/bearerAuthMiddleware.ts';
+import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -123,6 +123,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
+// Parse JSON before inline POST routes and mounted routers. Without this,
+// dictionary, lifecycle, governance, and telemetry requests see an empty body.
+app.use(express.json({ limit: '10mb' }));
 
 // --- Phase 45: Request duration tracking and structured logging ---
 // Also records per-route latencies for the Middleware Inspector console.
