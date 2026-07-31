@@ -80,8 +80,13 @@
       "query": "72 hour database connection budget neon monitor",
       "timestamp": "2026-07-31T04:52:04.347Z",
       "score": 8
+    },
+    {
+      "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
+      "timestamp": "2026-07-31T07:25:30.390Z",
+      "score": 17
     }
   ],
-  "lastRecall": "2026-07-31T04:52:04.347Z",
-  "recallCount": 16
+  "lastRecall": "2026-07-31T07:25:30.390Z",
+  "recallCount": 17
 }
