@@ -1,30 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785294254276-b80ca2b3",
-      "date": "2026-07-29T03:04:14.542Z",
-      "type": "bootstrap",
-      "agentsActive": 6,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785294347522-4b95d29f",
-      "date": "2026-07-29T03:05:47.780Z",
-      "type": "bootstrap",
-      "agentsActive": 6,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785297531116-e548210e",
-      "date": "2026-07-29T03:58:51.399Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785301045490-ecf663c4",
       "date": "2026-07-29T04:57:25.777Z",
       "type": "bootstrap",
@@ -214,10 +190,18 @@
       "remoteBranch": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
       "herokuApp": "kudbee-fuel-gage-staging",
       "redisConfig": "Upstash Redis created for e2e testing"
+    },
+    {
+      "session": "ses-1785461210510-119dcad8",
+      "date": "2026-07-31T01:26:50.972Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 47,
+    "sessions": 48,
     "ciPassRate": "82%"
   },
   "health": {
