@@ -1,5 +1,9 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, useColorScheme } from 'react-native';
+import { Text, StyleSheet, useColorScheme } from 'react-native';
+
+function TabIcon({ symbol, label }: { symbol: string; label: string }) {
+  return <Text style={styles.icon} accessibilityLabel={label}>{symbol}</Text>;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -21,28 +25,32 @@ export default function RootLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: () => null,
+          tabBarAccessibilityLabel: 'Workspace dashboard',
+          tabBarIcon: () => <TabIcon symbol="⌂" label="Dashboard" />,
         }}
       />
       <Tabs.Screen
         name="terminal"
         options={{
           title: 'Terminal',
-          tabBarIcon: () => null,
+          tabBarAccessibilityLabel: 'Agent terminal',
+          tabBarIcon: () => <TabIcon symbol=">" label="Terminal" />,
         }}
       />
       <Tabs.Screen
         name="governance"
         options={{
           title: 'Governance',
-          tabBarIcon: () => null,
+          tabBarAccessibilityLabel: 'Governance approvals',
+          tabBarIcon: () => <TabIcon symbol="◎" label="Governance" />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: () => null,
+          tabBarAccessibilityLabel: 'Mobile settings',
+          tabBarIcon: () => <TabIcon symbol="⚙" label="Settings" />,
         }}
       />
     </Tabs>
@@ -50,7 +58,6 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  icon: { fontSize: 16, textAlign: 'center' },
 });

@@ -1,46 +1,51 @@
 {
-  "taskId": "QW-04",
+  "taskId": "QW-05",
   "model": "qwen-3.6-pro",
   "status": "PASS",
   "changedFiles": [
-    "apps/web/src/components/PanelErrorBoundary.tsx",
-    "apps/web/src/lib/errorTelemetry.ts",
+    "apps/mobile/app/workspace.tsx",
+    "apps/mobile/app/governance.tsx",
+    "apps/mobile/app/settings.tsx",
+    "apps/mobile/app/_layout.tsx",
+    "apps/mobile/src/sdk/commands.ts",
+    "apps/mobile/src/store/useCommandStore.ts",
     "artifacts/phase-report.json"
   ],
   "commands": [
-    "node scripts/session-bootstrap.mjs",
-    "node scripts/verify-next-phase.mjs --full",
-    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-04",
-    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-04",
+    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-05",
+    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-05",
     "npm run verify:secrets",
-    "npm install --legacy-peer-deps",
     "npm run typecheck",
-    "node scripts/browser-verifier.mjs",
-    "node scripts/verify-operating-model.mjs",
+    "cd apps/mobile && npx tsc --noEmit",
+    "npm run build --workspace=@kudbee/web",
     "git diff --check"
   ],
   "evidence": {
-    "governor": "QW-04 scope and approval policy passed",
-    "secretHygiene": "READY; 8 optional-secret warnings; 0 failures",
-    "typecheck": "12 successful tasks; 0 failures",
-    "browserVerifier": "4 of 4 staging HTTP checks passed; Playwright visual evidence unavailable",
-    "operatingModel": "READY; 0 warnings; 0 failures",
+    "governor": "QW-05 scope and approval policy passed",
+    "mobileTypecheck": "No errors emitted",
+    "monorepoTypecheck": "12 of 12 tasks passed",
+    "webBuild": "PASS; terminal 0.41 kB, main 304.99 kB, vendor-react 194.37 kB",
     "deliverables": [
-      "Panel context is attached to telemetry receipts and inbox events",
-      "Every panel failure receives trace ID, release, timestamp, and fingerprint metadata",
-      "Panel fallback exposes Retry and Copy diagnostics actions",
-      "kudbee:error-inbox is emitted even when duplicate network reports are throttled"
+      "Live dashboard with health/fleet/Postgres/Redis polling and live attention signals",
+      "Governance view with API polling, approve/reject actions, progress indicators, and empty/error states",
+      "Settings view with reduced-motion toggle, telemetry purge with confirmation gate, and system actions",
+      "Safe command lifecycle with confirmation gate for destructive actions (purge, clear triage, bulk approve) and AbortController cancellation support",
+      "Accessible navigation with tabBarAccessibilityLabel on all four tabs, unicode tab icons, and accessibilityRole/label/state on interactive elements across all screens"
     ]
   },
   "risks": [
-    "The frontend error-report POST remains fire-and-forget and the backend route owner was not added because it is outside QW-04 scope",
-    "Browser verification used HTTP fallback because Playwright is unavailable in this host",
-    "Clipboard access can be denied by browser policy; the fallback explicitly reports Copy failed"
+    "Responsive smoke test is environment-gated (no device/browser matrix available)",
+    "Confirm gate is programmatic only; no UI confirmation dialog wired yet to runtime",
+    "Command cancellation aborts in-flight fetches but does not roll back already-executed side effects",
+    "Clipboard access for error diagnostics is browser-dependent"
   ],
   "rollback": [
-    "Revert the reportError context, receipt, and kudbee:error-inbox event additions in apps/web/src/lib/errorTelemetry.ts",
-    "Restore PanelErrorBoundary to console-only reporting with its original Retry action",
-    "Restore the prior QW-02 phase report if QW-04 is rolled back"
+    "Restore workspace.tsx to seed-only dashboard without API polling",
+    "Restore governance.tsx to placeholder screen",
+    "Restore settings.tsx to placeholder screen",
+    "Restore _layout.tsx to tabBarIcon: () => null without accessibility labels",
+    "Revert commands.ts confirmGate, terminalExecute, and cancellation wiring",
+    "Restore useCommandStore.ts to version without controllers and traceId"
   ],
-  "nextDependency": "Assign a backend route owner for /api/system/error-report, then proceed to the next independently governed task"
+  "nextDependency": "Wire confirmation UI dialog and proceed to the next independently governed task"
 }

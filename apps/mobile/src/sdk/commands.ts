@@ -7,21 +7,55 @@ export type CommandResult = {
   traceId?: string;
 };
 
+type ConfirmableKind = 'TELEMETRY_PURGE' | 'CLEAR_TRIAGE' | 'GOVERNANCE_BULK_APPROVE';
+
+const CONFIRMABLE_KINDS: Set<string> = new Set<ConfirmableKind>([
+  'TELEMETRY_PURGE',
+  'CLEAR_TRIAGE',
+  'GOVERNANCE_BULK_APPROVE',
+]);
+
+let confirmGate: ((kind: string, label: string) => Promise<boolean>) | null = null;
+
+export function setConfirmGate(gate: (kind: string, label: string) => Promise<boolean>) {
+  confirmGate = gate;
+}
+
 async function runMobileCommand(
   kind: string,
   label: string,
   description: string,
   runner: () => Promise<{ success: boolean; detail?: string; traceId?: string }>
 ): Promise<{ id: string; success: boolean; detail?: string }> {
-  const { enqueue, setState } = useCommandStore.getState();
+  const { enqueue, setState, cancel } = useCommandStore.getState();
+
+  if (CONFIRMABLE_KINDS.has(kind) && confirmGate) {
+    const allowed = await confirmGate(kind, label);
+    if (!allowed) {
+      return { id: 'cancelled', success: false, detail: `${label} cancelled by user` };
+    }
+  }
+
   const id = enqueue({ kind, label, description });
+  if (id === 'duplicate') {
+    return { id, success: false, detail: `${label} is already running` };
+  }
+
   setState(id, 'QUEUED', 'Queued…');
   setState(id, 'PROCESSING', 'Running…');
+
+  const controller = new AbortController();
+  cancel(id, controller);
+
   try {
     const result = await runner();
-    setState(id, result.success ? 'SUCCESS' : 'FAILED', result.detail);
+    setState(id, result.success ? 'SUCCESS' : 'FAILED', result.detail, result.traceId);
     return { id, success: result.success, detail: result.detail };
   } catch (err) {
+    if (controller.signal.aborted) {
+      setState(id, 'FAILED', 'Cancelled');
+      return { id, success: false, detail: 'Cancelled' };
+    }
     const message = err instanceof Error ? err.message : String(err);
     setState(id, 'FAILED', message);
     return { id, success: false, detail: message };
@@ -223,6 +257,23 @@ export const mobileCommandRunners = {
           detail: res?.found ? `Snapshot found (sim ${(res.similarity ?? 0).toFixed(3)})` : 'No matching snapshot',
         };
       }
+    ),
+
+  terminalExecute: (command: string) =>
+    runMobileCommand(
+      'TERMINAL_EXECUTE',
+      `> ${command}`,
+      'Execute an allowlisted KUDBEE terminal command against staging',
+      async () => {
+        const res = await apiPost<Record<string, unknown>>('/api/terminal/execute', { command });
+        const isError = res.type === 'terminal:error' || typeof res.error === 'string';
+        const detail = typeof res.message === 'string' ? res.message : JSON.stringify(res, null, 2);
+        return {
+          success: !isError,
+          detail,
+          traceId: typeof res.traceId === 'string' ? res.traceId : undefined,
+        };
+      },
     ),
 };
 
