@@ -23,6 +23,8 @@ import {
   Gauge,
   Sparkles,
   LayoutDashboard,
+  Network,
+  Shield,
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
@@ -49,7 +51,7 @@ import { ObservabilityPage } from './pages/observability';
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
-import { apiGet, apiUrl } from './lib/apiClient';
+import { apiGet } from './lib/apiClient';
 import { useOsSnapshot } from './components/OsStreamProvider';
 import { SettingsView, type SettingsViewProps } from './components/SettingsView';
 import { LoginView } from './components/LoginView';
@@ -137,50 +139,16 @@ export interface DashboardSummary {
 // --- MAIN APPLICATION ENTRY WITH SIDEBAR ROUTING ---
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('kudbee_session') === 'authenticated'
+  );
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    const checkSession = async () => {
-      try {
-        const response = await fetch(apiUrl('/api/auth/session'), {
-          headers: { Accept: 'application/json' },
-          credentials: 'include',
-        });
-        if (active) setIsAuthenticated(response.ok);
-      } catch {
-        if (active) setIsAuthenticated(false);
-      } finally {
-        if (active) setAuthChecked(true);
-      }
-    };
-
-    void checkSession();
-    return () => { active = false; };
+    setAuthChecked(true);
+    const t = setTimeout(() => setAuthChecked(true), 6000);
+    return () => clearTimeout(t);
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let active = true;
-    const checkSession = async () => {
-      try {
-        const response = await fetch(apiUrl('/api/auth/session'), {
-          headers: { Accept: 'application/json' },
-          credentials: 'include',
-        });
-        if (active && response.status === 401) setIsAuthenticated(false);
-      } catch {
-        // The existing API requests remain the source of truth during outages.
-      }
-    };
-
-    const interval = window.setInterval(() => void checkSession(), 60_000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [isAuthenticated]);
 
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
@@ -286,20 +254,6 @@ export default function App() {
     setToast({ id, message, type });
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(apiUrl('/api/auth/session'), {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-    } catch {
-      // Clear the local view even when the server is unreachable.
-    } finally {
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-    }
-  };
-
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
@@ -327,15 +281,6 @@ export default function App() {
       if (sData) setDbSummary(sData);
       setDbLogs(normalizeTelemetryLogs(rawLogs) as TelemetryLog[]);
     } catch (err) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        (err as { status?: unknown }).status === 401
-      ) {
-        setIsAuthenticated(false);
-        return;
-      }
       const message = err instanceof Error ? err.message : String(err);
       console.error("Failed to fetch dashboard metrics:", message);
       setHistoryError(message);
@@ -529,11 +474,7 @@ export default function App() {
   ];
 
   if (!authChecked) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-black text-emerald-400 font-mono text-xs uppercase tracking-widest">
-        Initializing secure session...
-      </div>
-    );
+    return null;
   }
 
   if (!isAuthenticated) {
@@ -565,7 +506,10 @@ export default function App() {
             </div>
           </div>
           <button 
-            onClick={() => void handleLogout()}
+            onClick={() => {
+              localStorage.removeItem('kudbee_session');
+              setIsAuthenticated(false);
+            }}
             className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer ml-auto"
             title="Lock Session"
           >
@@ -689,7 +633,10 @@ export default function App() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </div>
                   <button 
-                    onClick={() => void handleLogout()}
+                    onClick={() => {
+                      localStorage.removeItem('kudbee_session');
+                      setIsAuthenticated(false);
+                    }}
                     className="p-1.5 text-slate-500 hover:text-red-400 bg-slate-900 rounded border border-slate-800 transition-colors cursor-pointer"
                     title="Lock Session"
                   >
