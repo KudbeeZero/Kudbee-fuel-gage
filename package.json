@@ -32,7 +32,7 @@
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
     "ingest:topology": "tsx scripts/ingest-topology.ts",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "turbo run build --concurrency=4"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
