@@ -1,14 +1,36 @@
 {
   "agentId": "knowledge-curator",
   "category": "memory",
-  "exportedAt": "2026-07-27T18:36:19.730Z",
+  "exportedAt": "2026-08-01T06:59:33Z",
   "patterns": {
-    "totalActions": 2,
-    "totalRecalls": 0,
-    "totalDecisions": 2,
-    "topRecalled": []
+    "totalActions": 3,
+    "totalRecalls": 3,
+    "totalDecisions": 3,
+    "topRecalled": [
+      "heroku-pipeline-setup",
+      "review-app-config-pattern",
+      "verification-patterns"
+    ]
   },
   "capabilities": [
-    "memory"
+    "memory",
+    "heroku-ci-patterns",
+    "review-app-configuration",
+    "cors-middleware"
+  ],
+  "learnings": [
+    {
+      "id": "learn-memory-001",
+      "date": "2026-08-01T06:59:33Z",
+      "pattern": "Session recovery and memory persistence across Heroku pipeline work",
+      "summary": "Session ses-1785566092483 resumed successfully. All memory layers (journal, decisions, snippets, bus) intact after multiple deploys and pushes. Key learning: .kilo/memory/ files are committed to git and survive Heroku deploys.",
+      "sessionFiles": [
+        ".kilo/memory/journal.json — 79 sessions tracked",
+        ".kilo/memory/dthink/ — 75+ entries in feed",
+        ".kilo/memory/snippets/ — 9 active snippets including review-app-config-pattern.md",
+        ".kilo/memory/bus/ — serial bus events with pub/sub history",
+        ".kilo/memory/decisions/ — 355+ decision files across 11 agents"
+      ]
+    }
   ]
 }

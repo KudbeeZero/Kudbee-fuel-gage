@@ -1,14 +1,44 @@
 {
   "agentId": "pipeline-guardian",
   "category": "middleware",
-  "exportedAt": "2026-07-27T18:36:19.731Z",
+  "exportedAt": "2026-08-01T06:59:33Z",
   "patterns": {
-    "totalActions": 2,
-    "totalRecalls": 0,
-    "totalDecisions": 2,
-    "topRecalled": []
+    "totalActions": 3,
+    "totalRecalls": 2,
+    "totalDecisions": 3,
+    "topRecalled": [
+      "middleware-pipeline-architecture",
+      "heroku-pipeline-setup"
+    ]
   },
   "capabilities": [
-    "middleware"
+    "middleware",
+    "cors-middleware",
+    "review-app-pipeline"
+  ],
+  "learnings": [
+    {
+      "id": "learn-pipeline-001",
+      "date": "2026-08-01T06:45:00Z",
+      "pattern": "Missing CORS middleware causes browser API blocking on review apps",
+      "diagnosis": "server.js middleware chain had NO CORS middleware at all. Only a single Access-Control-Allow-Origin:'*' header on one endpoint. Browser preflight OPTIONS requests received no CORS headers, blocking all API calls.",
+      "fix": "Add global CORS handler as FIRST middleware (before express.json): set Access-Control-Allow-Origin from CORS_ALLOW_ORIGINS env or '*', set Allow-Methods/Allow-Headers, handle OPTIONS preflight with 204 response.",
+      "location": "services/ingestion/server.js — inserted after 'app.set('trust proxy')', before 'express.json()'"
+    },
+    {
+      "id": "learn-pipeline-002",
+      "date": "2026-08-01T06:50:00Z",
+      "pattern": "Review app configuration pipeline — env vars not inherited from parent pipeline",
+      "diagnosis": "Heroku review apps auto-created from PRs do NOT inherit config vars from staging/production pipeline environments. Only HEROKU_APP_NAME, HEROKU_BRANCH, HEROKU_PR_NUMBER, and NODE_ENV are auto-set.",
+      "fix": "Must manually copy critical env vars (DATABASE_URL, REDIS_URL, STREAM_SECRET, GROQ_API_KEY) from staging via Heroku API PATCH /apps/:app/config-vars. Then DELETE /apps/:app/dynos to restart.",
+      "api": "curl -X PATCH https://api.heroku.com/apps/:app/config-vars -d '{...}'"
+    },
+    {
+      "id": "learn-pipeline-003",
+      "date": "2026-08-01T06:20:00Z",
+      "pattern": "Heroku eco tier dyno limit is per-account, not per-app",
+      "diagnosis": "The 2-dyno eco limit applies ACROSS ALL APPS in the account. If production has 4 eco dynos, even a review app with 1 web dyno will fail because total account exceeds limit.",
+      "fix": "Set review app worker dynos to quantity:0. Reduce top-level formation from 4 to 1 dyno if total account usage exceeds 2 eco dynos."
+    }
   ]
 }

@@ -7,7 +7,7 @@ node scripts/session-bootstrap.mjs
 ```
 
 **This is mandatory.** It loads:
-- 6 integration pipelines (checkpoint, auto-registration, BUS→CACHE, Think Forge, skill import, voicemail)
+- 8 integration pipelines (checkpoint, auto-registration, BUS→CACHE, Think Forge, skill import, voicemail, EDISBOX deploy, review-app config)
 - 3 terminal agents with decision history and recall logs
 - 8 knowledge snippets with semantic recall tracking
 - 9 serial bus events (replayable audit trail)
