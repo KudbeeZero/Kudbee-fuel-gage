@@ -6,7 +6,14 @@
   "stack": "heroku-26",
   "buildpacks": [{ "url": "heroku/nodejs" }],
   "env": {
-    "NODE_ENV": { "value": "production" }
+    "NODE_ENV": { "value": "production" },
+    "REDIS_URL": { "required": false },
+    "REDIS_WORKER_URL": { "required": false },
+    "UPSTASH_REDIS_REST_URL": { "required": false },
+    "UPSTASH_REDIS_REST_TOKEN": { "required": false },
+    "DATABASE_URL": { "required": false },
+    "STREAM_SECRET": { "required": false },
+    "GROQ_API_KEY": { "required": false }
   },
   "environments": {
     "test": {
@@ -15,13 +22,8 @@
       },
       "env": {
         "NODE_ENV": "test",
-        "PORT": "9876",
-        "REDIS_URL": "",
-        "REDIS_WORKER_URL": "",
-        "UPSTASH_REDIS_REST_URL": "",
-        "UPSTASH_REDIS_REST_TOKEN": ""
+        "PORT": "9876"
       },
-      "addons": ["heroku-postgresql:mini"],
       "formation": {
         "test": { "quantity": 1, "size": "standard-1x" }
       }

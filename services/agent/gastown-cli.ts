@@ -16,7 +16,7 @@
 import { GastownManager } from './gastown.js';
 import { createInterface } from 'node:readline';
 import { SafeZoneEngine } from '@kudbee/opencode';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -24,14 +24,23 @@ function readStdin(): Promise<string> {
     const lines: string[] = [];
     rl.on('line', (line) => lines.push(line));
     rl.on('close', () => resolve(lines.join('\n').trim()));
-    setTimeout(() => { if (lines.length === 0) { rl.close(); resolve(''); } }, 100);
   });
 }
 
-function sh(cmd: string): string {
+function runVerification(script: string): { output: string; passed: boolean } {
   try {
-    return execSync(cmd, { encoding: 'utf8', timeout: 15_000 }).trim();
-  } catch { return ''; }
+    const output = execFileSync('node', [`scripts/${script}`], {
+      encoding: 'utf8',
+      timeout: 15_000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    return { output, passed: true };
+  } catch (error) {
+    const output = error && typeof error === 'object' && 'stdout' in error
+      ? String(error.stdout ?? '')
+      : '';
+    return { output, passed: false };
+  }
 }
 
 const BANNER = `
@@ -77,34 +86,29 @@ async function main() {
     const results: string[] = [];
 
     try {
-      const chaos = sh('node scripts/verify-middleware-chaos.mjs 2>/dev/null');
-      results.push('Middleware chaos: ' + (chaos.includes('PASS') || chaos.includes('ok') ? 'PASS' : 'RUN'));
+      results.push(`Middleware chaos: ${runVerification('verify-middleware-chaos.mjs').passed ? 'PASS' : 'FAIL'}`);
     } catch { results.push('Middleware chaos: SKIP'); }
 
     try {
-      const resilience = sh('node scripts/verify-resilience.mjs 2>/dev/null');
-      results.push('Resilience: ' + (resilience.includes('PASS') || resilience.includes('ok') ? 'PASS' : 'RUN'));
+      results.push(`Resilience: ${runVerification('verify-resilience.mjs').passed ? 'PASS' : 'FAIL'}`);
     } catch { results.push('Resilience: SKIP'); }
 
     try {
-      const adversarial = sh('node scripts/verify-adversarial-challenge.mjs 2>/dev/null');
-      results.push('Adversarial challenge: ' + (adversarial.includes('PASS') || adversarial.includes('ok') ? 'PASS' : 'RUN'));
+      results.push(`Adversarial challenge: ${runVerification('verify-adversarial-challenge.mjs').passed ? 'PASS' : 'FAIL'}`);
     } catch { results.push('Adversarial challenge: SKIP'); }
 
     try {
-      const e2e = sh('node scripts/verify-e2e.mjs 2>/dev/null | tail -3');
-      results.push('E2E suite: ' + (e2e.includes('PASS') || e2e.includes('ok') ? 'PASS' : 'RUN'));
+      results.push(`E2E suite: ${runVerification('verify-e2e.mjs').passed ? 'PASS' : 'FAIL'}`);
     } catch { results.push('E2E suite: SKIP'); }
 
     try {
-      const mesh = sh('node scripts/verify-phone-tree.mjs 2>/dev/null');
-      results.push('Mesh integrity: ' + (mesh.includes('PASS') || mesh.includes('ok') ? 'PASS' : 'RUN'));
+      results.push(`Mesh integrity: ${runVerification('verify-phone-tree.mjs').passed ? 'PASS' : 'FAIL'}`);
     } catch { results.push('Mesh integrity: SKIP'); }
 
     // Feed results into DTHINK
     for (const r of results) {
       try {
-        execSync(`node scripts/dthink-pipeline.mjs feed "system:verify" "${r}"`, { timeout: 5000 });
+        execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', 'system:verify', r], { timeout: 5000 });
       } catch {}
     }
 
@@ -133,8 +137,15 @@ async function main() {
   try {
     safeZone = new SafeZoneEngine({ mode: 'strict' });
     await safeZone.bootstrap(workspaceRoot);
-  } catch {
-    console.warn('[Gastown] Safe-Zone engine unavailable (degraded)');
+    await safeZone.evaluateTrajectory({
+      target: 'gastown:execute',
+      vector: [Math.min(prompt.length, 1000), 0, 0],
+      velocity: 0,
+    });
+  } catch (error) {
+    console.error('[Gastown] Safe-Zone authorization failed; execution blocked');
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
   }
 
   const manager = new GastownManager();
@@ -164,7 +175,7 @@ async function main() {
 
     // Feed outcome to DTHINK
     try {
-      execSync(`node scripts/dthink-pipeline.mjs feed "agent:complete" "Gastown session: ${results.length} tasks, ${summary.slice(0, 80)}"`, { timeout: 5000 });
+      execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', 'agent:complete', `Gastown session: ${results.length} tasks, ${summary.slice(0, 80)}`], { timeout: 5000 });
     } catch {}
   } catch (err) {
     console.error('\n[Gastown] Fatal:', err instanceof Error ? err.message : String(err));

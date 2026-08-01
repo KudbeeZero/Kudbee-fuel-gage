@@ -1,0 +1,13 @@
+{
+  "id": "evt-1785461323703-4a0e8f",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "YELLOW",
+    "diagnostic": "complete",
+    "publicHealth": "404",
+    "herokuCli": "unavailable"
+  },
+  "timestamp": "2026-07-31T01:28:43.703Z",
+  "sequence": 44
+}

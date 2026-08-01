@@ -11,12 +11,15 @@ export interface MobileCommand {
   startedAt: number;
   finishedAt?: number;
   detail?: string;
+  traceId?: string;
 }
 
 interface CommandStoreState {
   commands: MobileCommand[];
+  controllers: Map<string, AbortController>;
   enqueue: (cmd: Omit<MobileCommand, 'id' | 'state' | 'startedAt'>) => string;
-  setState: (id: string, state: CommandState, detail?: string) => void;
+  setState: (id: string, state: CommandState, detail?: string, traceId?: string) => void;
+  cancel: (id: string, controller: AbortController) => void;
   clear: () => void;
 }
 
@@ -28,14 +31,13 @@ function nextId(): string {
   return `cmd-${Date.now()}-${counter}`;
 }
 
-export const useCommandStore = create<CommandStoreState>((set) => ({
+export const useCommandStore = create<CommandStoreState>((set, get) => ({
   commands: [],
+  controllers: new Map(),
   enqueue: (cmd) => {
-    const active = useCommandStore
-      .getState()
-      .commands.some(
-        (c) => c.kind === cmd.kind && (c.state === 'QUEUED' || c.state === 'PROCESSING')
-      );
+    const active = get().commands.some(
+      (c) => c.kind === cmd.kind && (c.state === 'QUEUED' || c.state === 'PROCESSING')
+    );
     if (active) return 'duplicate';
     const id = nextId();
     const entry: MobileCommand = {
@@ -51,22 +53,37 @@ export const useCommandStore = create<CommandStoreState>((set) => ({
     }));
     return id;
   },
-  setState: (id, state, detail) => {
-    set((s) => ({
-      commands: s.commands.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              state,
-              detail: detail ?? c.detail,
-              finishedAt:
-                state === 'SUCCESS' || state === 'FAILED'
-                  ? Date.now()
-                  : c.finishedAt,
-            }
-          : c
-      ),
+  setState: (id, state, detail, traceId) => {
+    set((s) => {
+      // Clean up controller when command finishes or fails
+      if (state === 'SUCCESS' || state === 'FAILED') {
+        const ctrl = get().controllers.get(id);
+        if (ctrl) {
+          get().controllers.delete(id);
+        }
+      }
+      return {
+        commands: s.commands.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                state,
+                detail: detail ?? c.detail,
+                traceId: traceId ?? c.traceId,
+                finishedAt:
+                  state === 'SUCCESS' || state === 'FAILED'
+                    ? Date.now()
+                    : c.finishedAt,
+              }
+            : c
+        ),
+      };
+    });
+  },
+  cancel: (id, controller) => {
+    set((state) => ({
+      controllers: new Map(state.controllers).set(id, controller),
     }));
   },
-  clear: () => set({ commands: [] }),
+  clear: () => set({ commands: [], controllers: new Map() }),
 }));

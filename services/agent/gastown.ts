@@ -19,7 +19,7 @@
 
 import { SupervisorOrchestrator } from './orchestrator.js';
 import type { TaskResult } from './types.js';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 const AGENT_ID = `gastown-manager-${process.pid}`;
 const PREFIX = '[GASTOWN]';
@@ -31,6 +31,15 @@ function sh(cmd: string): string {
   } catch {
     return '';
   }
+}
+
+function feedDthink(type: string, message: string): void {
+  try {
+    execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', type, message], {
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+  } catch { /* DTHINK is best-effort and must not hide task results. */ }
 }
 
 interface ThinkToken {
@@ -84,9 +93,9 @@ export class GastownManager {
     try {
       const { getRelevantThinkTokens } = await import('../memory/vectorStore.js');
       const result = await getRelevantThinkTokens('system operations deployment architecture', 10);
-      if (result.ok && result.tokens) {
-        this.context.relevantTokens = result.tokens;
-        this.log('INFO', `Loaded ${result.tokens.length} THINK tokens from memory`);
+      if (result.ok && result.results) {
+        this.context.relevantTokens = result.results;
+        this.log('INFO', `Loaded ${result.results.length} THINK tokens from memory`);
       }
     } catch (err) {
       this.log('WARN', 'THINK token load failed (degraded):', String(err));
@@ -175,12 +184,7 @@ export class GastownManager {
     });
 
     // Feed into DTHINK pipeline
-    try {
-      execSync(
-        `node scripts/dthink-pipeline.mjs feed "agent:action" "Gastown executing: ${userPrompt.slice(0, 100).replace(/"/g, '\\"')}"`,
-        { timeout: 5000 }
-      );
-    } catch { /* best-effort */ }
+    feedDthink('agent:action', `Gastown executing: ${userPrompt.slice(0, 100)}`);
 
     this.log('INFO', `Executing: ${userPrompt.slice(0, 80)}`);
 
@@ -197,12 +201,7 @@ export class GastownManager {
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
 
-    try {
-      execSync(
-        `node scripts/dthink-pipeline.mjs feed "agent:decision" "Gastown complete: ${successCount} succeeded, ${failCount} failed, ${totalDuration}ms"`,
-        { timeout: 5000 }
-      );
-    } catch { /* best-effort */ }
+    feedDthink('agent:decision', `Gastown complete: ${successCount} succeeded, ${failCount} failed, ${totalDuration}ms`);
 
     // Mint THINK token from outcome
     if (results.length > 0) {
@@ -231,7 +230,7 @@ export class GastownManager {
       const successRate = results.filter((r) => r.success).length / results.length;
       const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
 
-      const tokenStatus = successRate >= 0.8 ? 'VERIFIED' : 'PENDING_APPROVAL';
+      const tokenStatus = 'PENDING_APPROVAL';
       const kd = Math.round(successRate * 100);
       const efficacy = Math.min(1, avgDuration < 5000 ? 0.9 : 0.5);
 
@@ -264,8 +263,8 @@ export class GastownManager {
     try {
       const { getRelevantThinkTokens } = await import('../memory/vectorStore.js');
       const result = await getRelevantThinkTokens(query, limit);
-      if (result.ok && result.tokens) {
-        return result.tokens;
+      if (result.ok && result.results) {
+        return result.results;
       }
     } catch (err) {
       this.log('WARN', 'THINK recall failed:', String(err));

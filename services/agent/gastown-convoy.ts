@@ -15,9 +15,15 @@
  */
 
 export const CONVOY_STATUSES = [
-  'ASSEMBLED', 'DISPATCHED', 'IN_FLIGHT', 'REFINING', 'MERGED', 'FAILED', 'CANCELLED'
+  'ASSEMBLED',
+  'DISPATCHED',
+  'IN_FLIGHT',
+  'REFINING',
+  'MERGED',
+  'FAILED',
+  'CANCELLED',
 ] as const;
-export type ConvoyStatus = typeof CONVOY_STATUSES[number];
+export type ConvoyStatus = (typeof CONVOY_STATUSES)[number];
 
 export interface ConvoyTask {
   id: string;
@@ -61,6 +67,10 @@ export function createConvoy(params: {
   rigId?: string;
   tags?: string[];
 }): GastownConvoy {
+  if (params.tasks.length === 0) {
+    throw new Error('A convoy must contain at least one task');
+  }
+
   const id = `convoy-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const convoy: GastownConvoy = {
     id,
@@ -93,14 +103,32 @@ export function dispatchConvoy(convoyId: string): GastownConvoy | null {
   return convoy;
 }
 
-export function updateTaskStatus(convoyId: string, taskId: string, status: ConvoyTask['status'], result?: string): GastownConvoy | null {
+export function startConvoy(convoyId: string): GastownConvoy | null {
+  const convoy = _convoys.get(convoyId);
+  if (!convoy || convoy.status !== 'DISPATCHED') return null;
+  convoy.status = 'IN_FLIGHT';
+  return convoy;
+}
+
+export function updateTaskStatus(
+  convoyId: string,
+  taskId: string,
+  status: ConvoyTask['status'],
+  result?: string
+): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
   const task = convoy.tasks.find((t) => t.id === taskId);
   if (!task) return null;
+  if (!['DISPATCHED', 'IN_FLIGHT'].includes(convoy.status)) return null;
+  if (status === 'running' && task.status !== 'pending') return null;
+  if (status === 'completed' && task.status !== 'running') return null;
+  if (status === 'failed' && !['pending', 'running'].includes(task.status)) return null;
+  if (status === 'running' && convoy.status === 'DISPATCHED') convoy.status = 'IN_FLIGHT';
   task.status = status;
   if (result !== undefined) task.result = result;
-  if (status === 'completed' || status === 'failed') task.duration = Date.now() - new Date(convoy.createdAt).getTime();
+  if (status === 'completed' || status === 'failed')
+    task.duration = Date.now() - new Date(convoy.createdAt).getTime();
 
   // Auto-advance convoy status
   const allDone = convoy.tasks.every((t) => t.status === 'completed' || t.status === 'failed');
@@ -116,9 +144,15 @@ export function updateTaskStatus(convoyId: string, taskId: string, status: Convo
   return convoy;
 }
 
-export function completeConvoy(convoyId: string, synthesis: string, mergedBranch?: string): GastownConvoy | null {
+export function completeConvoy(
+  convoyId: string,
+  synthesis: string,
+  mergedBranch?: string
+): GastownConvoy | null {
   const convoy = _convoys.get(convoyId);
   if (!convoy) return null;
+  if (convoy.status !== 'REFINING') return null;
+  if (convoy.tasks.some((task) => task.status !== 'completed')) return null;
   convoy.status = 'MERGED';
   convoy.completedAt = new Date().toISOString();
   convoy.synthesis = synthesis;
@@ -192,46 +226,79 @@ export async function getDatabaseMetrics(): Promise<DBMetrics | null> {
 
     // Total size (always works)
     try {
-      const r = await pool.query(`SELECT pg_size_pretty(pg_database_size(current_database())) as total_size`);
+      const r = await pool.query(
+        `SELECT pg_size_pretty(pg_database_size(current_database())) as total_size`
+      );
       metrics.totalSize = r.rows[0]?.total_size || '0 bytes';
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Think tokens
     try {
-      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('think_tokens')) as s FROM think_tokens`);
+      const r = await pool.query(
+        `SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('think_tokens')) as s FROM think_tokens`
+      );
       metrics.thinkTokens = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
-    } catch { /* table may not exist */ }
+    } catch {
+      /* table may not exist */
+    }
 
     // Telemetry logs
     try {
-      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('telemetry_logs')) as s FROM telemetry_logs`);
+      const r = await pool.query(
+        `SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('telemetry_logs')) as s FROM telemetry_logs`
+      );
       metrics.telemetryLogs = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
-    } catch { /* table may not exist */ }
+    } catch {
+      /* table may not exist */
+    }
 
     // Governance actions
     try {
-      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('governance_actions')) as s FROM governance_actions`);
-      metrics.governanceActions = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
-    } catch { /* table may not exist */ }
+      const r = await pool.query(
+        `SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('governance_actions')) as s FROM governance_actions`
+      );
+      metrics.governanceActions = {
+        count: Number(r.rows[0]?.c) || 0,
+        size: r.rows[0]?.s || '0 bytes',
+      };
+    } catch {
+      /* table may not exist */
+    }
 
     // Topology embeddings
     try {
-      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('system_topology_embeddings')) as s FROM system_topology_embeddings`);
-      metrics.topologyEmbeddings = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
-    } catch { /* table may not exist */ }
+      const r = await pool.query(
+        `SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('system_topology_embeddings')) as s FROM system_topology_embeddings`
+      );
+      metrics.topologyEmbeddings = {
+        count: Number(r.rows[0]?.c) || 0,
+        size: r.rows[0]?.s || '0 bytes',
+      };
+    } catch {
+      /* table may not exist */
+    }
 
     // Audit anchors
     try {
-      const r = await pool.query(`SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('audit_anchors')) as s FROM audit_anchors`);
+      const r = await pool.query(
+        `SELECT count(*) as c, pg_size_pretty(pg_total_relation_size('audit_anchors')) as s FROM audit_anchors`
+      );
       metrics.auditAnchors = { count: Number(r.rows[0]?.c) || 0, size: r.rows[0]?.s || '0 bytes' };
-    } catch { /* table may not exist */ }
+    } catch {
+      /* table may not exist */
+    }
 
     await pool.end();
 
     _dbMetricsCache = { data: metrics, ts: Date.now() };
     return metrics;
   } catch (err) {
-    console.warn('[Gastown] DB metrics query failed:', err instanceof Error ? err.message : String(err));
+    console.warn(
+      '[Gastown] DB metrics query failed:',
+      err instanceof Error ? err.message : String(err)
+    );
     return _dbMetricsCache?.data || null;
   }
 }

@@ -1,174 +1,180 @@
 {
   "journal": [
     {
-      "session": "ses-1785293936537-2b7a721b",
-      "date": "2026-07-29T02:58:56.783Z",
-      "type": "bootstrap",
-      "agentsActive": 6,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785294254276-b80ca2b3",
-      "date": "2026-07-29T03:04:14.542Z",
-      "type": "bootstrap",
-      "agentsActive": 6,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785294347522-4b95d29f",
-      "date": "2026-07-29T03:05:47.780Z",
-      "type": "bootstrap",
-      "agentsActive": 6,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785297531116-e548210e",
-      "date": "2026-07-29T03:58:51.399Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785301045490-ecf663c4",
-      "date": "2026-07-29T04:57:25.777Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785305016207-a743e000",
-      "date": "2026-07-29T06:03:36.524Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785305642666-4f9fb565",
-      "date": "2026-07-29T06:14:02.947Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785306814908-f2733457",
-      "date": "2026-07-29T06:33:35.133Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785308078828-c52c46aa",
-      "date": "2026-07-29T06:54:39.111Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785312063275-c2926638",
-      "date": "2026-07-29T08:01:03.478Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785314247957-c1236f15",
-      "date": "2026-07-29T08:37:28.234Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785316203814-591927b0",
-      "date": "2026-07-29T09:10:04.057Z",
-      "type": "bootstrap",
-      "agentsActive": 10,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785364694404-88fff99a",
-      "date": "2026-07-29T22:38:14.695Z",
+      "session": "ses-1785464961489-f067bc71",
+      "date": "2026-07-31T02:29:21.876Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785365124765-b48f5e99",
-      "date": "2026-07-29T22:45:25.050Z",
+      "session": "ses-1785465951255-385222f0",
+      "date": "2026-07-31T02:45:51.600Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785380867050-b4cb0ffb",
-      "date": "2026-07-30T03:07:47.241Z",
+      "session": "ses-1785466055433-33c2e876",
+      "date": "2026-07-31T02:47:35.772Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785382618438-97cda8dd",
-      "date": "2026-07-30T03:36:58.636Z",
+      "session": "ses-1785467088694-4b14261b",
+      "date": "2026-07-31T03:04:49.016Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785400894873-be1a0bd0",
-      "date": "2026-07-30T08:41:44.896Z",
+      "session": "ses-1785467258324-e8c1704d",
+      "date": "2026-07-31T03:07:38.750Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785401835499-84e5266e",
-      "date": "2026-07-30T08:57:15.748Z",
+      "session": "ses-1785467907341-eec27cf3",
+      "date": "2026-07-31T03:18:27.694Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785405160747-ba2b2c05",
-      "date": "2026-07-30T09:52:41.004Z",
+      "session": "ses-1785469967955-02ae41d1",
+      "date": "2026-07-31T03:52:48.286Z",
       "type": "bootstrap",
       "agentsActive": 11,
-      "snippetsAvailable": 8,
+      "snippetsAvailable": 9,
       "decisionsTotal": 10
     },
     {
-      "session": "ses-1785409259320-9d3261d1",
-      "date": "2026-07-30T11:00:59.591Z",
+      "session": "ses-1785478933764-d7e4536f",
+      "date": "2026-07-31T06:22:14.052Z",
       "type": "bootstrap",
       "agentsActive": 11,
-      "snippetsAvailable": 8,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740577-3c591027",
+      "date": "2026-07-31T06:35:40.861Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740782-42350ab0",
+      "date": "2026-07-31T06:35:41.050Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479740841-f990ebd6",
+      "date": "2026-07-31T06:35:41.117Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479741530-0bc543c6",
+      "date": "2026-07-31T06:35:41.788Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479742004-e50bb6d4",
+      "date": "2026-07-31T06:35:42.279Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785479753152-a072f75d",
+      "date": "2026-07-31T06:35:53.404Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785480236272-8e2f32e3",
+      "date": "2026-07-31T06:43:56.556Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785480383062-106e4e24",
+      "date": "2026-07-31T06:46:23.341Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785482719794-570d61b4",
+      "date": "2026-07-31T07:25:20.054Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785486660097-e78529d3",
+      "date": "2026-07-31T08:31:00.361Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785553139987-b2421762",
+      "date": "2026-08-01T02:59:00.247Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785553318281-29061429",
+      "date": "2026-08-01T03:01:58.585Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
       "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 44,
-    "ciPassRate": "100%"
+    "sessions": 76,
+    "ciPassRate": "82%"
   },
   "health": {
-    "overall": "GREEN",
+    "overall": "YELLOW",
     "frontend": "3 fixes deployed",
     "thinkForge": "4 tokens processed",
-    "relations": "10 nodes, 13 edges"
+    "relations": "10 nodes, 13 edges",
+    "knownIssues": [
+      "8 e2e checks fail without Redis (billing-blocked GitHub Actions)",
+      "Heroku CLI not available in container",
+      "DATABASE_URL points to localhost (needs Neon Postgres for production)",
+      "22 GitHub vulnerabilities (1 critical, 15 high, 6 moderate)"
+    ]
   }
 }

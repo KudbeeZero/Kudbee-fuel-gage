@@ -11,7 +11,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { ZodSchema, ZodError } from 'zod';
+import { ZodError, type ZodSchema } from 'zod';
 import { MiddlewareGuard } from './middlewareGuard.ts';
 
 interface ValidationConfig {

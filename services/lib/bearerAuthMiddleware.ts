@@ -100,7 +100,7 @@ function authenticateBearerToken(token: string): AgentIdentity | null {
   }
 }
 
-function authenticateAgentPassHeader(headerValue: string): AgentIdentity | null {
+export function authenticateAgentPass(headerValue: string): string | null {
   try {
     const pass = deserializePass(headerValue);
     if (!pass) return null;
@@ -109,10 +109,16 @@ function authenticateAgentPassHeader(headerValue: string): AgentIdentity | null 
     if (!publicKey) return null;
     const isValid = verifyAgentPass(pass, publicKey, AGENT_PASS_MAX_AGE_MS);
     if (!isValid) return null;
-    return { agentId: pass.agentId, roles: [] };
+    return pass.agentId;
   } catch {
     return null;
   }
+}
+
+function authenticateAgentPassHeader(headerValue: string): AgentIdentity | null {
+  const agentId = authenticateAgentPass(headerValue);
+  if (!agentId) return null;
+  return { agentId, roles: [] };
 }
 
 export function bearerAuth(opts: BearerAuthOptions = {}) {

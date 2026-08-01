@@ -100,8 +100,23 @@
       "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
       "timestamp": "2026-07-30T15:14:15.864Z",
       "score": 13
+    },
+    {
+      "query": "secret safe box redis credential workflow",
+      "timestamp": "2026-07-31T03:50:13.911Z",
+      "score": 6
+    },
+    {
+      "query": "72 hour database connection budget neon monitor",
+      "timestamp": "2026-07-31T04:52:04.349Z",
+      "score": 6
+    },
+    {
+      "query": "ds-03 durable writes idempotency worker lease redis cache token budget",
+      "timestamp": "2026-07-31T07:25:00.329Z",
+      "score": 15
     }
   ],
-  "lastRecall": "2026-07-30T15:14:15.864Z",
-  "recallCount": 20
+  "lastRecall": "2026-07-31T07:25:00.329Z",
+  "recallCount": 23
 }

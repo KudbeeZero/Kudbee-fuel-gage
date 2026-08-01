@@ -15,6 +15,22 @@
 | 1.7 | Run verify-gates.mjs in CI as pre-check gate | Catch unused imports before PR | 30m |
 | 1.8 | Add database compression policy (prune think_tokens >30d, KD<50) | Reduce DB from 29MB | 2h |
 
+### Release-Blocking Safety Gates (Added 2026-07-31)
+
+Gastown and deployment work must not be promoted until these gates have
+evidence-backed tests:
+
+| Gate | Required evidence | Status |
+|:---|:---|:---|
+| Safe-Zone dispatch | Strict trajectory evaluation before orchestration | Implemented in CLI; tests pending |
+| Shell-safe DTHINK | No user text interpolated into shell commands | Implemented for Gastown feeds |
+| THINK recall contract | Consume `{ ok, results }` and test empty/degraded paths | Fixed; tests pending |
+| Token promotion | Gastown outcomes start `PENDING_APPROVAL` | Implemented |
+| Convoy lifecycle | Invalid transitions rejected; all tasks complete before merge | Implemented in-process; persistence pending |
+| Public staging health | Canonical Heroku URL returns HTTP 200 | Environment-dependent |
+| Browser runtime | Playwright/Box DOM, console, and screenshot evidence | Pending Box credentials |
+| Dependency security | Critical/high production vulnerabilities triaged | Open: 1 critical, 14 high |
+
 ### Phase 2: Agent Fleet Hardening (~3 days)
 **Goal: All 11 agents deployable, monitored, and self-healing**
 
@@ -22,7 +38,7 @@
 |:--|:---|:---|:---|
 | 2.1 | Auto-deploy all agents on merge to main (deploy.yml enhancement) | Zero manual deploys | 2h |
 | 2.2 | Agent health dashboard in /status.html (live SSE from kudbee:events) | Real-time agent visibility | 3h |
-| 2.3 | Convoy system integration — agents bundle work units and report outcomes | Production task orchestration | 4h |
+| 2.3 | Convoy system integration — durable state, leases, event log, and recovery | Production task orchestration | 2d |
 | 2.4 | Phone tree auto-routing — agents self-organize by task type | Zero human routing | 3h |
 | 2.5 | THINK auto-minting — every agent action produces a token | Continuous learning | 2h |
 | 2.6 | Agent budget gates — Groq/Deepseek cost tracking per agent | Cost awareness | 2h |
@@ -64,19 +80,25 @@
 
 ---
 
-## Current State
+## Current State (verified 2026-07-31)
 
 | Component | Status |
 |:---|:---|
-| Heroku | v281f971, 4 dynos UP |
-| PostgreSQL | 29 MB, 2088 think tokens |
-| Redis | REST API (TCP eliminated) |
-| Synapse C4769 | Active, 0 violations |
-| Agents | 4/11 online (web, hermes, monitor, sentinel) |
-| CI Typecheck | PASS (local) / E2E fails (no PG container) |
-| Frontend | /status.html, /cli.html, /unified.html all 200 |
-| PRs | #225 MERGED, #226 MERGED, #227 Ready for Review |
+| Heroku | Staging dynos previously up; canonical assigned URL required |
+| PostgreSQL | Configured in prior staging release; fresh CLI probe required after reset |
+| Redis | Local diagnostic has no REDIS_URL; staging uses Upstash configuration |
+| Synapse C4769 | Code present; runtime status requires staging probe |
+| Agents | 11 registered; no active local tasks at bootstrap |
+| CI Typecheck | PASS (12/12) |
+| THINK loop | Starts after auth import fix; Redis-dependent checks remain environment-gated |
+| Browser | Verifier corrected; Playwright/Box evidence pending |
+| Security | 1 critical and 14 high production dependency findings |
+| PRs | #219–#228 reviewed; no open PRs reported |
 
-## Next Action: Phase 1.1 — Fix CI
+## Next Action: Release gates before feature expansion
 
-Add PostgreSQL service container to `.github/workflows/verify.yml`. This single fix unblocks 29 of 44 E2E checks and gets Verify consistently green.
+Use a non-GitHub runner/Box to validate the canonical staging URL, then add
+Gastown unit/integration tests for shell safety, Safe-Zone enforcement, THINK
+recall, token promotion, convoy transitions, and authorization. Only after
+those gates pass should the Engineering Knowledge API or additional UI work
+be promoted.

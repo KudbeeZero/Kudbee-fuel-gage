@@ -6,7 +6,13 @@
  * Requires: playwright (npm install playwright @playwright/test)
  */
 
-const STAGING = process.env.STAGING_URL || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const STAGING = (
+  process.env.STAGING_URL ||
+  'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com'
+).replace(/\/$/, '');
 
 async function verify() {
   console.log('══════════════════════════════════════════════');
@@ -25,18 +31,16 @@ async function verify() {
     // HTTP-level checks (no browser needed)
     const checks = [];
     try {
-      const { default: fetch } = await import('node-fetch');
       const res = await fetch(`${STAGING}/health`);
       const health = await res.json();
       checks.push({ check: 'Health endpoint', status: health.status === 'ok' ? 'PASS' : 'FAIL', detail: health });
     } catch { checks.push({ check: 'Health endpoint', status: 'FAIL', detail: 'unreachable' }); }
 
     try {
-      const { default: fetch } = await import('node-fetch');
       const res = await fetch(STAGING);
       const html = await res.text();
-      const hasBoot = html.includes('BootFallback') || html.includes('Preparing dashboard');
-      const hasSpine = html.includes('BOOT_DEADLINE') && html.includes('finishBoot');
+      const hasBoot = html.includes('id="boot-splash"') && html.includes('id="boot-steps"');
+      const hasSpine = html.includes('BOOT_DEADLINE_MS') && html.includes('finishBoot');
       const hasGuard = html.includes('STALE') || html.includes('kudbee-commit');
       checks.push({ check: 'BootFallback in HTML', status: hasBoot ? 'PASS' : 'FAIL' });
       checks.push({ check: 'System Spine present', status: hasSpine ? 'PASS' : 'FAIL' });

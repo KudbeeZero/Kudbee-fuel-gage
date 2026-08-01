@@ -56,10 +56,10 @@ async function main() {
 
   console.log('=== Dual-Source Drift Sentinel ===\n');
 
-  const tsRoutes = dedupe(await extractRoutes(TS_SERVER));
+  const tsRoutes = TS_SERVER ? dedupe(await extractRoutes(TS_SERVER)) : [];
   const jsRoutes = dedupe(await extractRoutes(JS_SERVER));
 
-  console.log(`Parsed ${tsRoutes.length} unique routes from server.ts`);
+  console.log(TS_SERVER ? `Parsed ${tsRoutes.length} unique routes from server.ts` : 'server.ts deleted — server.js is canonical');
   console.log(`Parsed ${jsRoutes.length} unique routes from server.js\n`);
 
   const tsSet = new Set(tsRoutes.map((r) => `${r.method}:${normalizePath(r.path)}`));
@@ -76,6 +76,13 @@ async function main() {
 
   const missingFromTs = [];
   const missingFromJs = [];
+
+  if (!TS_SERVER) {
+    assert(jsRoutes.length > 0, 'canonical server.js defines routes');
+    console.log('\n[PASS] Dual-source drift check skipped: server.ts is intentionally absent.');
+    console.log(`\nResults: ${passed} passed, ${failed} failed`);
+    process.exit(failed > 0 ? 1 : 0);
+  }
 
   for (const r of jsRoutes) {
     const key = `${r.method}:${normalizePath(r.path)}`;
@@ -106,7 +113,7 @@ async function main() {
     }
   }
 
-  assert(tsRoutes.length > 0, 'server.ts defines routes');
+  if (TS_SERVER) assert(tsRoutes.length > 0, 'server.ts defines routes');
   assert(jsRoutes.length > 0, 'server.js defines routes');
 
   console.log(`\nResults: ${passed} passed, ${failed} failed`);

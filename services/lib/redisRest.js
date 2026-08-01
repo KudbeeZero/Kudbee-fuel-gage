@@ -20,7 +20,13 @@ let _restFailed = false;
 let _restConsecutiveErrors = 0;
 
 async function restCmd(command, ...args) {
-  const parts = [command, ...args.filter(Boolean)];
+  // Upstash's command-path API treats each URL segment as one Redis argument.
+  // Encode values so JSON, spaces, slashes, and user-provided strings survive
+  // the HTTP transport without changing command boundaries.
+  const parts = [
+    command,
+    ...args.filter((arg) => arg !== undefined && arg !== null).map(String),
+  ].map(encodeURIComponent);
   const url = `${REST_URL.replace(/\/$/, '')}/${parts.join('/')}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${REST_TOKEN}` },
@@ -94,8 +100,12 @@ async function publish(channel, message) {
   }
 }
 
-function on() { /* noop for ioredis compat */ }
-function disconnect() { /* noop */ }
+function on() {
+  /* noop for ioredis compat */
+}
+function disconnect() {
+  /* noop */
+}
 
 /**
  * Returns a REST-based Redis facade matching ioredis interface for
@@ -110,7 +120,7 @@ export function getRestRedisClient(label = 'rest-redis') {
     label,
     // Blocking pop emulated via LPOP polling loop (mimics BRPOP return)
     brpop: async (key, timeoutMs = 5) => {
-      const deadline = Date.now() + (timeoutMs * 1000);
+      const deadline = Date.now() + timeoutMs * 1000;
       while (Date.now() < deadline) {
         const val = await lpop(key);
         if (val !== null && val !== undefined && val !== 'null') {
@@ -121,7 +131,7 @@ export function getRestRedisClient(label = 'rest-redis') {
       return null;
     },
     blpop: async (key, timeoutMs = 5) => {
-      const deadline = Date.now() + (timeoutMs * 1000);
+      const deadline = Date.now() + timeoutMs * 1000;
       while (Date.now() < deadline) {
         const val = await lpop(key);
         if (val !== null && val !== undefined && val !== 'null') {
@@ -145,4 +155,3 @@ export function getRestRedisClient(label = 'rest-redis') {
 
 export { lpop, rpush, llen, ping as restPing, restCmd };
 export { REST_URL, REST_TOKEN }; // for direct access by polling loops
-

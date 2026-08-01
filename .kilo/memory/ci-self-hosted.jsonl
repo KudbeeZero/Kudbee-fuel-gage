@@ -12,3 +12,11 @@
 {"ts":"2026-07-29T20:12:16.203Z","level":"INFO","msg":"Gate 6/6: Agent verify"}
 {"ts":"2026-07-29T20:12:16.245Z","level":"FAIL","msg":"Agents: FAILED"}
 {"ts":"2026-07-29T20:12:16.245Z","level":"INFO","msg":"Complete: 0/6 gates passed — FAIL"}
+{"ts":"2026-07-31T02:40:19.070Z","level":"INFO","msg":"CI run ci-ms8c4ose started"}
+{"ts":"2026-07-31T02:40:19.073Z","level":"INFO","msg":"Gate 1/6: Typecheck"}
+{"ts":"2026-07-31T02:40:19.922Z","level":"PASS","msg":"Typecheck: OK"}
+{"ts":"2026-07-31T02:40:19.922Z","level":"INFO","msg":"Gate 2/6: Lint"}
+{"ts":"2026-07-31T02:40:57.761Z","level":"WARN","msg":"Lint: warnings"}
+{"ts":"2026-07-31T02:40:57.761Z","level":"INFO","msg":"Gate 3/6: Build"}
+{"ts":"2026-07-31T02:41:13.865Z","level":"PASS","msg":"Build: OK"}
+{"ts":"2026-07-31T02:41:13.866Z","level":"INFO","msg":"Gate 4/6: E2E"}

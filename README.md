@@ -2,7 +2,7 @@
 
 Live AI Control Tower — spatial-fluidic operating system for multi-agent governance, real-time telemetry, and cryptographic audit trails.
 
-[![CI](https://github.com/KudbeeZero/Kudbee-fuel-gage/actions/workflows/verify.yml/badge.svg)](https://github.com/KudbeeZero/Kudbee-fuel-gage/actions/workflows/verify.yml)
+Verification is self-hosted and runs through `node scripts/ci-self-hosted.mjs`.
 
 ## Architecture
 

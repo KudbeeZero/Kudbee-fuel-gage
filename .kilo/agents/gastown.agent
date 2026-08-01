@@ -16,14 +16,15 @@
  * - Coordinates 10-agent terminal swarm via phone tree
  * - Delegates to SupervisorOrchestrator for DAG-based task execution
  * - Feeds all outcomes into DTHINK pipeline
- * - Mints new THINK tokens from successful/failed decisions
- * - Maintains full audit trail with decision log
- * - Self-healing: degrades gracefully when pgvector/Redis unavailable
+ * - Mints PENDING_APPROVAL THINK tokens from execution outcomes
+ * - Maintains an in-process decision projection; durable audit integration pending
+ * - Blocks execution when strict Safe-Zone authorization is unavailable
+ * - Self-healing: recall degrades gracefully; production mutations do not
  */
 echo "[Gastown] THINK-aware meta-agent coordinator"
 echo "  Type: Orchestrator | Scaling: on-demand"
 echo "  Memory: Neon pgvector (1536-dim embeddings)"
 echo "  Pipeline: DTHINK → THINK Tokens → pgvector"
 echo "  Swarm: 10-agent terminal fleet via phone tree"
-echo "  Decisions: recorded to .kilo/memory/decisions/"
+echo "  Decisions: DTHINK feed; durable governance projection pending"
 echo "  Status: active — ready to coordinate"

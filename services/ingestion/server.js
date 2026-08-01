@@ -53,6 +53,7 @@ import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
+import { createToolsRouter } from './routes/tools.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
 import { grokConfigured, grokStatus } from '../lib/grokClient.ts';
@@ -66,7 +67,7 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
-import { bearerAuth, authGuard } from '../lib/bearerAuthMiddleware.ts';
+import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -75,6 +76,22 @@ import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const HIGH_VALUE_MODELS = new Set(
+  (
+    process.env.HIGH_VALUE_MODELS ||
+    'gpt-4o,claude-3-5-sonnet,gemini-1.5-pro,deepseek-r1,deepseek-v3,o1-preview,o1-mini'
+  )
+    .split(',')
+    .map((model) => model.trim().toLowerCase())
+    .filter(Boolean),
+);
+const MAX_REASONING_LENGTH = 500;
+
+function truncatePayload(value, limit) {
+  if (typeof value !== 'string') return value;
+  if (value.length <= limit) return value;
+  return `${value.slice(0, limit)}…[truncated]`;
+}
 
 function isSafeKey(key) {
   if (typeof key !== 'string' && typeof key !== 'number') return false;
@@ -123,6 +140,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
+// Parse JSON before inline POST routes and mounted routers. Without this,
+// dictionary, lifecycle, governance, and telemetry requests see an empty body.
+app.use(express.json({ limit: '10mb' }));
 
 // --- Phase 45: Request duration tracking and structured logging ---
 // Also records per-route latencies for the Middleware Inspector console.
@@ -309,6 +329,10 @@ const systemRouter = createSystemRouter({
   getMiddlewareStats: () => getAllGuardStats(),
 });
 app.use('/api/system', systemRouter);
+// Workspace filesystem and shell tools are agent-only operations. Keep the
+// router behind the required auth gate so the frontend cannot expose them to
+// anonymous browser traffic.
+app.use('/api/tools', bearerAuth({ required: true }), createToolsRouter());
 
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {
@@ -336,7 +360,7 @@ app.post('/api/ci/status', (req, res) => {
 
 // ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
 import { getConvoyStats, listConvoys, getDatabaseMetrics } from '../agent/gastown-convoy.ts';
-app.get("/api/gastown/dashboard", async (_req, res) => {
+app.get("/api/gastown/dashboard", bearerAuth({ required: true }), async (_req, res) => {
   try {
     const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
       getConvoyStats(),
@@ -363,7 +387,7 @@ app.get("/api/gastown/dashboard", async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get("/api/gastown/convoys", (_req, res) => {
+app.get("/api/gastown/convoys", bearerAuth({ required: true }), (_req, res) => {
   res.json(listConvoys());
 });
 
@@ -956,7 +980,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
 
     const isHeartbeatPing =
       Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
-    const isHighValueModel = HIGH_VALUE_MODELS.has(model);
+    const isHighValueModel = HIGH_VALUE_MODELS.has(String(model || '').toLowerCase());
     const shouldSave = !isHeartbeatPing && (effectiveStatus !== 'OK' || isHighValueModel);
 
     if (!shouldSave) {
@@ -1175,7 +1199,7 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
       const effectiveStatus = agentId ? status || 'authenticated_bypass' : status || 'OK';
       const isHeartbeatPing =
         Number(tokens_in) <= 1 && Number(tokens_out) <= 1 && effectiveStatus === 'OK';
-      const isHighValue = HIGH_VALUE_MODELS.has(model);
+      const isHighValue = HIGH_VALUE_MODELS.has(String(model || '').toLowerCase());
       if (!isHeartbeatPing || isHighValue) {
         await runInsert(
           `INSERT INTO telemetry_traces (trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp, input_tokens, output_tokens)
@@ -4328,6 +4352,14 @@ function resolveDistPath() {
   return candidates.find((p) => fs.existsSync(p)) || candidates[0];
 }
 
+function resolveMobileDistPath() {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'apps', 'mobile', 'dist'),
+    path.join(process.cwd(), 'apps', 'mobile', 'dist'),
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+}
+
 // --- Phase 20: Dynamic Policy Engine, Vector Sync, and Live Alerts -----------
 // In-memory state for the governance policy engine. Persists across the
 // process lifetime and is exposed to the UI through REST endpoints.
@@ -5558,11 +5590,19 @@ app.get('/api/system/deploy-status', (_req, res) => {
 });
 
 // --- Interactive Terminal Command Dispatcher ---
-app.post('/api/terminal/execute', async (req, res) => {
+app.post('/api/terminal/execute', bearerAuth(), async (req, res) => {
   try {
     const { command } = req.body || {};
     if (!command || typeof command !== 'string') {
       return res.status(400).json({ error: 'Missing command string in body.command' });
+    }
+    const requiresAuth = /^\/(?:agent\s+kill|threshold\s+set|scheduler\s+run)\b/i.test(command.trim());
+    if (requiresAuth && !req.authenticated) {
+      return res.status(401).json({
+        type: 'terminal:error',
+        error: 'authentication_required',
+        message: 'This terminal command requires an authenticated agent session',
+      });
     }
     const { dispatchCommand } = await import('../terminal/commandDispatcher.mjs');
     const result = await dispatchCommand(command);
@@ -5625,6 +5665,20 @@ app.get('/middleware/health', (_req, res) => {
 });
 
 const distPath = resolveDistPath();
+const mobileDistPath = resolveMobileDistPath();
+
+if (fs.existsSync(mobileDistPath)) {
+  app.use('/mobile', express.static(mobileDistPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+    },
+  }));
+  app.use('/mobile', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    return res.sendFile(path.join(mobileDistPath, 'index.html'));
+  });
+}
 
 if (fs.existsSync(distPath)) {
   const fileLimiter = rateLimit({
@@ -5747,3 +5801,4 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
   }
 });
 
+// Trigger rebuild Thu Jul 30 19:19:12 UTC 2026

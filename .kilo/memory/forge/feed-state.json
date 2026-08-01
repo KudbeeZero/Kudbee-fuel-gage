@@ -1,9 +1,9 @@
 {
-  "started": "2026-07-30T11:01:00.013Z",
-  "totalInjected": 8,
+  "started": "2026-07-31T06:44:42.146Z",
+  "totalInjected": 9,
   "lastInjection": {
-    "snippetId": "verification-patterns",
-    "at": "2026-07-28T19:39:50.063Z"
+    "snippetId": "secret-safe-integration-workflow",
+    "at": "2026-07-31T03:49:14.178Z"
   },
   "bySnippet": {
     "middleware-pipeline-architecture": 1,
@@ -13,7 +13,8 @@
     "frontend-patterns": 1,
     "middleware-patterns": 1,
     "redis-patterns": 1,
-    "verification-patterns": 1
+    "verification-patterns": 1,
+    "secret-safe-integration-workflow": 1
   },
   "injections": [
     {
@@ -55,7 +56,12 @@
       "id": "tk-1785267590063-27eab010",
       "snippetId": "verification-patterns",
       "timestamp": "2026-07-28T19:39:50.063Z"
+    },
+    {
+      "id": "tk-1785469754177-9c7a1410",
+      "snippetId": "secret-safe-integration-workflow",
+      "timestamp": "2026-07-31T03:49:14.178Z"
     }
   ],
-  "processed": 8
+  "processed": 9
 }

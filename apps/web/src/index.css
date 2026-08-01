@@ -83,6 +83,97 @@ input:focus, select:focus, textarea:focus {
 body {
   @apply bg-slate-950 text-slate-200 antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
+  min-width: 320px;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+/* Lemonade-inspired workspace surface: warm attention cues inside the existing
+   KUDBEE deepspace language. Keep these classes local to the new workspace so
+   existing operational panels are not restyled accidentally. */
+.workspace-icon-button {
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(51 65 85 / 0.8);
+  border-radius: 9px;
+  color: rgb(148 163 184);
+  background: rgb(15 23 42 / 0.55);
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.workspace-icon-button:hover {
+  border-color: rgb(52 211 153 / 0.35);
+  color: rgb(167 243 208);
+  background: rgb(52 211 153 / 0.08);
+}
+
+.workspace-session-tab {
+  display: flex;
+  min-width: 190px;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: left;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.workspace-session-tab:hover,
+.workspace-session-tab.is-active {
+  border-color: rgb(52 211 153 / 0.16);
+  background: rgb(52 211 153 / 0.07);
+}
+
+.workspace-session-dot {
+  margin-top: 4px;
+  display: block;
+  height: 7px;
+  width: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgb(100 116 139);
+}
+
+.workspace-session-dot.working { background: rgb(52 211 153); box-shadow: 0 0 10px rgb(52 211 153 / 0.7); }
+.workspace-session-dot.waiting { background: rgb(251 191 36); }
+.workspace-session-dot.paused { background: rgb(139 92 246); }
+
+.workspace-send-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: rgb(52 211 153);
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(2 44 34);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.workspace-send-button:hover:not(:disabled) { transform: translateY(-1px); }
+.workspace-send-button:disabled { cursor: not-allowed; opacity: 0.35; }
+
+.workspace-attention-card {
+  display: block;
+  width: 100%;
+  border-width: 1px;
+  border-radius: 12px;
+  padding: 13px;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.workspace-attention-card:hover { transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-icon-button,
+  .workspace-session-tab,
+  .workspace-send-button,
+  .workspace-attention-card { transition: none; }
 }
 
 /* Hide scrollbars */
@@ -196,4 +287,3 @@ body.theme-midnight {
   border: 2px solid #e2e8f0 !important;
   background-color: #0f172a !important;
 }
-

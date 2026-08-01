@@ -28,7 +28,9 @@ import {
   Maximize2,
   Radio,
   Monitor,
-  Gauge
+  Gauge,
+  Sparkles,
+  LayoutDashboard,
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
@@ -61,6 +63,8 @@ import { SettingsView, type SettingsViewProps } from './components/SettingsView'
 import { LoginView } from './components/LoginView';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
+import { WorkspacePage } from './pages/workspace';
+import { OverviewPage } from './pages/overview';
 
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost } from './utils/currency';
@@ -152,7 +156,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  const [activeTab, setActiveTab] = useState('STUDIO');
+  const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [selectedTraceForDrawer, setSelectedTraceForDrawer] = useState<MergedTelemetryLog | null>(null);
   const setConsoleExpanded = useUIStore((state) => state.setConsoleExpanded);
 
@@ -440,6 +444,8 @@ export default function App() {
   }, [dbLogs]);
 
   const primaryNavItems = [
+    { icon: LayoutDashboard, label: 'OVERVIEW' },
+    { icon: Sparkles, label: 'WORKSPACE' },
     { icon: Monitor, label: 'STUDIO' },
     { icon: Activity, label: 'TELEMETRY' },
     { icon: Gauge, label: 'OBSERVABILITY' },
@@ -738,7 +744,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* ACTIVE VIEW ROUTER */}
+           {/* ACTIVE VIEW ROUTER */}
+          {activeTab === 'OVERVIEW' && <PanelErrorBoundary panel={activeTab}><OverviewPage onNavigate={setActiveTab} /></PanelErrorBoundary>}
+
+          {activeTab === 'WORKSPACE' && <PanelErrorBoundary panel={activeTab}><WorkspacePage /></PanelErrorBoundary>}
+
           {activeTab === 'OBSERVABILITY' && <PanelErrorBoundary panel={activeTab}><ObservabilityPage /></PanelErrorBoundary>}
 
           {activeTab === 'STUDIO' && <PanelErrorBoundary panel={activeTab}><StudioRouter /></PanelErrorBoundary>}

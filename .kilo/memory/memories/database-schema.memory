@@ -75,8 +75,18 @@
       "query": "ces-1 division 6: recalculate repository health score, detect architectural drift, detect new coupling, suggest refactors, generate modernization roadmap. output: architecture review.",
       "timestamp": "2026-07-30T09:22:29.695Z",
       "score": 9
+    },
+    {
+      "query": "72 hour database connection budget neon monitor",
+      "timestamp": "2026-07-31T04:52:04.347Z",
+      "score": 8
+    },
+    {
+      "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
+      "timestamp": "2026-07-31T07:25:30.390Z",
+      "score": 17
     }
   ],
-  "lastRecall": "2026-07-30T09:22:29.696Z",
-  "recallCount": 15
+  "lastRecall": "2026-07-31T07:25:30.390Z",
+  "recallCount": 17
 }

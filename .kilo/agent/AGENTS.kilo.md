@@ -9,6 +9,26 @@ This document is the single source of truth for autonomous and semi-autonomous c
 ## 1. Repository Topology
 
 ```
+
+## 0.1 Universal Operating SOP
+
+Every agent and department follows the executable governance contract in
+`config/phase/next/governance-policy.json` and the ownership map in
+`config/phase/next/sop-manifest.json`. Before editing, validate the task with
+`node scripts/phase-governor.mjs check <model> <task-id>`. Before handoff,
+validate the structured report with `node scripts/phase-governor.mjs report
+<report.json>`.
+
+The mandatory layers are: intent, preconditions, authority, isolation,
+execution, evidence, review, handoff, and memory. Authentication, tenant,
+secret, data, deployment, and destructive changes always require human
+approval. The implementer cannot be the sole reviewer. Browser or mobile
+verification that was not run must be reported as unavailable, never implied.
+
+The PR lifecycle is evidence-first: inspect status and diff, run operating
+model and readiness audits, run required checks, record DTHINK/memory, review,
+then create or merge only with explicit authorization. Never use a destructive
+branch switch, reset, or worktree deletion as an automatic cleanup step.
 kudbee/
   apps/
     web/            # Control Tower dashboard (Vite + React)
@@ -66,6 +86,12 @@ kudbee/
 | `GROQ_API_KEY` | Groq LPU inference API key | No (graceful degrade) |
 | `GROQ_MODEL` | Groq model override (default: `llama-3.1-8b-instant`) | No |
 | `STREAM_SECRET` | HMAC signing key for SSE stream tickets | Yes (for SSE auth) |
+| `SESSION_SECRET` | HMAC signing key for server-issued browser sessions | Yes in production |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint and Redis MCP target | Yes for REST paths |
+| `UPSTASH_REDIS_REST_TOKEN` | Server-side Redis REST credential | Yes for REST paths |
+| `UPSTASH_BOX_API_KEY` | Upstash Box sandbox/browser verification credential | No; Box checks skip safely |
+| `GITHUB_TOKEN` | Scoped GitHub API and PR automation credential | No; never print |
+| `HEROKU_API_KEY` | Scoped Heroku API/deployment credential | No; never print |
 | `EDGE_AGENT_PASS` | Authentication pass for edge sentinel | No |
 | `SENTINEL_AGENT_PASS` | Authentication pass for sentinel agent | No |
 | `NODE_ENV` | Runtime environment (`test`, `production`) | Yes |
@@ -76,6 +102,15 @@ kudbee/
 - **Always** add `try { process.loadEnvFile('.env'); } catch {}` at the top of standalone `.mjs` scripts that need local secrets.
 - Do not rely on `dotenv` package unless already present in the workspace.
 - Never commit `.env` files. Use `config/.env.example` as the canonical reference.
+- Run `npm run verify:secrets` before every governed task. It reports secret
+  names and presence only; it must never print or persist values.
+- Use `npm run verify:box-web` for remote staging checks when
+  `UPSTASH_BOX_API_KEY` is configured. The Box key comes only from the hosting
+  secret manager or ignored local `.env`.
+- Redis MCP is an operational data interface, not a credential vault. Never
+  search Redis for, return, or store secret values.
+- Never pass `GITHUB_TOKEN`, `HEROKU_API_KEY`, provider keys, or Box keys into
+  prompts, DTHINK, THINK, screenshots, logs, PR comments, or artifacts.
 
 ---
 

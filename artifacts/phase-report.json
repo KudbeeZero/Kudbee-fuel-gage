@@ -1,0 +1,51 @@
+{
+  "taskId": "QW-05",
+  "model": "qwen-3.6-pro",
+  "status": "PASS",
+  "changedFiles": [
+    "apps/mobile/app/workspace.tsx",
+    "apps/mobile/app/governance.tsx",
+    "apps/mobile/app/settings.tsx",
+    "apps/mobile/app/_layout.tsx",
+    "apps/mobile/src/sdk/commands.ts",
+    "apps/mobile/src/store/useCommandStore.ts",
+    "artifacts/phase-report.json"
+  ],
+  "commands": [
+    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-05",
+    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-05",
+    "npm run verify:secrets",
+    "npm run typecheck",
+    "cd apps/mobile && npx tsc --noEmit",
+    "npm run build --workspace=@kudbee/web",
+    "git diff --check"
+  ],
+  "evidence": {
+    "governor": "QW-05 scope and approval policy passed",
+    "mobileTypecheck": "No errors emitted",
+    "monorepoTypecheck": "12 of 12 tasks passed",
+    "webBuild": "PASS; terminal 0.41 kB, main 304.99 kB, vendor-react 194.37 kB",
+    "deliverables": [
+      "Live dashboard with health/fleet/Postgres/Redis polling and live attention signals",
+      "Governance view with API polling, approve/reject actions, progress indicators, and empty/error states",
+      "Settings view with reduced-motion toggle, telemetry purge with confirmation gate, and system actions",
+      "Safe command lifecycle with confirmation gate for destructive actions (purge, clear triage, bulk approve) and AbortController cancellation support",
+      "Accessible navigation with tabBarAccessibilityLabel on all four tabs, unicode tab icons, and accessibilityRole/label/state on interactive elements across all screens"
+    ]
+  },
+  "risks": [
+    "Responsive smoke test is environment-gated (no device/browser matrix available)",
+    "Confirm gate is programmatic only; no UI confirmation dialog wired yet to runtime",
+    "Command cancellation aborts in-flight fetches but does not roll back already-executed side effects",
+    "Clipboard access for error diagnostics is browser-dependent"
+  ],
+  "rollback": [
+    "Restore workspace.tsx to seed-only dashboard without API polling",
+    "Restore governance.tsx to placeholder screen",
+    "Restore settings.tsx to placeholder screen",
+    "Restore _layout.tsx to tabBarIcon: () => null without accessibility labels",
+    "Revert commands.ts confirmGate, terminalExecute, and cancellation wiring",
+    "Restore useCommandStore.ts to version without controllers and traceId"
+  ],
+  "nextDependency": "Wire confirmation UI dialog and proceed to the next independently governed task"
+}

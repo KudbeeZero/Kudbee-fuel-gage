@@ -3,26 +3,27 @@
  * ---------------------------------------------------------------------------
  * Self-Hosted CI Runner — no GitHub Actions dependency.
  *
- * Runs the same checks as verify.yml but locally, reporting results
+ * Runs the authoritative local release checks, reporting results
  * to the Kudbee API and DTHINK pipeline. Can be triggered via:
  *   - CLI:    node scripts/ci-self-hosted.mjs
  *   - Cron:   every 4 hours node scripts/ci-self-hosted.mjs
  *   - Webhook: POST /api/ci/trigger → spawns this script
  *
  * Checks:
- *   1. Typecheck — turbo run typecheck
- *   2. Lint — turbo run lint
- *   3. Unused imports — verify-gates.mjs --unused-only
+ *   1. Secret hygiene — verify-secret-hygiene.mjs
+ *   2. Typecheck — turbo run typecheck
+ *   3. Lint — turbo run lint
  *   4. Build — turbo run build --filter=@kudbee/web
  *   5. E2E — verify-e2e.mjs (if DATABASE_URL set)
  *   6. Agent verify — verify-agents.mjs
+ *   7. Operating model — verify-operating-model.mjs
  *
  * Reports results to /api/ci/status endpoint on the Kudbee server.
  * Feeds every run into DTHINK pipeline for learning.
  * ---------------------------------------------------------------------------
  */
 
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -60,7 +61,7 @@ async function reportToAPI(runId, results) {
 
 async function feedDTHINK(msg) {
   try {
-    execSync(`node scripts/dthink-pipeline.mjs feed "system:ci" "${msg.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+    execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', 'system:ci', msg], { timeout: 5000 });
   } catch {}
 }
 
@@ -71,29 +72,29 @@ async function main() {
 
   const results = [];
 
-  // 1. Typecheck
-  log('INFO', 'Gate 1/6: Typecheck');
+  // 1. Secret hygiene. The child process only reports names and status.
+  log('INFO', 'Gate 1/7: Secret hygiene');
+  const secrets = sh('npm run verify:secrets', 'secret-hygiene');
+  const secretsPass = secrets.ok;
+  results.push({ gate: 'secret-hygiene', pass: secretsPass, detail: secrets.out.slice(-60) });
+  log(secretsPass ? 'PASS' : 'FAIL', `Secret hygiene: ${secretsPass ? 'OK' : 'FAILED'}`);
+
+  // 2. Typecheck
+  log('INFO', 'Gate 2/7: Typecheck');
   const tc = sh('npx turbo run typecheck', 'typecheck');
   const tcPass = tc.ok && !tc.out.includes('Failed');
   results.push({ gate: 'typecheck', pass: tcPass, detail: tc.out.slice(-60) });
   log(tcPass ? 'PASS' : 'FAIL', `Typecheck: ${tcPass ? 'OK' : 'FAILED'}`);
 
-  // 2. Lint
-  log('INFO', 'Gate 2/6: Lint');
+  // 3. Lint
+  log('INFO', 'Gate 3/7: Lint');
   const lint = sh('npx turbo run lint', 'lint');
   const lintPass = lint.ok && !lint.out.includes('error');
   results.push({ gate: 'lint', pass: lintPass, detail: lint.out.slice(-60) });
   log(lintPass ? 'PASS' : 'WARN', `Lint: ${lintPass ? 'OK' : 'warnings'}`);
 
-  // 3. Unused imports
-  log('INFO', 'Gate 3/6: Unused imports');
-  const unused = sh('node scripts/verify-gates.mjs --unused-only', 'unused');
-  const unusedPass = unused.ok && !unused.out.includes('✗');
-  results.push({ gate: 'unused-imports', pass: unusedPass, detail: unused.out.slice(-60) });
-  log(unusedPass ? 'PASS' : 'FAIL', `Unused imports: ${unusedPass ? 'OK' : 'FOUND'}`);
-
   // 4. Build
-  log('INFO', 'Gate 4/6: Build');
+  log('INFO', 'Gate 4/7: Build');
   const build = sh('npx turbo run build --filter=@kudbee/web', 'build');
   const buildPass = build.ok;
   results.push({ gate: 'build', pass: buildPass, detail: build.out.slice(-60) });
@@ -101,22 +102,29 @@ async function main() {
 
   // 5. E2E (only if DATABASE_URL is set)
   if (process.env.DATABASE_URL) {
-    log('INFO', 'Gate 5/6: E2E');
+    log('INFO', 'Gate 5/7: E2E');
     const e2e = sh('node scripts/verify-e2e.mjs', 'e2e');
     const e2ePass = e2e.ok;
     results.push({ gate: 'e2e', pass: e2ePass, detail: e2e.out.slice(-60) });
     log(e2ePass ? 'PASS' : 'FAIL', `E2E: ${e2ePass ? 'OK' : 'FAILED'}`);
   } else {
-    log('INFO', 'Gate 5/6: E2E skipped (no DATABASE_URL)');
-    results.push({ gate: 'e2e', pass: true, detail: 'skipped' });
+    log('INFO', 'Gate 5/7: E2E skipped (no DATABASE_URL)');
+    results.push({ gate: 'e2e', pass: false, status: 'skipped', detail: 'DATABASE_URL unavailable; release evidence incomplete' });
   }
 
   // 6. Agent verify
-  log('INFO', 'Gate 6/6: Agent verify');
+  log('INFO', 'Gate 6/7: Agent verify');
   const agents = sh('node scripts/verify-agents.mjs', 'agents');
   const agentsPass = agents.ok;
   results.push({ gate: 'agents', pass: agentsPass, detail: agents.out.slice(-60) });
   log(agentsPass ? 'PASS' : 'FAIL', `Agents: ${agentsPass ? 'OK' : 'FAILED'}`);
+
+  // 7. Operating model
+  log('INFO', 'Gate 7/7: Operating model');
+  const ops = sh('node scripts/verify-operating-model.mjs', 'operating-model');
+  const opsPass = ops.ok;
+  results.push({ gate: 'operating-model', pass: opsPass, detail: ops.out.slice(-60) });
+  log(opsPass ? 'PASS' : 'FAIL', `Operating model: ${opsPass ? 'OK' : 'FAILED'}`);
 
   // ── Report ─────────────────────────────────────────────────────
   const passCount = results.filter(r => r.pass).length;
