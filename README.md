@@ -42,3 +42,16 @@ See [`/docs/README.md`](docs/README.md) for the full architecture docs, API refe
 - **Phases 1–4** (Core Infrastructure): COMPLETE
 - **Phase 5** (Production Hardening): COMPLETE — memory leak fixes, error boundaries, eslint added, CI green
 - **Phase 6** (Multi-Agent Containerization): PLANNED
+- **Heroku Pipeline** (3 environments): ACTIVE — dev → staging → production with EDISBOX verification
+
+### Heroku Pipeline Workflow
+
+| Environment | App | Branch | Deploy Script | EDISBOX |
+|:---|:---|:---|:---|:---|
+| **Development** | `kudbee-fuel-gage-dev` | `session/agent_*` | `scripts/deploy-dev.sh` | ✓ verify |
+| **Staging** | `kudbee-fuel-gage-staging` | `staging/security-durability` | `scripts/deploy-staging.sh` | ✓ verify |
+| **Production** | `kudbee-fuel-gage` | `main` | `scripts/deploy-prod.sh` | ✓ verify |
+
+**Current PR**: #233 — security durability, TypeScript 7, bounded CI, staging hardening (DRAFT)
+
+**CI Bounds**: `CI_MUTATION_BUDGET=20`, `MAX_REQUEST_BODY=256kb` (CI) / `512kb` (staging/prod), `DB_POOL_MAX=5` (CI/dev) / `10` (staging/prod), `MONTHLY_DB_OPERATION_BUDGET=500000` (CI/dev) / `2000000` (staging) / `5000000` (prod)

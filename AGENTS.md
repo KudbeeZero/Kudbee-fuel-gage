@@ -77,7 +77,7 @@ Executable script agents with memories and decision logs:
 > **Head file** — first file read on session start.
 > **Last verified: 2026-07-30T11:04:25+00:00
 
-### Integration Pipelines (6 implemented)
+### Integration Pipelines (7 implemented)
 
 | # | Pipeline | File | Purpose |
 |:--|:---|:---|:---|
@@ -87,8 +87,39 @@ Executable script agents with memories and decision logs:
 | 4 | Think Forge Live Feed | `scripts/think-forge-bridge.mjs` | Auto-streams snippet recalls into `think_tokens` pgvector (continuous context injection) |
 | 5 | Skill Auto-Import | `scripts/skill-auto-import.mjs` | Terminal agents export learnings as `.kilo/skill/` entries (knowledge flywheel) |
 | 6 | Voicemail & Interrupts | `scripts/cloud-agent.mjs` | 3s timeout, offline voicemail, CRITICAL priority interrupts with BUS→CACHE flush |
+| 7 | EDISBOX Deploy Pipeline | `scripts/edisbox-pipeline.mjs` | Upstash Box integration — staging HTTP verification, release evidence, Redis audit, DTHINK feed |
 
-### Rate Limit Propagation
+### Heroku Pipeline Workflow (3 environments)
+
+| Environment | App | Branch | Deploy Script | EDISBOX |
+|:---|:---|:---|:---|:---|
+| **Development** | `kudbee-fuel-gage-dev` | `session/agent_*` | `scripts/deploy-dev.sh` | ✓ verify |
+| **Staging** | `kudbee-fuel-gage-staging` | `staging/security-durability` | `scripts/deploy-staging.sh` | ✓ verify |
+| **Production** | `kudbee-fuel-gage` | `main` | `scripts/deploy-prod.sh` | ✓ verify |
+
+**CI Bounds** (enforced in all environments):
+- `CI_MUTATION_BUDGET=20` — max CI mutations per run
+- `MAX_REQUEST_BODY=256kb` (CI) / `512kb` (staging/prod)
+- `DB_POOL_MAX=5` (CI/dev) / `10` (staging/prod)
+- `MONTHLY_DB_OPERATION_BUDGET=500000` (CI/dev) / `2000000` (staging) / `5000000` (prod)
+
+### GitHub Actions Workflows (6 active)
+
+| Workflow | Status | Trigger | Purpose |
+|:---|:---|:---|:---|
+| **CodeQL** | Active | Push/PR | Security analysis |
+| **Deploy to Heroku Staging** | Active | Push to staging | Auto-deploy staging |
+| **Session Logger** | Active | Session events | Archive session data |
+| **Kudbee CI** | Active | Push/PR | Typecheck + lint + build + e2e |
+| **Copilot cloud agent** | Active | Manual | Cloud agent orchestration |
+| **CodeQL (legacy)** | Active | Push/PR | Security analysis (legacy config) |
+
+**CI Bounds** (enforced in Kudbee CI workflow):
+- `CI_MUTATION_BUDGET=20` — max CI mutations per run
+- `MAX_REQUEST_BODY=256kb` (CI) / `512kb` (staging/prod)
+- `DB_POOL_MAX=5` (CI/dev) / `10` (staging/prod)
+- `MONTHLY_DB_OPERATION_BUDGET=500000` (CI/dev) / `2000000` (staging) / `5000000` (prod)
+- `E2E_ALLOW_DATABASE_WRITES=0` — CI does not write to database
 
 Terminal agents respect a global concurrency cap (default: 3 concurrent). The agent-bridge tracks running agents and queues overflow. Rate limits propagate from the Express middleware layers through to terminal agent execution.
 

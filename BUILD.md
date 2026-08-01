@@ -122,3 +122,54 @@ Recovered **AgentTerminal** (225 lines) from deleted DashboardPage — mounted a
 - **Rate limiter**: Atomic Lua script replaces pipeline TOCTOU leak; per-endpoint 60/min cap added
 - **Import style**: `server.js` node imports normalized to `node:` prefix (matching 11 other files)
 - **SPA routing**: `_redirects` file added for `/tower/*` client-side route fallback
+
+## Heroku Pipeline Workflow (August 2026)
+
+### Three-Environment Deployment
+
+| Environment | App | Branch | Deploy Script | EDISBOX |
+|:---|:---|:---|:---|:---|
+| **Development** | `kudbee-fuel-gage-dev` | `session/agent_*` | `scripts/deploy-dev.sh` | ✓ verify |
+| **Staging** | `kudbee-fuel-gage-staging` | `staging/security-durability` | `scripts/deploy-staging.sh` | ✓ verify |
+| **Production** | `kudbee-fuel-gage` | `main` | `scripts/deploy-prod.sh` | ✓ verify |
+
+### CI Bounds (Enforced in All Environments)
+
+| Bound | CI/Dev | Staging | Production |
+|:---|:---|:---|:---|
+| `CI_MUTATION_BUDGET` | 20 | 20 | 20 |
+| `MAX_REQUEST_BODY` | 256kb | 512kb | 512kb |
+| `DB_POOL_MAX` | 5 | 10 | 10 |
+| `MONTHLY_DB_OPERATION_BUDGET` | 500000 | 2000000 | 5000000 |
+
+### EDISBOX Integration (Upstash Box)
+
+- `scripts/edisbox-deploy.mjs` — isolated HTTP health check inside Upstash Box container
+- `scripts/edisbox-pipeline.mjs` — full pipeline verification (API key check, box-web-verify, package check, DTHINK feed)
+- `scripts/box-web-verify.mjs` — staging HTTP verification via Upstash Box
+- All deploy scripts run EDISBOX verification before promotion
+- Results fed to DTHINK pipeline for audit trail
+
+### Deploy Script Workflow
+
+```bash
+# Development deploy (from session branch)
+./scripts/deploy-dev.sh
+
+# Staging deploy (from staging/security-durability branch)
+./scripts/deploy-staging.sh
+
+# Production deploy (from main branch, requires staging health)
+./scripts/deploy-prod.sh
+```
+
+Each deploy script:
+1. Verifies Heroku CLI and authentication
+2. Runs CI gates (`verify-gates.mjs --quick`)
+3. Logs deploy trigger to memory journal
+4. Pushes branch to Heroku
+5. Waits for dyno restart (15s)
+6. Checks health endpoint
+7. Runs EDISBOX verification (if `UPSTASH_BOX_API_KEY` set)
+8. Feeds deploy event to DTHINK pipeline
+9. Reports success/failure with URL and health status

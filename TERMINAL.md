@@ -2,22 +2,23 @@
 
 > **Living document** — updated on every session. Single source of truth for the terminal agent ecosystem.
 
-Last updated: 2026-07-29T07:08:18Z | Session: ses-1785308878828 | Mode: BATCH
+Last updated: 2026-08-01T04:57:03Z | Session: ses-1785559051260-28ef4088 | Mode: BATCH
 
-## Agent Fleet — 10 Agents + 30 Sub-Agents
+## Agent Fleet — 11 Agents + 33 Sub-Agents
 
 | Agent | Decisions | Sub-Agents |
 |:---|:---|:---|
 | pipeline-guardian | 50 | middleware-scanner, sse-auth-checker, lock-auditor |
-| knowledge-curator | 36 | snippet-indexer, recall-optimizer, memory-compactor |
-| ci-watcher | 20 | typecheck-runner, lint-scanner, e2e-tester |
-| sentinel | 2 | anomaly-detector, circuit-guardian, noise-absorber |
-| hermes | 2 | task-poller, dlq-manager, budget-auditor |
-| monitor | 2 | dyno-watcher, latency-tracker, memory-guardian |
-| gateway-router | 2 | call-dispatcher, priority-sorter, mesh-checker |
-| ledger-keeper | 2 | quota-tracker, spend-calculator, alert-thresholder |
-| web-doctor | 2 | page-poller, mime-validator, render-checker |
-| token-forge | 2 | thompson-sampler, cusum-tracker, mahalanobis-router |
+| knowledge-curator | 44 | snippet-indexer, recall-optimizer, memory-compactor |
+| ci-watcher | 37 | typecheck-runner, lint-scanner, e2e-tester |
+| sentinel | 13 | anomaly-detector, circuit-guardian, noise-absorber |
+| hermes | 10 | task-poller, dlq-manager, budget-auditor |
+| monitor | 8 | dyno-watcher, latency-tracker, memory-guardian |
+| gateway-router | 5 | call-dispatcher, priority-sorter, mesh-checker |
+| ledger-keeper | 5 | quota-tracker, spend-calculator, alert-thresholder |
+| web-doctor | 9 | page-poller, mime-validator, render-checker |
+| token-forge | 10 | thompson-sampler, cusum-tracker, mahalanobis-router |
+| gastown | 11 | safe-zone-gate, worktree-isolator, convoy-recovery |
 
 ## Active Systems
 - Global Latent Vector Workspace (swarm telepathy — replaces phone calls)
@@ -27,11 +28,15 @@ Last updated: 2026-07-29T07:08:18Z | Session: ses-1785308878828 | Mode: BATCH
 - Self-Modifying Reward Loop (Vector 10, gradient backpropagation)
 - Enterprise SOR Math (Thompson Sampling + EWMA-CUSUM + Mahalanobis)
 - 36 THINK tokens forged (24 VERIFIED, 10 CHALLENGED, 1 PRUNED)
+- EDISBOX Deploy Pipeline (Upstash Box integration — staging HTTP verification, release evidence, Redis audit, DTHINK feed)
+- Heroku Pipeline Workflow (3 environments: dev → staging → production)
 
 ## Production
 - v299 on Heroku (web + sentinel + hermes-worker + monitor-worker)
 - 4 databases: Postgres (Neon) + pgvector (1536-dim) + 2 Upstash Redis
 - 21 PRs merged in 2026-07-28 session
+- PR #233 open: security durability, TypeScript 7, bounded CI, staging hardening
+- Heroku pipeline: dev (session branch) → staging (security-durability) → production (main)
 
 ---
 

@@ -36,6 +36,26 @@
         "test": { "quantity": 1, "size": "standard-1x" }
       }
     },
+    "development": {
+      "scripts": {
+        "test": "node scripts/verify-gates.mjs --quick && node scripts/edisbox-pipeline.mjs verify"
+      },
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000",
+        "CI_MUTATION_BUDGET": "20",
+        "MAX_REQUEST_BODY": "256kb",
+        "DB_POOL_MAX": "5",
+        "MONTHLY_DB_OPERATION_BUDGET": "500000",
+        "UPSTASH_BOX_API_KEY": { "required": false }
+      },
+      "formation": {
+        "web": { "quantity": 1, "size": "eco" },
+        "hermes-worker": { "quantity": 1, "size": "eco" },
+        "monitor-worker": { "quantity": 1, "size": "eco" },
+        "sentinel": { "quantity": 1, "size": "eco" }
+      }
+    },
     "staging": {
       "scripts": {
         "test": "node scripts/verify-gates.mjs --quick && node scripts/deploy-log.mjs log staging-deploy"

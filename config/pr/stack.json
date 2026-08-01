@@ -5,16 +5,9 @@
   "layers": [
     {
       "order": 1,
-      "pullRequest": 229,
-      "branch": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
-      "base": "main",
-      "concern": "governed Lemonade Workspace and operating model"
-    },
-    {
-      "order": 2,
-      "pullRequest": 230,
+      "pullRequest": 233,
       "branch": "staging/security-durability",
-      "base": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
+      "base": "main",
       "concern": "security durability, TypeScript 7, bounded CI, and staging hardening"
     }
   ],
@@ -24,6 +17,7 @@
     "eachLayerNeedsCi": true,
     "draftUntilHumanReview": true,
     "productionDeployFromTrunkOnly": true,
-    "stagingDeployMayUseTopLayer": true
+    "stagingDeployMayUseTopLayer": true,
+    "edisboxVerification": true
   }
 }
