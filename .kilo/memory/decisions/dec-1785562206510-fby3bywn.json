@@ -1,0 +1,593 @@
+{
+  "id": "dec-1785562206510-fby3bywn",
+  "type": "preflight_gate",
+  "status": "FAIL",
+  "gateResults": [
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.113Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Bell",
+      "timestamp": "2026-08-01T05:30:06.113Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Zap",
+      "timestamp": "2026-08-01T05:30:06.113Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Calculator",
+      "timestamp": "2026-08-01T05:30:06.113Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Search",
+      "timestamp": "2026-08-01T05:30:06.113Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: FileSpreadsheet",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: ChevronRight",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: ShieldAlert",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: XCircle",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Ban",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Shield",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Network",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Globe",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Maximize2",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Monitor",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: Sparkles",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/App.tsx: LayoutDashboard",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/AlertsPanel.tsx: XCircle",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/AlertsPanel.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/AlertsPanel.tsx: WifiOff",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/ApprovalQueueTray.tsx: Tag",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/ApprovalQueueTray.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/ApprovalQueueTray.tsx: Zap",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/ApprovalTray.tsx: ChevronRight",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/GroundedIntelligenceComponent.tsx: Globe",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/InterceptorView.tsx: ShieldX",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/LatencyHistogram.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/LatencyHistogram.tsx: Info",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/LatencyHistogram.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Shield",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Scale",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Globe",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Bell",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Settings",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: LayoutDashboard",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Calculator",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Cpu",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Sparkles",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Stethoscope",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/OSControlBar.tsx: Rocket",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/TerminalHUDTicker.tsx: Zap",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/TerminalHUDTicker.tsx: Scale",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/TerminalHUDTicker.tsx: ShieldAlert",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/ProviderStatusGrid.tsx: ShieldCheck",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Network",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Server",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Database",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Cpu",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Brain",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Shield",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Radio",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/GovernanceQueueTray.tsx: Cpu",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/GovernanceQueueTray.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/GovernanceQueueTray.tsx: Zap",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: Lock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: KeyRound",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: EyeOff",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/observability/AgentFleetMonitor.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/observability/AgentFleetMonitor.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/playground/PlaygroundView.tsx: ChevronLeft",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/CIHealthPanel.tsx: TrendingUp",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/CIHealthPanel.tsx: TrendingDown",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ChallengePanel.tsx: Zap",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ChallengePanel.tsx: TrendingUp",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ChallengePanel.tsx: Search",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ChallengePanel.tsx: ArrowUp",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ChallengePanel.tsx: ArrowDown",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/FirewallPanel.tsx: RefreshCw",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/GovernancePanel.tsx: ShieldAlert",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/LocalDbStatus.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ThinkTokensPanel.tsx: Cpu",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ThinkTokensPanel.tsx: ShieldX",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/studio/ThinkTokensPanel.tsx: TrendingDown",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/layouts/StudioLayout.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/layouts/StudioLayout.tsx: AlertTriangle",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/layouts/StudioLayout.tsx: Brain",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/layouts/StudioLayout.tsx: Shield",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/layouts/StudioLayout.tsx: Radio",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: ShieldX",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: ShieldCheck",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: Activity",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: Clock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: Lock",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: KeyRound",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: EyeOff",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/firewall.tsx: FileWarning",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Cpu",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Copy",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Server",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Database",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Radio",
+      "timestamp": "2026-08-01T05:30:06.114Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Wifi",
+      "timestamp": "2026-08-01T05:30:06.115Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: WifiOff",
+      "timestamp": "2026-08-01T05:30:06.115Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/history.tsx: Timer",
+      "timestamp": "2026-08-01T05:30:06.115Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/pages/workspace.tsx: Circle",
+      "timestamp": "2026-08-01T05:30:06.115Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "PASS",
+      "detail": "Time:    20ms >>> FULL TURBO",
+      "timestamp": "2026-08-01T05:30:06.464Z"
+    }
+  ],
+  "gateErrors": [
+    "96 unused lucide-react imports"
+  ],
+  "timestamp": "2026-08-01T05:30:06.510Z"
+}

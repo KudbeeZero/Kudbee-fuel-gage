@@ -47,9 +47,48 @@ function spin(cmd, label) {
   }
 }
 
-// ── Gate 1: Unused imports scan ──────────────────────────────────────────
+// ── Gate 1: ESLint unused imports (replaces manual regex scan) ──────────
 
 function scanUnusedImports() {
+  const results = [];
+  const webDir = join(process.cwd(), 'apps', 'web');
+  if (!existsSync(webDir)) return results;
+
+  try {
+    const out = execSync('npx eslint src --ext .ts,.tsx --rule "@typescript-eslint/no-unused-imports: error" --rule "@typescript-eslint/no-unused-vars: error" --format json', {
+      encoding: 'utf8',
+      timeout: 120_000,
+      cwd: webDir,
+    });
+    // ESLint returns 0 when no errors, so no unused imports
+    results.push({ status: 'PASS', detail: 'No unused imports' });
+  } catch (e) {
+    // ESLint returns 1 when there are errors
+    try {
+      const report = JSON.parse(e.stdout || '[]');
+      const unused = [];
+      for (const file of report) {
+        for (const msg of file.messages || []) {
+          if (msg.ruleId === '@typescript-eslint/no-unused-imports' || msg.ruleId === '@typescript-eslint/no-unused-vars') {
+            unused.push({ file: file.filePath.replace(process.cwd(), ''), message: msg.message, line: msg.line });
+          }
+        }
+      }
+      if (unused.length > 0) {
+        results.push({ status: 'FAIL', detail: `${unused.length} unused imports/vars`, items: unused });
+      } else {
+        results.push({ status: 'PASS', detail: 'No unused imports' });
+      }
+    } catch {
+      results.push({ status: 'WARN', detail: 'ESLint parse error — falling back to manual scan' });
+      // Fallback to manual scan if ESLint JSON parse fails
+      return scanUnusedImportsFallback();
+    }
+  }
+  return results;
+}
+
+function scanUnusedImportsFallback() {
   const results = [];
   const srcDir = join(process.cwd(), 'apps', 'web', 'src');
   if (!existsSync(srcDir)) return results;
@@ -100,21 +139,31 @@ async function main() {
   const results = [];
   const errors = [];
 
-  // ── Unused imports scan ───────────────────────────────────────
-  let unusedResults = [];
+  // ── Unused imports scan (ESLint) ──────────────────────────────────────
+  let scanResults = [];
   try {
-    unusedResults = scanUnusedImports();
+    scanResults = scanUnusedImports();
   } catch (e) {
-    unusedResults = [];
+    scanResults = [];
   }
 
-  if (unusedResults.length > 0) {
-    for (const u of unusedResults) {
-      results.push(gateStatus('unused-import', 'FAIL', `${u.file}: ${u.name}`));
+  for (const r of scanResults) {
+    if (r.status === 'PASS') {
+      results.push(gateStatus('unused-import', 'PASS', r.detail || 'No dead imports'));
+    } else if (r.status === 'FAIL') {
+      if (r.items) {
+        for (const item of r.items) {
+          results.push(gateStatus('unused-import', 'FAIL', `${item.file}:${item.line} — ${item.message}`));
+        }
+      }
+      errors.push(r.detail || 'unused imports found');
+    } else {
+      results.push(gateStatus('unused-import', 'WARN', r.detail || 'Scan skipped'));
     }
-    errors.push(`${unusedResults.length} unused lucide-react imports`);
-  } else {
-    results.push(gateStatus('unused-import', 'PASS', 'No dead imports'));
+  }
+
+  if (scanResults.length === 0) {
+    results.push(gateStatus('unused-import', 'WARN', 'Scan skipped'));
   }
 
   if (unusedOnly) {

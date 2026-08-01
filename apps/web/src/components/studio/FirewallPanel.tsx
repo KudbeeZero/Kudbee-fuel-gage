@@ -7,7 +7,6 @@ import {
   ToggleRight,
   Ban,
   Zap,
-  RefreshCw,
   ShieldAlert
 } from 'lucide-react';
 import { useEventStream } from '../../hooks/useEventStream';
