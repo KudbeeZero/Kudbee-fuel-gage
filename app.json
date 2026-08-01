@@ -21,12 +21,9 @@
         "test": "node scripts/verify-gates.mjs --quick && node --check scripts/*.mjs && node scripts/verify-agents.mjs"
       },
       "env": {
-        "NODE_ENV": { "value": "test" },
-        "PORT": { "value": "9876" },
-        "CI_MUTATION_BUDGET": { "value": "20" },
-        "MAX_REQUEST_BODY": { "value": "256kb" },
-        "DB_POOL_MAX": { "value": "5" },
-        "MONTHLY_DB_OPERATION_BUDGET": { "value": "500000" }
+        "NODE_ENV": "test",
+        "PORT": "9876",
+        "DATABASE_URL": ""
       },
       "formation": {
         "test": { "quantity": 1, "size": "standard-1x" }
