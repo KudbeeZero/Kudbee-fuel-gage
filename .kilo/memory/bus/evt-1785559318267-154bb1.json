@@ -1,0 +1,11 @@
+{
+  "id": "evt-1785559318267-154bb1",
+  "topic": "system:health",
+  "source": "cli",
+  "data": {
+    "status": "GREEN",
+    "agents": 3
+  },
+  "timestamp": "2026-08-01T04:41:58.268Z",
+  "sequence": 46
+}

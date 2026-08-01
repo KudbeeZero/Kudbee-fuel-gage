@@ -7,6 +7,10 @@
   "buildpacks": [{ "url": "heroku/nodejs" }],
   "env": {
     "NODE_ENV": { "value": "production" },
+    "CI_MUTATION_BUDGET": { "value": "20", "description": "Max CI mutations per run" },
+    "MAX_REQUEST_BODY": { "value": "256kb", "description": "Max request body size in CI" },
+    "DB_POOL_MAX": { "value": "5", "description": "Max DB connections in CI" },
+    "MONTHLY_DB_OPERATION_BUDGET": { "value": "500000", "description": "Monthly DB operation cap" },
     "REDIS_URL": { "required": false },
     "REDIS_WORKER_URL": { "required": false },
     "UPSTASH_REDIS_REST_URL": { "required": false },
@@ -22,10 +26,52 @@
       },
       "env": {
         "NODE_ENV": "test",
-        "PORT": "9876"
+        "PORT": "9876",
+        "CI_MUTATION_BUDGET": "20",
+        "MAX_REQUEST_BODY": "256kb",
+        "DB_POOL_MAX": "5",
+        "MONTHLY_DB_OPERATION_BUDGET": "500000"
       },
       "formation": {
         "test": { "quantity": 1, "size": "standard-1x" }
+      }
+    },
+    "staging": {
+      "scripts": {
+        "test": "node scripts/verify-gates.mjs --quick && node scripts/deploy-log.mjs log staging-deploy"
+      },
+      "env": {
+        "NODE_ENV": "staging",
+        "PORT": "3000",
+        "CI_MUTATION_BUDGET": "20",
+        "MAX_REQUEST_BODY": "512kb",
+        "DB_POOL_MAX": "10",
+        "MONTHLY_DB_OPERATION_BUDGET": "2000000"
+      },
+      "formation": {
+        "web": { "quantity": 1, "size": "eco" },
+        "hermes-worker": { "quantity": 1, "size": "eco" },
+        "monitor-worker": { "quantity": 1, "size": "eco" },
+        "sentinel": { "quantity": 1, "size": "eco" }
+      }
+    },
+    "production": {
+      "scripts": {
+        "test": "node scripts/verify-gates.mjs --quick && node scripts/deploy-log.mjs log production-deploy"
+      },
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "3000",
+        "CI_MUTATION_BUDGET": "20",
+        "MAX_REQUEST_BODY": "512kb",
+        "DB_POOL_MAX": "10",
+        "MONTHLY_DB_OPERATION_BUDGET": "5000000"
+      },
+      "formation": {
+        "web": { "quantity": 1, "size": "eco" },
+        "hermes-worker": { "quantity": 1, "size": "eco" },
+        "monitor-worker": { "quantity": 1, "size": "eco" },
+        "sentinel": { "quantity": 1, "size": "eco" }
       }
     }
   },
@@ -34,5 +80,19 @@
     "hermes-worker": { "quantity": 1, "size": "eco" },
     "monitor-worker": { "quantity": 1, "size": "eco" },
     "sentinel": { "quantity": 1, "size": "eco" }
+  },
+  "reviewApps": {
+    "enabled": true,
+    "environment": "review",
+    "env": {
+      "NODE_ENV": "review",
+      "CI_MUTATION_BUDGET": "20",
+      "MAX_REQUEST_BODY": "256kb",
+      "DB_POOL_MAX": "5",
+      "MONTHLY_DB_OPERATION_BUDGET": "100000"
+    },
+    "formation": {
+      "web": { "quantity": 1, "size": "eco" }
+    }
   }
 }

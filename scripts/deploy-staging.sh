@@ -71,3 +71,6 @@ echo "║  URL: https://$APP.herokuapp.com"
 echo "║  Health: OK"
 echo "║  Branch: $BRANCH"
 echo "╚══════════════════════════════════════════════╝"
+
+# Feed deploy event to DTHINK pipeline
+node scripts/dthink-pipeline.mjs feed "deploy:staging" "Staging deploy of $BRANCH — health: OK" 2>/dev/null || true

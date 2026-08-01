@@ -93,6 +93,12 @@ if (command === 'log') {
   existing.lastDeploy = entry.timestamp;
   saveJson(DEPLOY_LOG, existing);
 
+  // Feed deploy event to DTHINK pipeline
+  try {
+    const { execSync } = require('child_process');
+    execSync(`node scripts/dthink-pipeline.mjs feed "deploy:${ctx.branch}" "Deploy logged: ${note} — commit ${ctx.commit.slice(0, 7)}"`, { timeout: 5000 });
+  } catch {}
+
   console.log(JSON.stringify({ status: 'logged', deployId: entry.id, commit: ctx.commit.slice(0, 7) }));
 } else if (command === 'list') {
   const existing = loadJson(DEPLOY_LOG);
