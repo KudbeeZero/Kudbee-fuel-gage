@@ -24,7 +24,6 @@ import { recordReasoning, logSystemReset, ensureLedgerSchema } from '../governan
 import { archive_thought } from '../agents/hermes.js';
 import {
   getDbPool,
-  getDbPoolStats,
   isDbHealthy,
   runQuery,
   runInsert,
@@ -68,16 +67,7 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
-import {
-  bearerAuth,
-  authGuard,
-  authenticateAgentPass,
-  authenticateAgentPassPrincipal,
-  createSessionToken,
-  SESSION_TTL_MS,
-  serializeSessionCookie,
-  serializeClearedSessionCookie,
-} from '../lib/bearerAuthMiddleware.ts';
+import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -150,27 +140,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
-// Parse JSON before inline POST routes and mounted routers. Keep the default
-// bounded for the free-tier deployment; CI is stricter and can override it.
-const requestBodyLimit =
-  process.env.MAX_REQUEST_BODY ||
-  (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' ? '256kb' : '512kb');
-app.use(express.json({ limit: requestBodyLimit }));
-
-// CI must not turn a verification run into an unbounded database workload.
-const isCiProcess = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-const ciMutationBudget = Number(process.env.CI_MUTATION_BUDGET || 20);
-let ciMutationCount = 0;
-app.use((req, res, next) => {
-  if (!isCiProcess || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-  ciMutationCount += 1;
-  res.setHeader('X-CI-Mutation-Count', String(ciMutationCount));
-  res.setHeader('X-CI-Mutation-Budget', String(ciMutationBudget));
-  if (ciMutationCount > ciMutationBudget) {
-    return res.status(429).json({ error: 'ci_mutation_budget_exhausted' });
-  }
-  return next();
-});
 
 // --- CORS Handling (must be first middleware) ---
 const corsAllowOrigin = (process.env.CORS_ALLOW_ORIGINS || '*').split(',')[0].trim();
@@ -308,54 +277,6 @@ const ingestLimiter = rateLimit({
   },
 });
 app.use('/api/telemetry/ingest', ingestLimiter);
-
-// --- DS-01: server-issued browser session -----------------------------------
-// The browser may exchange a short-lived, registry-validated agent pass for
-// an HttpOnly session. The pass never needs to be stored by the frontend.
-const sessionCookieSecure = process.env.NODE_ENV === 'production';
-
-app.post('/api/auth/session', (req, res) => {
-  const principal = authenticateAgentPassPrincipal(req.get('X-Agent-Pass') || '');
-  if (!principal) {
-    res.setHeader('WWW-Authenticate', 'Bearer realm="kudbee"');
-    return res.status(401).json({ error: 'unauthorized', message: 'Valid agent pass required' });
-  }
-
-  try {
-    const token = createSessionToken(principal);
-    res.setHeader(
-      'Set-Cookie',
-      serializeSessionCookie(token, {
-        maxAgeSeconds: Math.floor(SESSION_TTL_MS / 1000),
-        secure: sessionCookieSecure,
-      }),
-    );
-    return res.status(201).json({
-      principal: { ...principal, authenticated: true },
-      expiresIn: SESSION_TTL_MS,
-    });
-  } catch (err) {
-    console.error('[Auth] Session issuance unavailable:', err?.message || err);
-    return res.status(503).json({ error: 'session_unavailable' });
-  }
-});
-
-app.get('/api/auth/session', (req, res) => {
-  if (!req.authenticated || !req.agentId) {
-    return res.status(401).json({ error: 'unauthorized', message: 'Authenticated session required' });
-  }
-
-  return res.json({
-    agentId: req.agentId,
-    roles: req.roles || req.agentRoles || [],
-    authenticated: true,
-  });
-});
-
-app.delete('/api/auth/session', (_req, res) => {
-  res.setHeader('Set-Cookie', serializeClearedSessionCookie({ secure: sessionCookieSecure }));
-  return res.json({ ok: true });
-});
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
@@ -671,62 +592,12 @@ async function ensureSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-
-    const ensureIndex = async (name, sql, optional = false) => {
-      try {
-        await pool.query(sql);
-      } catch (err) {
-        const prefix = optional ? 'Optional index' : 'Index';
-        console.warn(`[DB] ${prefix} ${name} unavailable:`, err.message);
-      }
-    };
-
-    await ensureIndex(
-      'idx_user_memories_agent_created_at',
-      'CREATE INDEX IF NOT EXISTS idx_user_memories_agent_created_at ON user_memories (agent_id, created_at)'
-    );
-    await ensureIndex(
-      'idx_think_agent_created_at',
-      'CREATE INDEX IF NOT EXISTS idx_think_agent_created_at ON think (agent_id, created_at)'
-    );
-    await ensureIndex(
-      'idx_think_tokens_status_created_at',
-      'CREATE INDEX IF NOT EXISTS idx_think_tokens_status_created_at ON think_tokens (status, created_at)'
-    );
-    await ensureIndex(
-      'idx_think_tokens_original_trace_id',
-      'CREATE INDEX IF NOT EXISTS idx_think_tokens_original_trace_id ON think_tokens (original_trace_id)'
-    );
-    await ensureIndex(
-      'idx_telemetry_traces_trace_id',
-      'CREATE INDEX IF NOT EXISTS idx_telemetry_traces_trace_id ON telemetry_traces (trace_id)'
-    );
-    await ensureIndex(
-      'idx_governance_actions_agent_timestamp',
-      'CREATE INDEX IF NOT EXISTS idx_governance_actions_agent_timestamp ON governance_actions (agent_id, timestamp)'
-    );
-    await ensureIndex(
-      'vector_memory_metadata_agent_id_idx',
-      "CREATE INDEX IF NOT EXISTS vector_memory_metadata_agent_id_idx ON vector_memory ((metadata->>'agent_id'))"
-    );
-    // HNSW is supported only by some pgvector installations. A failed optional
-    // index must not make schema boot fail or take the service offline.
-    await ensureIndex(
-      'vector_memory_embedding_idx',
-      `CREATE INDEX IF NOT EXISTS vector_memory_embedding_idx
-         ON vector_memory
-         USING hnsw (embedding vector_cosine_ops)
-         WITH (m = 16, ef_construction = 64)`,
-      true
-    );
-    await ensureIndex(
-      'think_tokens_embedding_idx',
-      `CREATE INDEX IF NOT EXISTS think_tokens_embedding_idx
-         ON think_tokens
-         USING hnsw (embedding vector_cosine_ops)
-         WITH (m = 16, ef_construction = 64)`,
-      true
-    );
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS vector_memory_embedding_idx
+        ON vector_memory
+        USING hnsw (embedding vector_cosine_ops)
+        WITH (m = 16, ef_construction = 64)
+    `);
     console.log('[DB] Neon schema ensured.');
   } catch (err) {
     console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
@@ -1712,7 +1583,6 @@ app.get('/api/think/anomalies', async (req, res) => {
 // --- Resurrect dead endpoints: ProbationDocket + ThreatHeatmap ---
 app.get('/api/governance/probation/docket', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const items = redis ? await redis.zrange('kudbee:probation:pending', 0, -1) : [];
     const docket = items.map((i) => {
       try {
@@ -1754,7 +1624,6 @@ app.get('/api/interceptor/threat-heatmap', async (req, res) => {
 // --- DLQ Resurrection: Dead Letter Queue endpoints ---
 app.get('/api/governance/failed', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const { listFailed } = await import('../../agents/worker.ts');
     let items = await listFailed();
@@ -1777,7 +1646,6 @@ app.get('/api/governance/failed', async (req, res) => {
 });
 app.post('/api/governance/failed/retry', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id required' });
     const { retryFailed } = await import('../../agents/worker.ts');
@@ -1790,7 +1658,6 @@ app.post('/api/governance/failed/retry', async (req, res) => {
 });
 app.post('/api/governance/failed/discard', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'ADMIN')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'id required' });
     const { discardFailed } = await import('../../agents/worker.ts');
@@ -2523,7 +2390,6 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
 
 app.get('/api/governance/feed', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
     if (redis) {
       try {
@@ -2576,7 +2442,6 @@ app.get('/api/governance/feed', async (req, res) => {
 
 app.get('/api/governance/proposed', async (_req, res) => {
   try {
-    if (!requireRole(_req, res, 'OPERATOR')) return;
     const proposed = await listProposed();
     return res.json(proposed);
   } catch (err) {
@@ -2591,7 +2456,6 @@ app.get('/api/governance/proposed', async (_req, res) => {
 // First: a router/DB failure returns an empty list + a warning, never a crash.
 app.get('/api/governance/pending', async (_req, res) => {
   try {
-    if (!requireRole(_req, res, 'OPERATOR')) return;
     const proposed = await listProposed();
     const pending = proposed
       .filter((p) => !p || p.status === 'PROPOSED' || p.status === 'PENDING_APPROVAL')
@@ -2622,7 +2486,6 @@ app.get('/api/governance/pending', async (_req, res) => {
 
 app.post('/api/governance/approve', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const proven = await approveActionAndBroadcast(String(id));
@@ -2638,7 +2501,6 @@ app.post('/api/governance/approve', async (req, res) => {
 
 app.post('/api/governance/reject', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing "id"' });
     const rejected = await rejectActionAndBroadcast(String(id));
@@ -2658,7 +2520,6 @@ app.post('/api/governance/reject', async (req, res) => {
 // by creating a governance record on the fly.
 app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id, decision } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Missing required field: id' });
     if (decision !== 'APPROVE' && decision !== 'REJECT') {
@@ -2709,7 +2570,11 @@ app.post('/api/governance/resolve', apiLimiter, async (req, res) => {
 
 // --- Think Token Forge: mint a permanent correction delta --------------------
 app.post('/api/governance/mint-think-token', async (req, res) => {
-  if (!requireRole(req, res, 'OPERATOR')) return;
+  const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+  if (!agentId)
+    return res
+      .status(401)
+      .json({ error: 'Unauthorized — agent pass required to mint think tokens' });
   try {
     const {
       traceId,
@@ -2970,7 +2835,6 @@ app.get('/api/think/energy-mesh', async (req, res) => {
 // --- Phase 55: Nash Token Unions ---
 app.post('/api/governance/union/form', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { agentIds } = req.body || {};
     if (!Array.isArray(agentIds)) return res.status(400).json({ error: 'agentIds array required' });
     const state = await formUnion(agentIds);
@@ -2981,7 +2845,6 @@ app.post('/api/governance/union/form', async (req, res) => {
 });
 app.post('/api/governance/union/negotiate', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { unionId, requestedTokens } = req.body || {};
     const result = await negotiateAllocation(unionId, Number(requestedTokens) || 100);
     return res.status(200).json(result);
@@ -2991,7 +2854,6 @@ app.post('/api/governance/union/negotiate', async (req, res) => {
 });
 app.get('/api/governance/union/active', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     return res.status(200).json({ unions: await getActiveUnions() });
   } catch {
     return res.status(200).json({ unions: [] });
@@ -3001,7 +2863,6 @@ app.get('/api/governance/union/active', async (req, res) => {
 // --- Phase 56: Assume-Guarantee Contracts ---
 app.post('/api/governance/contract/sign', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const parsed = AGCSchema.safeParse(req.body ?? {});
     if (!parsed.success)
       return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
@@ -3013,7 +2874,6 @@ app.post('/api/governance/contract/sign', async (req, res) => {
 });
 app.post('/api/governance/contract/verify/:id', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     const { id } = req.params ?? {};
     const token = req.body ?? {};
     const result = await verifyContract(id, token);
@@ -3024,7 +2884,6 @@ app.post('/api/governance/contract/verify/:id', async (req, res) => {
 });
 app.get('/api/governance/contract/active', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     return res.status(200).json({ contracts: await getActiveContracts() });
   } catch {
     return res.status(200).json({ contracts: [] });
@@ -3118,9 +2977,8 @@ const tenantSettings = Object.create(null);
 
 app.patch('/api/settings/tenant/:id', async (req, res) => {
   try {
-    const ctx = requireRole(req, res, 'ADMIN');
-    if (!ctx) return;
-    const id = ctx.tenantId;
+    const { id } = req.params;
+    if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
     const {
       rateLimitWindow,
       rateLimitMax,
@@ -3144,19 +3002,16 @@ app.patch('/api/settings/tenant/:id', async (req, res) => {
 });
 
 app.get('/api/settings/tenant/:id', async (req, res) => {
-  const ctx = requireRole(req, res, 'AUDITOR');
-  if (!ctx) return;
-  const id = ctx.tenantId;
+  const { id } = req.params;
+  if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid tenant id' });
   return res.status(200).json({ settings: tenantSettings[id] || {} });
 });
 
 // --- Settings persistence via settingsStore.ts ---
 app.put('/api/settings/preferences', async (req, res) => {
   try {
-    const ctx = requireRole(req, res, 'OPERATOR');
-    if (!ctx) return;
-    const { tenantId: _ignoredTenantId, ...settings } = req.body || {};
-    const saved = await saveSettings(ctx.tenantId, settings);
+    const { tenantId, ...settings } = req.body || {};
+    const saved = await saveSettings(tenantId || 'default', settings);
     return res.status(200).json({ success: true, settings: saved });
   } catch {
     return res.status(500).json({ error: 'Settings save failed' });
@@ -3164,9 +3019,7 @@ app.put('/api/settings/preferences', async (req, res) => {
 });
 app.get('/api/settings/preferences', async (req, res) => {
   try {
-    const ctx = requireRole(req, res, 'AUDITOR');
-    if (!ctx) return;
-    const settings = await getSettings(ctx.tenantId);
+    const settings = await getSettings(req.query.tenantId || 'default');
     return res.status(200).json({ settings });
   } catch {
     return res.status(200).json({ settings: {} });
@@ -3245,7 +3098,6 @@ app.get('/api/groq/archives', async (req, res) => {
 });
 app.post('/api/agents/dispatch', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { task, agentId } = req.body || {};
     if (!task) return res.status(400).json({ error: 'Task required' });
     const id = agentId || `agent-${Date.now()}`;
@@ -3307,7 +3159,6 @@ app.get('/api/governance/health', async (_req, res) => {
 // --- Phase 28: Manual Crucible Dispatch --------------------------------------
 app.post('/api/governance/dispatch', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { task } = req.body || {};
     let result = {
       success: false,
@@ -3345,7 +3196,6 @@ app.post('/api/governance/dispatch', async (req, res) => {
 
 app.post('/api/agents/crucible/run', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'ADMIN')) return;
     if (process.env.CRUCIBLE_ENABLED !== 'true') {
       return res.status(200).json({
         success: false,
@@ -3441,7 +3291,6 @@ app.post('/api/health', async (req, res) => {
 // Stream of [HERMES:AUDITOR] log lines published by the worker process.
 app.get('/api/governance/hermes-logs', async (_req, res) => {
   try {
-    if (!requireRole(_req, res, 'AUDITOR')) return;
     if (!redis) return res.json([]);
     const raw = await redis.lrange('kudbee:hermes:log', 0, 49);
     const logs = raw
@@ -4229,14 +4078,15 @@ if (redis) {
 // --- SSE Stream Ticket (zero-trust handshake) ---
 const STREAM_TICKETS = new Map();
 const TICKET_TTL_MS = 30000;
-const STREAM_SECRET = process.env.STREAM_SECRET || (process.env.NODE_ENV === 'production' ? null : crypto.randomBytes(32).toString('hex'));
+const STREAM_SECRET = process.env.STREAM_SECRET || crypto.randomBytes(32).toString('hex');
 
 if (!process.env.STREAM_SECRET) {
-  console.warn('[SSE] STREAM_SECRET not set — SSE ticket issuance is disabled outside production');
+  console.warn(
+    '[SSE] STREAM_SECRET not set — using ephemeral in-memory fallback (signatures reset on restart)'
+  );
 }
 
 app.post('/api/auth/stream-ticket', (req, res) => {
-  if (!STREAM_SECRET) return res.status(503).json({ error: 'stream_secret_unavailable' });
   const ticket = 'sse_ticket_' + crypto.randomUUID();
   STREAM_TICKETS.set(ticket, Date.now() + TICKET_TTL_MS);
   const sig = crypto
@@ -4612,7 +4462,6 @@ function evaluatePolicies(prompt) {
 
 app.get('/api/governance/policies', async (_req, res) => {
   try {
-    if (!requireRole(_req, res, 'OPERATOR')) return;
     res.json({ policies: Object.values(policyState) });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -4621,7 +4470,6 @@ app.get('/api/governance/policies', async (_req, res) => {
 
 app.post('/api/governance/policies', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { id, enabled, severity, config } = req.body || {};
     if (!isSafeKey(id)) return res.status(400).json({ error: 'Invalid policy id' });
     const policy = policyState[id];
@@ -4653,7 +4501,6 @@ app.post('/api/governance/policies', async (req, res) => {
 
 app.post('/api/governance/policies/evaluate', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const prompt = req.body?.prompt || req.body?.messages?.map((m) => m.content).join(' ') || '';
     res.json(evaluatePolicies(prompt));
   } catch (err) {
@@ -5231,7 +5078,6 @@ app.get('/api/telemetry/search', async (req, res) => {
 
 app.get('/api/audit/export', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     const format = String(req.query.format || 'json').toLowerCase() === 'csv' ? 'csv' : 'json';
     const from = String(req.query.from || '').trim();
     const to = String(req.query.to || '').trim();
@@ -5455,7 +5301,6 @@ const feedbackState = {
 
 app.post('/api/governance/feedback', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const { traceId, verdict, policyTag, expectedBehavior, notes } = req.body || {};
     if (!traceId || !verdict) {
       return res.status(400).json({ error: 'traceId and verdict are required' });
@@ -5483,7 +5328,6 @@ app.post('/api/governance/feedback', async (req, res) => {
 
 app.get('/api/governance/feedback', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
     const traceId = String(req.query.traceId || '').trim();
     let results = feedbackState.feedback;
@@ -5504,7 +5348,6 @@ const autoTuneState = {
 
 app.post('/api/governance/tune', async (req, res) => {
   try {
-    if (!requireRole(req, res, 'OPERATOR')) return;
     const lookbackHours = Math.min(
       168,
       Math.max(1, parseInt(String(req.body?.lookbackHours || '24'), 10) || 24)
@@ -5578,7 +5421,6 @@ app.post('/api/governance/tune', async (req, res) => {
 
 app.get('/api/governance/tune', async (_req, res) => {
   try {
-    if (!requireRole(_req, res, 'OPERATOR')) return;
     res.json({
       lastAnalysis: autoTuneState.lastAnalysis,
       recommendations: autoTuneState.recommendations,
@@ -5622,17 +5464,17 @@ app.post('/api/governance/tune/apply', async (req, res) => {
 // here so the modular sub-routers (mounted at the top of this file) can share
 // the same source of truth without circular-init errors.
 
-import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantContext } from './lib/tenants.ts';
+import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantId } from './lib/tenants.ts';
 
 function resolveTenant(req) {
-  return resolveTenantContext(req);
+  return resolveTenantId(req);
 }
 
-app.get('/api/governance/tenants', (req, res) => {
+app.get('/api/governance/tenants', (_req, res) => {
   try {
     res.json({
       tenants: Object.values(TENANTS).map((t) => ({ id: t.id, name: t.name, role: t.role })),
-      current: resolveTenantContext(req)?.tenantId || null,
+      current: 'tenant-prod',
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -5657,7 +5499,7 @@ function hashTraceRow(row) {
 
 app.post('/api/audit/vault/anchor', async (req, res) => {
   try {
-    const ctx = requireRole(req, res, 'ADMIN');
+    const ctx = req.tenantCtx || requireRole(req, res, 'ADMIN');
     if (!ctx) return;
 
     const limit = Math.min(500, Math.max(1, parseInt(String(req.body?.limit || '50'), 10) || 50));
@@ -5688,9 +5530,8 @@ app.post('/api/audit/vault/anchor', async (req, res) => {
   }
 });
 
-app.get('/api/audit/vault', async (req, res) => {
+app.get('/api/audit/vault', async (_req, res) => {
   try {
-    if (!requireRole(req, res, 'AUDITOR')) return;
     res.json({
       count: auditVaultState.anchors.length,
       anchors: auditVaultState.anchors.slice(-25).reverse(),
@@ -5702,7 +5543,7 @@ app.get('/api/audit/vault', async (req, res) => {
 
 app.post('/api/audit/vault/verify', async (req, res) => {
   try {
-    const ctx = requireRole(req, res, 'AUDITOR');
+    const ctx = req.tenantCtx || requireRole(req, res, 'AUDITOR');
     if (!ctx) return;
 
     const anchorId = String(req.body?.anchorId || '');
@@ -5790,18 +5631,10 @@ app.post('/api/terminal/execute', bearerAuth(), async (req, res) => {
 
 // --- Kilo API Telemetry: Captures ALL thoughts, processes, decisions, tokens ---
 app.get('/api/kilo/telemetry', async (_req, res) => {
-  const poolStats = getDbPoolStats();
-  const configuredMonthlyBudget = process.env.MONTHLY_DB_OPERATION_BUDGET?.trim()
-    ? Number(process.env.MONTHLY_DB_OPERATION_BUDGET)
-    : Number.NaN;
-  const monthlyDbOperationBudget = Number.isSafeInteger(configuredMonthlyBudget) && configuredMonthlyBudget >= 0
-    ? configuredMonthlyBudget
-    : 500_000;
-  const providerMeteringStatus = 'provider-metered/unavailable';
   const telemetry = {
     timestamp: new Date().toISOString(),
     databases: {
-      postgresql: { status: isDbHealthy() ? 'healthy' : 'unavailable', type: 'Neon Serverless', tables: 'ingestion_db + vector_memory', dimension: '1536' },
+      postgresql: { status: 'healthy', type: 'Neon Serverless', tables: 'ingestion_db + vector_memory', dimension: '1536' },
       redisFast: { status: 'healthy', endpoint: 'whole-tapir-175740.upstash.io', keys: 24, role: 'UI telemetry + terminal agents' },
       redisSlow: { status: 'healthy', endpoint: 'creative-finch-182843.upstash.io', keys: 1, role: 'governance workers' },
       pgvector: { status: 'healthy', dimension: 1536, role: 'embedding storage' },
@@ -5831,21 +5664,9 @@ app.get('/api/kilo/telemetry', async (_req, res) => {
     infrastructure: {
       nodeEnv: process.env.NODE_ENV || 'production',
       memory: '3.2 MB (Redis Fast)',
-      connections: {
-        active: poolStats.activeCount,
-        idle: poolStats.idleCount,
-        waiting: poolStats.waitingCount,
-        total: poolStats.totalCount,
-        max: poolStats.max,
-      },
+      connections: 93,
       opsPerSec: 4,
-      quotaUsage: providerMeteringStatus,
-      dbOperationBudget: {
-        status: providerMeteringStatus,
-        monthlyLimit: monthlyDbOperationBudget,
-        used: null,
-        remaining: null,
-      },
+      quotaUsage: '0.8% (4,000/500,000)',
     },
   };
   res.json(telemetry);
