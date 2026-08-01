@@ -29,7 +29,7 @@
         "MONTHLY_DB_OPERATION_BUDGET": { "value": "500000" }
       },
       "formation": {
-        "test": { "quantity": 1, "size": "standard-2x" }
+        "test": { "quantity": 1, "size": "performance-l" }
       }
     },
     "staging": {
