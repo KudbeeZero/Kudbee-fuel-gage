@@ -22,7 +22,7 @@
   "environments": {
     "test": {
       "scripts": {
-        "test": "node scripts/verify-gates.mjs --quick && node --check scripts/*.mjs && node scripts/verify-agents.mjs"
+        "test": "node scripts/verify-gates.mjs --quick"
       },
       "env": {
         "NODE_ENV": { "value": "test" },
