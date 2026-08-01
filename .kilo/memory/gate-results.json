@@ -1,5 +1,1055 @@
 [
   {
+    "timestamp": "2026-08-01T06:01:07.728Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "PASS",
+        "detail": "No dead imports",
+        "timestamp": "2026-08-01T06:00:59.017Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    8.408s",
+        "timestamp": "2026-08-01T06:01:07.725Z"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "timestamp": "2026-08-01T06:00:26.120Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/playground/PlaygroundView.tsx: X",
+        "timestamp": "2026-08-01T06:00:25.802Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    21ms >>> FULL TURBO",
+        "timestamp": "2026-08-01T06:00:26.118Z"
+      }
+    ],
+    "errors": [
+      "1 unused lucide-react imports"
+    ]
+  },
+  {
+    "timestamp": "2026-08-01T05:59:46.574Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Activity",
+        "timestamp": "2026-08-01T05:59:46.226Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Bell",
+        "timestamp": "2026-08-01T05:59:46.226Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Zap",
+        "timestamp": "2026-08-01T05:59:46.226Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Calculator",
+        "timestamp": "2026-08-01T05:59:46.226Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Search",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Globe",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Monitor",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Sparkles",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: LayoutDashboard",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Network",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx: Shield",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/InterceptorView.tsx: ShieldX",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Shield",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Scale",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Globe",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Bell",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Settings",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: LayoutDashboard",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Calculator",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Activity",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Cpu",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Sparkles",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx: Stethoscope",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Network",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Server",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Database",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Cpu",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Brain",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Shield",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/topologyNodes.ts: Radio",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: Lock",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: KeyRound",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/governance/PolicyEnginePanel.tsx: EyeOff",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/GovernancePanel.tsx: ShieldAlert",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx: Activity",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx: AlertTriangle",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx: Brain",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx: Shield",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx: Radio",
+        "timestamp": "2026-08-01T05:59:46.227Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    21ms >>> FULL TURBO",
+        "timestamp": "2026-08-01T05:59:46.573Z"
+      }
+    ],
+    "errors": [
+      "39 unused lucide-react imports"
+    ]
+  },
+  {
+    "timestamp": "2026-08-01T05:59:14.841Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.140Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.141Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.141Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.141Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "WARN",
+        "detail": "Scan skipped",
+        "timestamp": "2026-08-01T05:59:06.141Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    8.427s",
+        "timestamp": "2026-08-01T05:59:14.839Z"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "timestamp": "2026-08-01T05:57:34.213Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:17 — 'Server' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.878Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:48 — 'GovernanceView' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.878Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:56 — 'SettingsViewProps' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.878Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:58 — 'PendingApproval' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:155 — 'setConsoleExpanded' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:161 — 'pgOk' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:174 — 'pendingApprovals' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:174 — 'executeAgentTool' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:174 — 'resolveApproval' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:174 — 'rejectApproval' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:177 — 'claudeProCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:177 — 'setClaudeProCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:178 — 'cursorProCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:178 — 'setCursorProCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:179 — 'chatGptCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:179 — 'setChatGptCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:180 — 'apiGatewayCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:180 — 'setApiGatewayCap' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:182 — 'editingProvider' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:182 — 'setEditingProvider' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:183 — 'tempCapVal' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:183 — 'setTempCapVal' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:270 — 'operationalState' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:336 — 'ledgerSpend' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/App.tsx:371 — 'chartData' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/BatcherIndicator.tsx:5 — 'batchPending' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/GroundedIntelligenceComponent.tsx:31 — 'offline' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/GroundedIntelligenceComponent.tsx:32 — 'error' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/InterceptorView.tsx:109 — 'currency' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/InterceptorView.tsx:109 — 'onNewLogTriggered' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx:327 — 'results' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx:329 — 'execute' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/OSControlBar.tsx:424 — 'data' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/TerminalStreamView.tsx:20 — 'useCallback' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/TerminalStreamView.tsx:24 — 'useState' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/RoutingVisualizer.tsx:6 — 'TopologyNode' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/RoutingVisualizer.tsx:82 — 'errors' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/RoutingVisualizer.tsx:83 — 'timeouts' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/gateway/RoutingVisualizer.tsx:112 — 'activeRoute' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/observability/AgentFleetMonitor.tsx:2 — 'FleetAgent' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/observability/AgentFleetMonitor.tsx:2 — 'TopSnippet' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/observability/TerminalMirror.tsx:37 — 'input' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/observability/TerminalMirror.tsx:44 — 'handleCommand' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/playground/PlaygroundView.tsx:2 — 'X' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/playground/PlaygroundView.tsx:3 — 'motion' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/playground/PlaygroundView.tsx:3 — 'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/playground/PlaygroundView.tsx:10 — 'RetrievedChunk' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/AgentTerminal.tsx:55 — 'onNavigate' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/GovernancePanel.tsx:20 — 'ApprovalDecision' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/GovernancePanel.tsx:20 — 'ThinkTrajectory' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/GovernancePanel.tsx:344 — 'handleVerify' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:24 — 'apiUrl' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:367 — 'hue' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:495 — 'ConfidenceGaugeCard' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:916 — 'lastSync' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:917 — 'pulse' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/TelemetryPanel.tsx:1066 — 'live' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/ThinkTokensPanel.tsx:11 — 'Gauge' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/components/studio/ThinkTokensPanel.tsx:286 — 'loading' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/core/PluginManagerModal.tsx:6 — 'activePlugins' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useAgentInterceptor.ts:1 — 'React' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useAgentInterceptor.ts:45 — '_e' is defined but never used.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useEdgeWorker.ts:3 — 'WorkerTask' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useEventStream.ts:1 — 'useRef' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useEventStream.ts:106 — 'setLastEvent' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useLocalFirst.ts:3 — 'getSyncState' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useRoutingRules.ts:28 — 'reject' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/hooks/useTelemetryStream.ts:119 — 'e' is defined but never used.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/layouts/StudioLayout.tsx:48 — 'terminalCommands' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/lib/focusTrap.ts:18 — 'last' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/OllamaChat.tsx:367 — 'handleCopy' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/OllamaChat.tsx:367 — 'text' is defined but never used. Allowed unused args must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/OllamaChat.tsx:371 — 'handleClear' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/firewall.tsx:46 — 'TriageItem' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/history.tsx:16 — 'SearchHit' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/observability.tsx:13 — 'agentRefresh' is assigned a value but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/telemetry.tsx:18 — 'DashboardSummary' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "unused-import",
+        "status": "FAIL",
+        "detail": "/apps/web/src/pages/telemetry.tsx:18 — 'TelemetryLog' is defined but never used. Allowed unused vars must match /^_/u.",
+        "timestamp": "2026-08-01T05:57:33.879Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    18ms >>> FULL TURBO",
+        "timestamp": "2026-08-01T05:57:34.212Z"
+      }
+    ],
+    "errors": [
+      "78 unused imports/vars"
+    ]
+  },
+  {
+    "timestamp": "2026-08-01T05:56:38.219Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "PASS",
+        "detail": "No unused imports",
+        "timestamp": "2026-08-01T05:56:29.646Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    8.283s",
+        "timestamp": "2026-08-01T05:56:38.218Z"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "timestamp": "2026-08-01T05:55:58.284Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "PASS",
+        "detail": "No unused imports",
+        "timestamp": "2026-08-01T05:55:57.961Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    21ms >>> FULL TURBO",
+        "timestamp": "2026-08-01T05:55:58.283Z"
+      }
+    ],
+    "errors": []
+  },
+  {
     "timestamp": "2026-08-01T05:43:03.158Z",
     "results": [
       {

@@ -1,0 +1,23 @@
+{
+  "id": "dec-1785564026155-cxcmp7jy",
+  "type": "preflight_gate",
+  "status": "FAIL",
+  "gateResults": [
+    {
+      "id": "unused-import",
+      "status": "FAIL",
+      "detail": "/apps/web/src/components/playground/PlaygroundView.tsx: X",
+      "timestamp": "2026-08-01T06:00:25.802Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "PASS",
+      "detail": "Time:    21ms >>> FULL TURBO",
+      "timestamp": "2026-08-01T06:00:26.118Z"
+    }
+  ],
+  "gateErrors": [
+    "1 unused lucide-react imports"
+  ],
+  "timestamp": "2026-08-01T06:00:26.155Z"
+}

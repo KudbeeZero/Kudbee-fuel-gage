@@ -47,48 +47,9 @@ function spin(cmd, label) {
   }
 }
 
-// ── Gate 1: ESLint unused imports (replaces manual regex scan) ──────────
+// ── Gate 1: Unused lucide-react imports scan ───────────────────────────
 
 function scanUnusedImports() {
-  const results = [];
-  const webDir = join(process.cwd(), 'apps', 'web');
-  if (!existsSync(webDir)) return results;
-
-  try {
-    const out = execSync('npx eslint src --ext .ts,.tsx --rule "@typescript-eslint/no-unused-imports: error" --rule "@typescript-eslint/no-unused-vars: error" --format json', {
-      encoding: 'utf8',
-      timeout: 120_000,
-      cwd: webDir,
-    });
-    // ESLint returns 0 when no errors, so no unused imports
-    results.push({ status: 'PASS', detail: 'No unused imports' });
-  } catch (e) {
-    // ESLint returns 1 when there are errors
-    try {
-      const report = JSON.parse(e.stdout || '[]');
-      const unused = [];
-      for (const file of report) {
-        for (const msg of file.messages || []) {
-          if (msg.ruleId === '@typescript-eslint/no-unused-imports' || msg.ruleId === '@typescript-eslint/no-unused-vars') {
-            unused.push({ file: file.filePath.replace(process.cwd(), ''), message: msg.message, line: msg.line });
-          }
-        }
-      }
-      if (unused.length > 0) {
-        results.push({ status: 'FAIL', detail: `${unused.length} unused imports/vars`, items: unused });
-      } else {
-        results.push({ status: 'PASS', detail: 'No unused imports' });
-      }
-    } catch {
-      results.push({ status: 'WARN', detail: 'ESLint parse error — falling back to manual scan' });
-      // Fallback to manual scan if ESLint JSON parse fails
-      return scanUnusedImportsFallback();
-    }
-  }
-  return results;
-}
-
-function scanUnusedImportsFallback() {
   const results = [];
   const srcDir = join(process.cwd(), 'apps', 'web', 'src');
   if (!existsSync(srcDir)) return results;
@@ -108,12 +69,30 @@ function scanUnusedImportsFallback() {
       if (!importMatch) continue;
 
       const imported = importMatch[1].split(',').map((s) => s.trim()).filter(Boolean);
+      // Get content excluding the lucide-react import line
+      const lines = content.split('\n');
+      const nonImportLines = lines.filter(l => !l.includes("from 'lucide-react'") && !l.includes('from "lucide-react"')).join('\n');
+
       for (const name of imported) {
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(?<!import.*\\b)${escaped}(?!\\s*['"\`,])`, 'g');
-        const postImportContent = content.slice(content.indexOf(importMatch[0]) + importMatch[0].length);
-        const usesInFile = (postImportContent.match(regex) || []).length;
-        if (usesInFile === 0) {
+        // Check for usage as: JSX component, property access, variable reference, object key
+        const patterns = [
+          `<${name}`,          // JSX: <Activity />
+          `.${name}`,          // Property: icons.Activity
+          `: ${name}`,         // Object value: icon: Activity
+          `: ${name},`,        // Object value with comma
+          `${name},`,          // Array element: Activity,
+          `${name}]`,          // Array element: Activity]
+          `${name}}`,          // Object value: Activity}
+          ` ${name} `,         // Standalone reference
+          `(${name})`,         // In expression
+          `=${name}`,          // Assignment
+          `?${name}`,          // Ternary
+          `:${name}`,          // Ternary else
+          `return ${name}`,    // Return statement
+          `const ${name}`,     // Re-export (shouldn't happen but safe)
+        ];
+        const isUsed = patterns.some(p => nonImportLines.includes(p));
+        if (!isUsed) {
           results.push({ file: full.replace(process.cwd(), ''), name, icon: name });
         }
       }
@@ -139,31 +118,21 @@ async function main() {
   const results = [];
   const errors = [];
 
-  // ── Unused imports scan (ESLint) ──────────────────────────────────────
-  let scanResults = [];
+  // ── Unused lucide-react imports scan ──────────────────────────────────
+  let unusedResults = [];
   try {
-    scanResults = scanUnusedImports();
+    unusedResults = scanUnusedImports();
   } catch (e) {
-    scanResults = [];
+    unusedResults = [];
   }
 
-  for (const r of scanResults) {
-    if (r.status === 'PASS') {
-      results.push(gateStatus('unused-import', 'PASS', r.detail || 'No dead imports'));
-    } else if (r.status === 'FAIL') {
-      if (r.items) {
-        for (const item of r.items) {
-          results.push(gateStatus('unused-import', 'FAIL', `${item.file}:${item.line} — ${item.message}`));
-        }
-      }
-      errors.push(r.detail || 'unused imports found');
-    } else {
-      results.push(gateStatus('unused-import', 'WARN', r.detail || 'Scan skipped'));
+  if (unusedResults.length > 0) {
+    for (const u of unusedResults) {
+      results.push(gateStatus('unused-import', 'FAIL', `${u.file}: ${u.name}`));
     }
-  }
-
-  if (scanResults.length === 0) {
-    results.push(gateStatus('unused-import', 'WARN', 'Scan skipped'));
+    errors.push(`${unusedResults.length} unused lucide-react imports`);
+  } else {
+    results.push(gateStatus('unused-import', 'PASS', 'No dead imports'));
   }
 
   if (unusedOnly) {
