@@ -1,5 +1,23 @@
 [
   {
+    "timestamp": "2026-08-01T05:43:03.158Z",
+    "results": [
+      {
+        "id": "unused-import",
+        "status": "PASS",
+        "detail": "No unused imports",
+        "timestamp": "2026-08-01T05:42:54.291Z"
+      },
+      {
+        "id": "typecheck",
+        "status": "PASS",
+        "detail": "Time:    8.533s",
+        "timestamp": "2026-08-01T05:43:03.156Z"
+      }
+    ],
+    "errors": []
+  },
+  {
     "timestamp": "2026-08-01T05:30:15.965Z",
     "results": [
       {
