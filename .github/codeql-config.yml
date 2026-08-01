@@ -1,4 +1,17 @@
-# Disable CodeQL analysis — GitHub billing blocked
-disable-default-queries: true
+name: "Kudbee CodeQL Config"
+
+disable-default-queries: false
+
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+paths:
+  - services
+  - apps
+  - scripts
+
 paths-ignore:
-  - '**'
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/test/**"
