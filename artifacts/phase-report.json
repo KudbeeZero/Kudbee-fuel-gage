@@ -1,50 +1,46 @@
 {
-  "taskId": "QW-02",
+  "taskId": "QW-04",
   "model": "qwen-3.6-pro",
   "status": "PASS",
   "changedFiles": [
-    "apps/web/src/App.tsx",
-    "apps/web/src/pages/overview.tsx",
-    "apps/web/src/hooks/useOverviewHealth.ts",
-    "config/phase/next/phase-manifest.json",
-    ".kilo/memory/snippets/security-durability-foundation-phase.md"
+    "apps/web/src/components/PanelErrorBoundary.tsx",
+    "apps/web/src/lib/errorTelemetry.ts",
+    "artifacts/phase-report.json"
   ],
   "commands": [
     "node scripts/session-bootstrap.mjs",
-    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-02",
-    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-02",
-    "npm run phase:readiness:full",
-    "git diff --check",
-    "npm run typecheck --workspace=@kudbee/web",
-    "npm run build --workspace=@kudbee/web",
+    "node scripts/verify-next-phase.mjs --full",
+    "node scripts/phase-governor.mjs check qwen-3.6-pro QW-04",
+    "node scripts/model-task-packet.mjs qwen-3.6-pro QW-04",
+    "npm run verify:secrets",
+    "npm install --legacy-peer-deps",
+    "npm run typecheck",
     "node scripts/browser-verifier.mjs",
-    "npm run verify:browser-matrix",
-    "npm run phase:ops-audit"
+    "node scripts/verify-operating-model.mjs",
+    "git diff --check"
   ],
   "evidence": {
-    "readiness": "25 passed, 0 failed, 2 environment warnings",
-    "webTypecheck": "passed",
-    "webBuild": "passed; main app bundle 337.80 kB",
-    "browserVerifier": "4 of 4 HTTP checks passed; no screenshot claimed",
-    "responsiveMatrix": "HTTP fallback reached local UI with status 200",
+    "governor": "QW-04 scope and approval policy passed",
+    "secretHygiene": "READY; 8 optional-secret warnings; 0 failures",
+    "typecheck": "12 successful tasks; 0 failures",
+    "browserVerifier": "4 of 4 staging HTTP checks passed; Playwright visual evidence unavailable",
     "operatingModel": "READY; 0 warnings; 0 failures",
-    "warnings": [
-      "Think-loop verification is environment-gated",
-      "Governance-loop verification is environment-gated",
-      "Playwright visual evidence is unavailable in the current host"
+    "deliverables": [
+      "Panel context is attached to telemetry receipts and inbox events",
+      "Every panel failure receives trace ID, release, timestamp, and fingerprint metadata",
+      "Panel fallback exposes Retry and Copy diagnostics actions",
+      "kudbee:error-inbox is emitted even when duplicate network reports are throttled"
     ]
   },
   "risks": [
-    "Overview health depends on existing diagnostics, governance, and SSE signals",
-    "Current probes and stream snapshots are not durable incident history",
-    "DS-01 authentication remains a P0 release blocker"
+    "The frontend error-report POST remains fire-and-forget and the backend route owner was not added because it is outside QW-04 scope",
+    "Browser verification used HTTP fallback because Playwright is unavailable in this host",
+    "Clipboard access can be denied by browser policy; the fallback explicitly reports Copy failed"
   ],
   "rollback": [
-    "Revert the OVERVIEW import, navigation entry, default tab, and render block in apps/web/src/App.tsx",
-    "Remove apps/web/src/pages/overview.tsx",
-    "Remove apps/web/src/hooks/useOverviewHealth.ts",
-    "Restore config/phase/next/phase-manifest.json status to ready-to-start",
-    "Remove the phase memory snippet and evidence artifact if the transition is rolled back"
+    "Revert the reportError context, receipt, and kudbee:error-inbox event additions in apps/web/src/lib/errorTelemetry.ts",
+    "Restore PanelErrorBoundary to console-only reporting with its original Retry action",
+    "Restore the prior QW-02 phase report if QW-04 is rolled back"
   ],
-  "nextDependency": "Human approval for deepseek-v4 DS-01 before editing authentication code"
+  "nextDependency": "Assign a backend route owner for /api/system/error-report, then proceed to the next independently governed task"
 }
