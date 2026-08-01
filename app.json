@@ -11,7 +11,7 @@
     "REDIS_WORKER_URL": { "required": false },
     "UPSTASH_REDIS_REST_URL": { "required": false },
     "UPSTASH_REDIS_REST_TOKEN": { "required": false },
-    "DATABASE_URL": { "required": true },
+    "DATABASE_URL": { "required": false },
     "STREAM_SECRET": { "required": false },
     "GROQ_API_KEY": { "required": false }
   },
@@ -22,10 +22,8 @@
       },
       "env": {
         "NODE_ENV": "test",
-        "PORT": "9876",
-        "DATABASE_URL": ""
+        "PORT": "9876"
       },
-      "addons": ["heroku-postgresql:mini"],
       "formation": {
         "test": { "quantity": 1, "size": "standard-1x" }
       }
