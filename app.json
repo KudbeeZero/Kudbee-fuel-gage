@@ -92,7 +92,10 @@
       "MONTHLY_DB_OPERATION_BUDGET": { "value": "100000" }
     },
     "formation": {
-      "web": { "quantity": 1, "size": "eco" }
+      "web": { "quantity": 1, "size": "eco" },
+      "hermes-worker": { "quantity": 0, "size": "eco" },
+      "monitor-worker": { "quantity": 0, "size": "eco" },
+      "sentinel": { "quantity": 0, "size": "eco" }
     }
   }
 }
