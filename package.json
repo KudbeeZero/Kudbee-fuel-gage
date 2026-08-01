@@ -26,6 +26,8 @@
     "phase:govern": "node scripts/phase-governor.mjs",
     "phase:ops-audit": "node scripts/verify-operating-model.mjs",
     "verify:stack": "node scripts/verify-stack.mjs",
+    "verify:typescript": "npm run typecheck",
+    "verify:crypto": "node scripts/verify-crypto-runtime.mjs",
     "verify:secrets": "node scripts/verify-secret-hygiene.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
