@@ -1,0 +1,21 @@
+{
+  "id": "dec-1785564348848-htktfnzp",
+  "type": "preflight_gate",
+  "status": "PASS",
+  "gateResults": [
+    {
+      "id": "unused-import",
+      "status": "PASS",
+      "detail": "No dead imports",
+      "timestamp": "2026-08-01T06:05:48.419Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "PASS",
+      "detail": "Time:    29ms >>> FULL TURBO",
+      "timestamp": "2026-08-01T06:05:48.801Z"
+    }
+  ],
+  "gateErrors": [],
+  "timestamp": "2026-08-01T06:05:48.848Z"
+}
