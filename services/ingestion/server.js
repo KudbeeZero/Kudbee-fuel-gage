@@ -140,6 +140,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
+
+// --- CORS Handling (must be first middleware) ---
+const corsAllowOrigin = (process.env.CORS_ALLOW_ORIGINS || '*').split(',')[0].trim();
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', corsAllowOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Pass, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
+
 // Parse JSON before inline POST routes and mounted routers. Without this,
 // dictionary, lifecycle, governance, and telemetry requests see an empty body.
 app.use(express.json({ limit: '10mb' }));
