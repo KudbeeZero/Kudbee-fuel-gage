@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "category": "commit",
+  "policies": [
+    {
+      "policyId": "commit.conventional",
+      "name": "Conventional Commit Message",
+      "severity": "warn",
+      "description": "Commit messages use conventional format: type(scope): summary.",
+      "scope": ["pre-commit"],
+      "conditions": [
+        {
+          "id": "conventional-format",
+          "when": { "commitMessageNotConventional": true },
+          "then": "warn",
+          "message": "Commit message should follow: feat|fix|chore|docs|refactor|test(scope): summary"
+        }
+      ]
+    },
+    {
+      "policyId": "commit.no-unrelated-files",
+      "name": "No Unrelated Files",
+      "severity": "warn",
+      "description": "A commit's changeset matches the declared objective scope.",
+      "scope": ["pre-commit"],
+      "conditions": [
+        {
+          "id": "scoped-changes",
+          "when": { "unrelatedFiles": true },
+          "then": "warn",
+          "message": "Changeset contains files outside the objective scope."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "category": "mission",
+  "policies": [
+    {
+      "policyId": "mission.active",
+      "name": "Active Mission Required",
+      "severity": "blocking",
+      "description": "No implementation proceeds without an active mission lock.",
+      "scope": ["pre-commit", "pre-push", "ci"],
+      "conditions": [
+        {
+          "id": "mission-exists",
+          "when": { "missionActive": false },
+          "then": "block",
+          "message": "No active mission. Run: protocol-guard mission <id> <objective>"
+        }
+      ]
+    },
+    {
+      "policyId": "mission.matches-branch",
+      "name": "Mission Matches Branch",
+      "severity": "blocking",
+      "description": "The mission's feature branch is the current branch.",
+      "scope": ["pre-commit", "pre-push"],
+      "conditions": [
+        {
+          "id": "branch-matches",
+          "when": { "missionBranchMismatch": true },
+          "then": "block",
+          "message": "Mission branch '{missionBranch}' does not match current branch '{branch}'."
+        }
+      ]
+    },
+    {
+      "policyId": "mission.objective-lock",
+      "name": "Objective Lock Valid",
+      "severity": "blocking",
+      "description": "The objective lock exists and references the active mission.",
+      "scope": ["pre-commit", "pre-pr"],
+      "conditions": [
+        {
+          "id": "objective-valid",
+          "when": { "objectiveExists": false },
+          "then": "block",
+          "message": "No objective lock. Run: protocol-guard objective <id> [pr]"
+        }
+      ]
+    }
+  ]
+}

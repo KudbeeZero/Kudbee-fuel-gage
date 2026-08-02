@@ -20,7 +20,7 @@ config, and idle pool tuning.
 | Aspect | Value |
 |:---|:---|
 | Provider | Neon (external, no Heroku add-on) |
-| Connection | `postgresql://neondb_owner:…@…neon.tech/neondb?sslmode=require` |
+| Connection | Neon pooled connection (host + credentials in Heroku config vars, never in docs) |
 | Pool max | `DB_POOL_MAX` default 5, clamp 1–20, prod/staging configured |
 | Pool behavior | LAZY + TOLERANT (unhealthy on failure, never crashes) |
 | Extensions | pgvector (1536-dim embeddings) |

@@ -30,6 +30,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts
       - name: TypeScript 7 compliance
@@ -48,6 +52,16 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Unit tests (bun)
+        run: bun test
+      - name: Governance validation (THINK Governance Engine)
+        run: node scripts/protocol-guard.mjs status
+      - name: Mission validation
+        run: node scripts/protocol-guard.mjs pre-pr || true
+      - name: Memory validation (runtime churn check)
+        run: node scripts/protocol-guard.mjs guard || true
+      - name: Stack validation
+        run: node scripts/verify-stack.mjs || true
       - name: Build
         run: npm run build
       - name: Bounded smoke

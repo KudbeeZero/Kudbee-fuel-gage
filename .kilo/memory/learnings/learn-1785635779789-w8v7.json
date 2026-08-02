@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785635779789-w8v7",
+  "createdAt": "2026-08-02T01:56:19.789Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-003",
+  "summary": "CI secret gate caught credential leak in audit docs — redacted, policy proven",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
