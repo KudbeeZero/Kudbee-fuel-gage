@@ -35,7 +35,7 @@ const GATE_CATEGORIES = {
   'pre-coding': ['mission', 'branch'],
   'pre-commit': ['mission', 'branch', 'memory', 'commit'],
   'pre-push': ['mission', 'branch', 'merge'],
-  'pre-pr': ['merge', 'memory', 'agent'],
+  'pre-pr': ['merge', 'memory', 'agent', 'dependency'],
 };
 
 function sh(cmd) {
@@ -278,6 +278,28 @@ function cmdEvidence() {
   return 0;
 }
 
+function cmdDependabotClassify(prNumber) {
+  // Classify a Dependabot PR by semver from its title, per dependency policy.
+  const title = sh(`gh pr view ${prNumber} --json title --jq .title 2>/dev/null`) ?? '';
+  // e.g. "build(deps): bump react from 18.2.0 to 19.0.0"
+  const m = title.match(/bump\s+([\w@/.-]+)\s+from\s+(\d+)\.(\d+)\.(\d+)\s+to\s+(\d+)\.(\d+)\.(\d+)/);
+  if (!m) {
+    console.log(`[DEPENDENCY] PR #${prNumber}: ${title || 'unknown'} — could not parse semver.`);
+    return 0;
+  }
+  const pkg = m[1];
+  const fromMajor = Number(m[2]);
+  const toMajor = Number(m[5]);
+  const toMinor = m[6];
+  const toPatch = m[7];
+  const cls = toMajor > fromMajor ? 'major' : 'minor';
+  const verdict = cls === 'major'
+    ? 'BLOCKED — major upgrade requires compatibility assessment (DEPENDABOT_PR' + prNumber + '_ANALYSIS.md)'
+    : 'ALLOWED — minor/patch with green CI may auto-approve';
+  console.log(`[DEPENDENCY] PR #${prNumber}: ${pkg} → v${toMajor}.${toMinor}.${toPatch} — ${cls} — ${verdict}`);
+  return cls === 'major' ? 1 : 0;
+}
+
 const command = process.argv[2];
 
 switch (command) {
@@ -309,6 +331,11 @@ switch (command) {
     process.exit(cmdRecover());
   case 'evidence':
     process.exit(cmdEvidence());
+  case 'dependabot-classify': {
+    const pr = process.argv[3];
+    if (!pr) { console.error('Usage: protocol-guard dependabot-classify <pr>'); process.exit(1); }
+    process.exit(cmdDependabotClassify(pr));
+  }
   default:
     console.error(`
 THINK GOVERNANCE ENGINE — Protocol Guardian

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "category": "dependency",
+  "policies": [
+    {
+      "policyId": "dependency.minor-patch-auto",
+      "name": "Minor and Patch Updates May Be Auto-Approved",
+      "severity": "allow",
+      "description": "Dependabot minor and patch updates that pass CI + governance may be merged without a compatibility assessment.",
+      "scope": ["pre-pr", "merge"],
+      "conditions": [
+        {
+          "id": "minor-patch-green",
+          "when": { "dependencySemver": "minor|patch" },
+          "then": "allow",
+          "message": "Minor/patch update with green CI — auto-approve eligible."
+        }
+      ]
+    },
+    {
+      "policyId": "dependency.major-requires-assessment",
+      "name": "Major Version Upgrades Require Compatibility Assessment",
+      "severity": "blocking",
+      "description": "Major version upgrades require a documented compatibility assessment even if CI passes.",
+      "scope": ["pre-pr", "merge"],
+      "conditions": [
+        {
+          "id": "major-needs-assessment",
+          "when": { "dependencySemver": "major" },
+          "then": "block",
+          "message": "Major version upgrade requires compatibility assessment (breaking API / TS / React / Vite). Open an investigation, do not auto-merge."
+        }
+      ],
+      "evidence": "DEPENDABOT_PR<number>_ANALYSIS.md required before merge."
+    }
+  ]
+}
