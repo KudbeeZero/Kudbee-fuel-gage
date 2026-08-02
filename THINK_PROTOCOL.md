@@ -218,3 +218,63 @@ capability of the operating system itself.
 
 Redis is optimized for speed and coordination; durable memory is the
 institutional knowledge of the Engineering OS. Do not conflate the two layers.
+
+## Enforcement — Executable Policy
+
+The protocol below is not aspirational. It is enforced by the Protocol Guardian
+(`scripts/protocol-guard.mjs`) and the deterministic PR workflow
+(`scripts/pr-sync.sh`).
+
+### Rule 1: Main is Protected
+
+`main` is a release branch, not a development branch. No feature work is ever
+committed directly to main. The only acceptable commits on main are squash
+merges, merge-queue commits, and explicitly approved emergency hotfixes.
+Everything else belongs on a feature branch.
+
+### Rule 2: Branch Guard
+
+Before the first commit of a session, KILOH checks the current branch. If it is
+`main`, KILOH stops and automatically creates a feature branch (or asks which
+feature branch to use). Coding never begins on main.
+
+### Rule 3: Pre-Commit Verification
+
+Before every commit, KILOH verifies: current branch, whether the branch may
+receive feature work, associated objective, and associated PR. If the branch is
+`main`, the commit is aborted.
+
+### Rule 4: Objective Lock
+
+Every feature branch declares: Objective ID, PR number (when opened), parent
+branch, and stack position. Without these, KILOH refuses to continue.
+
+### Rule 5: Session Initialization
+
+Every session begins with `pr-sync.sh drift`, `git status`, `git branch`. KILOH
+asks "What is today's objective?" and only then creates/switches to the working
+branch.
+
+### Rule 6: Session Termination
+
+Before ending the session: clean working tree, commit completed work, sync
+branch, update engineering memory, generate session report, record next
+recommended task. Nothing remains ambiguous.
+
+### Rule 7: Automatic Recovery
+
+If feature commits are detected on main, KILOH automatically:
+1. Creates a feature branch from current HEAD.
+2. Moves the commits there.
+3. Resets main to its protected state.
+4. Verifies history.
+5. Opens/updates the corresponding PR.
+
+The engineer does not need to remember this procedure.
+
+### Protocol Guardian
+
+A lightweight role that enforces the rules: verify workflow, protect main,
+monitor branch state, enforce THINK Protocol, refuse unsafe operations, and
+explain why an operation was blocked. It never writes business logic. It
+protects engineering discipline.
