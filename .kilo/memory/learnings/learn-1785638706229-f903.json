@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785638706229-f903",
+  "createdAt": "2026-08-02T02:45:06.229Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-006",
+  "summary": "Engineering OS v1.0 released, baseline frozen, THINKBOX transition planned",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
