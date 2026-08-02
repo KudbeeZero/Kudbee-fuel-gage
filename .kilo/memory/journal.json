@@ -31,10 +31,26 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785674812621-c430aec2",
+      "date": "2026-08-02T12:46:52.870Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785674813406-af7b7d8a",
+      "date": "2026-08-02T12:46:53.599Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 4
+    "sessions": 6
   },
   "health": {
     "overall": "UNKNOWN"
