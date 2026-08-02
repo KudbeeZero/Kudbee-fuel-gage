@@ -12,7 +12,18 @@
  * ---------------------------------------------------------------------------
  */
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
+import {
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  unlinkSync,
+  statSync,
+  openSync,
+  readSync,
+  closeSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
@@ -250,8 +261,7 @@ function getRecentCallsCount() {
 
 function getThinkForgeInjectionCount() {
   try {
-    if (!existsSync(DTHINK_STREAM_PATH)) return 0;
-    const lines = readFileSync(DTHINK_STREAM_PATH, 'utf8').split('\n').filter(Boolean);
+    const lines = readTailJsonlLines(DTHINK_STREAM_PATH, 512 * 1024);
     return lines
       .slice(-300)
       .map((line) => {
@@ -269,8 +279,7 @@ function getThinkForgeInjectionCount() {
 
 function getRecentProtocolEvents(limit = 12) {
   try {
-    if (!existsSync(PROTOCOL_EVENTS_PATH)) return [];
-    const lines = readFileSync(PROTOCOL_EVENTS_PATH, 'utf8').split('\n').filter(Boolean);
+    const lines = readTailJsonlLines(PROTOCOL_EVENTS_PATH, 128 * 1024);
     return lines
       .slice(-limit)
       .map((line) => {
@@ -282,6 +291,31 @@ function getRecentProtocolEvents(limit = 12) {
       })
       .filter(Boolean)
       .reverse();
+  } catch {
+    return [];
+  }
+}
+
+function readTailJsonlLines(filePath, maxBytes = 128 * 1024) {
+  try {
+    if (!existsSync(filePath)) return [];
+    const { size } = statSync(filePath);
+    if (size <= 0) return [];
+    const bytesToRead = Math.min(maxBytes, size);
+    const start = size - bytesToRead;
+    const fd = openSync(filePath, 'r');
+    try {
+      const buffer = Buffer.allocUnsafe(bytesToRead);
+      const readBytes = readSync(fd, buffer, 0, bytesToRead, start);
+      let text = buffer.toString('utf8', 0, readBytes);
+      if (start > 0 && text && !text.startsWith('\n')) {
+        const firstBreak = text.indexOf('\n');
+        text = firstBreak === -1 ? '' : text.slice(firstBreak + 1);
+      }
+      return text.split('\n').filter(Boolean);
+    } finally {
+      closeSync(fd);
+    }
   } catch {
     return [];
   }
