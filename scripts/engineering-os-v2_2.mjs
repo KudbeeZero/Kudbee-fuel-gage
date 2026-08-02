@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { publish } from './serial-bus.mjs';
 import { feed as dthinkFeed } from './dthink-pipeline.mjs';
@@ -55,14 +55,6 @@ function git(args) {
   return sh('git', args);
 }
 
-function safeExecFileSync(command, args) {
-  try {
-    return execFileSync(command, args, { cwd: root, encoding: 'utf8', timeout: 15_000 }).trim();
-  } catch {
-    return '';
-  }
-}
-
 function parseShortstat(text) {
   const files = Number((text.match(/(\d+)\s+files?\schanged/) || [])[1] || 0);
   const insertions = Number((text.match(/(\d+)\s+insertions?\(\+\)/) || [])[1] || 0);
@@ -80,17 +72,19 @@ function getStackContext(branch) {
 }
 
 function getBranchContext() {
-  const branch = safeExecFileSync('git', ['branch', '--show-current']) || 'unknown';
-  const sha = safeExecFileSync('git', ['rev-parse', 'HEAD']) || 'unknown';
-  const statusShort = safeExecFileSync('git', ['status', '--short']);
+  const branch = git(['branch', '--show-current']).stdout || 'unknown';
+  const sha = git(['rev-parse', 'HEAD']).stdout || 'unknown';
+  const statusShort = git(['status', '--short']).stdout;
   const { parent, children, layer, stack } = getStackContext(branch);
-  const shortstat = safeExecFileSync('git', ['diff', '--shortstat', `${parent}..HEAD`]);
+  const compareBase = resolveCompareBase(parent);
+  const range = `${compareBase}..HEAD`;
+  const shortstat = git(['diff', '--shortstat', range]).stdout;
   const diffStats = parseShortstat(shortstat);
-  const commitCount = Number(safeExecFileSync('git', ['rev-list', '--count', `${parent}..HEAD`]) || 0);
-  const commits = safeExecFileSync('git', ['log', '--oneline', `${parent}..HEAD`])
+  const commitCount = Number(git(['rev-list', '--count', range]).stdout || 0);
+  const commits = git(['log', '--oneline', range]).stdout
     .split('\n')
     .filter(Boolean);
-  const files = safeExecFileSync('git', ['diff', '--name-only', `${parent}..HEAD`])
+  const files = git(['diff', '--name-only', range]).stdout
     .split('\n')
     .filter(Boolean);
   return {
@@ -101,11 +95,25 @@ function getBranchContext() {
     children,
     layer,
     stack,
+    compareBase,
     diffStats,
     commitCount,
     commits,
     files,
   };
+}
+
+function resolveCompareBase(parent) {
+  if (git(['rev-parse', '--verify', '--quiet', parent]).ok) return parent;
+  if (git(['rev-parse', '--verify', '--quiet', `origin/${parent}`]).ok) return `origin/${parent}`;
+  const trunk = git(['rev-parse', '--verify', '--quiet', 'origin/main']).ok
+    ? 'origin/main'
+    : git(['rev-parse', '--verify', '--quiet', 'main']).ok
+      ? 'main'
+      : null;
+  if (trunk) return trunk;
+  const firstCommit = git(['rev-list', '--max-parents=0', 'HEAD']).stdout.split('\n')[0]?.trim();
+  return firstCommit || 'HEAD';
 }
 
 function getRecentCi(branch) {
@@ -198,7 +206,7 @@ function estimateAffectedSystems(files) {
 
 function writeFile(filePath, content) {
   ensureDir(filePath);
-  fs.writeFileSync(filePath, content.trimEnd() + '\n', 'utf8');
+  fs.writeFileSync(filePath, content.trim() + '\n', 'utf8');
 }
 
 function appendProtocolEvent(name, payload = {}) {
@@ -288,6 +296,7 @@ function renderPrediction(ctx, ci, prediction, checks) {
 - Generated: ${nowIso()}
 - Branch: ${ctx.branch}
 - Parent branch: ${ctx.parent}
+- Comparison base used: ${ctx.compareBase}
 - Head: ${ctx.sha.slice(0, 12)}
 
 ## Prediction
