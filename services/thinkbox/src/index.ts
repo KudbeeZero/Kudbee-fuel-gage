@@ -1,72 +1,29 @@
-/**
- * services/thinkbox/src/index.ts
- * ---------------------------------------------------------------------------
- * THINKBOX CLI entry point.
- *
- * Usage:
- *   npx tsx services/thinkbox/src/index.ts detect <git-url|zip|directory>
- *   npx tsx services/thinkbox/src/index.ts list
- *
- * `detect` runs the full Objective-001 intake pipeline and prints the
- * canonical manifest summary. `list` prints registered workspace ids.
- * ---------------------------------------------------------------------------
- */
-
 import { intakeAndDetect } from './orchestrator.ts';
 import { listWorkspaces } from './registry.ts';
+import { createMissionGraph } from './planning/planner.ts';
+import { extractLearning } from './learning/index.ts';
+import { validateCompleteWorkflow } from './integration/validation.ts';
+import { generateDemoSession } from './integration/replay.ts';
+import { generateDailyReview, computeExcellenceScore } from './excellence/engine.ts';
+import { getBestProvider, getAllEvaluations } from './providers/index.ts';
+import { getTodaysCosts, generateOptimizations } from './cost/tracker.ts';
+import { getEngineeringKPIs, getEngineeringScorecard, verifyEngineeringReady } from './metrics/engineering.ts';
 
-function printManifest(outcome: ReturnType<typeof intakeAndDetect>): void {
-  const { workspace, manifestPath } = outcome;
-  console.log(JSON.stringify(
-    {
-      workspaceId: workspace.workspaceId,
-      name: workspace.name,
-      sourceType: workspace.sourceType,
-      state: workspace.state,
-      languages: workspace.detection?.languages ?? [],
-      frameworks: workspace.detection?.frameworks ?? [],
-      packageManagers: workspace.detection?.packageManagers ?? [],
-      confidence: workspace.detection?.confidence ?? 0,
-      recommendedNextAction: workspace.summary?.recommendedNextAction ?? null,
-      manifestPath,
-    },
-    null,
-    2
-  ));
-}
-
-const [command, arg] = process.argv.slice(2);
+const [command, ...args] = process.argv.slice(2);
+const arg = args[0];
 
 switch (command) {
-  case 'detect': {
-    if (!arg) {
-      console.error('Usage: thinkbox detect <git-url|zip|directory>');
-      process.exit(1);
-    }
-    const outcome = intakeAndDetect(arg);
-    printManifest(outcome);
-    break;
-  }
-  case 'list': {
-    const workspaces = listWorkspaces();
-    for (const w of workspaces) {
-      console.log(`${w.workspaceId}  ${w.name}  [${w.sourceType}]  ${w.state}`);
-    }
-    break;
-  }
-  default: {
-    console.error(`
-THINKBOX — Universal Workspace Detection
-
-Commands:
-  detect <git-url|zip|directory>   Intake + detect + manifest + publish
-  list                             List registered workspaces
-
-Examples:
-  npx tsx services/thinkbox/src/index.ts detect /path/to/project
-  npx tsx services/thinkbox/src/index.ts detect https://github.com/user/repo.git
-  npx tsx services/thinkbox/src/index.ts list
-`);
-    process.exit(1);
-  }
+  case 'detect': { if (!arg) { console.error('Usage: detect <path>'); process.exit(1); } const o = intakeAndDetect(arg); console.log(JSON.stringify({ workspaceId: o.workspace.workspaceId, name: o.workspace.name, languages: o.workspace.detection?.languages ?? [], confidence: o.workspace.detection?.confidence ?? 0 })); break; }
+  case 'plan': { const m = createMissionGraph({ title: arg || 'Default', description: arg || 'Default' }); console.log(JSON.stringify({ epics: m.epics.length, tasks: m.tasks.length, agents: m.requiredAgents.map(a => a.name) })); break; }
+  case 'learn': { const m = createMissionGraph({ title: arg || 'Test', description: arg || 'Test' }); const r = extractLearning({ missionGraph: m as any, testResults: [{ name: 'unit', passed: false }] }); console.log(JSON.stringify({ records: r.length, categories: [...new Set(r.map(e => e.category))] })); break; }
+  case 'validate': { const r = validateCompleteWorkflow(); console.log(JSON.stringify({ score: r.overallScore, passed: r.passed, failed: r.failed })); break; }
+  case 'replay': { const s = generateDemoSession(arg || 'demo'); console.log(JSON.stringify({ sessionId: s.sessionId, frames: s.frames.length })); break; }
+  case 'review': { const r = generateDailyReview(); console.log(JSON.stringify({ agents: r.agentReviews.length, quality: r.qualityScore, arch: r.architectureScore, recs: r.topRecommendations.length })); break; }
+  case 'score': { const s = computeExcellenceScore(); console.log(JSON.stringify({ total: s.total, grade: s.grade, categories: Object.keys(s.breakdown).length })); break; }
+  case 'provider': { const best = getBestProvider(arg || 'architecture'); console.log(JSON.stringify(best)); break; }
+  case 'cost': { const c = getTodaysCosts(); const o = generateOptimizations(); console.log(JSON.stringify({ today: c.totalCost, budgetHealth: c.budgetHealth, optimizations: o.length })); break; }
+  case 'kpi': { const k = getEngineeringKPIs(); const sc = getEngineeringScorecard(); console.log(JSON.stringify({ ciPassRate: k.ciPassRate, scorecard: sc.total, grade: sc.grade })); break; }
+  case 'ready': { const v = verifyEngineeringReady(); console.log(JSON.stringify({ ready: v.ready, score: v.score, checks: v.checks.map(c => c.name) })); break; }
+  case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}`); break; }
+  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | list'); process.exit(1); }
 }

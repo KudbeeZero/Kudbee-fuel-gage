@@ -110,8 +110,13 @@
       "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
       "timestamp": "2026-07-31T07:25:30.392Z",
       "score": 15
+    },
+    {
+      "query": "verify all middleware for ops-013",
+      "timestamp": "2026-08-02T07:18:23.480Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-31T07:25:30.392Z",
-  "recallCount": 22
+  "lastRecall": "2026-08-02T07:18:23.480Z",
+  "recallCount": 23
 }

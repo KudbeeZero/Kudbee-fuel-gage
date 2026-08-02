@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785655103555-f055f651",
+  "agentId": "knowledge-curator",
+  "decision": "run:audit learning health for OPS-013",
+  "context": {
+    "action": "execute",
+    "task": "audit learning health for OPS-013",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T07:18:23.555Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785653646655-f0f5d606",
+  "agentId": "knowledge-curator",
+  "decision": "run:verify snippet health and identify stale entries",
+  "context": {
+    "action": "execute",
+    "task": "verify snippet health and identify stale entries",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T06:54:06.655Z",
+  "decoded": false
+}

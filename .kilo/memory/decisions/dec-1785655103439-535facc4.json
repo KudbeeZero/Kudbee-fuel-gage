@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785655103439-535facc4",
+  "agentId": "pipeline-guardian",
+  "decision": "run:verify all middleware for OPS-013",
+  "context": {
+    "action": "execute",
+    "task": "verify all middleware for OPS-013",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T07:18:23.439Z",
+  "decoded": false
+}

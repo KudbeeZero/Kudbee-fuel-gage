@@ -1,0 +1,1 @@
+{"tokenType":"process-improvement","name":"Pre-Push Verification Gate","description":"verify-quick.mjs catches 90% of CI failures locally in <3 seconds before pushing","observed":"merge-conflicted mission-lock.json caused 4 CI cycles","confidence":0.95,"createdAt":"2026-08-02T09:53:45Z"}

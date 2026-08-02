@@ -115,8 +115,18 @@
       "query": "ds-03 durable writes idempotency worker lease redis cache token budget",
       "timestamp": "2026-07-31T07:25:00.329Z",
       "score": 15
+    },
+    {
+      "query": "audit all 11 middleware layers for thinkbox-009",
+      "timestamp": "2026-08-02T06:54:05.763Z",
+      "score": 11
+    },
+    {
+      "query": "thinkbox continuous learning engineering",
+      "timestamp": "2026-08-02T06:54:31.135Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-31T07:25:00.329Z",
-  "recallCount": 23
+  "lastRecall": "2026-08-02T06:54:31.135Z",
+  "recallCount": 25
 }
