@@ -5,6 +5,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-009",
   "name": "Continuous Engineering Learning Engine",
   "objective": "Continuous Engineering Learning Engine",
@@ -45,10 +46,17 @@
   "objective": "Fix crash + wire WorkspaceViewModel",
   "featureBranch": "feature/thinkbox-pr014a",
 >>>>>>> Stashed changes
+=======
+  "missionId": "THINKBOX-014B",
+  "name": "Live Interactive Terminal Integration",
+  "objective": "Live Interactive Terminal Integration",
+  "featureBranch": "feature/thinkbox-pr014b",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
@@ -73,6 +81,9 @@
 >>>>>>> Stashed changes
 =======
   "startedAt": "2026-08-02T07:45:50.349Z",
+>>>>>>> Stashed changes
+=======
+  "startedAt": "2026-08-02T07:50:18.676Z",
 >>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
