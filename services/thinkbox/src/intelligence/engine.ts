@@ -133,7 +133,7 @@ function detectRuntimes(files: string[], root: string): RuntimeInfo[] {
     const content = readTextSafe(join(root, pyproject));
     if (content) {
       const m = content.match(/requires-python\s*=\s*["']([^"']+)["']/);
-      if (m) runtimes.push({ kind: 'python', version: m[1], source: 'pyproject.toml' });
+      if (m) runtimes.push({ kind: 'python', version: m[1], source: 'other' });
     }
   }
 

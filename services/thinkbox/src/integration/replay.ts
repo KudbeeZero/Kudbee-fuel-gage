@@ -99,9 +99,9 @@ export function replaySession(session: ReplaySession, speed: number = 1): Replay
 export function generateDemoSession(workspaceId: string): ReplaySession {
   const session = createReplaySession(workspaceId);
   const timeline = [
-    { subsystem: 'detection' as const, action: 'Project detected', detail: '10 languages, 2 frameworks found' },
-    { subsystem: 'intelligence' as const, action: 'Intelligence generated', detail: '7 services, 55 env vars' },
-    { subsystem: 'planning' as const, action: 'Mission planned', detail: '2 epics, 10 tasks' },
+    { subsystem: 'detection' as const, action: 'Project detected', detail: '10 languages, 2 frameworks found', agentId: null as string | null },
+    { subsystem: 'intelligence' as const, action: 'Intelligence generated', detail: '7 services, 55 env vars', agentId: null as string | null },
+    { subsystem: 'planning' as const, action: 'Mission planned', detail: '2 epics, 10 tasks', agentId: null as string | null },
     { subsystem: 'agent' as const, action: 'Agents assigned', detail: 'FORGE, GATE, JOURNAL', agentId: 'KILOH' },
     { subsystem: 'provision' as const, action: 'Provision planned', detail: '70 steps, Score 100/A', agentId: 'FORGE' },
     { subsystem: 'execution' as const, action: 'Execution planned', detail: '70 commands, 2 approvals', agentId: 'FORGE' },
