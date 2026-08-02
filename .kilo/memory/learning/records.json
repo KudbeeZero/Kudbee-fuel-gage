@@ -1,0 +1,136 @@
+[
+  {
+    "id": "bee93926",
+    "context": {
+      "missionId": null,
+      "workspaceId": "current",
+      "epics": [],
+      "agents": [],
+      "files": [],
+      "services": []
+    },
+    "observation": "1/2 tests failed",
+    "rootCause": "integration may have regressions",
+    "evidence": [
+      "Test: integration"
+    ],
+    "recommendation": "Add regression test coverage for failing areas and run before merge",
+    "confidence": 0.75,
+    "scope": "local",
+    "category": "testing",
+    "severity": "high",
+    "createdAt": "2026-08-02T06:52:43.267Z",
+    "expiresAt": null,
+    "appliedMissions": [],
+    "validationResults": [],
+    "source": "pipeline:tests"
+  },
+  {
+    "id": "4304d2b8",
+    "context": {
+      "missionId": null,
+      "workspaceId": "current",
+      "epics": [],
+      "agents": [
+        "FORGE"
+      ],
+      "files": [],
+      "services": []
+    },
+    "observation": "FORGE: Chose Bun as package manager",
+    "rootCause": "Agent decision during mission execution",
+    "evidence": [
+      "Based on lockfile detection and performance"
+    ],
+    "recommendation": "Consider automating \"Chose Bun as package manager\" if pattern repeats",
+    "confidence": 0.65,
+    "scope": "local",
+    "category": "agent",
+    "severity": "medium",
+    "createdAt": "2026-08-02T06:52:43.267Z",
+    "expiresAt": null,
+    "appliedMissions": [],
+    "validationResults": [],
+    "source": "pipeline:agent-decision"
+  },
+  {
+    "id": "b60ac84e",
+    "context": {
+      "missionId": null,
+      "workspaceId": "current",
+      "epics": [],
+      "agents": [],
+      "files": [],
+      "services": []
+    },
+    "observation": "1 execution errors occurred",
+    "rootCause": "Execution environment or command issues",
+    "evidence": [
+      "Command x failed"
+    ],
+    "recommendation": "Review execution queue for commands that need pre-checks",
+    "confidence": 0.7,
+    "scope": "local",
+    "category": "execution",
+    "severity": "medium",
+    "createdAt": "2026-08-02T06:52:43.267Z",
+    "expiresAt": null,
+    "appliedMissions": [],
+    "validationResults": [],
+    "source": "pipeline:execution-summary"
+  },
+  {
+    "id": "69b24bf9",
+    "context": {
+      "missionId": null,
+      "workspaceId": "current",
+      "epics": [],
+      "agents": [],
+      "files": [],
+      "services": []
+    },
+    "observation": "1 successful recoveries",
+    "rootCause": "Recovery procedures are effective",
+    "evidence": [
+      "Recovery events documented in timeline"
+    ],
+    "recommendation": "Formalize recovery patterns into runbook",
+    "confidence": 0.85,
+    "scope": "global",
+    "category": "recovery",
+    "severity": "medium",
+    "createdAt": "2026-08-02T06:52:43.267Z",
+    "expiresAt": null,
+    "appliedMissions": [],
+    "validationResults": [],
+    "source": "pipeline:recovery"
+  },
+  {
+    "id": "96dce940",
+    "context": {
+      "missionId": null,
+      "workspaceId": "current",
+      "epics": [],
+      "agents": [
+        "FORGE"
+      ],
+      "files": [],
+      "services": []
+    },
+    "observation": "FORGE(7) loaded with many tasks",
+    "rootCause": "Task decomposition may create imbalance",
+    "evidence": [
+      "FORGE: 7 tasks"
+    ],
+    "recommendation": "Balance task distribution across agents or increase concurrency limits",
+    "confidence": 0.7,
+    "scope": "global",
+    "category": "agent",
+    "severity": "low",
+    "createdAt": "2026-08-02T06:52:43.267Z",
+    "expiresAt": null,
+    "appliedMissions": [],
+    "validationResults": [],
+    "source": "pipeline:mission-graph"
+  }
+]

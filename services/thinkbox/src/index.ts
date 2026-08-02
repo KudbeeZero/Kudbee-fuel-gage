@@ -7,6 +7,7 @@ import { listWorkspaces, getWorkspace } from './registry.ts';
 import { buildManifest } from './intelligence/engine.ts';
 import { createMissionGraph } from './planning/planner.ts';
 import { createEngineeringGraph, seedEngineeringGraph } from './planning/graph.ts';
+import { extractLearning, getLearningFeedback, generateRecommendations } from './learning/index.ts';
 
 function printDetect(outcome: ReturnType<typeof intakeAndDetect>): void {
   const { workspace, manifestPath } = outcome;
@@ -19,6 +20,22 @@ const arg = args[0];
 switch (command) {
   case 'detect': { if (!arg) { console.error('Usage: detect <path>'); process.exit(1); } printDetect(intakeAndDetect(arg)); break; }
   case 'intelligence': { if (!arg) { console.error('Usage: intelligence <id>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error('Not found'); process.exit(1); } console.log(JSON.stringify(buildManifest(ws, ws.detection))); break; }
+  case 'learn': {
+    const objectiveText = arg || 'Example mission';
+    const mission = createMissionGraph({ title: objectiveText, description: objectiveText });
+    const records = extractLearning({
+      missionGraph: mission as any,
+      executionSummary: { totalCommands: 10, successful: 8, failed: 2, errors: ['Command x failed'], recommendations: [] },
+      timeline: [{ type: 'healing:recovery', message: 'Recovered from timeout', severity: 'info' }, { type: 'test:failed', message: 'integration test failed', severity: 'error' }],
+      recoveryEvents: [{ type: 'reconnect', success: true }],
+      testResults: [{ name: 'unit', passed: true }, { name: 'integration', passed: false }],
+      agentDecisions: [{ agent: 'FORGE', title: 'Chose Bun as package manager', description: 'Based on lockfile detection and performance' }],
+    });
+    const feedback = getLearningFeedback({ title: objectiveText, description: objectiveText });
+    const recs = generateRecommendations({ title: objectiveText, description: objectiveText }, { services: ['Redis', 'PostgreSQL'], agents: ['FORGE', 'GATE'] });
+    console.log(JSON.stringify({ records, feedback: feedback.recommendations, recommendations: recs.slice(0, 5).map(r => r.title) }));
+    break;
+  }
   case 'plan': {
     const objectiveText = arg || 'Improve test coverage and add API documentation';
     const ws = getWorkspace(arg) ?? listWorkspaces()[0];
@@ -30,5 +47,5 @@ switch (command) {
     break;
   }
   case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}  [${w.sourceType}]  ${w.state}`); break; }
-  default: { console.error('THINKBOX CLI — detect | intelligence | plan | list'); process.exit(1); }
+  default: { console.error('THINKBOX CLI — detect | intelligence | plan | learn | list'); process.exit(1); }
 }
