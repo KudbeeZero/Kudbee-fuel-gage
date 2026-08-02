@@ -25,6 +25,7 @@ import {
   LayoutDashboard,
   Network,
   Shield,
+  Boxes,
 } from 'lucide-react';
 import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
@@ -59,6 +60,7 @@ import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInter
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
 import { WorkspacePage } from './pages/workspace';
 import { OverviewPage } from './pages/overview';
+import { ThinkboxPage } from './pages/thinkbox';
 
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost } from './utils/currency';
@@ -441,6 +443,7 @@ export default function App() {
     { icon: LayoutDashboard, label: 'OVERVIEW' },
     { icon: Sparkles, label: 'WORKSPACE' },
     { icon: Monitor, label: 'STUDIO' },
+    { icon: Boxes, label: 'THINKBOX' },
     { icon: Activity, label: 'TELEMETRY' },
     { icon: Gauge, label: 'OBSERVABILITY' },
     { icon: Zap, label: 'THINK' },
@@ -742,6 +745,8 @@ export default function App() {
           {activeTab === 'OVERVIEW' && <PanelErrorBoundary panel={activeTab}><OverviewPage onNavigate={setActiveTab} /></PanelErrorBoundary>}
 
           {activeTab === 'WORKSPACE' && <PanelErrorBoundary panel={activeTab}><WorkspacePage /></PanelErrorBoundary>}
+
+          {activeTab === 'THINKBOX' && <PanelErrorBoundary panel={activeTab}><ThinkboxPage /></PanelErrorBoundary>}
 
           {activeTab === 'OBSERVABILITY' && <PanelErrorBoundary panel={activeTab}><ObservabilityPage /></PanelErrorBoundary>}
 

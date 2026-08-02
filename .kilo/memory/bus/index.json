@@ -1,5 +1,5 @@
 {
-  "sequence": 47,
+  "sequence": 55,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -329,6 +329,62 @@
       "source": "cli",
       "sequence": 47,
       "timestamp": "2026-08-02T00:36:22.473Z"
+    },
+    {
+      "id": "evt-1785651166670-a78ed0",
+      "topic": "workspace:created",
+      "source": "cli",
+      "sequence": 48,
+      "timestamp": "2026-08-02T06:12:46.670Z"
+    },
+    {
+      "id": "evt-1785651166828-5dad59",
+      "topic": "workspace:detected",
+      "source": "cli",
+      "sequence": 49,
+      "timestamp": "2026-08-02T06:12:46.828Z"
+    },
+    {
+      "id": "evt-1785651172573-5eef86",
+      "topic": "workspace:created",
+      "source": "cli",
+      "sequence": 50,
+      "timestamp": "2026-08-02T06:12:52.573Z"
+    },
+    {
+      "id": "evt-1785651172728-7c995d",
+      "topic": "workspace:detected",
+      "source": "cli",
+      "sequence": 51,
+      "timestamp": "2026-08-02T06:12:52.728Z"
+    },
+    {
+      "id": "evt-1785651295293-d8da9a",
+      "topic": "workspace:created",
+      "source": "cli",
+      "sequence": 52,
+      "timestamp": "2026-08-02T06:14:55.294Z"
+    },
+    {
+      "id": "evt-1785651295503-7fb7dd",
+      "topic": "workspace:detected",
+      "source": "cli",
+      "sequence": 53,
+      "timestamp": "2026-08-02T06:14:55.503Z"
+    },
+    {
+      "id": "evt-1785651330982-ee24ef",
+      "topic": "workspace:created",
+      "source": "cli",
+      "sequence": 54,
+      "timestamp": "2026-08-02T06:15:30.982Z"
+    },
+    {
+      "id": "evt-1785651331161-594435",
+      "topic": "workspace:detected",
+      "source": "cli",
+      "sequence": 55,
+      "timestamp": "2026-08-02T06:15:31.161Z"
     }
   ],
   "topicCounts": {
@@ -362,6 +418,8 @@
     "vector:deq-infinity": 1,
     "think:protocol": 1,
     "workspace:telepathy": 1,
-    "system:ci": 1
+    "system:ci": 1,
+    "workspace:created": 4,
+    "workspace:detected": 4
   }
 }
