@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785635408576-huit",
+  "createdAt": "2026-08-02T01:50:08.576Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-003",
+  "summary": "Policy-as-code governance engine established",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}

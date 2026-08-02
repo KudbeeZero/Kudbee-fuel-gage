@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785635493462-j6ny",
+  "createdAt": "2026-08-02T01:51:33.462Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-003",
+  "summary": "Policy-as-code governance: 18 policies, 4 gates, readiness 86",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
