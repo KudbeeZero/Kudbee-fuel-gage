@@ -1,8 +1,8 @@
 {
-  "objectiveId": "ops-005-activation",
-  "prNumber": 246,
-  "branch": "feature/ops-005-governance-activation",
+  "objectiveId": "ops-006-release",
+  "prNumber": 247,
+  "branch": "feature/ops-006-v1-release",
   "parent": "main",
   "stackPosition": 1,
-  "declaredAt": "2026-08-02T02:31:02.345Z"
+  "declaredAt": "2026-08-02T02:45:55.978Z"
 }
