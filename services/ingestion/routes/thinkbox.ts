@@ -17,6 +17,10 @@ interface ThinkingDeps {
 export function createThinkboxRouter(_deps: ThinkingDeps) {
   const router = express.Router();
 
+  router.get('/health', (_req, res) => {
+    res.json({ status: 'ok', router: 'thinkbox', timestamp: Date.now() });
+  });
+
   function thinkboxCli(args: string): string | null {
     try {
       return execSync(`npx tsx services/thinkbox/src/index.ts ${args}`, {
