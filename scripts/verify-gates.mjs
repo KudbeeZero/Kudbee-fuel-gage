@@ -118,6 +118,23 @@ async function main() {
   const results = [];
   const errors = [];
 
+  // ── Terminal boot contract (regression guard) ─────────────────────────
+  // The boot loader (terminal.html) waits for the kudbee:terminal_mounted
+  // event; terminal.tsx must dispatch it after render or the terminal
+  // reports a false mount-timeout. Lost once in a squash merge — gate it.
+  try {
+    const terminalSrc = readFileSync(join(process.cwd(), 'apps', 'web', 'src', 'terminal.tsx'), 'utf8');
+    const hasDispatch = terminalSrc.includes("'kudbee:terminal_mounted'") && terminalSrc.includes('dispatchEvent');
+    if (hasDispatch) {
+      results.push(gateStatus('terminal-boot', 'PASS', 'mount dispatch present'));
+    } else {
+      results.push(gateStatus('terminal-boot', 'FAIL', 'terminal.tsx missing kudbee:terminal_mounted dispatch'));
+      errors.push('terminal boot contract violated');
+    }
+  } catch {
+    results.push(gateStatus('terminal-boot', 'WARN', 'terminal.tsx not found'));
+  }
+
   // ── Unused lucide-react imports scan ──────────────────────────────────
   let unusedResults = [];
   try {

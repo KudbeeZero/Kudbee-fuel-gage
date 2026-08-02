@@ -14,4 +14,9 @@ if (!rootElement) {
       </ErrorBoundary>
     </StrictMode>,
   );
+  // Notify the boot loader (terminal.html) that React has mounted. Without this,
+  // the loader waits 12s then reports a mount-timeout even though the app is fine.
+  queueMicrotask(() => {
+    window.dispatchEvent(new CustomEvent('kudbee:terminal_mounted'));
+  });
 }
