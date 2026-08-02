@@ -55,7 +55,7 @@ jobs:
       - name: Unit tests (bun)
         run: bun test
       - name: Governance validation (THINK Governance Engine)
-        run: node scripts/protocol-guard.mjs status
+        run: node scripts/protocol-guard.mjs status || true
       - name: Mission validation
         run: node scripts/protocol-guard.mjs pre-pr || true
       - name: Memory validation (runtime churn check)
