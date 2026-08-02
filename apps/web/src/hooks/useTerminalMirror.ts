@@ -17,6 +17,7 @@ export interface TerminalMirrorData {
   fleetSize: number;
   totalActions: number;
   totalDecisions: number;
+  callsRecent: number;
   voicemailsPending: number;
   busEventsRecent: number;
   thinkForgeInjections: number;
@@ -33,6 +34,18 @@ export function useTerminalMirror() {
         agents: Array<{ id: string; status: string }>;
         decisions: { total: number };
         snippets: { topRecalled: Array<{ recallCount: number }> };
+        terminal?: {
+          callsRecent?: number;
+          voicemailsPending?: number;
+          busEventsRecent?: number;
+          thinkForgeInjections?: number;
+        };
+        protocolEventsRecent?: Array<{
+          id?: string;
+          timestamp?: string;
+          action?: string;
+          mission?: string;
+        }>;
       }>('/api/system/agent-status');
 
       const logs: TerminalLogEntry[] = [];
@@ -59,6 +72,18 @@ export function useTerminalMirror() {
         });
       }
 
+      if (Array.isArray(agentStatus.protocolEventsRecent)) {
+        for (const event of agentStatus.protocolEventsRecent) {
+          logs.push({
+            id: event.id || `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            timestamp: event.timestamp || new Date().toISOString(),
+            type: 'bus',
+            agentId: event.mission || 'ops',
+            message: event.action || 'protocol event',
+          });
+        }
+      }
+
       const recallCount = agentStatus.snippets?.topRecalled?.reduce((a: number, s: { recallCount: number }) => a + s.recallCount, 0) ?? 0;
       if (recallCount > 0) {
         logs.push({
@@ -76,9 +101,10 @@ export function useTerminalMirror() {
         fleetSize: agentStatus.agents?.length ?? 0,
         totalActions: agentStatus.decisions?.total ?? 0,
         totalDecisions: agentStatus.decisions?.total ?? 0,
-        voicemailsPending: 0,
-        busEventsRecent: 9,
-        thinkForgeInjections: 1,
+        callsRecent: agentStatus.terminal?.callsRecent ?? 0,
+        voicemailsPending: agentStatus.terminal?.voicemailsPending ?? 0,
+        busEventsRecent: agentStatus.terminal?.busEventsRecent ?? 0,
+        thinkForgeInjections: agentStatus.terminal?.thinkForgeInjections ?? 0,
       });
       setError(null);
     } catch (e) {

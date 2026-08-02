@@ -53,3 +53,19 @@ not duplicate the lower layer's diff.
 Draft status does not deploy a branch by itself. Heroku deployment source must
 be explicit: direct Heroku Git push, a configured GitHub deployment workflow, or
 another documented provider path. Never infer deployment from a PR being open.
+
+## OPS-012B Evidence Automation
+
+```bash
+npm run ops:012b
+npm run ops:012b:events
+```
+
+`ops:012b` generates:
+- `MERGE_PREDICTION.md`
+- `STACK_SIMULATION.md`
+- `MERGE_CONTRACT.md`
+- `VERIFICATION_PACKAGE.md`
+
+Protocol events are timestamped in `.kilo/memory/protocol-events.jsonl` and
+mirrored through terminal observability data.

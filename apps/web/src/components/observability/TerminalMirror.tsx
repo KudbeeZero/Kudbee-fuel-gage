@@ -115,7 +115,7 @@ export function TerminalMirror({ data, loading, error, onCommand }: Props) {
         <div className="flex items-center gap-4 px-4 py-1.5 border-t border-zinc-800 bg-zinc-900/50 text-[9px] font-mono">
           <span className="text-emerald-400">● fleet: {data.fleetSize}</span>
           <span className="text-violet-400">◆ decisions: {data.totalDecisions}</span>
-          <span className="text-cyan-400">☎ calls: 3</span>
+          <span className="text-cyan-400">☎ calls: {data.callsRecent}</span>
           <span className="text-yellow-400">✉ voicemails: {data.voicemailsPending}</span>
           <span className="text-amber-400">⚡ bus: {data.busEventsRecent}</span>
           <span className="text-zinc-600 ml-auto">{data.timestamp?.slice(11, 19)}</span>

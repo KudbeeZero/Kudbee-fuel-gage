@@ -31,6 +31,10 @@ const MEMORIES_DIR = join(REPO_ROOT, '.kilo', 'memory', 'memories');
 const DECISIONS_DIR = join(REPO_ROOT, '.kilo', 'memory', 'decisions');
 const RELATIONS_PATH = join(REPO_ROOT, '.kilo', 'memory', 'relations.json');
 const JOURNAL_PATH = join(REPO_ROOT, '.kilo', 'memory', 'journal.json');
+const VOICEMAILS_DIR = join(REPO_ROOT, '.kilo', 'memory', 'voicemails');
+const CALL_LOG_PATH = join(REPO_ROOT, '.kilo', 'memory', 'call-log.json');
+const PROTOCOL_EVENTS_PATH = join(REPO_ROOT, '.kilo', 'memory', 'protocol-events.jsonl');
+const DTHINK_STREAM_PATH = join(REPO_ROOT, '.kilo', 'memory', 'dthink', 'stream.jsonl');
 
 [STATE_PATH, RATE_PATH, QUEUE_PATH].forEach(p => mkdirSync(dirname(p), { recursive: true }));
 
@@ -47,6 +51,8 @@ export function getAgentState() {
     rateLimits: getRateLimitState(),
     waitQueue: getWaitQueue(),
     journal: { sessions: 0, lastEntry: null },
+    terminal: { voicemailsPending: 0, callsRecent: 0, busEventsRecent: 0, thinkForgeInjections: 0 },
+    protocolEventsRecent: [],
   };
 
   // Agents
@@ -116,6 +122,14 @@ export function getAgentState() {
   if (existsSync(JOURNAL_PATH)) {
     try { const j = JSON.parse(readFileSync(JOURNAL_PATH, 'utf8')); state.journal = { sessions: j.trends?.sessions || 0, lastEntry: j.journal?.[j.journal.length - 1] || null }; } catch {}
   }
+
+  state.terminal = {
+    voicemailsPending: getUnreadVoicemailCount(),
+    callsRecent: getRecentCallsCount(),
+    busEventsRecent: getRecentBusEventsCount(),
+    thinkForgeInjections: getThinkForgeInjectionCount(),
+  };
+  state.protocolEventsRecent = getRecentProtocolEvents(12);
 
   return state;
 }
@@ -192,6 +206,85 @@ function loadDecisions(agentId) {
   return readdirSync(DECISIONS_DIR).filter(f => f.endsWith('.json')).map(f => {
     try { return JSON.parse(readFileSync(join(DECISIONS_DIR, f), 'utf8')); } catch { return null; }
   }).filter(d => d && d.agentId === agentId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
+
+function getRecentBusEventsCount() {
+  try {
+    if (!existsSync(BUS_INDEX)) return 0;
+    const idx = JSON.parse(readFileSync(BUS_INDEX, 'utf8'));
+    const events = Array.isArray(idx.events) ? idx.events : [];
+    return events.slice(-50).length;
+  } catch {
+    return 0;
+  }
+}
+
+function getUnreadVoicemailCount() {
+  try {
+    if (!existsSync(VOICEMAILS_DIR)) return 0;
+    const files = readdirSync(VOICEMAILS_DIR).filter((f) => f.endsWith('.json'));
+    let total = 0;
+    for (const file of files) {
+      try {
+        const payload = JSON.parse(readFileSync(join(VOICEMAILS_DIR, file), 'utf8'));
+        const messages = Array.isArray(payload) ? payload : [];
+        total += messages.filter((m) => !m.read).length;
+      } catch {}
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
+function getRecentCallsCount() {
+  try {
+    if (!existsSync(CALL_LOG_PATH)) return 0;
+    const payload = JSON.parse(readFileSync(CALL_LOG_PATH, 'utf8'));
+    const calls = Array.isArray(payload) ? payload : Array.isArray(payload.calls) ? payload.calls : [];
+    return calls.slice(-20).length;
+  } catch {
+    return 0;
+  }
+}
+
+function getThinkForgeInjectionCount() {
+  try {
+    if (!existsSync(DTHINK_STREAM_PATH)) return 0;
+    const lines = readFileSync(DTHINK_STREAM_PATH, 'utf8').split('\n').filter(Boolean);
+    return lines
+      .slice(-300)
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter((entry) => entry && entry.type === 'think:inject').length;
+  } catch {
+    return 0;
+  }
+}
+
+function getRecentProtocolEvents(limit = 12) {
+  try {
+    if (!existsSync(PROTOCOL_EVENTS_PATH)) return [];
+    const lines = readFileSync(PROTOCOL_EVENTS_PATH, 'utf8').split('\n').filter(Boolean);
+    return lines
+      .slice(-limit)
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .reverse();
+  } catch {
+    return [];
+  }
 }
 
 // ─── CLI direct execution ──────────────────────────────────────────────────

@@ -25,6 +25,8 @@
     "verify:browser-matrix": "node scripts/verify-browser-matrix.mjs",
     "phase:govern": "node scripts/phase-governor.mjs",
     "phase:ops-audit": "node scripts/verify-operating-model.mjs",
+    "ops:012b": "node scripts/engineering-os-v2_2.mjs run",
+    "ops:012b:events": "node scripts/engineering-os-v2_2.mjs events 50",
     "verify:stack": "node scripts/verify-stack.mjs",
     "verify:typescript": "npm run typecheck",
     "verify:crypto": "node scripts/verify-crypto-runtime.mjs",
