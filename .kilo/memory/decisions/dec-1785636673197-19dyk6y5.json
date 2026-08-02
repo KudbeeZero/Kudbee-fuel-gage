@@ -1,0 +1,21 @@
+{
+  "id": "dec-1785636673197-19dyk6y5",
+  "type": "preflight_gate",
+  "status": "PASS",
+  "gateResults": [
+    {
+      "id": "unused-import",
+      "status": "PASS",
+      "detail": "No dead imports",
+      "timestamp": "2026-08-02T02:11:10.591Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "PASS",
+      "detail": "Time:    1.987s",
+      "timestamp": "2026-08-02T02:11:13.130Z"
+    }
+  ],
+  "gateErrors": [],
+  "timestamp": "2026-08-02T02:11:13.197Z"
+}

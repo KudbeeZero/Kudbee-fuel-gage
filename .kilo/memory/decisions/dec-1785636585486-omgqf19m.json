@@ -1,0 +1,27 @@
+{
+  "id": "dec-1785636585486-omgqf19m",
+  "type": "preflight_gate",
+  "status": "PASS",
+  "gateResults": [
+    {
+      "id": "terminal-boot",
+      "status": "PASS",
+      "detail": "mount dispatch present",
+      "timestamp": "2026-08-02T02:09:39.203Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "PASS",
+      "detail": "No dead imports",
+      "timestamp": "2026-08-02T02:09:39.227Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "PASS",
+      "detail": "Time:    5.706s",
+      "timestamp": "2026-08-02T02:09:45.429Z"
+    }
+  ],
+  "gateErrors": [],
+  "timestamp": "2026-08-02T02:09:45.486Z"
+}
