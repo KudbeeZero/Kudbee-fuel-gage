@@ -54,7 +54,7 @@
   "dependencies": {
     "@types/pg": "^8.20.0",
     "@upstash/box": "^0.6.0",
-    "express-rate-limit": "^8.6.0",
+    "express-rate-limit": "^8.6.1",
     "ioredis": "^5.11.1",
     "pg": "^8.22.0",
     "react-dom": "^19.2.8",
