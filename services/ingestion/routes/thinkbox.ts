@@ -9,6 +9,7 @@ import express from 'express';
 import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { publishThinkboxEvent } from '../../thinkbox/src/live/events.ts';
 
 interface ThinkingDeps {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
@@ -101,6 +102,30 @@ export function createThinkboxRouter(_deps: ThinkingDeps) {
       res.json(plan);
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Provisioning failed' });
+    }
+  });
+
+  router.post('/browser-event', (req, res) => {
+    try {
+      const { events } = req.body ?? {};
+      if (!Array.isArray(events)) {
+        return res.status(400).json({ error: 'Expected events array' });
+      }
+
+      for (const ev of events) {
+        publishThinkboxEvent({
+          type: ev.type?.startsWith('ws:') ? 'browser:connected' :
+                ev.type === 'page:error' || ev.type === 'console:error' ? 'browser:error' :
+                'browser:action',
+          workspaceId: null,
+          data: ev,
+          severity: ev.type?.includes('error') ? 'error' : 'info',
+        });
+      }
+
+      res.json({ received: events.length });
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Failed to process browser events' });
     }
   });
 

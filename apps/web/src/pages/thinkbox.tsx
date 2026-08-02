@@ -41,6 +41,9 @@ import {
   Network,
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
+import { LiveTerminal } from '../components/thinkbox/LiveTerminal';
+import { AgentSwarm } from '../components/thinkbox/AgentSwarm';
+import { TimelinePanel } from '../components/thinkbox/TimelinePanel';
 
 // ---- Types ----
 
@@ -471,6 +474,33 @@ export function ThinkboxPage() {
               </div>
             </div>
           )}
+
+          {/* ---- PR-004: Live Timeline ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
+            <TimelinePanel
+              events={(plan as any)._timeline ?? plan.timeline?.map((t: any) => ({
+                id: t.id,
+                type: `workspace:${t.phase}`,
+                workspaceId: plan.workspaceId,
+                agentId: t.agentId ?? null,
+                timestamp: t.timestamp,
+                data: { message: t.message, status: t.status, detail: t.detail },
+                severity: t.status === 'failed' ? 'error' : 'success',
+              } satisfies { id: string; type: string; workspaceId: string | null; agentId: string | null; timestamp: string; data: Record<string, unknown>; severity: string })) ?? []}
+            />
+          </div>
+
+          {/* ---- PR-004: Live Agent Swarm ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
+            <AgentSwarm workspaceId={plan.workspaceId} />
+          </div>
+
+          {/* ---- PR-004: Live Interactive Terminal ---- */}
+          <LiveTerminal
+            workspaceId={plan.workspaceId}
+            simulation={simulation}
+            onToggleSimulation={toggleSimulation}
+          />
 
           {/* ---- Summary Footer ---- */}
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 flex items-center justify-between">

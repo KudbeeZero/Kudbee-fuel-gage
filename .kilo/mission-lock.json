@@ -1,13 +1,24 @@
 {
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-003",
   "name": "Workspace Provisioning Engine",
   "objective": "Workspace Provisioning Engine",
   "featureBranch": "feature/thinkbox-pr003",
+=======
+  "missionId": "THINKBOX-004",
+  "name": "Live Workspace Orchestration",
+  "objective": "Live Workspace Orchestration",
+  "featureBranch": "feature/thinkbox-pr004",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
   "startedAt": "2026-08-02T04:49:41.263Z",
+=======
+  "startedAt": "2026-08-02T04:57:23.334Z",
+>>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
   "priority": "P0",

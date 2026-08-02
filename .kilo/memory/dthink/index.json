@@ -587,7 +587,43 @@
       "type": "workspace:detected",
       "agentId": "system",
       "timestamp": "2026-08-02T04:54:48.092Z"
+    },
+    {
+      "id": "1fe5e892-86a7-4d44-b463-b5f01ab383a8",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:03.769Z"
+    },
+    {
+      "id": "0930d083-7596-4d85-b87d-7f80b5db19c2",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:03.947Z"
+    },
+    {
+      "id": "4a2e53f1-a5aa-4517-b17e-728460c8e55a",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:09.901Z"
+    },
+    {
+      "id": "61cb2807-a2fe-47dc-ae6f-ce7b57e9edc8",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:10.073Z"
+    },
+    {
+      "id": "08bfeee9-bb28-4b8b-bde0-2061212ee121",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:11.238Z"
+    },
+    {
+      "id": "40734878-68d5-492d-b220-714878eefd69",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-02T05:01:11.406Z"
     }
   ],
-  "totalEntries": 98
+  "totalEntries": 104
 }
