@@ -1,0 +1,78 @@
+name: Box Test Environment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kudbee-box-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  box-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UPSTASH_BOX_API_KEY: ${{ secrets.UPSTASH_BOX_API_KEY }}
+      UPSTASH_BOX_ID: ${{ secrets.UPSTASH_BOX_ID }}
+      STAGING_URL: https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --ignore-scripts
+
+      - name: Resolve Upstash Box ID
+        id: box
+        run: |
+          if [ -n "$UPSTASH_BOX_ID" ]; then
+            echo "Using configured box: $UPSTASH_BOX_ID"
+            echo "box_id=$UPSTASH_BOX_ID" >> "$GITHUB_OUTPUT"
+          else
+            BOX_ID=$(node --input-type=module -e '
+              import { Box } from "@upstash/box";
+              const boxes = await Box.list();
+              if (boxes.length === 0) { console.error("No boxes found"); process.exit(1); }
+              process.stdout.write(boxes[0].id);
+            ')
+            echo "Resolved box via API: $BOX_ID"
+            echo "box_id=$BOX_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run staging health check in Box
+        env:
+          BOX_ID: ${{ steps.box.outputs.box_id }}
+          STAGING_URL: https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com
+        run: |
+          node --input-type=module -e '
+            import { Box } from "@upstash/box";
+            const box = await Box.get(process.env.BOX_ID);
+            const target = process.env.STAGING_URL;
+            try {
+              const script = [
+                "const response = await fetch(" + JSON.stringify(target + "/health") + ");",
+                "const body = await response.json();",
+                "const healthy = response.ok && body.status === \"ok\" && body.dependencies.redis === \"healthy\" && body.dependencies.ingestion_db === \"healthy\";",
+                "console.log(JSON.stringify({ status: response.status, body, healthy }));",
+                "if (!healthy) process.exitCode = 1;",
+              ].join(" ");
+              const run = await box.exec.command("node --input-type=module -e " + JSON.stringify(script));
+              console.log("BOX_RUN:", run.status, "exit=" + run.exitCode);
+              if (run.stdout) console.log("OUT:", run.stdout.slice(0, 500));
+              if (run.status === "failed" || run.exitCode !== 0) process.exit(1);
+            } finally {
+              // Persistent shared box: do NOT delete. Pause to release compute.
+              await box.pause().catch(() => {});
+            }
+          '
