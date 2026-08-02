@@ -1,9 +1,8 @@
 /**
- * THINKBOX — Project Intelligence Dashboard
+ * THINKBOX — Project Intelligence & Workspace Provisioning Dashboard
  *
- * The first UI of THINKBOX. Renders the Project Intelligence Manifest
- * produced by the PR-002 intelligence engine. Every section consumes
- * the normalized manifest — no file parsing in the UI.
+ * PR-002 + PR-003 unified view. Every section consumes normalized manifests.
+ * Simulation mode by default — no side effects until confirmed.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -25,115 +24,117 @@ import {
   Clock,
   RefreshCw,
   Loader2,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
   FileJson,
   Cpu,
   Layers,
-  GitBranch,
   Workflow,
+  Zap,
+  Shield,
+  Radio,
+  Sliders,
+  Eye,
+  EyeOff,
+  GitBranch,
+  ArrowRight,
+  ArrowDown,
+  TrendingUp,
+  Network,
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
 
-interface DependencyEntry {
-  name: string;
-  version: string | null;
-  category: 'dependency' | 'dev-dep' | 'peer-dep' | 'optional-dep' | 'workspace';
-}
+// ---- Types ----
 
-interface DependencyInfo {
-  manager: string;
-  lockfilePresent: boolean;
-  lockfilePath: string | null;
-  lockfileKind: string | null;
-  packageManifestPath: string;
-  direct: DependencyEntry[];
-  transitiveCount: number;
-  totalCount: number;
-  resolutionState: 'complete' | 'partial' | 'none';
-  workspacePackages: string[];
-  workspaceCount: number;
-}
-
-interface EnvVarRequirement {
-  name: string;
-  source: string;
-  required: boolean;
-  category: string;
-}
-
-interface ScriptsInfo {
-  build: string[];
-  start: string[];
-  test: string[];
-  dev: string[];
-  lint: string[];
-  format: string[];
-  other: Array<{ name: string; command: string }>;
-}
-
-interface RuntimeInfo {
-  kind: string;
-  version: string | null;
-  source: string;
-}
-
-interface ServiceInfo {
-  kind: string;
-  name: string;
-  sdk: string | null;
-  envVarsRequired: string[];
-  evidence: string[];
-}
-
-interface ProjectIntelligenceManifest {
+interface IntelligenceManifest {
   workspaceId: string;
   detectedAt: string;
   summary: string;
   languages: string[];
   frameworks: string[];
   packageManagers: string[];
-  dependencies: DependencyInfo[];
-  runtimes: RuntimeInfo[];
-  scripts: ScriptsInfo;
-  env: EnvVarRequirement[];
-  services: ServiceInfo[];
-  cdn: { networks: string[]; frameworks: string[]; staticBuildOutput: string | null };
+  dependencies: Array<{
+    manager: string;
+    lockfilePresent: boolean;
+    lockfilePath: string | null;
+    lockfileKind: string | null;
+    direct: Array<{ name: string; version: string | null; category: string }>;
+    transitiveCount: number;
+    totalCount: number;
+    workspaceCount: number;
+    workspacePackages: string[];
+  }>;
+  runtimes: Array<{ kind: string; version: string | null; source: string }>;
+  scripts: { build: string[]; start: string[]; test: string[]; dev: string[]; lint: string[]; format: string[]; other: Array<{ name: string; command: string }> };
+  env: Array<{ name: string; source: string; required: boolean; category: string }>;
+  services: Array<{ kind: string; name: string; sdk: string | null; envVarsRequired: string[]; evidence: string[] }>;
+  ci: { systems: string[] };
   deploy: { targets: string[]; configFiles: string[] };
-  ci: { systems: string[]; configFiles: string[] };
+  cdn: { networks: string[] };
   entryPoints: string[];
   totalFiles: number;
   packageCount: number;
   confidence: number;
 }
 
-interface WorkspaceSummary {
+interface ProvisionPlan {
   workspaceId: string;
-  name: string;
-  sourceType: string;
-  state: string;
-}
-
-function StateBadge({ state }: { state: string }) {
-  const colors: Record<string, string> = {
-    detected: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-    created: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
-    detecting: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    failed: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+  plannedAt: string;
+  summary: string;
+  simulation: boolean;
+  totalSteps: number;
+  estimatedTotalDurationMs: number;
+  warnings: string[];
+  risks: Array<{ severity: string; message: string }>;
+  phases: Record<string, Array<{
+    id: string;
+    phase: string;
+    label: string;
+    command: string | null;
+    status: string;
+    reason: string;
+    risk: string;
+    estimatedDurationMs: number | null;
+  }>>;
+  orderedSteps: string[];
+  graph: {
+    nodes: Array<{ id: string; label: string; kind: string; version: string | null; present: boolean }>;
+    edges: Array<{ from: string; to: string; label: string }>;
+    rootId: string;
   };
-  return (
-    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-mono ${colors[state] ?? 'text-slate-500 bg-slate-800/50 border-slate-700/30'}`}>
-      {state}
-    </span>
-  );
+  readyScore: {
+    total: number;
+    grade: string;
+    runtime: number;
+    dependencies: number;
+    environment: number;
+    ci: number;
+    deploy: number;
+    risk: number;
+    recommendedNextAction: string;
+    breakdown: Record<string, { score: number; maxScore: number; issues: string[] }>;
+  };
 }
 
-function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ComponentType<{ className?: string }>; title: string; subtitle?: string }) {
+// ---- Sub-Components ----
+
+function Badge({ children, color = 'slate' }: { children: string; color?: string }) {
+  const c: Record<string, string> = {
+    emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    violet: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+    amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+    slate: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+    cyan: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+    orange: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  };
+  return <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-mono ${c[color] ?? c.slate}`}>{children}</span>;
+}
+
+function SectionHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle?: string }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10">
-        <Icon className="w-4 h-4 text-emerald-400" />
+    <div className="flex items-center gap-2 mb-3">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10">
+        <Icon className="w-3.5 h-3.5 text-emerald-400" />
       </div>
       <div>
         <h3 className="font-display text-sm font-semibold text-slate-200">{title}</h3>
@@ -143,399 +144,348 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ComponentT
   );
 }
 
-function StatCard({ label, value, icon: Icon, color = 'emerald' }: { label: string; value: string | number; icon?: React.ComponentType<{ className?: string }>; color?: string }) {
-  const borders: Record<string, string> = {
-    emerald: 'border-emerald-500/20 bg-emerald-500/5',
-    violet: 'border-violet-500/20 bg-violet-500/5',
-    amber: 'border-amber-500/20 bg-amber-500/5',
-    blue: 'border-blue-500/20 bg-blue-500/5',
-    rose: 'border-rose-500/20 bg-rose-500/5',
-    cyan: 'border-cyan-500/20 bg-cyan-500/5',
+function PhaseBadge({ phase }: { phase: string }) {
+  const labels: Record<string, string> = {
+    pending: 'Pending', runtime_detection: 'Runtime', dependency_install: 'Deps',
+    service_setup: 'Services', env_config: 'Env', build: 'Build', test: 'Test',
+    deploy: 'Deploy', ready: 'Ready',
   };
-  return (
-    <div className={`rounded-xl border ${borders[color] ?? borders.emerald} p-4`}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
-        {Icon && <Icon className="w-3.5 h-3.5 text-slate-600" />}
-      </div>
-      <div className="text-xl font-display font-bold text-slate-100">{value}</div>
-    </div>
-  );
+  const colors: Record<string, string> = {
+    runtime_detection: 'cyan', dependency_install: 'emerald', service_setup: 'violet',
+    env_config: 'amber', build: 'blue', test: 'orange', deploy: 'rose', pending: 'slate', ready: 'emerald',
+  };
+  return <Badge color={colors[phase] ?? 'slate'}>{labels[phase] ?? phase}</Badge>;
 }
 
-function CategoryBadge({ category }: { category: string }) {
-  const colors: Record<string, string> = {
-    database: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-    cache: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    'api-key': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    url: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    auth: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-    feature: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-  };
-  return (
-    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-mono ${colors[category] ?? 'bg-slate-800/30 text-slate-500 border-slate-700/30'}`}>
-      {category}
-    </span>
-  );
+function RiskBadge({ risk }: { risk: string }) {
+  const c: Record<string, string> = { none: 'slate', low: 'emerald', medium: 'amber', high: 'rose' };
+  return <Badge color={c[risk] ?? 'slate'}>{risk.toUpperCase()}</Badge>;
 }
 
-function ServiceBadge({ kind }: { kind: string }) {
-  const colors: Record<string, string> = {
-    database: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-    cache: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    ai: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    queue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    storage: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-    monitoring: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    auth: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    deploy: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    other: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-  };
-  return (
-    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono ${colors[kind] ?? colors.other}`}>
-      {kind}
-    </span>
-  );
+function GradeBadge({ grade }: { grade: string }) {
+  const c: Record<string, string> = { A: 'emerald', B: 'blue', C: 'amber', D: 'orange', F: 'rose' };
+  return <span className={`text-lg font-display font-bold ${c[grade] ? `text-${c[grade]}-400` : 'text-slate-400'}`}>{grade}</span>;
 }
+
+// ---- Main Page ----
 
 export function ThinkboxPage() {
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
-  const [selectedWs, setSelectedWs] = useState<string | null>(null);
-  const [manifest, setManifest] = useState<ProjectIntelligenceManifest | null>(null);
+  const [intel, setIntel] = useState<IntelligenceManifest | null>(null);
+  const [plan, setPlan] = useState<ProvisionPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showJson, setShowJson] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [showJson, setShowJson] = useState<'intel' | 'plan' | null>(null);
+  const [simulation, setSimulation] = useState(true);
+  const [terminalExpanded, setTerminalExpanded] = useState(true);
+  const [activePhase, setActivePhase] = useState<string | null>(null);
 
-  const fetchWorkspaces = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null);
     try {
-      const data = await apiGet<WorkspaceSummary[]>('/api/thinkbox/workspaces');
-      setWorkspaces(data ?? []);
-    } catch {
-      setWorkspaces([]);
-    }
-  }, []);
+      const detectRes = await apiPost<{ workspaceId: string }>('/api/thinkbox/detect', { path: '.' });
+      if (!detectRes?.workspaceId) throw new Error('Detection failed');
 
-  const fetchIntelligence = useCallback(async (workspaceId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiGet<ProjectIntelligenceManifest>(`/api/thinkbox/intelligence/${workspaceId}`);
-      setManifest(data);
+      const [intelData, planData] = await Promise.all([
+        apiGet<IntelligenceManifest>(`/api/thinkbox/intelligence/${detectRes.workspaceId}`),
+        apiGet<ProvisionPlan>(`/api/thinkbox/provision/${detectRes.workspaceId}?sim=1`),
+      ]);
+
+      setIntel(intelData);
+      setPlan(planData);
+      setSimulation(planData?.simulation ?? true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load intelligence');
-      setManifest(null);
+      setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleDetect = async () => {
+  const toggleSimulation = async () => {
+    if (!plan?.workspaceId) return;
+    const newSim = !simulation;
+    setSimulation(newSim);
     try {
-      const data = await apiPost<WorkspaceSummary>('/api/thinkbox/detect', { path: '.' });
-      await fetchWorkspaces();
-      if (data?.workspaceId) {
-        setSelectedWs(data.workspaceId);
-        fetchIntelligence(data.workspaceId);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Detection failed');
-    }
+      const updated = await apiGet<ProvisionPlan>(`/api/thinkbox/provision/${plan.workspaceId}?sim=${newSim ? 1 : 0}`);
+      if (updated) setPlan(updated);
+    } catch {}
   };
 
-  const prodDeps = manifest?.dependencies.flatMap(d => d.direct.filter(e => e.category === 'dependency')) ?? [];
-  const devDeps = manifest?.dependencies.flatMap(d => d.direct.filter(e => e.category === 'dev-dep')) ?? [];
-  const totalDeps = prodDeps.length + devDeps.length;
-  const hasLockfiles = manifest?.dependencies.some(d => d.lockfilePresent) ?? false;
+  const prodDeps = intel?.dependencies.flatMap(d => d.direct.filter(e => e.category === 'dependency')) ?? [];
+  const devDeps = intel?.dependencies.flatMap(d => d.direct.filter(e => e.category === 'dev-dep')) ?? [];
 
-  const dbServices = manifest?.services.filter(s => s.kind === 'database') ?? [];
-  const cacheServices = manifest?.services.filter(s => s.kind === 'cache') ?? [];
-  const aiServices = manifest?.services.filter(s => s.kind === 'ai') ?? [];
-  const otherServices = manifest?.services.filter(s => !['database', 'cache', 'ai'].includes(s.kind)) ?? [];
-
-  const requiredEnv = manifest?.env.filter(e => e.required) ?? [];
-  const optionalEnv = manifest?.env.filter(e => !e.required) ?? [];
-
-  const readinessChecks = [
-    { label: 'Detection', done: (manifest?.languages?.length ?? 0) > 0 },
-    { label: 'Dependencies', done: totalDeps > 0 },
-    { label: 'Lockfiles', done: hasLockfiles },
-    { label: 'Runtimes', done: (manifest?.runtimes?.length ?? 0) > 0 },
-    { label: 'Scripts', done: (manifest?.scripts?.build?.length ?? 0) > 0 || (manifest?.scripts?.start?.length ?? 0) > 0 },
-    { label: 'Env Vars', done: requiredEnv.length > 0 },
-    { label: 'Services', done: (manifest?.services?.length ?? 0) > 0 },
-    { label: 'CI/CD', done: (manifest?.ci?.systems?.length ?? 0) > 0 },
-  ];
-  const readyCount = readinessChecks.filter(c => c.done).length;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+        <span className="ml-3 text-slate-500 font-mono text-sm">Analyzing project...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-dvh" id="thinkbox-page">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="min-h-dvh space-y-6" id="thinkbox-page">
+      {/* ---- Header ---- */}
+      <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
             <Boxes className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
             <h1 className="font-display text-xl font-bold tracking-tight text-slate-100">THINKBOX</h1>
-            <p className="text-xs text-slate-500">Project Intelligence Engine — PR-002</p>
+            <p className="text-xs text-slate-500">Project Intelligence &amp; Workspace Provisioning</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleDetect}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono hover:bg-emerald-500/20 transition-colors"
-          >
-            <Play className="w-3 h-3" />
-            Detect Project
-          </button>
-          {manifest && (
-            <button
-              onClick={() => setShowJson(!showJson)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${showJson ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-800/30 border-slate-700/30 text-slate-500 hover:text-slate-300'}`}
-            >
-              <FileJson className="w-3 h-3" />
-              Manifest
+          {plan && (
+            <button onClick={toggleSimulation}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${simulation ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+              {simulation ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+              {simulation ? 'SIM ON' : 'SIM OFF'}
             </button>
           )}
+          <button onClick={fetchData} className="p-2 rounded-lg border border-slate-700/30 bg-slate-800/30 text-slate-500 hover:text-slate-300 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setShowJson(showJson === 'plan' ? null : 'plan')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${showJson === 'plan' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-800/30 border-slate-700/30 text-slate-500 hover:text-slate-300'}`}>
+            <FileJson className="w-3 h-3" /> Manifest
+          </button>
         </div>
       </header>
 
-      {showJson && manifest && (
-        <div className="mb-6 rounded-xl border border-amber-500/20 bg-slate-950/60 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider">Project Intelligence Manifest</span>
-            <button onClick={() => setShowJson(false)} className="text-slate-500 hover:text-slate-300"><XCircle className="w-3.5 h-3.5" /></button>
-          </div>
-          <pre className="text-[10px] text-slate-400 font-mono overflow-x-auto max-h-96 whitespace-pre-wrap">{JSON.stringify(manifest, null, 2)}</pre>
+      {error && <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs text-rose-400">{error}</div>}
+
+      {/* ---- JSON Inspector ---- */}
+      {showJson === 'plan' && plan && (
+        <div className="rounded-xl border border-amber-500/20 bg-slate-950/60 p-4 max-h-96 overflow-y-auto">
+          <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap">{JSON.stringify(plan, null, 2)}</pre>
         </div>
       )}
 
-      {manifest ? (
+      {intel && plan ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-            <StatCard label="Languages" value={manifest.languages.length} icon={Code2} />
-            <StatCard label="Frameworks" value={manifest.frameworks.length > 0 ? manifest.frameworks.join(', ') : '—'} icon={Layers} />
-            <StatCard label="Dependencies" value={`${totalDeps} (${prodDeps.length} prod)`} icon={Package} />
-            <StatCard label="Services" value={manifest.services.length} icon={Database} color="violet" />
-            <StatCard label="Confidence" value={`${Math.round(manifest.confidence * 100)}%`} icon={Brain} color={manifest.confidence > 0.7 ? 'emerald' : 'amber'} />
+          {/* ---- Ready Score Bar ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <SectionHeader icon={TrendingUp} title="Workspace Ready Score" />
+                <GradeBadge grade={plan.readyScore.grade} />
+              </div>
+              <span className="text-2xl font-display font-bold text-emerald-400">{plan.readyScore.total}<span className="text-sm text-slate-600">/100</span></span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-800/60 overflow-hidden mb-3">
+              <div className={`h-full rounded-full transition-all duration-1000 ${plan.readyScore.total >= 90 ? 'bg-emerald-500' : plan.readyScore.total >= 70 ? 'bg-blue-500' : plan.readyScore.total >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                style={{ width: `${plan.readyScore.total}%` }} />
+            </div>
+            <div className="grid grid-cols-6 gap-3 text-center">
+              {Object.entries(plan.readyScore.breakdown ?? {}).slice(0, 6).map(([k, v]) => (
+                <div key={k} className="rounded-lg border border-slate-800/40 bg-slate-950/40 p-2">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">{k.replace(/ /g, '\u00A0')}</div>
+                  <div className={`text-xs font-mono font-bold ${v.score === v.maxScore ? 'text-emerald-400' : v.score === 0 ? 'text-rose-400' : 'text-amber-400'}`}>
+                    {v.score}/{v.maxScore}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-[10px] text-slate-500">
+              Next: {plan.readyScore.recommendedNextAction}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+          {/* ---- Stats Row ---- */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            {[
+              { l: 'Languages', v: intel.languages.length, c: 'emerald' },
+              { l: 'Deps', v: prodDeps.length + devDeps.length, c: 'blue' },
+              { l: 'Services', v: intel.services.length, c: 'violet' },
+              { l: 'Env Vars', v: intel.env.filter(e => e.required).length, c: 'amber' },
+              { l: 'Steps', v: plan.totalSteps, c: 'cyan' },
+              { l: 'Risks', v: plan.risks.length, c: 'rose' },
+              { l: 'Est.', v: `${Math.round(plan.estimatedTotalDurationMs / 1000)}s`, c: 'orange' },
+              { l: 'Sim', v: simulation ? 'ON' : 'OFF', c: simulation ? 'amber' : 'emerald' },
+            ].map((s) => (
+              <div key={s.l} className={`rounded-xl border border-${s.c}-500/20 bg-${s.c}-500/5 p-3 text-center`}>
+                <div className={`text-[10px] text-${s.c}-400 font-mono uppercase tracking-wider`}>{s.l}</div>
+                <div className={`text-lg font-display font-bold text-${s.c}-300`}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ---- Build Pipeline ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
+            <SectionHeader icon={Workflow} title="Build Pipeline" subtitle={`${plan.totalSteps} steps · ${Math.round(plan.estimatedTotalDurationMs / 1000)}s estimated`} />
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {(['runtime_detection', 'dependency_install', 'service_setup', 'env_config', 'build', 'test', 'deploy'] as const)
+                .filter(phase => (plan.phases[phase] ?? []).length > 0)
+                .map((phase, i, arr) => (
+                  <div key={phase} className="flex items-center gap-0 shrink-0">
+                    <button onClick={() => setActivePhase(activePhase === phase ? null : phase)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-mono transition-colors ${activePhase === phase ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-slate-700/30 bg-slate-800/30 text-slate-400 hover:text-slate-200'}`}>
+                      <PhaseBadge phase={phase} />
+                      <span className="tabular-nums">{(plan.phases[phase] ?? []).length}</span>
+                    </button>
+                    {i < arr.length - 1 && <ArrowRight className="w-3 h-3 text-slate-600 mx-1" />}
+                  </div>
+                ))}
+            </div>
+            {activePhase && (plan.phases[activePhase] ?? []).length > 0 && (
+              <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
+                {(plan.phases[activePhase] ?? []).map((step) => (
+                  <div key={step.id} className="flex items-center gap-2 text-[10px] rounded border border-slate-800/30 bg-slate-950/30 p-2">
+                    {step.status === 'skipped' ? <XCircle className="w-3 h-3 text-slate-600" /> :
+                     step.command?.startsWith('[SIM]') ? <Eye className="w-3 h-3 text-amber-400" /> :
+                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                    <span className="text-slate-300 flex-1 truncate">{step.label}</span>
+                    <RiskBadge risk={step.risk} />
+                    {step.command && <span className="text-slate-600 font-mono truncate max-w-[120px]">{step.command.split(' ').slice(0, 2).join(' ')}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ---- Two-column: Deps + Services ---- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-              <SectionHeader icon={Package} title="Dependency Intelligence" subtitle={`${manifest.dependencies.length} manager${manifest.dependencies.length !== 1 ? 's' : ''}`} />
-              <div className="space-y-3">
-                {manifest.dependencies.map((dep, i) => (
-                  <div key={i} className="rounded-lg border border-slate-800/40 bg-slate-950/40 p-3">
-                    <div className="flex items-center justify-between mb-2">
+              <SectionHeader icon={Package} title="Dependency Intelligence" />
+              <div className="space-y-2">
+                {intel.dependencies.map((dep, i) => (
+                  <div key={i} className="rounded-lg border border-slate-800/40 bg-slate-950/40 p-2.5">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-mono text-emerald-400">{dep.manager}</span>
-                      <div className="flex items-center gap-2">
-                        {dep.lockfilePresent ? (
-                          <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">lockfile</span>
-                        ) : (
-                          <span className="text-[9px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">no lockfile</span>
-                        )}
+                      <div className="flex gap-1">
+                        {dep.lockfilePresent ? <Badge color="emerald">lockfile</Badge> : <Badge color="amber">no lock</Badge>}
                         <span className="text-[9px] font-mono text-slate-500">{dep.transitiveCount} transitive</span>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {dep.direct.slice(0, 12).map((e, j) => (
+                      {dep.direct.slice(0, 8).map((e, j) => (
                         <span key={j} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${e.category === 'dev-dep' ? 'bg-slate-800/40 text-slate-500' : 'bg-slate-800/60 text-slate-300'}`}>
-                          {e.name}{e.version ? `@${e.version}` : ''}
+                          {e.name}{e.version ? `@${e.version.replace(/[\^~]/, '')}` : ''}
                         </span>
                       ))}
-                      {dep.direct.length > 12 && <span className="text-[10px] text-slate-600">+{dep.direct.length - 12} more</span>}
+                      {dep.direct.length > 8 && <span className="text-[10px] text-slate-600">+{dep.direct.length - 8}</span>}
                     </div>
-                    {dep.workspaceCount > 0 && (
-                      <div className="mt-2 text-[10px] text-slate-500">
-                        Workspaces: {dep.workspacePackages.join(', ')}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-              <SectionHeader icon={Cpu} title="Runtime & Scripts" subtitle={`${manifest.runtimes.length} runtime${manifest.runtimes.length !== 1 ? 's' : ''}`} />
-              <div className="space-y-3">
-                {manifest.runtimes.map((rt, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-800/40 bg-slate-950/40 p-2.5">
-                    <span className="text-xs font-mono text-slate-300">{rt.kind}</span>
-                    {rt.version && <span className="text-[10px] font-mono text-emerald-400">{rt.version}</span>}
-                    <span className="text-[9px] text-slate-600 ml-auto">{rt.source}</span>
-                  </div>
-                ))}
-                {manifest.scripts.build.length > 0 && (
-                  <div className="text-[10px] text-slate-500 mt-2">
-                    <span className="text-slate-400">Build:</span> {manifest.scripts.build.slice(0, 2).join(', ')}
-                    {manifest.scripts.build.length > 2 && ` +${manifest.scripts.build.length - 2}`}
-                  </div>
-                )}
-                {manifest.scripts.start.length > 0 && (
-                  <div className="text-[10px] text-slate-500">
-                    <span className="text-slate-400">Start:</span> {manifest.scripts.start.slice(0, 2).join(', ')}
-                  </div>
-                )}
-                {manifest.scripts.test.length > 0 && (
-                  <div className="text-[10px] text-slate-500">
-                    <span className="text-slate-400">Test:</span> {manifest.scripts.test.slice(0, 2).join(', ')}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-              <SectionHeader icon={Database} title="Services" subtitle={`${manifest.services.length} detected`} />
-              <div className="space-y-2">
-                {dbServices.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-[9px] text-violet-400 font-mono uppercase tracking-wider">Databases</span>
-                    {dbServices.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 mt-1 text-[10px]">
-                        <span className="text-slate-300">{s.name}</span>
-                        {s.sdk && <span className="text-slate-600 font-mono">{s.sdk}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {cacheServices.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-[9px] text-amber-400 font-mono uppercase tracking-wider">Cache</span>
-                    {cacheServices.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 mt-1 text-[10px]">
-                        <span className="text-slate-300">{s.name}</span>
-                        {s.sdk && <span className="text-slate-600 font-mono">{s.sdk}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {aiServices.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-[9px] text-rose-400 font-mono uppercase tracking-wider">AI / LLM</span>
-                    {aiServices.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 mt-1 text-[10px]">
-                        <span className="text-slate-300">{s.name}</span>
-                        {s.sdk && <span className="text-slate-600 font-mono">{s.sdk}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {otherServices.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[10px]">
-                    <span className="text-slate-300">{s.name}</span>
-                    <ServiceBadge kind={s.kind} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-              <SectionHeader icon={Key} title="Environment Variables" subtitle={`${manifest.env.length} detected`} />
+              <SectionHeader icon={Network} title="Dependency Graph" subtitle={`${plan.graph.nodes.length} nodes · ${plan.graph.edges.length} edges`} />
               <div className="space-y-1 max-h-48 overflow-y-auto">
-                {requiredEnv.slice(0, 15).map((e, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[10px]">
-                    <span className="font-mono text-slate-300 truncate">{e.name}</span>
-                    <CategoryBadge category={e.category} />
-                    <span className="text-slate-600 ml-auto">{e.source}</span>
+                {plan.graph.nodes.filter(n => n.id !== plan.graph.rootId).slice(0, 20).map((node) => (
+                  <div key={node.id} className="flex items-center gap-2 text-[10px] py-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${node.present ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                    <span className="font-mono text-slate-300">{node.label}</span>
+                    <span className="text-slate-600">{node.kind}</span>
+                    {node.version && <span className="text-slate-500">{node.version}</span>}
                   </div>
                 ))}
-                {requiredEnv.length > 15 && (
-                  <div className="text-[10px] text-slate-600">+ {requiredEnv.length - 15} more</div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-              <SectionHeader icon={Rocket} title="Deployment & CI" />
-              <div className="space-y-3">
-                {manifest.deploy.targets.length > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wider">Deploy Targets</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {manifest.deploy.targets.map((t, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {manifest.ci.systems.length > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wider">CI Systems</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {manifest.ci.systems.map((s, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {manifest.cdn.networks.length > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wider">CDN</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {manifest.cdn.networks.map((n, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-mono">{n}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="text-[10px] text-slate-500">
-                  <span className="text-slate-400">Entry Points:</span> {manifest.entryPoints.join(', ')}
-                </div>
-                <div className="text-[10px] text-slate-500">
-                  <span className="text-slate-400">Files:</span> {manifest.totalFiles} | <span className="text-slate-400">Packages:</span> {manifest.packageCount}
-                </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5 mb-6">
-            <SectionHeader icon={Workflow} title="Engineering Readiness" subtitle={`${readyCount}/${readinessChecks.length} checks passed`} />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {readinessChecks.map((check, i) => (
-                <div key={i} className={`flex items-center gap-3 rounded-lg border p-3 ${check.done ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-800/40 bg-slate-950/40'}`}>
-                  {check.done ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-slate-600" />}
-                  <span className={`text-xs font-mono ${check.done ? 'text-slate-300' : 'text-slate-600'}`}>{check.label}</span>
+          {/* ---- Simulation Terminal ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-950/80 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800/60 bg-slate-900/60">
+              <div className="flex items-center gap-2">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-mono text-[11px] font-semibold text-slate-300 tracking-wider">PROVISION TERMINAL</span>
+                {simulation && <Badge color="amber">SIMULATION</Badge>}
+                {!simulation && <Badge color="rose">LIVE</Badge>}
+              </div>
+              <button onClick={() => setTerminalExpanded(!terminalExpanded)} className="p-1 text-slate-500 hover:text-slate-300">
+                {terminalExpanded ? <XCircle className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            {terminalExpanded && (
+              <div className="p-4 font-mono text-[11px] max-h-64 overflow-y-auto space-y-0.5">
+                <div className="text-emerald-400">$ thinkbox provision {plan.workspaceId.slice(0, 8)}</div>
+                <div className="text-amber-400">[SIM] Provisioning simulation — no commands will execute</div>
+                <div className="text-slate-500">[SIM] Plan: {plan.totalSteps} steps · {Math.round(plan.estimatedTotalDurationMs / 1000)}s estimated</div>
+                <div className="text-slate-600">---</div>
+                {Object.entries(plan.phases).filter(([, steps]) => steps.length > 0).map(([phase, steps]) => (
+                  <div key={phase}>
+                    <div className="text-cyan-400 mt-1">[{phase}]</div>
+                    {steps.map(step => (
+                      <div key={step.id} className="ml-4">
+                        {step.command ? (
+                          <span className="text-amber-400">$ {step.command}</span>
+                        ) : step.status === 'skipped' ? (
+                          <span className="text-slate-600"># SKIP: {step.label}</span>
+                        ) : (
+                          <span className="text-slate-400"># {step.label}</span>
+                        )}
+                        {step.risk !== 'none' && <span className="text-rose-400 ml-2">[RISK:{step.risk}]</span>}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div className="text-slate-600">---</div>
+                <div className="text-emerald-400">Ready Score: {plan.readyScore.total}/100 ({plan.readyScore.grade})</div>
+                {plan.warnings.length > 0 && <div className="text-amber-400 mt-1">Warnings: {plan.warnings.length}</div>}
+                <div className="text-slate-500">$ _</div>
+              </div>
+            )}
+          </div>
+
+          {/* ---- Agent Activity ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
+            <SectionHeader icon={Radio} title="Agent Activity" subtitle="Swarm status — live" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { name: 'KILOH', role: 'Orchestrator', status: 'active', color: 'emerald', task: 'Mission THINKBOX-003' },
+                { name: 'FORGE', role: 'Workspace Builder', status: 'active', color: 'violet', task: 'Provision plan generated' },
+                { name: 'DTHINK', role: 'Knowledge', status: 'active', color: 'blue', task: 'Recording learnings' },
+                { name: 'GATE', role: 'Quality', status: 'active', color: 'amber', task: 'CI verification pending' },
+                { name: 'JOURNAL', role: 'Memory', status: 'active', color: 'cyan', task: 'Session logging' },
+                { name: 'BUS', role: 'Events', status: 'active', color: 'rose', task: 'Publishing timeline' },
+              ].map((agent) => (
+                <div key={agent.name} className={`rounded-lg border p-3 ${agent.status === 'active' ? `border-${agent.color}-500/20 bg-${agent.color}-500/5` : 'border-slate-800/40 bg-slate-950/40'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${agent.status === 'active' ? `bg-${agent.color}-400 animate-pulse` : 'bg-slate-600'}`} />
+                    <span className={`text-xs font-mono font-bold text-${agent.color}-400`}>{agent.name}</span>
+                  </div>
+                  <div className="text-[9px] text-slate-500">{agent.role}</div>
+                  <div className="mt-1 text-[10px] text-slate-400 truncate">{agent.task}</div>
                 </div>
               ))}
             </div>
-            <div className="mt-4 h-1.5 rounded-full bg-slate-800/60 overflow-hidden">
-              <div className="h-full rounded-full bg-emerald-500/50 transition-all" style={{ width: `${(readyCount / readinessChecks.length) * 100}%` }} />
-            </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-5">
-            <SectionHeader icon={Clock} title="Detection Summary" />
-            <div className="text-xs text-slate-400">{manifest.summary}</div>
-            <div className="mt-2 flex items-center gap-4 text-[10px] text-slate-600">
-              <span>Detected: {new Date(manifest.detectedAt).toLocaleString()}</span>
-              <span>Workspace: {manifest.workspaceId.slice(0, 8)}</span>
-              <span>Confidence: {Math.round(manifest.confidence * 100)}%</span>
+          {/* ---- Risks & Warnings ---- */}
+          {plan.risks.length > 0 && (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-5">
+              <SectionHeader icon={AlertTriangle} title="Risks & Warnings" subtitle={`${plan.risks.length} risks · ${plan.warnings.length} warnings`} />
+              <div className="space-y-1">
+                {plan.risks.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[10px] p-1.5">
+                    <AlertTriangle className={`w-3 h-3 ${r.severity === 'high' ? 'text-rose-400' : r.severity === 'medium' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <span className="text-slate-300">{r.message}</span>
+                    <Badge color={r.severity === 'high' ? 'rose' : r.severity === 'medium' ? 'amber' : 'slate'}>{r.severity}</Badge>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* ---- Summary Footer ---- */}
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 text-slate-600" />
+              <span className="text-[10px] text-slate-500">Planned: {new Date(plan.plannedAt).toLocaleTimeString()} · Workspace: {plan.workspaceId.slice(0, 8)}</span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-400">{plan.summary}</div>
           </div>
         </>
-      ) : loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
-          <span className="ml-3 text-slate-500 font-mono text-sm">Analyzing project...</span>
-        </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Boxes className="w-16 h-16 text-slate-700 mb-4" />
-          <h2 className="text-lg font-display font-bold text-slate-400 mb-2">No Workspace Selected</h2>
-          <p className="text-sm text-slate-600 max-w-md mb-6">
-            Click "Detect Project" to analyze the current repository and generate a Project Intelligence Manifest.
-          </p>
-          <button
-            onClick={handleDetect}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-mono hover:bg-emerald-500/20 transition-colors"
-          >
-            <Play className="w-4 h-4" />
-            Detect Project
-          </button>
+          <h2 className="text-lg font-display font-bold text-slate-400 mb-2">No Data Loaded</h2>
+          <p className="text-sm text-slate-600 max-w-md">Run detection and provisioning to see the dashboard.</p>
           {error && <p className="mt-4 text-xs text-rose-400">{error}</p>}
         </div>
       )}

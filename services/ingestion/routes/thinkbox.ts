@@ -87,5 +87,22 @@ export function createThinkboxRouter(_deps: ThinkingDeps) {
     }
   });
 
+  router.get('/provision/:workspaceId', (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      const sim = req.query.sim !== '0';
+      const simFlag = sim ? '' : ' --no-sim';
+      const output = thinkboxCli(`provision ${workspaceId}${simFlag}`);
+      if (!output) {
+        return res.status(404).json({ error: 'Workspace not found or provisioning failed' });
+      }
+
+      const plan = JSON.parse(output);
+      res.json(plan);
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Provisioning failed' });
+    }
+  });
+
   return router;
 }
