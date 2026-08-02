@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785637824655-m9xs",
+  "createdAt": "2026-08-02T02:30:24.656Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-005",
+  "summary": "Governance activated; dependabot policy live; cert v1.0 90/100",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
