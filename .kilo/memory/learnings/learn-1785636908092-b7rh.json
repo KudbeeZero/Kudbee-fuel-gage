@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785636908092-b7rh",
+  "createdAt": "2026-08-02T02:15:08.092Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "OPS-004",
+  "summary": "Production governance finalized; readiness 87→94 with approvals",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
