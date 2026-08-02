@@ -55,8 +55,13 @@
       "query": "verify all middleware for ops-013",
       "timestamp": "2026-08-02T07:18:23.480Z",
       "score": 11
+    },
+    {
+      "query": "scan middleware pipeline layers for ops-ci-002",
+      "timestamp": "2026-08-02T15:29:40.937Z",
+      "score": 10
     }
   ],
-  "lastRecall": "2026-08-02T07:18:23.480Z",
-  "recallCount": 11
+  "lastRecall": "2026-08-02T15:29:40.937Z",
+  "recallCount": 12
 }
