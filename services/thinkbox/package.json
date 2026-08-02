@@ -1,0 +1,23 @@
+{
+  "name": "@kudbee/thinkbox",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@kudbee/types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "license": "Proprietary"
+}

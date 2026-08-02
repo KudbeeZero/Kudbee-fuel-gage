@@ -60,3 +60,12 @@ After generating, publish the report summary to the serial bus so other cloud ag
 ```bash
 node scripts/serial-bus.mjs publish agent:report "<report_summary>"
 ```
+
+## KILOH Engineering Status Report (Chief Architect)
+Generate the full 15-section engineering report + System Readiness Score:
+```bash
+node scripts/kiloh-report.mjs            # full report
+node scripts/kiloh-report.mjs --score    # readiness score only
+node scripts/kiloh-report.mjs --json     # machine-readable JSON
+```
+Spec: `KILOH_REPORT.md` (repo root). Run at session start + end.
