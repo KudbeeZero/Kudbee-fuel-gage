@@ -1,8 +1,8 @@
 {
   "objectiveId": "ops-003-enforcement",
-  "prNumber": null,
+  "prNumber": 236,
   "branch": "feature/think-governance-engine",
   "parent": "main",
-  "stackPosition": 0,
-  "declaredAt": "2026-08-02T01:44:07.380Z"
+  "stackPosition": 1,
+  "declaredAt": "2026-08-02T01:52:18.273Z"
 }
