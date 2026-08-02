@@ -190,6 +190,8 @@ export function detectProject(projectRoot: string): DetectionResult {
     docker: { present: collector.dockerFiles.length > 0, files: uniqueSorted(collector.dockerFiles) },
     ci: { present: collector.ciFiles.length > 0, files: uniqueSorted(collector.ciFiles) },
     documentation: { present: collector.docFiles.length > 0, files: uniqueSorted(collector.docFiles) },
+    entryPoints: uniqueSorted(collector.entryPoints),
+    packageCount: collector.packageCount,
     confidence: computeConfidence(languages, frameworks, packageManagers),
   };
 

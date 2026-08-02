@@ -50,6 +50,10 @@ export interface DetectionResult {
   ci: { present: boolean; files: string[] };
   /** Documentation entry points (README, docs/, ...). */
   documentation: { present: boolean; files: string[] };
+  /** Candidate entry points (package.json, main.py, src/index.ts, ...). */
+  entryPoints: string[];
+  /** Number of package manifests found (package.json count). */
+  packageCount: number;
   /** 0..1 confidence in the overall detection. */
   confidence: number;
 }
