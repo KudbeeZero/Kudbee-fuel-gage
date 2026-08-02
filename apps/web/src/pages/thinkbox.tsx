@@ -189,9 +189,10 @@ export function ThinkboxPage() {
   const [loading, setLoading] = useState(false);
   const [simulation, setSimulation] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [selectedWs, setSelectedWs] = useState<string | null>(null);
 
   const fetchWorkspaces = useCallback(async () => {
     try {

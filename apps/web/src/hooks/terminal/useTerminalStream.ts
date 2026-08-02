@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useEventStream } from '../hooks/useEventStream';
+import { useEventStream } from '../useEventStream';
 
 export interface TerminalLine {
   id: string;
