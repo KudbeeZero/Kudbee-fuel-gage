@@ -75,6 +75,7 @@ import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
 import { spheroidAudit, spheroidGuard } from '../lib/spheroidAuditMiddleware.ts';
 import { globalErrorHandler } from '../lib/globalErrorMiddleware.ts';
 import { synapseProtectionMiddleware, bootstrapSynapseProtection, getSynapseStatus } from '../lib/synapseProtectionLayer.ts';
+import { qstashRouter } from '../qstash/router.ts';
 
 const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const HIGH_VALUE_MODELS = new Set(
@@ -223,6 +224,9 @@ app.use(spheroidAudit());
 // before they reach auth. Triggers precipitated withdrawal for
 // threat vectors exceeding protractor threshold.
 app.use(synapseProtectionMiddleware);
+
+// QStash agent dispatch bridge (External Logic Phase)
+app.use('/api/qstash', qstashRouter);
 
 app.use(bearerAuth({ required: false }));
 
