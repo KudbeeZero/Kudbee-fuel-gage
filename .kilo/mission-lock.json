@@ -1,8 +1,15 @@
 {
-  "missionId": "THINKBOX-014B",
-  "name": "Live Interactive Terminal Integration",
-  "objective": "Make every engineering event observable through a live interactive terminal",
-  "featureBranch": "feature/thinkbox-pr014b",
-  "createdAt": "2026-08-02T08:00:00Z",
-  "status": "active"
+  "missionId": "OPS-CI-002",
+  "name": "Lifecycle-Aware CI Triggers",
+  "objective": "Lifecycle-Aware CI Triggers",
+  "featureBranch": "feature/ops-ci-002",
+  "expectedPr": 279,
+  "stackPosition": 1,
+  "owner": "KILOH",
+  "state": "active",
+  "startedAt": "2026-08-02T13:49:48.375Z",
+  "completedAt": null,
+  "authority": "Engineering Governance",
+  "priority": "P0",
+  "missionLockVersion": 1
 }
