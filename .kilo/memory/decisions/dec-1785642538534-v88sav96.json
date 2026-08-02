@@ -1,0 +1,29 @@
+{
+  "id": "dec-1785642538534-v88sav96",
+  "type": "preflight_gate",
+  "status": "FAIL",
+  "gateResults": [
+    {
+      "id": "terminal-boot",
+      "status": "PASS",
+      "detail": "mount dispatch present",
+      "timestamp": "2026-08-02T03:48:57.224Z"
+    },
+    {
+      "id": "unused-import",
+      "status": "PASS",
+      "detail": "No dead imports",
+      "timestamp": "2026-08-02T03:48:57.244Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "FAIL",
+      "detail": "Command failed: npx turbo run typecheck\n• turbo 2.10.8\n WARN",
+      "timestamp": "2026-08-02T03:48:58.492Z"
+    }
+  ],
+  "gateErrors": [
+    "typecheck failed"
+  ],
+  "timestamp": "2026-08-02T03:48:58.534Z"
+}

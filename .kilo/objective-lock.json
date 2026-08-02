@@ -1,8 +1,8 @@
 {
-  "objectiveId": "ops-006-release",
-  "prNumber": 247,
-  "branch": "feature/ops-006-v1-release",
+  "objectiveId": "session-001-handoff",
+  "prNumber": null,
+  "branch": "feature/ops-006-ci-finalization",
   "parent": "main",
-  "stackPosition": 1,
-  "declaredAt": "2026-08-02T02:45:55.978Z"
+  "stackPosition": 0,
+  "declaredAt": "2026-08-02T03:50:39.771Z"
 }
