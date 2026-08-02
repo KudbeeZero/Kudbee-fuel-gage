@@ -401,11 +401,11 @@
       "timestamp": "2026-08-02T07:51:52.442Z"
     },
     {
-      "id": "evt-1785688584886-498379",
-      "topic": "swarm:released",
+      "id": "evt-1785688931504-01ec2c",
+      "topic": "knowledge:box-redis",
       "source": "cli",
       "sequence": 58,
-      "timestamp": "2026-08-02T16:36:24.886Z"
+      "timestamp": "2026-08-02T16:42:11.504Z"
     }
   ],
   "topicCounts": {
@@ -442,6 +442,6 @@
     "system:ci": 1,
     "workspace:created": 5,
     "workspace:detected": 5,
-    "swarm:released": 1
+    "knowledge:box-redis": 1
   }
 }

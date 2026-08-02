@@ -554,7 +554,49 @@
       "type": "routed",
       "timestamp": "2026-07-29T06:33:39.169Z",
       "routed": true
+    },
+    {
+      "id": "call-1785688935824-17f90e",
+      "from": "dispatcher",
+      "to": "ci-watcher",
+      "message": "broadcast → ci-watcher",
+      "path": [
+        "dispatcher",
+        "ci-watcher"
+      ],
+      "hops": 1,
+      "type": "down",
+      "timestamp": "2026-08-02T16:42:15.824Z",
+      "routed": false
+    },
+    {
+      "id": "call-1785688935824-3a7e58",
+      "from": "dispatcher",
+      "to": "knowledge-curator",
+      "message": "broadcast → knowledge-curator",
+      "path": [
+        "dispatcher",
+        "knowledge-curator"
+      ],
+      "hops": 1,
+      "type": "down",
+      "timestamp": "2026-08-02T16:42:15.825Z",
+      "routed": false
+    },
+    {
+      "id": "call-1785688935825-80a793",
+      "from": "dispatcher",
+      "to": "pipeline-guardian",
+      "message": "broadcast → pipeline-guardian",
+      "path": [
+        "dispatcher",
+        "pipeline-guardian"
+      ],
+      "hops": 1,
+      "type": "down",
+      "timestamp": "2026-08-02T16:42:15.825Z",
+      "routed": false
     }
   ],
-  "totalCalls": 37
+  "totalCalls": 40
 }

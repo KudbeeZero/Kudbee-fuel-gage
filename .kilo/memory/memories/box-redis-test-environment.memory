@@ -1,0 +1,12 @@
+{
+  "id": "box-redis-test-environment",
+  "recalls": [
+    {
+      "query": "upstash box test environment implementation",
+      "timestamp": "2026-08-02T16:42:56.957Z",
+      "score": 21
+    }
+  ],
+  "lastRecall": "2026-08-02T16:42:56.957Z",
+  "recallCount": 1
+}
