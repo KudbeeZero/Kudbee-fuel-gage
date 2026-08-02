@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785684585344-c2b6632e",
+  "agentId": "knowledge-curator",
+  "decision": "run:curate knowledge store health for OPS-CI-002",
+  "context": {
+    "action": "execute",
+    "task": "curate knowledge store health for OPS-CI-002",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T15:29:45.345Z",
+  "decoded": false
+}
