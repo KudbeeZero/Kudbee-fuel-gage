@@ -1,6 +1,7 @@
 {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-009",
   "name": "Continuous Engineering Learning Engine",
   "objective": "Continuous Engineering Learning Engine",
@@ -17,10 +18,17 @@
   "objective": "Alpha Operations & Dogfooding Platform",
   "featureBranch": "feature/thinkbox-pr011",
 >>>>>>> Stashed changes
+=======
+  "missionId": "THINKBOX-012",
+  "name": "Continuous Engineering Excellence & Operational Intelligence",
+  "objective": "Continuous Engineering Excellence & Operational Intelligence",
+  "featureBranch": "feature/thinkbox-pr012",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
   "startedAt": "2026-08-02T06:53:57.355Z",
@@ -29,6 +37,9 @@
 >>>>>>> Stashed changes
 =======
   "startedAt": "2026-08-02T07:01:52.094Z",
+>>>>>>> Stashed changes
+=======
+  "startedAt": "2026-08-02T07:12:27.280Z",
 >>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",

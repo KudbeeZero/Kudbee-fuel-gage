@@ -1,0 +1,88 @@
+[
+  {
+    "date": "2026-08-02",
+    "total": 86,
+    "trend": [
+      86
+    ],
+    "breakdown": {
+      "architecture": {
+        "score": 90,
+        "maxScore": 100,
+        "issues": []
+      },
+      "frontend": {
+        "score": 85,
+        "maxScore": 100,
+        "issues": [
+          "Panel error boundaries only at tab level",
+          "No loading skeletons per panel"
+        ]
+      },
+      "backend": {
+        "score": 88,
+        "maxScore": 100,
+        "issues": [
+          "Provision/execution types not yet consolidated"
+        ]
+      },
+      "typescript": {
+        "score": 92,
+        "maxScore": 100,
+        "issues": [
+          "No critical issues — full audit requires tsc runtime"
+        ]
+      },
+      "testing": {
+        "score": 70,
+        "maxScore": 100,
+        "issues": [
+          "No automated tests for planning, assignment, execution",
+          "No frontend component tests"
+        ]
+      },
+      "documentation": {
+        "score": 85,
+        "maxScore": 100,
+        "issues": [
+          "Inline code docs missing for engine modules"
+        ]
+      },
+      "learning": {
+        "score": 88,
+        "maxScore": 100,
+        "issues": [
+          "Only 6 extraction patterns"
+        ]
+      },
+      "agentCollaboration": {
+        "score": 82,
+        "maxScore": 100,
+        "issues": [
+          "Agent reviews are static, not live"
+        ]
+      },
+      "ux": {
+        "score": 85,
+        "maxScore": 100,
+        "issues": [
+          "No mobile responsive left rail",
+          "No accessibility audit"
+        ]
+      },
+      "performance": {
+        "score": 90,
+        "maxScore": 100,
+        "issues": []
+      }
+    },
+    "grade": "B",
+    "recommendations": [
+      "Add TypeScript to CI",
+      "Add panel error boundaries",
+      "Add test coverage for planning + execution",
+      "Mobile responsive left rail",
+      "Accessibility audit"
+    ]
+  }
+]
