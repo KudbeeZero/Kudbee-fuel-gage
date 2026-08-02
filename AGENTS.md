@@ -29,7 +29,7 @@ Used via `/name` in the terminal. Full list: `ls .kilo/command/`
 |:---|:---|
 | `/load` | Master bootstrap — 8-phase enterprise sequence (session, fleet, context, plugins, routing, escalation, spin-up, report) |
 | `/status` | 7-phase diagnostic — memory layers, tools, gaps, Think Forge, other agents |
-| `/think` | DTHINK console — problem audit, challenge audit, state verification |
+| `/think` | DTHINK console — problem audit, challenge audit, state verification, THINK Protocol vNext daily cycle |
 | `/sync` | Terminal→UI bridge — pushes state to web app via agent-bridge |
 | `/report` | Standardized standby report — all agents use identical format |
 | `/handoff` | Human-in-the-loop — escalation, audit trail, operator routing |

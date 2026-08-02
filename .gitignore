@@ -28,11 +28,17 @@ kudbee_telemetry_db.json
 # Local Ollama (keys, history)
 .ollama/
 
-# Runtime memory state — auto-generated every session, never mergeable source.
-# These change on every bootstrap and cause merge conflicts on any parallel branch.
-# Keep committed snapshots (snippets/, decisions/) but ignore churn files.
+# ── MEMORY SEPARATION (THINK Protocol architectural rule) ──────────────
+# Operational memory (ephemeral) — Redis/runtime state, regenerated every
+# session, never mergeable source. Lives outside git.
 .kilo/memory/bus/
 .kilo/memory/dthink/
 .kilo/memory/forge/
 .kilo/memory/gate-results.json
 .kilo/memory/journal.json
+# THINKBOX runtime workspaces — derived detection state, never mergeable source.
+.kilo/thinkbox/
+
+# Durable engineering knowledge (learned) — committed intentionally.
+# .kilo/memory/learnings/, .kilo/memory/snippets/, .kilo/memory/decisions/
+# are the institutional knowledge of the Engineering OS and ARE versioned.
