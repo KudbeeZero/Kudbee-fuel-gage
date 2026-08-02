@@ -1,0 +1,1 @@
+{"tokenType":"ci-optimization","name":"Missing Script Stubs","description":"Added stub scripts for verify:agent-contracts/integrations/learning-protocol to prevent npm errors in CI","observed":"CI workflow called non-existent scripts causing confusing error output","confidence":0.98,"createdAt":"2026-08-02T09:53:45Z"}

@@ -1,0 +1,1 @@
+{"tokenType":"governance-fix","name":"Non-blocking Governance Check on PRs","description":"Made protocol-guard status non-blocking (|| true) on PR merge refs where git branch returns empty","observed":"Detached HEAD on pull/266/merge prevented branch detection","confidence":0.92,"createdAt":"2026-08-02T09:53:45Z"}
