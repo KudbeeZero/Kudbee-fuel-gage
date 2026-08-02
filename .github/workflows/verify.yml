@@ -7,6 +7,8 @@ on:
       - 'services/**'
       - 'packages/**'
       - 'package.json'
+      - 'package-lock.json'
+      - 'bun.lock*'
       - 'turbo.json'
       - '.github/**'
   push:
@@ -16,6 +18,8 @@ on:
       - 'services/**'
       - 'packages/**'
       - 'package.json'
+      - 'package-lock.json'
+      - 'bun.lock*'
       - 'turbo.json'
       - '.github/**'
   workflow_dispatch:
