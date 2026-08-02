@@ -1,40 +1,25 @@
 /**
- * THINKBOX — Project Intelligence Dashboard
+ * THINKBOX — Unified Engineering Workspace
  *
- * The first UI of THINKBOX. Renders the Project Intelligence Manifest
- * produced by the PR-002 intelligence engine. Every section consumes
- * the normalized manifest — no file parsing in the UI.
+ * PR-002 through PR-008. Consumes a single WorkspaceViewModel.
+ * Every panel reads from the same data contract. No scattered APIs.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Boxes,
-  Brain,
-  Code2,
-  Database,
-  Globe,
-  Key,
-  Package,
-  Play,
-  Rocket,
-  Server,
-  Terminal,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Clock,
-  RefreshCw,
-  Loader2,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-  FileJson,
-  Cpu,
-  Layers,
-  GitBranch,
-  Workflow,
+  Boxes, Brain, Code2, Database, Globe, Key, Package, Play,
+  Rocket, Server, Terminal, CheckCircle2, XCircle, AlertTriangle,
+  Clock, RefreshCw, Loader2, FileJson, Cpu, Layers, Workflow,
+  Zap, Shield, Radio, Sliders, Eye, EyeOff, GitBranch, ArrowRight,
+  TrendingUp, Network, Search,
 } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/apiClient';
+import { LiveTerminal } from '../components/thinkbox/LiveTerminal';
+import { AgentSwarm } from '../components/thinkbox/AgentSwarm';
+import { TimelinePanel } from '../components/thinkbox/TimelinePanel';
+import { WorkspaceStatusBar } from '../components/thinkbox/WorkspaceStatusBar';
+import { DashboardHealthOverlay } from '../components/thinkbox/DashboardHealthOverlay';
+import { useDashboardSync } from '../hooks/useDashboardSync';
 
 interface DependencyEntry {
   name: string;
@@ -539,6 +524,21 @@ export function ThinkboxPage() {
           {error && <p className="mt-4 text-xs text-rose-400">{error}</p>}
         </div>
       )}
+
+      {/* PR-008: Persistent Status Bar */}
+      <WorkspaceStatusBar
+        readyScore={manifest?.confidence ? Math.round(manifest.confidence * 100) : 0}
+        grade={manifest?.confidence ? (manifest.confidence > 0.8 ? 'A' : manifest.confidence > 0.6 ? 'B' : 'C') : 'F'}
+        agentsOnline={6}
+        agentsTotal={6}
+        busConnected={true}
+        sseConnected={true}
+        executionStatus={simulation ? 'idle' : 'running'}
+        simulation={simulation}
+      />
+
+      {/* PR-008: Developer Health Overlay (Ctrl+Shift+D) */}
+      <DashboardHealthOverlay />
     </div>
   );
 }

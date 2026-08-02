@@ -1,5 +1,6 @@
 {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-002",
   "name": "Project Intelligence Engine",
   "objective": "Project Intelligence Engine",
@@ -10,14 +11,24 @@
   "objective": "Autonomous Mission Planning & Engineering Graph",
   "featureBranch": "feature/thinkbox-pr007",
 >>>>>>> Stashed changes
+=======
+  "missionId": "THINKBOX-008",
+  "name": "Unified Dashboard Integration & Frontend Stabilization",
+  "objective": "Unified Dashboard Integration & Frontend Stabilization",
+  "featureBranch": "feature/thinkbox-pr008",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "startedAt": "2026-08-02T04:09:42.017Z",
 =======
   "startedAt": "2026-08-02T06:33:40.509Z",
+>>>>>>> Stashed changes
+=======
+  "startedAt": "2026-08-02T06:39:44.268Z",
 >>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
