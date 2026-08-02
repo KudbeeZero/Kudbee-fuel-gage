@@ -43,6 +43,33 @@ const LOCAL_CALLS_DIR = join(MEMORY_DIR, 'local-calls');
 const REDIS_MODE = !!(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL);
 const MODE = REDIS_MODE ? 'REDIS' : 'LOCAL';
 
+// ── Phase 46: QStash dispatch (External Logic Phase) ───────────────────────
+
+const QSTASH_MODE = !!(process.env.QSTASH_TOKEN || process.env.QSTASH_URL);
+let _qstashDispatch = null;
+
+async function ensureQstashReady() {
+  if (!QSTASH_MODE) return null;
+  if (_qstashDispatch) return _qstashDispatch;
+  try {
+    const mod = await import(join(REPO_ROOT, 'services', 'qstash', 'client.ts'));
+    _qstashDispatch = { dispatchAgentTask: mod.dispatchAgentTask, dispatchSwarmBroadcast: mod.dispatchSwarmBroadcast };
+    return _qstashDispatch;
+  } catch {
+    return null;
+  }
+}
+
+async function qstashRouteCall(from, to, message) {
+  const q = await ensureQstashReady();
+  if (!q) return null;
+  try {
+    return await q.dispatchAgentTask({ agentId: to, task: message, timestamp: new Date().toISOString() });
+  } catch {
+    return null;
+  }
+}
+
 // ─── Agent identity ────────────────────────────────────────────────────────
 
 let agentId = null;
@@ -97,6 +124,14 @@ function localRecordCall(from, to, message) {
   };
   const path = join(LOCAL_CALLS_DIR, `${call.id}.json`);
   writeFileSync(path, JSON.stringify(call, null, 2), 'utf8');
+
+  // Phase 46: also dispatch via QStash when configured
+  if (QSTASH_MODE) {
+    qstashRouteCall(from, to, message).then(msgId => {
+      if (msgId) console.log(`  [qstash] dispatched: ${msgId}`);
+    }).catch(() => {});
+  }
+
   return call;
 }
 

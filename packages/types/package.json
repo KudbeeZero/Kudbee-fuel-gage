@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@typescript/native": "npm:typescript@^7.0.2",
