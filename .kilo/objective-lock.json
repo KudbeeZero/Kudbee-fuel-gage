@@ -1,8 +1,8 @@
 {
-  "objectiveId": "thinkbox-pr001",
-  "prNumber": null,
+  "objectiveId": "think-protocol",
+  "prNumber": "234",
   "branch": "feature/think-protocol-vnext",
   "parent": "main",
-  "stackPosition": 0,
-  "declaredAt": "2026-08-02T01:13:07.071Z"
+  "stackPosition": 1,
+  "declaredAt": "2026-08-02T01:11:42.054Z"
 }
