@@ -55,10 +55,18 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785691571877-78aa6544",
+      "date": "2026-08-02T17:26:12.145Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 7
+    "sessions": 8
   },
   "health": {
     "overall": "UNKNOWN"
