@@ -76,7 +76,7 @@ apps remain — new test runs were still queuing as of the audit.
 
 ## 11. Database Audit
 
-- **Provider:** Neon Postgres (external, NOT a Heroku add-on) — `postgresql://neondb_owner:…@ep-damp-voice…neon.tech/neondb`
+- **Provider:** Neon Postgres (external, NOT a Heroku add-on) — connection string held only in Heroku config vars
 - **Plan:** external (pooled connection, `sslmode=require&channel_binding=require`)
 - **Config:** `DB_POOL_MAX=5` (staging), prod env has DATABASE_URL + DATABASE_URL_AGENT_v2 (duplicate — review)
 - **Risks:** two DATABASE_URL variants could diverge; no Heroku-managed DB so no Heroku add-on cost
