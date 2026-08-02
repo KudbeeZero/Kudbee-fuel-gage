@@ -40,7 +40,7 @@
     "tailwindcss": "^4.1.14",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^6.2.3"
+    "vite": "^8.0.0"
   },
   "license": "Proprietary"
 }
