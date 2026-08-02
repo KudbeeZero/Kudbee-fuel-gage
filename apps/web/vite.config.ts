@@ -26,9 +26,9 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       allowedHosts: true,
       proxy: {
-        '/api': 'http://127.0.0.1:3000',
-        '/health': 'http://127.0.0.1:3000',
-        '/v1': 'http://127.0.0.1:3000',
+        '/api': 'http://127.0.0.1:3001',
+        '/health': 'http://127.0.0.1:3001',
+        '/v1': 'http://127.0.0.1:3001',
         '/ollama': {
           target: 'http://localhost:11434',
           changeOrigin: true,
