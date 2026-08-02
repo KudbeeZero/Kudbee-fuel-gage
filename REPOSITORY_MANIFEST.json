@@ -1,0 +1,115 @@
+{
+  "version": "2.2",
+  "commit": "21d755d",
+  "branch": "main",
+  "applications": [
+    {
+      "path": "apps/web",
+      "name": "Control Tower / THINKBOX",
+      "status": "operational",
+      "entry": "index.html",
+      "terminal": "terminal.html"
+    }
+  ],
+  "services": [
+    {
+      "path": "services/ingestion",
+      "name": "Ingestion Server",
+      "status": "healthy",
+      "entry": "server.js",
+      "port": 3000
+    },
+    {
+      "path": "services/thinkbox",
+      "name": "THINKBOX Domain",
+      "status": "operational",
+      "tests": 21
+    }
+  ],
+  "packages": [
+    {
+      "path": "packages/types",
+      "name": "Shared Types"
+    },
+    {
+      "path": "packackages/utils",
+      "name": "Shared Utils"
+    }
+  ],
+  "scripts": {
+    "path": "scripts/",
+    "count": 94,
+    "verifiers": 29,
+    "status": "active"
+  },
+  "verifiers": [
+    "verify:typescript",
+    "verify:crypto",
+    "verify:secrets",
+    "verify:agent-contracts",
+    "verify:integrations",
+    "verify:learning-protocol",
+    "verify:stack",
+    "verify:ci-smoke"
+  ],
+  "knowledge": {
+    "path": ".kilo/",
+    "memory_files": 667,
+    "snippets": 9,
+    "graph_nodes": 10,
+    "graph_edges": 13
+  },
+  "terminal": {
+    "canonical": "apps/web/src/components/thinkbox/LiveTerminal.tsx",
+    "status": "operational",
+    "stream": "/api/events"
+  },
+  "agents": {
+    "count": 11,
+    "types": ["ci-watcher", "pipeline-guardian", "knowledge-curator", "gastown", "gateway-router", "hermes", "ledger-keeper", "monitor", "sentinel", "token-forge", "web-doctor"]
+  },
+  "bus": {
+    "type": "Redis pub/sub",
+    "channel": "kudbee:events",
+    "status": "operational"
+  },
+  "memory": {
+    "runtime": "Redis/Postgres",
+    "git_tracked": ".kilo/memory",
+    "status": "operational"
+  },
+  "engineering_graph": {
+    "status": "operational",
+    "nodes": 10,
+    "edges": 13
+  },
+  "skills": [
+    "kudbee",
+    "ci-watcher",
+    "knowledge-curator",
+    "pipeline-guardian"
+  ],
+  "workflows": {
+    "local": [".github/workflows/verify.yml", ".github/workflows/codeql.yml"],
+    "remote": [
+      "Deploy to Heroku Staging",
+      "Session Logger",
+      "Copilot",
+      "Copilot cloud agent",
+      "Dependabot Updates",
+      "CodeQL (default)"
+    ]
+  },
+  "owners": {
+    "engineering": "KudbeeZero",
+    "security": "GitHub Advanced Security",
+    "devops": "Heroku GitHub Integration"
+  },
+  "status": {
+    "ci": "green",
+    "release": "RC0",
+    "alpha": false,
+    "open_prs": 0,
+    "dependabot_prs": 5
+  }
+}

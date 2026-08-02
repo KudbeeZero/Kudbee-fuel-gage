@@ -21,13 +21,14 @@ export default defineConfig(() => {
     },
     server: {
       port: 5173,
+      host: true,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      allowedHosts: ['.cloudspaces.litng.ai', '.lightning.ai', 'localhost'],
+      allowedHosts: true,
       proxy: {
-        '/api': 'http://127.0.0.1:3000',
-        '/health': 'http://127.0.0.1:3000',
-        '/v1': 'http://127.0.0.1:3000',
+        '/api': 'http://127.0.0.1:3001',
+        '/health': 'http://127.0.0.1:3001',
+        '/v1': 'http://127.0.0.1:3001',
         '/ollama': {
           target: 'http://localhost:11434',
           changeOrigin: true,
