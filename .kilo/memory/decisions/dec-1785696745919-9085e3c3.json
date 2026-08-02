@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785696745919-9085e3c3",
+  "agentId": "ci-watcher",
+  "decision": "run:verify CI gates after PR 283 merge (qstash bridge)",
+  "context": {
+    "action": "execute",
+    "task": "verify CI gates after PR 283 merge (qstash bridge)",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T18:52:25.920Z",
+  "decoded": false
+}

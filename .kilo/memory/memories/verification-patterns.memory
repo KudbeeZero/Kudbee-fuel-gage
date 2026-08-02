@@ -115,13 +115,8 @@
       "query": "verify all middleware for ops-013",
       "timestamp": "2026-08-02T07:18:23.480Z",
       "score": 12
-    },
-    {
-      "query": "upstash box test environment implementation",
-      "timestamp": "2026-08-02T16:42:56.960Z",
-      "score": 8
     }
   ],
-  "lastRecall": "2026-08-02T16:42:56.960Z",
-  "recallCount": 24
+  "lastRecall": "2026-08-02T07:18:23.480Z",
+  "recallCount": 23
 }

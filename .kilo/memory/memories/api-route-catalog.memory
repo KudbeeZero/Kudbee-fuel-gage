@@ -125,13 +125,8 @@
       "query": "thinkbox continuous learning engineering",
       "timestamp": "2026-08-02T06:54:31.135Z",
       "score": 5
-    },
-    {
-      "query": "ops swarm release: scan middleware layers",
-      "timestamp": "2026-08-02T16:36:02.061Z",
-      "score": 6
     }
   ],
-  "lastRecall": "2026-08-02T16:36:02.061Z",
-  "recallCount": 26
+  "lastRecall": "2026-08-02T06:54:31.135Z",
+  "recallCount": 25
 }

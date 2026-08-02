@@ -30,8 +30,7 @@
       "edges": [
         "middleware-pipeline-architecture",
         "database-schema",
-        "agent-ecosystem",
-        "box-redis-test-environment"
+        "agent-ecosystem"
       ]
     },
     "database-schema": {
@@ -79,21 +78,6 @@
         "frontend-patterns",
         "middleware-pipeline-architecture",
         "verification-patterns"
-      ]
-    },
-    "box-redis-test-environment": {
-      "id": "box-redis-test-environment",
-      "meaning": "Upstash Box + Redis Test Environment — Implementation Guide",
-      "edges": [
-        "redis-patterns",
-        "secret-safe-integration-workflow"
-      ]
-    },
-    "secret-safe-integration-workflow": {
-      "id": "secret-safe-integration-workflow",
-      "meaning": "Secret-Safe Integration Workflow",
-      "edges": [
-        "box-redis-test-environment"
       ]
     }
   },
@@ -168,16 +152,6 @@
       "to": "verification-patterns",
       "type": "verifies",
       "weight": 0.9
-    },
-    {
-      "from": "box-redis-test-environment",
-      "to": "redis-patterns",
-      "created": "2026-08-02T16:42:48.034Z"
-    },
-    {
-      "from": "box-redis-test-environment",
-      "to": "secret-safe-integration-workflow",
-      "created": "2026-08-02T16:42:48.078Z"
     }
   ]
 }
