@@ -2,6 +2,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-009",
   "name": "Continuous Engineering Learning Engine",
   "objective": "Continuous Engineering Learning Engine",
@@ -24,10 +25,17 @@
   "objective": "Continuous Engineering Excellence & Operational Intelligence",
   "featureBranch": "feature/thinkbox-pr012",
 >>>>>>> Stashed changes
+=======
+  "missionId": "OPS-013",
+  "name": "Engineering OS Maturity & Multi-Model Intelligence",
+  "objective": "Engineering OS Maturity & Multi-Model Intelligence",
+  "featureBranch": "feature/ops-013",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
@@ -40,6 +48,9 @@
 >>>>>>> Stashed changes
 =======
   "startedAt": "2026-08-02T07:12:27.280Z",
+>>>>>>> Stashed changes
+=======
+  "startedAt": "2026-08-02T07:18:15.801Z",
 >>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",

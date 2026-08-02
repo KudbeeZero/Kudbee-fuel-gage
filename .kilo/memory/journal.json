@@ -153,8 +153,13 @@
       "decisionsTotal": 10
     },
     {
+<<<<<<< Updated upstream
       "session": "ses-1785653629407-f478f021",
       "date": "2026-08-02T06:53:49.590Z",
+=======
+      "session": "ses-1785655095924-8b1aa1a7",
+      "date": "2026-08-02T07:18:16.085Z",
+>>>>>>> Stashed changes
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 9,

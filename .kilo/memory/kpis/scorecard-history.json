@@ -1,0 +1,17 @@
+[
+  {
+    "date": "2026-08-02",
+    "architecture": 90,
+    "quality": 100,
+    "reliability": 95,
+    "observability": 85,
+    "learning": 80,
+    "governance": 100,
+    "performance": 90,
+    "costEfficiency": 85,
+    "developerExperience": 96,
+    "total": 91,
+    "grade": "A",
+    "trend": []
+  }
+]
