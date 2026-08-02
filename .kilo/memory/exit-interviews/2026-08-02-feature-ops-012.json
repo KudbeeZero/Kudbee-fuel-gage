@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-02",
+  "branch": "feature/ops-012",
+  "pr": "N/A",
+  "commits": [
+    "5ce1044 docs: add production tools roadmap",
+    "a136393 feat(ops): certify middleware layers and transition to Engineering OS terminal",
+    "faf322b docs: add infrastructure status, cleanup report, and CI documentation"
+  ],
+  "questions": {
+    "whatUserProblem": "14/16 panels render mock data — no engineer trusts the dashboard",
+    "whatChanged": "LiveTerminal upgraded. Terminal.html uses engineering LiveTerminal with BUS/SSE. Stack manifest created. PR Exit Interview script created. Knowledge Index updated.",
+    "whatEvidence": "CI GREEN (46/46 tests). 17 PRs audited — 1 actionable merge. Terminal.tsx migrated from OllamaChat→LiveTerminal. stack.json enforces max depth 3.",
+    "whatLearned": "Stack without stack manager = accumulated work. Draft PRs need implementation intent. Knowledge Index must be on main.",
+    "permanentKnowledge": "Stack Management Protocol (v2.1), Verification Orchestrator (v2.2), Production Tools Roadmap",
+    "complexityDelta": "decreased — collapsed 17 PRs to 1 merge, 3 terminals to 1 canonical",
+    "understandableInSixMonths": "yes"
+  },
+  "generatedAt": "2026-08-02T09:00:36.330Z"
+}
