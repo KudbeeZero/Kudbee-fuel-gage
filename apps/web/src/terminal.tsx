@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { OsStreamProvider } from './components/OsStreamProvider';
-import { LiveTerminal } from './components/thinkbox/LiveTerminal';
+import { OllamaChat } from './pages/OllamaChat';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const rootElement = document.getElementById('root');
@@ -11,14 +10,7 @@ if (!rootElement) {
   createRoot(rootElement).render(
     <StrictMode>
       <ErrorBoundary>
-        <OsStreamProvider>
-          <LiveTerminal
-            missionId="KUDBEE-TERMINAL"
-            branch="main"
-            simulation={false}
-            workspaceId="terminal-standalone"
-          />
-        </OsStreamProvider>
+        <OllamaChat />
       </ErrorBoundary>
     </StrictMode>,
   );
