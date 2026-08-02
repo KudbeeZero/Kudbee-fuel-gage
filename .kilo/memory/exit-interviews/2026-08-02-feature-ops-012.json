@@ -1,20 +1,20 @@
 {
   "date": "2026-08-02",
   "branch": "feature/ops-012",
-  "pr": "N/A",
+  "pr": "270",
   "commits": [
+    "3e93010 feat(ops): OPS-012 Certification Pipeline — exit interview, 3 laws, production roadmap",
     "5ce1044 docs: add production tools roadmap",
-    "a136393 feat(ops): certify middleware layers and transition to Engineering OS terminal",
-    "faf322b docs: add infrastructure status, cleanup report, and CI documentation"
+    "a136393 feat(ops): certify middleware layers and transition to Engineering OS terminal"
   ],
   "questions": {
-    "whatUserProblem": "14/16 panels render mock data — no engineer trusts the dashboard",
-    "whatChanged": "LiveTerminal upgraded. Terminal.html uses engineering LiveTerminal with BUS/SSE. Stack manifest created. PR Exit Interview script created. Knowledge Index updated.",
-    "whatEvidence": "CI GREEN (46/46 tests). 17 PRs audited — 1 actionable merge. Terminal.tsx migrated from OllamaChat→LiveTerminal. stack.json enforces max depth 3.",
-    "whatLearned": "Stack without stack manager = accumulated work. Draft PRs need implementation intent. Knowledge Index must be on main.",
-    "permanentKnowledge": "Stack Management Protocol (v2.1), Verification Orchestrator (v2.2), Production Tools Roadmap",
-    "complexityDelta": "decreased — collapsed 17 PRs to 1 merge, 3 terminals to 1 canonical",
+    "whatUserProblem": "Platform needed certification pipeline before product work continues",
+    "whatChanged": "OPS-012 complete: Exit Interview script, 3 Laws, Production Roadmap, Stack Manifest, Terminal upgrade. 17 PRs audited → 1 actionable merge. Knowledge Index updated.",
+    "whatEvidence": "PR #270 created. CI GREEN. 46/46 tests. 364 agent decisions. Terminal.html now uses LiveTerminal with BUS/SSE. stack.json enforces max depth 3.",
+    "whatLearned": "Every merge must produce evidence, not claims. Stack depth > 3 causes accumulation. PR Exit Interviews make engineering decisions durable.",
+    "permanentKnowledge": "Three Laws of Engineering Maturity, Stack Management Protocol v2.1, Verification Orchestrator v2.2, 12-Week Production Tools Roadmap",
+    "complexityDelta": "decreased — 17 PRs collapsed to 1 merge, 3 terminals to 1 canonical, 20 tabs to 12",
     "understandableInSixMonths": "yes"
   },
-  "generatedAt": "2026-08-02T09:00:36.330Z"
+  "generatedAt": "2026-08-02T09:01:18.879Z"
 }

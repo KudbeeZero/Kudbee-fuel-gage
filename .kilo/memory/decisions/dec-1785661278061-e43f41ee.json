@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785661278061-e43f41ee",
+  "agentId": "ci-watcher",
+  "decision": "run:final session closeout verification — all CI gates GREEN",
+  "context": {
+    "action": "execute",
+    "task": "final session closeout verification — all CI gates GREEN",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T09:01:18.061Z",
+  "decoded": false
+}

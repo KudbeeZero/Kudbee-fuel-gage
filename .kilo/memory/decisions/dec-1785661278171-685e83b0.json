@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785661278171-685e83b0",
+  "agentId": "ci-watcher",
+  "decision": "error:final session closeout verification — all CI gates GREEN",
+  "context": {
+    "error": "Command failed: set -eu\n\necho \"[ci-watcher] Running bounded verification smoke...\"\n\necho \"\"\necho \"  Gate 1: Agent contracts\"\nnpm run verify:agent-contracts\n\necho \"\"\necho \"  Gate 2: Integration availability\"\nnpm run verify:integrations\n\necho \"\"\necho \"  Gate 3: Node crypto runtime\"\nnpm run verify:crypto\n\necho \"\"\necho \"  Gate 4: Learning protocol\"\nnpm run verify:learning-protocol\n\necho \"\"\necho \"  Gate 5: E2E smoke (provider writes disabled)\"\nif [ \"${E2E_ALLOW_DATABASE_WRITES:-0}\" = \"1\" ]; then\n  echo \"  E2E_ALLOW_DATABASE_WRITES=1; running full database-writing E2E\"\n  node scripts/verify-e2e.mjs\nelse\n  echo \"  E2E_ALLOW_DATABASE_WRITES is not 1; running isolated bounded smoke\"\n  node scripts/verify-e2e.mjs --smoke\nfi\n\nif [ \"${CI_WATCHER_FULL:-0}\" = \"1\" ]; then\n  echo \"\"\n  echo \"  Extended gates: Typecheck\"\n  npm run typecheck\n\n  echo \"\"\n  echo \"  Extended gates: Tests\"\n  (cd services/lib && npx -y bun test test/)\n\n  echo \"\"\n  echo \"  Extended gates: Build\"\n  npm run build --workspace=@kudbee/web\nelse\n  echo \"\"\n  echo \"  Extended gates skipped by default; set CI_WATCHER_FULL=1 for local extended checks\"\nfi\n\necho \"\"\necho \"  Gate 5: Knowledge health\"\nnode scripts/snippet-agent.mjs health\n\nnode scripts/agents.mjs decide ci-watcher \"verification_complete\" \"bounded contract, integration, learning, smoke, and knowledge gates executed\"\nnpm error Missing script: \"verify:agent-contracts\"\nnpm error\nnpm error To see a list of scripts, run:\nnpm error   npm run\nnpm error A complete log of this run can be found in: /home/agent_60506d29-e115-420d-950f-4275d81566c7/.npm/_logs/2026-08-02T09_01_18_118Z-debug-0.log\n"
+  },
+  "timestamp": "2026-08-02T09:01:18.171Z",
+  "decoded": false
+}
