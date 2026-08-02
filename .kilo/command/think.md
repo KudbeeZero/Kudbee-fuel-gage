@@ -1,5 +1,5 @@
 ---
-description: Interactive terminal think console — DTHINK pipeline recall, problem tracking, state verification, memory layer audit
+description: Interactive terminal think console — DTHINK pipeline recall, problem tracking, state verification, memory layer audit, THINK Protocol vNext orchestration
 ---
 Bring up the interactive DTHINK terminal immediately. Present this menu:
 
@@ -17,7 +17,26 @@ Bring up the interactive DTHINK terminal immediately. Present this menu:
   [8] Frontend connection check
   [9] API integration check
   [0] Full health: all checks
+  [T] THINK Protocol vNext — daily cycle
 ══════════════════════════════════════════════
+```
+
+## [T] THINK Protocol vNext — Daily Engineering Cycle
+
+Read `THINK_PROTOCOL.md` (repo root) for the full operating model. Execute the
+daily cycle:
+
+1. **Think** — understand objective, scan docs/architecture, review decisions.
+2. **Harmonize** — `git fetch origin && ./scripts/pr-sync.sh drift`
+3. **Implement** — one vertical slice on `feature/<name>` branch.
+4. **Navigate** — monitor CI via `gh pr checks`, drift via `pr-sync.sh`.
+5. **Knowledge** — record decisions to `.kilo/memory/decisions/`, snippets.
+
+```bash
+# Full cycle per task:
+./scripts/pr-sync.sh sync <branch>      # rebase + resolve + push
+gh pr create --base main --title "..."  # one PR per branch
+./scripts/pr-sync.sh merge <branch>     # sync + squash-merge + cleanup
 ```
 
 ## Menu Actions
