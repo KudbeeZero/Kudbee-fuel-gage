@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785653645721-80d06c23",
+  "agentId": "pipeline-guardian",
+  "decision": "run:audit all 11 middleware layers for THINKBOX-009",
+  "context": {
+    "action": "execute",
+    "task": "audit all 11 middleware layers for THINKBOX-009",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T06:54:05.721Z",
+  "decoded": false
+}

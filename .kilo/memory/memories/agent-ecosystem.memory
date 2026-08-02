@@ -40,8 +40,18 @@
       "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
       "timestamp": "2026-07-31T07:25:30.390Z",
       "score": 17
+    },
+    {
+      "query": "audit all 11 middleware layers for thinkbox-009",
+      "timestamp": "2026-08-02T06:54:05.762Z",
+      "score": 13
+    },
+    {
+      "query": "thinkbox continuous learning engineering",
+      "timestamp": "2026-08-02T06:54:31.133Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-07-31T07:25:30.390Z",
-  "recallCount": 8
+  "lastRecall": "2026-08-02T06:54:31.133Z",
+  "recallCount": 10
 }
