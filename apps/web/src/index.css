@@ -276,14 +276,94 @@ body.theme-midnight {
 
 /* Reduced Motion Overrides for Vestibular Sensitivity */
 .reduced-motion, .reduced-motion * {
-  animation: none !important;
-  transition: none !important;
+   animation: none !important;
+   transition: none !important;
+ }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   THINKBOX-016A — Mobile-First CSS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  font-size: 16px;
 }
 
-/* Static high-contrast border states to replace pulsing elements under reduced motion */
-.reduced-motion .animate-pulse,
-.reduced-motion [class*="animate-pulse"] {
-  animation: none !important;
-  border: 2px solid #e2e8f0 !important;
-  background-color: #0f172a !important;
+@media (max-width: 767.98px) {
+  body {
+    min-width: unset;
+    overscroll-behavior-y: auto;
+  }
+
+  /* Prevent horizontal scroll at all costs */
+  overflow-x: hidden;
+  html, body { max-width: 100%; }
+
+  /* Safe-area support for Dynamic Island / Home Indicator */
+  #root {
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .safe-left   { padding-left:   env(safe-area-inset-left, 0px); }
+  .safe-right  { padding-right:  env(safe-area-inset-right, 0px); }
+  .safe-all {
+    padding-top:    env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left:   env(safe-area-inset-left, 0px);
+    padding-right:  env(safe-area-inset-right, 0px);
+  }
+
+  /* Bottom nav pushes content up — account for it + safe area */
+  .with-bottom-nav {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 16px));
+  }
+
+  /* Touch targets — minimum 44x44px */
+  button, a, select, input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Large tap-friendly fonts */
+  .mobile-tap {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  /* Scroll momentum for mobile */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* No horizontal scroll in terminal */
+  .mobile-terminal {
+    font-size: 0.8125rem; /* 13px — large enough for mobile */
+  }
+
+  /* Input fields — full width, no overflow */
+  .mobile-input {
+    font-size: 1rem; /* Prevents iOS zoom on focus */
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Pull-to-refresh indicator area */
+  #pull-refresh-target {
+    position: relative;
+  }
+
+  /* Landscape support */
+  @media (orientation: landscape) {
+    .safe-top    { padding-top:    calc(env(safe-area-inset-top, 0px) + 8px); }
+    .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  }
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   THINKBOX-016A — Mobile-First CSS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
