@@ -95,6 +95,8 @@ export function useTerminalMirror() {
         });
       }
 
+      logs.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
       setData({
         timestamp: new Date().toISOString(),
         logs,

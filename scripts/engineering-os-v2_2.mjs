@@ -511,8 +511,8 @@ async function run() {
   const ci = getRecentCi(ctx.branch);
 
   appendProtocolEvent('Prediction Started', { branch: ctx.branch });
-  const ciGateCheck = deriveCheckFromCi(ci, /kudbee ci|verify/i);
-  const ciBuildCheck = deriveCheckFromCi(ci, /kudbee ci|build/i);
+  const ciGateCheck = deriveCheckFromCi(ci, /kudbee bounded ci|verify/i);
+  const ciBuildCheck = deriveCheckFromCi(ci, /kudbee bounded ci|build/i);
   const checks = {
     stack: runCheck('npm', ['run', 'verify:stack']),
     verifyYml: ciGateCheck,
