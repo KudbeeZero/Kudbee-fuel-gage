@@ -2,8 +2,22 @@ name: Kudbee Bounded CI
 
 on:
   pull_request:
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'turbo.json'
+      - '.github/**'
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'turbo.json'
+      - '.github/**'
   workflow_dispatch:
 
 permissions:
