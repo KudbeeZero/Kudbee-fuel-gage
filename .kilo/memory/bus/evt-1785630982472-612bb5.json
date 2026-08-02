@@ -1,0 +1,10 @@
+{
+  "id": "evt-1785630982472-612bb5",
+  "topic": "system:ci",
+  "source": "cli",
+  "data": {
+    "message": "Heroku CI disabled — GitHub Actions sole CI"
+  },
+  "timestamp": "2026-08-02T00:36:22.473Z",
+  "sequence": 47
+}

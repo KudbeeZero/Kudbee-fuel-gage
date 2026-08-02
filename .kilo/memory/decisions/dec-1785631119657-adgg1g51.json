@@ -1,0 +1,23 @@
+{
+  "id": "dec-1785631119657-adgg1g51",
+  "type": "preflight_gate",
+  "status": "FAIL",
+  "gateResults": [
+    {
+      "id": "unused-import",
+      "status": "PASS",
+      "detail": "No dead imports",
+      "timestamp": "2026-08-02T00:38:37.884Z"
+    },
+    {
+      "id": "typecheck",
+      "status": "FAIL",
+      "detail": "Command failed: npx turbo run typecheck\n• turbo 2.10.8\n WARN",
+      "timestamp": "2026-08-02T00:38:39.585Z"
+    }
+  ],
+  "gateErrors": [
+    "typecheck failed"
+  ],
+  "timestamp": "2026-08-02T00:38:39.657Z"
+}
