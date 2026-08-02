@@ -21,8 +21,7 @@ export interface LearningRecord {
   recommendation: string;
   confidence: number;
   scope: 'local' | 'global';
-  category: 'architecture' | 'execution' | 'agent' | 'dependency' | 'deployment' | 'testing' | 'security' | 'performance' | 'recovery' | 'gener
-al';
+  category: 'architecture' | 'execution' | 'agent' | 'dependency' | 'deployment' | 'testing' | 'security' | 'performance' | 'recovery' | 'general';
   severity: 'low' | 'medium' | 'high' | 'critical';
   createdAt: string;
   expiresAt: string | null;
