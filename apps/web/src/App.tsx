@@ -27,40 +27,40 @@ import {
   Shield,
   Boxes,
 } from 'lucide-react';
-import { IntelligenceView } from './components/IntelligenceView';
 import { PlaygroundView } from "./components/playground/PlaygroundView";
 import { ConsoleDock } from './components/ConsoleDock';
 import { useLiveTaskStream } from './hooks/useLiveTaskStream';
 import { OSControlBar, CommandPalette } from './components/OSControlBar';
 import { StudioRouter } from './layouts/StudioRouter';
 import { GatewayView } from './components/gateway/GatewayView';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, memo, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { HistoryPage } from './pages/history';
-import { TelemetryPage } from './pages/telemetry';
-import { ThinkPage } from './pages/think';
-import { GovernancePage } from './pages/governance';
-import { HermesPage } from './pages/hermes';
-import { SentinelPage } from './pages/sentinel';
-import ControlTowerPanel from './components/dashboard/ControlTowerPanel';
 const FirewallPage = lazy(() => import('./pages/firewall').then((m) => ({ default: m.FirewallPage })));
 const AlertsPanel = lazy(() => import('./components/AlertsPanel').then((m) => ({ default: m.AlertsPanel })));
 const InterceptorView = lazy(() => import('./components/InterceptorView').then((m) => ({ default: m.InterceptorView })));
 const GovernanceView = lazy(() => import('./components/GovernanceView').then((m) => ({ default: m.GovernanceView })));
-import { OllamaChat } from './pages/OllamaChat';
-import { ObservabilityPage } from './pages/observability';
+const OverviewPage = lazy(() => import('./pages/overview').then((m) => ({ default: m.OverviewPage })));
+const WorkspacePage = lazy(() => import('./pages/workspace').then((m) => ({ default: m.WorkspacePage })));
+const ThinkboxPage = lazy(() => import('./pages/thinkbox').then((m) => ({ default: m.ThinkboxPage })));
+const ObservabilityPage = lazy(() => import('./pages/observability').then((m) => ({ default: m.ObservabilityPage })));
+const TelemetryPage = lazy(() => import('./pages/telemetry').then((m) => ({ default: m.TelemetryPage })));
+const ThinkPage = lazy(() => import('./pages/think').then((m) => ({ default: m.ThinkPage })));
+const GovernancePage = lazy(() => import('./pages/governance').then((m) => ({ default: m.GovernancePage })));
+const HermesPage = lazy(() => import('./pages/hermes').then((m) => ({ default: m.HermesPage })));
+const SentinelPage = lazy(() => import('./pages/sentinel').then((m) => ({ default: m.SentinelPage })));
+const OllamaChat = lazy(() => import('./pages/OllamaChat').then((m) => ({ default: m.OllamaChat })));
+const HistoryPage = lazy(() => import('./pages/history').then((m) => ({ default: m.HistoryPage })));
+const SettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
+const IntelligenceView = lazy(() => import('./components/IntelligenceView').then((m) => ({ default: m.IntelligenceView })));
+const ControlTowerPanel = lazy(() => import('./components/dashboard/ControlTowerPanel').then((m) => ({ default: m.default })));
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
 import { apiGet } from './lib/apiClient';
 import { useOsSnapshot } from './components/OsStreamProvider';
-import { SettingsView, type SettingsViewProps } from './components/SettingsView';
 import { LoginView } from './components/LoginView';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
-import { WorkspacePage } from './pages/workspace';
-import { OverviewPage } from './pages/overview';
-import { ThinkboxPage } from './pages/thinkbox';
 
 // --- CURRENCY UTILITY ENGINE ---
 import { getFormattedCost } from './utils/currency';
@@ -439,7 +439,7 @@ export default function App() {
     return bins;
   }, [dbLogs]);
 
-  const primaryNavItems = [
+  const primaryNavItems = useMemo(() => [
     { icon: LayoutDashboard, label: 'OVERVIEW' },
     { icon: Sparkles, label: 'WORKSPACE' },
     { icon: Monitor, label: 'STUDIO' },
@@ -452,9 +452,9 @@ export default function App() {
     { icon: TerminalSquare, label: 'HERMES' },
     { icon: Radio, label: 'SENTINEL' },
     { icon: Calculator, label: 'PLAYGROUND' },
-  ];
+  ], []);
 
-  const secondaryNavItems = [
+  const secondaryNavItems = useMemo(() => [
     { icon: TerminalSquare, label: 'TERMINAL' },
     { icon: Shield, label: 'FIREWALL' },
     { icon: Globe, label: 'GATEWAY' },
@@ -463,7 +463,7 @@ export default function App() {
     { icon: Bell, label: 'ALERTS' },
     { icon: Search, label: 'INTELLIGENCE' },
     { icon: Settings, label: 'SETTINGS' }
-  ];
+  ], []);
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -742,6 +742,7 @@ export default function App() {
           </div>
 
            {/* ACTIVE VIEW ROUTER */}
+          <Suspense fallback={<RouteFallback label="Loading" />}>
           {activeTab === 'OVERVIEW' && <PanelErrorBoundary panel={activeTab}><OverviewPage onNavigate={setActiveTab} /></PanelErrorBoundary>}
 
           {activeTab === 'WORKSPACE' && <PanelErrorBoundary panel={activeTab}><WorkspacePage /></PanelErrorBoundary>}
@@ -789,9 +790,7 @@ export default function App() {
           {activeTab === 'PLAYGROUND' && <PanelErrorBoundary panel={activeTab}><PlaygroundView currency={currency} onNewLogTriggered={fetchTelemetryData} /></PanelErrorBoundary>}
 
           {activeTab === 'FIREWALL' && (
-            <Suspense fallback={<RouteFallback label="Loading Firewall" />}>
-              <PanelErrorBoundary panel={activeTab}><FirewallPage /></PanelErrorBoundary>
-            </Suspense>
+            <PanelErrorBoundary panel={activeTab}><FirewallPage /></PanelErrorBoundary>
           )}
 
           {activeTab === 'GATEWAY' && (
@@ -799,17 +798,13 @@ export default function App() {
           )}
 
           {activeTab === 'INTERCEPTOR' && (
-            <Suspense fallback={<div className="h-96 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-500" /></div>}>
-              <PanelErrorBoundary panel={activeTab}><InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} /></PanelErrorBoundary>
-            </Suspense>
+            <PanelErrorBoundary panel={activeTab}><InterceptorView currency={currency} onNewLogTriggered={fetchTelemetryData} /></PanelErrorBoundary>
           )}
 
           {activeTab === 'HISTORY' && <PanelErrorBoundary panel={activeTab}><HistoryPage /></PanelErrorBoundary>}
 
           {activeTab === 'ALERTS' && (
-            <Suspense fallback={<RouteFallback label="Loading Alerts" />}>
-              <PanelErrorBoundary panel={activeTab}><AlertsPanel /></PanelErrorBoundary>
-            </Suspense>
+            <PanelErrorBoundary panel={activeTab}><AlertsPanel /></PanelErrorBoundary>
           )}
 
           {activeTab === 'INTELLIGENCE' && <PanelErrorBoundary panel={activeTab}><IntelligenceView /></PanelErrorBoundary>}
@@ -831,8 +826,9 @@ export default function App() {
             />
             </PanelErrorBoundary>
           )}
+          </Suspense>
 
-          {/* GLOBAL TERMINAL-STYLED FOOTER */}
+
           <footer
             id="applet-summary-footer"
             className="mt-4 w-full bg-slate-950/90 border border-slate-800 rounded-xl px-4 py-3 md:px-6 md:py-3.5 flex flex-col md:flex-row md:flex-wrap md:items-center md:justify-between gap-3 md:gap-6 font-mono text-[11px] shadow-[0_0_24px_rgba(0,0,0,0.35)] relative overflow-hidden"

@@ -255,6 +255,22 @@ export async function synapseProtectionMiddleware(req: Request, res: Response, n
     return next();
   }
 
+  // Browser-facing UI endpoints — exempt from the agent threat gate.
+  // These are authenticated by the session/bearer layer downstream, and
+  // cannot carry agent behavioral headers, so the C4769 protractor would
+  // otherwise false-positive on legitimate Control Tower traffic.
+  const browserPaths = [
+    '/api/auth/stream-ticket',
+    '/api/terminal/execute',
+    '/api/ci/status',
+    '/api/telemetry/ingest',
+    '/api/telemetry/ingest/batch',
+  ];
+  if (browserPaths.some((p) => req.path.startsWith(p))) {
+    state.stats.totalPassed++;
+    return next();
+  }
+
   // Extract behavioral vector
   const featureVec = extractFeatureVector(req);
 
