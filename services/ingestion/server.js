@@ -54,6 +54,7 @@ import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
 import { createToolsRouter } from './routes/tools.ts';
+import { createThinkboxRouter } from './routes/thinkbox.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
 import { grokConfigured, grokStatus } from '../lib/grokClient.ts';
@@ -346,6 +347,9 @@ app.use('/api/system', systemRouter);
 // router behind the required auth gate so the frontend cannot expose them to
 // anonymous browser traffic.
 app.use('/api/tools', bearerAuth({ required: true }), createToolsRouter());
+
+const thinkboxRouter = createThinkboxRouter({ runQuery });
+app.use('/api/thinkbox', thinkboxRouter);
 
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {

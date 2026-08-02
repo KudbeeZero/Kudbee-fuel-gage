@@ -13,7 +13,8 @@
  */
 
 import { intakeAndDetect } from './orchestrator.ts';
-import { listWorkspaces } from './registry.ts';
+import { listWorkspaces, getWorkspace, saveWorkspace } from './registry.ts';
+import { buildManifest } from './intelligence/engine.ts';
 
 function printManifest(outcome: ReturnType<typeof intakeAndDetect>): void {
   const { workspace, manifestPath } = outcome;
@@ -47,6 +48,20 @@ switch (command) {
     printManifest(outcome);
     break;
   }
+  case 'intelligence': {
+    if (!arg) {
+      console.error('Usage: thinkbox intelligence <workspaceId>');
+      process.exit(1);
+    }
+    const workspace = getWorkspace(arg);
+    if (!workspace) {
+      console.error(`Workspace not found: ${arg}`);
+      process.exit(1);
+    }
+    const intel = buildManifest(workspace, workspace.detection);
+    console.log(JSON.stringify(intel, null, 2));
+    break;
+  }
   case 'list': {
     const workspaces = listWorkspaces();
     for (const w of workspaces) {
@@ -56,15 +71,16 @@ switch (command) {
   }
   default: {
     console.error(`
-THINKBOX — Universal Workspace Detection
+THINKBOX — Universal Workspace Detection & Intelligence
 
 Commands:
-  detect <git-url|zip|directory>   Intake + detect + manifest + publish
-  list                             List registered workspaces
+  detect <git-url|zip|directory>       Intake + detect + manifest + publish
+  intelligence <workspaceId>           Project Intelligence manifest (PR-002)
+  list                                 List registered workspaces
 
 Examples:
   npx tsx services/thinkbox/src/index.ts detect /path/to/project
-  npx tsx services/thinkbox/src/index.ts detect https://github.com/user/repo.git
+  npx tsx services/thinkbox/src/index.ts intelligence <uuid>
   npx tsx services/thinkbox/src/index.ts list
 `);
     process.exit(1);
