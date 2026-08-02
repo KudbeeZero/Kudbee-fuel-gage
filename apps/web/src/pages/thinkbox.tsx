@@ -3,6 +3,10 @@
  *
  * PR-002 through PR-008. Consumes a single WorkspaceViewModel.
  * Every panel reads from the same data contract. No scattered APIs.
+ *
+ * THINKBOX-016A: Mobile-first Founder Mode.
+ * On mobile: Engineering Pulse + Mission + PR + Terminal + Continue button.
+ * On desktop: Full workspace with all panels.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,6 +24,7 @@ import { TimelinePanel } from '../components/thinkbox/TimelinePanel';
 import { WorkspaceStatusBar } from '../components/thinkbox/WorkspaceStatusBar';
 import { DashboardHealthOverlay } from '../components/thinkbox/DashboardHealthOverlay';
 import { useDashboardSync } from '../hooks/useDashboardSync';
+import { FounderMode } from '../components/thinkbox/FounderMode';
 
 interface DependencyEntry {
   name: string;
@@ -193,6 +198,7 @@ export function ThinkboxPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [selectedWs, setSelectedWs] = useState<string | null>(null);
+  const [mobile, setMobile] = useState(false);
 
   const fetchWorkspaces = useCallback(async () => {
     try {
@@ -218,6 +224,13 @@ export function ThinkboxPage() {
   }, []);
 
   useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
+
+  useEffect(() => {
+    const checkMobile = () => setMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleDetect = async () => {
     try {
@@ -258,7 +271,18 @@ export function ThinkboxPage() {
   const readyCount = readinessChecks.filter(c => c.done).length;
 
   return (
-    <div className="min-h-dvh" id="thinkbox-page">
+    <div className={`min-h-dvh ${mobile ? 'pb-20' : ''}`} id="thinkbox-page">
+       {mobile && (
+        <div className="px-4 pt-4 pb-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="font-display text-xl font-bold text-slate-100">THINKBOX</h1>
+            <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">v2.2 MOBILE</span>
+          </div>
+          <FounderMode />
+        </div>
+      )}
+      {!mobile && (
+        <>
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
@@ -527,7 +551,7 @@ export function ThinkboxPage() {
         </div>
       )}
 
-      {/* PR-008: Persistent Status Bar */}
+       {/* PR-008: Persistent Status Bar */}
       <WorkspaceStatusBar
         readyScore={dashboard.viewModel?.health?.readyScore ?? (manifest?.confidence ? Math.round(manifest.confidence * 100) : 0)}
         grade={dashboard.viewModel?.health?.grade ?? (manifest?.confidence ? (manifest.confidence > 0.8 ? 'A' : manifest.confidence > 0.6 ? 'B' : 'C') : 'F')}
@@ -541,6 +565,7 @@ export function ThinkboxPage() {
 
       {/* PR-008: Developer Health Overlay (Ctrl+Shift+D) */}
       <DashboardHealthOverlay />
+      </>)}
     </div>
   );
 }
