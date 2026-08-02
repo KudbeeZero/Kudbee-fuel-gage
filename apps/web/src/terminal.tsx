@@ -1,6 +1,7 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
-import { OllamaChat } from './pages/OllamaChat';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { OsStreamProvider } from './components/OsStreamProvider';
+import { LiveTerminal } from './components/thinkbox/LiveTerminal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const rootElement = document.getElementById('root');
@@ -10,12 +11,17 @@ if (!rootElement) {
   createRoot(rootElement).render(
     <StrictMode>
       <ErrorBoundary>
-        <OllamaChat />
+        <OsStreamProvider>
+          <LiveTerminal
+            missionId="KUDBEE-TERMINAL"
+            branch="main"
+            simulation={false}
+            workspaceId="terminal-standalone"
+          />
+        </OsStreamProvider>
       </ErrorBoundary>
     </StrictMode>,
   );
-  // Notify the boot loader (terminal.html) that React has mounted. Without this,
-  // the loader waits 12s then reports a mount-timeout even though the app is fine.
   queueMicrotask(() => {
     window.dispatchEvent(new CustomEvent('kudbee:terminal_mounted'));
   });

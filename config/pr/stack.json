@@ -1,29 +1,43 @@
 {
-  "stackId": "security-durability",
-  "repository": "KudbeeZero/Kudbee-fuel-gage",
-  "trunk": "main",
-  "layers": [
+  "stack": [
     {
-      "order": 1,
-      "pullRequest": 229,
-      "branch": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
-      "base": "main",
-      "concern": "governed Lemonade Workspace and operating model"
+      "branch": "feature/thinkbox-pr014a",
+      "pr": 265,
+      "mission": "THINKBOX-014A",
+      "title": "Fix crash + wire WorkspaceViewModel",
+      "parent": "feature/thinkbox-pr013",
+      "children": ["feature/thinkbox-pr014b"],
+      "status": "draft"
     },
     {
-      "order": 2,
-      "pullRequest": 230,
-      "branch": "staging/security-durability",
-      "base": "session/agent_4c65e5af-d8c5-40eb-982c-bd131cac6ac7",
-      "concern": "security durability, TypeScript 7, bounded CI, and staging hardening"
+      "branch": "feature/thinkbox-pr014b",
+      "pr": 266,
+      "mission": "THINKBOX-014B",
+      "title": "Live Interactive Terminal Integration",
+      "parent": "feature/thinkbox-pr014a",
+      "children": ["feature/thinkbox-pr014c"],
+      "status": "draft"
+    },
+    {
+      "branch": "feature/thinkbox-pr014c",
+      "pr": 267,
+      "mission": "THINKBOX-014C",
+      "title": "Platform Simplification & Authentication Audit",
+      "parent": "feature/thinkbox-pr014b",
+      "children": [],
+      "status": "draft"
     }
   ],
+  "active": {
+    "implementation": "feature/thinkbox-pr014b",
+    "review": "feature/thinkbox-pr014a",
+    "planning": "feature/thinkbox-pr014c"
+  },
   "rules": {
-    "sameRepository": true,
-    "bottomUpMerge": true,
-    "eachLayerNeedsCi": true,
-    "draftUntilHumanReview": true,
-    "productionDeployFromTrunkOnly": true,
-    "stagingDeployMayUseTopLayer": true
+    "maxDepth": 3,
+    "maxFiles": 50,
+    "requireDemo": true,
+    "requireVerticalSlice": true,
+    "baseBranch": "main"
   }
 }

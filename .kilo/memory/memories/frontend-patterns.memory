@@ -165,8 +165,13 @@
       "query": "code review: verify browser-verifier.mjs, dyno-manager.mjs, intelligence-planner.mjs, graph-builder.mjs are syntactically valid. check that all .kilo/schemas/ are json-valid. report any issues.",
       "timestamp": "2026-07-30T15:14:15.863Z",
       "score": 15
+    },
+    {
+      "query": "certify all 11 middleware layers for ops-012 merge readiness",
+      "timestamp": "2026-08-02T08:48:03.676Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-07-30T15:14:15.863Z",
-  "recallCount": 33
+  "lastRecall": "2026-08-02T08:48:03.676Z",
+  "recallCount": 34
 }

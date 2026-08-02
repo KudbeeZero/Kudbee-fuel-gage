@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785660483770-7d4cded6",
+  "agentId": "knowledge-curator",
+  "decision": "run:extract verified learnings from OPS-011 stack certification",
+  "context": {
+    "action": "execute",
+    "task": "extract verified learnings from OPS-011 stack certification",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T08:48:03.770Z",
+  "decoded": false
+}

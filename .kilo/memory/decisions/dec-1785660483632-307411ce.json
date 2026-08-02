@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785660483632-307411ce",
+  "agentId": "pipeline-guardian",
+  "decision": "run:certify all 11 middleware layers for OPS-012 merge readiness",
+  "context": {
+    "action": "execute",
+    "task": "certify all 11 middleware layers for OPS-012 merge readiness",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T08:48:03.632Z",
+  "decoded": false
+}
