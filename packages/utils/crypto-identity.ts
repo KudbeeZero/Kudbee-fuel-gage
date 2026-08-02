@@ -12,7 +12,7 @@ export interface AgentPass {
   signature: string;
 }
 
-const KEY_FORMAT: crypto.KeyFormat = 'pem';
+const KEY_FORMAT = 'pem' as const;
 
 export function generateAgentIdentity(agentId: string): AgentKeyPair {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
