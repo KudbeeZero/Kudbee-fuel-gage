@@ -1,0 +1,115 @@
+{
+  "sessionId": "a367ee7d",
+  "workspaceId": "demo-workspace",
+  "startedAt": "2026-08-02T07:04:17.489Z",
+  "durationMs": 0,
+  "frames": [
+    {
+      "id": "3025a90e",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "detection",
+      "action": "Project detected",
+      "detail": "10 languages, 2 frameworks found",
+      "output": "10 languages, 2 frameworks found"
+    },
+    {
+      "id": "c6d3c3a1",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "intelligence",
+      "action": "Intelligence generated",
+      "detail": "7 services, 55 env vars",
+      "output": "7 services, 55 env vars"
+    },
+    {
+      "id": "f3364c7e",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "planning",
+      "action": "Mission planned",
+      "detail": "2 epics, 10 tasks",
+      "output": "2 epics, 10 tasks"
+    },
+    {
+      "id": "9cc990fa",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "agent",
+      "action": "Agents assigned",
+      "detail": "FORGE, GATE, JOURNAL",
+      "agentId": "KILOH",
+      "output": "FORGE, GATE, JOURNAL"
+    },
+    {
+      "id": "9f76c0e5",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "provision",
+      "action": "Provision planned",
+      "detail": "70 steps, Score 100/A",
+      "agentId": "FORGE",
+      "output": "70 steps, Score 100/A"
+    },
+    {
+      "id": "f7191434",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "execution",
+      "action": "Execution planned",
+      "detail": "70 commands, 2 approvals",
+      "agentId": "FORGE",
+      "output": "70 commands, 2 approvals"
+    },
+    {
+      "id": "0741e0cf",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "terminal",
+      "action": "Terminal started",
+      "detail": "Simulation mode active",
+      "agentId": "KILOH",
+      "output": "Simulation mode active"
+    },
+    {
+      "id": "9909bf62",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "learning",
+      "action": "Learning extracted",
+      "detail": "5 records from execution",
+      "agentId": "DTHINK",
+      "output": "5 records from execution"
+    },
+    {
+      "id": "b9d4ab95",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "recommendation",
+      "action": "Recommendations generated",
+      "detail": "2 evidence-based recs",
+      "agentId": "KILOH",
+      "output": "2 evidence-based recs"
+    },
+    {
+      "id": "8bc1a7ab",
+      "timestamp": "2026-08-02T07:04:17.489Z",
+      "subsystem": "agent",
+      "action": "Mission complete",
+      "detail": "All tasks verified",
+      "agentId": "GATE",
+      "output": "All tasks verified"
+    }
+  ],
+  "metadata": {
+    "totalFrames": 10,
+    "subsystems": [
+      "detection",
+      "intelligence",
+      "planning",
+      "agent",
+      "provision",
+      "execution",
+      "terminal",
+      "learning",
+      "recommendation"
+    ],
+    "agentContributions": {
+      "KILOH": 3,
+      "FORGE": 2,
+      "DTHINK": 1,
+      "GATE": 1
+    }
+  }
+}
