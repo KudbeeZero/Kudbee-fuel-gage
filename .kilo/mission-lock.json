@@ -1,13 +1,24 @@
 {
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-002",
   "name": "Project Intelligence Engine",
   "objective": "Project Intelligence Engine",
   "featureBranch": "feature/thinkbox-pr002",
+=======
+  "missionId": "THINKBOX-007",
+  "name": "Autonomous Mission Planning & Engineering Graph",
+  "objective": "Autonomous Mission Planning & Engineering Graph",
+  "featureBranch": "feature/thinkbox-pr007",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
   "startedAt": "2026-08-02T04:09:42.017Z",
+=======
+  "startedAt": "2026-08-02T06:33:40.509Z",
+>>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
   "priority": "P0",

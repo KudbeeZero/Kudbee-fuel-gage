@@ -563,7 +563,19 @@
       "type": "workspace:detected",
       "agentId": "system",
       "timestamp": "2026-08-02T04:14:07.682Z"
+    },
+    {
+      "id": "553e239d-e141-4eb2-9788-66a21109046b",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-02T06:37:19.834Z"
+    },
+    {
+      "id": "c898c219-d58c-4927-87cf-3afbe0802c60",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-02T06:37:19.993Z"
     }
   ],
-  "totalEntries": 94
+  "totalEntries": 96
 }

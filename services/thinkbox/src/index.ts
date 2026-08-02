@@ -1,88 +1,34 @@
 /**
- * services/thinkbox/src/index.ts
- * ---------------------------------------------------------------------------
- * THINKBOX CLI entry point.
- *
- * Usage:
- *   npx tsx services/thinkbox/src/index.ts detect <git-url|zip|directory>
- *   npx tsx services/thinkbox/src/index.ts list
- *
- * `detect` runs the full Objective-001 intake pipeline and prints the
- * canonical manifest summary. `list` prints registered workspace ids.
- * ---------------------------------------------------------------------------
+ * THINKBOX CLI — detect · intelligence · provision · execute · plan · list
  */
 
 import { intakeAndDetect } from './orchestrator.ts';
-import { listWorkspaces, getWorkspace, saveWorkspace } from './registry.ts';
+import { listWorkspaces, getWorkspace } from './registry.ts';
 import { buildManifest } from './intelligence/engine.ts';
+import { createMissionGraph } from './planning/planner.ts';
+import { createEngineeringGraph, seedEngineeringGraph } from './planning/graph.ts';
 
-function printManifest(outcome: ReturnType<typeof intakeAndDetect>): void {
+function printDetect(outcome: ReturnType<typeof intakeAndDetect>): void {
   const { workspace, manifestPath } = outcome;
-  console.log(JSON.stringify(
-    {
-      workspaceId: workspace.workspaceId,
-      name: workspace.name,
-      sourceType: workspace.sourceType,
-      state: workspace.state,
-      languages: workspace.detection?.languages ?? [],
-      frameworks: workspace.detection?.frameworks ?? [],
-      packageManagers: workspace.detection?.packageManagers ?? [],
-      confidence: workspace.detection?.confidence ?? 0,
-      recommendedNextAction: workspace.summary?.recommendedNextAction ?? null,
-      manifestPath,
-    },
-    null,
-    2
-  ));
+  console.log(JSON.stringify({ workspaceId: workspace.workspaceId, name: workspace.name, sourceType: workspace.sourceType, state: workspace.state, languages: workspace.detection?.languages ?? [], frameworks: workspace.detection?.frameworks ?? [], packageManagers: workspace.detection?.packageManagers ?? [], confidence: workspace.detection?.confidence ?? 0, recommendedNextAction: workspace.summary?.recommendedNextAction ?? null, manifestPath }));
 }
 
-const [command, arg] = process.argv.slice(2);
+const [command, ...args] = process.argv.slice(2);
+const arg = args[0];
 
 switch (command) {
-  case 'detect': {
-    if (!arg) {
-      console.error('Usage: thinkbox detect <git-url|zip|directory>');
-      process.exit(1);
-    }
-    const outcome = intakeAndDetect(arg);
-    printManifest(outcome);
+  case 'detect': { if (!arg) { console.error('Usage: detect <path>'); process.exit(1); } printDetect(intakeAndDetect(arg)); break; }
+  case 'intelligence': { if (!arg) { console.error('Usage: intelligence <id>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error('Not found'); process.exit(1); } console.log(JSON.stringify(buildManifest(ws, ws.detection))); break; }
+  case 'plan': {
+    const objectiveText = arg || 'Improve test coverage and add API documentation';
+    const ws = getWorkspace(arg) ?? listWorkspaces()[0];
+    const intel = ws ? buildManifest(ws, ws.detection) : undefined;
+    const mission = createMissionGraph({ title: objectiveText, description: objectiveText }, intel as any);
+    const eng = createEngineeringGraph() as any;
+    seedEngineeringGraph(eng, intel?.workspaceId ?? 'unknown');
+    console.log(JSON.stringify({ mission, engineeringGraph: { nodes: eng.nodes, edges: eng.edges } }));
     break;
   }
-  case 'intelligence': {
-    if (!arg) {
-      console.error('Usage: thinkbox intelligence <workspaceId>');
-      process.exit(1);
-    }
-    const workspace = getWorkspace(arg);
-    if (!workspace) {
-      console.error(`Workspace not found: ${arg}`);
-      process.exit(1);
-    }
-    const intel = buildManifest(workspace, workspace.detection);
-    console.log(JSON.stringify(intel, null, 2));
-    break;
-  }
-  case 'list': {
-    const workspaces = listWorkspaces();
-    for (const w of workspaces) {
-      console.log(`${w.workspaceId}  ${w.name}  [${w.sourceType}]  ${w.state}`);
-    }
-    break;
-  }
-  default: {
-    console.error(`
-THINKBOX — Universal Workspace Detection & Intelligence
-
-Commands:
-  detect <git-url|zip|directory>       Intake + detect + manifest + publish
-  intelligence <workspaceId>           Project Intelligence manifest (PR-002)
-  list                                 List registered workspaces
-
-Examples:
-  npx tsx services/thinkbox/src/index.ts detect /path/to/project
-  npx tsx services/thinkbox/src/index.ts intelligence <uuid>
-  npx tsx services/thinkbox/src/index.ts list
-`);
-    process.exit(1);
-  }
+  case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}  [${w.sourceType}]  ${w.state}`); break; }
+  default: { console.error('THINKBOX CLI — detect | intelligence | plan | list'); process.exit(1); }
 }
