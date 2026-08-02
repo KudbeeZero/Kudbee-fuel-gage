@@ -15,6 +15,7 @@ set -euo pipefail
 
 REPO="KudbeeZero/Kudbee-fuel-gage"
 TRUNK="main"
+STACK_CONFIG="config/pr/stack.json"
 
 # Files that are runtime state, not source — main wins on conflict
 MEMORY_CHURN=".kilo/memory/bus .kilo/memory/dthink .kilo/memory/forge .kilo/memory/gate-results.json .kilo/memory/journal.json"
@@ -26,6 +27,24 @@ resolve_memory_conflicts() {
       git add "$path" 2>/dev/null || true
     fi
   done
+}
+
+stack_base_for_branch() {
+  local branch="$1"
+  if [ ! -f "$STACK_CONFIG" ]; then
+    return 0
+  fi
+
+  BRANCH="$branch" STACK_CONFIG="$STACK_CONFIG" node -e "
+    const fs = require('node:fs');
+    const branch = process.env.BRANCH;
+    const configPath = process.env.STACK_CONFIG;
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const layer = (config.layers || []).find((entry) => entry.branch === branch);
+      if (layer?.base) process.stdout.write(layer.base);
+    } catch {}
+  "
 }
 
 cmd_drift() {
@@ -40,16 +59,24 @@ cmd_drift() {
 
 cmd_sync() {
   local branch="$1"
-  git fetch origin "$TRUNK" "$branch" >/dev/null 2>&1
+  local rebase_base="$TRUNK"
+  local stack_base
+  stack_base="$(stack_base_for_branch "$branch")"
+  if [ -n "$stack_base" ]; then
+    rebase_base="$stack_base"
+    echo "[sync] Stack branch detected: $branch -> base $rebase_base"
+  fi
+
+  git fetch origin "$rebase_base" "$branch" >/dev/null 2>&1
   git checkout "$branch" >/dev/null 2>&1 || git checkout -b "$branch" "origin/$branch"
-  git rebase "origin/$TRUNK" --rebase-merges 2>&1 | tail -3 || true
+  git rebase "origin/$rebase_base" --rebase-merges 2>&1 | tail -3 || true
   if git status --porcelain | grep -q '^UU\|^AA'; then
     echo "[sync] Resolving auto-generated memory conflicts (main wins)..."
     resolve_memory_conflicts
     GIT_EDITOR=true git rebase --continue 2>/dev/null || true
   fi
   git push --force-with-lease origin "$branch" 2>&1 | tail -2
-  echo "[sync] $branch rebased onto $TRUNK and pushed."
+  echo "[sync] $branch rebased onto $rebase_base and pushed."
 }
 
 cmd_merge() {
