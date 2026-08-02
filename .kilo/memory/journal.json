@@ -1,165 +1,8 @@
 {
   "journal": [
     {
-      "session": "ses-1785467907341-eec27cf3",
-      "date": "2026-07-31T03:18:27.694Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 8,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785469967955-02ae41d1",
-      "date": "2026-07-31T03:52:48.286Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785478933764-d7e4536f",
-      "date": "2026-07-31T06:22:14.052Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479740577-3c591027",
-      "date": "2026-07-31T06:35:40.861Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479740782-42350ab0",
-      "date": "2026-07-31T06:35:41.050Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479740841-f990ebd6",
-      "date": "2026-07-31T06:35:41.117Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479741530-0bc543c6",
-      "date": "2026-07-31T06:35:41.788Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479742004-e50bb6d4",
-      "date": "2026-07-31T06:35:42.279Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785479753152-a072f75d",
-      "date": "2026-07-31T06:35:53.404Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785480236272-8e2f32e3",
-      "date": "2026-07-31T06:43:56.556Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785480383062-106e4e24",
-      "date": "2026-07-31T06:46:23.341Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785482719794-570d61b4",
-      "date": "2026-07-31T07:25:20.054Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785486660097-e78529d3",
-      "date": "2026-07-31T08:31:00.361Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785553139987-b2421762",
-      "date": "2026-08-01T02:59:00.247Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785553318281-29061429",
-      "date": "2026-08-01T03:01:58.585Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785633896100-5eeb3b99",
-      "date": "2026-08-02T01:24:56.350Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785633929007-90a24846",
-      "date": "2026-08-02T01:25:29.330Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785634187032-c9584510",
-      "date": "2026-08-02T01:29:47.308Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785634693245-05d1c8de",
-      "date": "2026-08-02T01:38:13.540Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-<<<<<<< Updated upstream
-      "session": "ses-1785653629407-f478f021",
-      "date": "2026-08-02T06:53:49.590Z",
-=======
-      "session": "ses-1785655095924-8b1aa1a7",
-      "date": "2026-08-02T07:18:16.085Z",
->>>>>>> Stashed changes
+      "session": "ses-1785655748325-19d2df05",
+      "date": "2026-08-02T07:29:08.344Z",
       "type": "bootstrap",
       "agentsActive": 11,
       "snippetsAvailable": 9,
@@ -167,19 +10,9 @@
     }
   ],
   "trends": {
-    "sessions": 81,
-    "ciPassRate": "82%"
+    "sessions": 1
   },
   "health": {
-    "overall": "YELLOW",
-    "frontend": "3 fixes deployed",
-    "thinkForge": "4 tokens processed",
-    "relations": "10 nodes, 13 edges",
-    "knownIssues": [
-      "8 e2e checks fail without Redis (billing-blocked GitHub Actions)",
-      "Heroku CLI not available in container",
-      "DATABASE_URL points to localhost (needs Neon Postgres for production)",
-      "22 GitHub vulnerabilities (1 critical, 15 high, 6 moderate)"
-    ]
+    "overall": "UNKNOWN"
   }
 }
