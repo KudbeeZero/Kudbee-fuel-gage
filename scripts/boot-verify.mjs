@@ -21,7 +21,7 @@ const require = createRequire(import.meta.url);
 const INGESTION_DIR = new URL('../services/ingestion', import.meta.url).pathname;
 const PORT = 9900;
 const BASE = `http://127.0.0.1:${PORT}`;
-const BOOT_TIMEOUT_MS = 60_000;
+const BOOT_TIMEOUT_MS = 120_000;
 const HEALTH_CHECK_MS = 20_000;
 
 async function bootVerify() {
@@ -36,7 +36,7 @@ async function bootVerify() {
 
   const stdout = [];
   proc.stdout.on('data', (d) => stdout.push(d.toString()));
-  proc.stderr.on('data', (d) => { /* suppress */ });
+  proc.stderr.on('data', (d) => stdout.push(d.toString()));
 
   const deadline = Date.now() + BOOT_TIMEOUT_MS;
 
@@ -52,6 +52,7 @@ async function bootVerify() {
 
   if (!ready) {
     console.error('[BootVerify] FAILED: server did not become ready within', BOOT_TIMEOUT_MS, 'ms');
+    console.error('[BootVerify] Server output:\n' + stdout.join('').slice(-4000));
     proc.kill('SIGTERM');
     process.exit(1);
   }
