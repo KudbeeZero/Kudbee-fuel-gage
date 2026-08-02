@@ -1,13 +1,24 @@
 {
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-009",
   "name": "Continuous Engineering Learning Engine",
   "objective": "Continuous Engineering Learning Engine",
   "featureBranch": "feature/thinkbox-pr009",
+=======
+  "missionId": "THINKBOX-010",
+  "name": "Workspace Integration & Production Validation",
+  "objective": "Workspace Integration & Production Validation",
+  "featureBranch": "feature/thinkbox-pr010",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
   "startedAt": "2026-08-02T06:53:57.355Z",
+=======
+  "startedAt": "2026-08-02T06:56:57.994Z",
+>>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
   "priority": "P0",

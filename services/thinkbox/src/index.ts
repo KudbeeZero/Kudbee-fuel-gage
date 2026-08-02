@@ -1,5 +1,5 @@
 /**
- * THINKBOX CLI — detect · intelligence · provision · execute · plan · list
+ * THINKBOX CLI — detect · intelligence · plan · learn · validate · replay · list
  */
 
 import { intakeAndDetect } from './orchestrator.ts';
@@ -8,44 +8,42 @@ import { buildManifest } from './intelligence/engine.ts';
 import { createMissionGraph } from './planning/planner.ts';
 import { createEngineeringGraph, seedEngineeringGraph } from './planning/graph.ts';
 import { extractLearning, getLearningFeedback, generateRecommendations } from './learning/index.ts';
-
-function printDetect(outcome: ReturnType<typeof intakeAndDetect>): void {
-  const { workspace, manifestPath } = outcome;
-  console.log(JSON.stringify({ workspaceId: workspace.workspaceId, name: workspace.name, sourceType: workspace.sourceType, state: workspace.state, languages: workspace.detection?.languages ?? [], frameworks: workspace.detection?.frameworks ?? [], packageManagers: workspace.detection?.packageManagers ?? [], confidence: workspace.detection?.confidence ?? 0, recommendedNextAction: workspace.summary?.recommendedNextAction ?? null, manifestPath }));
-}
+import { validateCompleteWorkflow } from './integration/validation.ts';
+import { generateDemoSession } from './integration/replay.ts';
 
 const [command, ...args] = process.argv.slice(2);
 const arg = args[0];
 
 switch (command) {
-  case 'detect': { if (!arg) { console.error('Usage: detect <path>'); process.exit(1); } printDetect(intakeAndDetect(arg)); break; }
+  case 'detect': { if (!arg) { console.error('Usage: detect <path>'); process.exit(1); } const o = intakeAndDetect(arg); console.log(JSON.stringify({ workspaceId: o.workspace.workspaceId, name: o.workspace.name, state: o.workspace.state, languages: o.workspace.detection?.languages ?? [], confidence: o.workspace.detection?.confidence ?? 0 })); break; }
   case 'intelligence': { if (!arg) { console.error('Usage: intelligence <id>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error('Not found'); process.exit(1); } console.log(JSON.stringify(buildManifest(ws, ws.detection))); break; }
-  case 'learn': {
-    const objectiveText = arg || 'Example mission';
-    const mission = createMissionGraph({ title: objectiveText, description: objectiveText });
-    const records = extractLearning({
-      missionGraph: mission as any,
-      executionSummary: { totalCommands: 10, successful: 8, failed: 2, errors: ['Command x failed'], recommendations: [] },
-      timeline: [{ type: 'healing:recovery', message: 'Recovered from timeout', severity: 'info' }, { type: 'test:failed', message: 'integration test failed', severity: 'error' }],
-      recoveryEvents: [{ type: 'reconnect', success: true }],
-      testResults: [{ name: 'unit', passed: true }, { name: 'integration', passed: false }],
-      agentDecisions: [{ agent: 'FORGE', title: 'Chose Bun as package manager', description: 'Based on lockfile detection and performance' }],
-    });
-    const feedback = getLearningFeedback({ title: objectiveText, description: objectiveText });
-    const recs = generateRecommendations({ title: objectiveText, description: objectiveText }, { services: ['Redis', 'PostgreSQL'], agents: ['FORGE', 'GATE'] });
-    console.log(JSON.stringify({ records, feedback: feedback.recommendations, recommendations: recs.slice(0, 5).map(r => r.title) }));
+  case 'plan': {
+    const obj = arg || 'Default mission';
+    const mission = createMissionGraph({ title: obj, description: obj });
+    console.log(JSON.stringify({ epics: mission.epics.length, tasks: mission.tasks.length, agents: mission.requiredAgents.map(a => a.name), confidence: Math.round(mission.confidence * 100) }));
     break;
   }
-  case 'plan': {
-    const objectiveText = arg || 'Improve test coverage and add API documentation';
-    const ws = getWorkspace(arg) ?? listWorkspaces()[0];
-    const intel = ws ? buildManifest(ws, ws.detection) : undefined;
-    const mission = createMissionGraph({ title: objectiveText, description: objectiveText }, intel as any);
-    const eng = createEngineeringGraph() as any;
-    seedEngineeringGraph(eng, intel?.workspaceId ?? 'unknown');
-    console.log(JSON.stringify({ mission, engineeringGraph: { nodes: eng.nodes, edges: eng.edges } }));
+  case 'learn': {
+    const obj = arg || 'Test mission';
+    const mission = createMissionGraph({ title: obj, description: obj });
+    const records = extractLearning({
+      missionGraph: mission as any, executionSummary: { totalCommands: 10, successful: 8, failed: 2, errors: ['test'], recommendations: [] },
+      testResults: [{ name: 'unit', passed: false }], recoveryEvents: [{ type: 'reconnect', success: true }],
+    });
+    console.log(JSON.stringify({ records: records.length, recommendations: generateRecommendations({ title: obj, description: obj }).length }));
+    break;
+  }
+  case 'validate': {
+    const report = validateCompleteWorkflow();
+    console.log(JSON.stringify({ score: report.overallScore, passed: report.passed, failed: report.failed, recommendations: report.recommendations }));
+    break;
+  }
+  case 'replay': {
+    const wsId = arg || 'demo-workspace';
+    const session = generateDemoSession(wsId);
+    console.log(JSON.stringify({ sessionId: session.sessionId, frames: session.frames.length, subsystems: session.metadata.subsystems }));
     break;
   }
   case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}  [${w.sourceType}]  ${w.state}`); break; }
-  default: { console.error('THINKBOX CLI — detect | intelligence | plan | learn | list'); process.exit(1); }
+  default: { console.error('THINKBOX CLI — detect | intelligence | plan | learn | validate | replay | list'); process.exit(1); }
 }
