@@ -122,11 +122,20 @@
       "score": 16
     },
     {
+<<<<<<< Updated upstream
       "query": "scan middleware pipeline layers for ops-ci-002",
       "timestamp": "2026-08-02T15:29:40.936Z",
       "score": 14
     }
   ],
   "lastRecall": "2026-08-02T15:29:40.936Z",
+=======
+      "query": "ops swarm release: scan middleware layers",
+      "timestamp": "2026-08-02T16:36:02.059Z",
+      "score": 11
+    }
+  ],
+  "lastRecall": "2026-08-02T16:36:02.059Z",
+>>>>>>> Stashed changes
   "recallCount": 25
 }

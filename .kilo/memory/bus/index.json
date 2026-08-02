@@ -1,5 +1,5 @@
 {
-  "sequence": 57,
+  "sequence": 58,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -399,6 +399,13 @@
       "source": "cli",
       "sequence": 57,
       "timestamp": "2026-08-02T07:51:52.442Z"
+    },
+    {
+      "id": "evt-1785688584886-498379",
+      "topic": "swarm:released",
+      "source": "cli",
+      "sequence": 58,
+      "timestamp": "2026-08-02T16:36:24.886Z"
     }
   ],
   "topicCounts": {
@@ -434,6 +441,7 @@
     "workspace:telepathy": 1,
     "system:ci": 1,
     "workspace:created": 5,
-    "workspace:detected": 5
+    "workspace:detected": 5,
+    "swarm:released": 1
   }
 }

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785688567520-cb095848",
+  "agentId": "sentinel",
+  "decision": "run:OPS swarm release: system health scan",
+  "context": {
+    "action": "execute",
+    "task": "OPS swarm release: system health scan",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T16:36:07.520Z",
+  "decoded": false
+}

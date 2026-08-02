@@ -40,8 +40,13 @@
       "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
       "timestamp": "2026-07-31T07:25:30.391Z",
       "score": 17
+    },
+    {
+      "query": "ops swarm release: scan middleware layers",
+      "timestamp": "2026-08-02T16:36:02.061Z",
+      "score": 6
     }
   ],
-  "lastRecall": "2026-07-31T07:25:30.391Z",
-  "recallCount": 8
+  "lastRecall": "2026-08-02T16:36:02.061Z",
+  "recallCount": 9
 }
