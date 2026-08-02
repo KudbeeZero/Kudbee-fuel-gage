@@ -184,10 +184,11 @@ function ServiceBadge({ kind }: { kind: string }) {
 }
 
 export function ThinkboxPage() {
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
-  const [selectedWs, setSelectedWs] = useState<string | null>(null);
+  const dashboard = useDashboardSync();
   const [manifest, setManifest] = useState<ProjectIntelligenceManifest | null>(null);
   const [loading, setLoading] = useState(false);
+  const [simulation, setSimulation] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -527,13 +528,13 @@ export function ThinkboxPage() {
 
       {/* PR-008: Persistent Status Bar */}
       <WorkspaceStatusBar
-        readyScore={manifest?.confidence ? Math.round(manifest.confidence * 100) : 0}
-        grade={manifest?.confidence ? (manifest.confidence > 0.8 ? 'A' : manifest.confidence > 0.6 ? 'B' : 'C') : 'F'}
-        agentsOnline={6}
-        agentsTotal={6}
-        busConnected={true}
-        sseConnected={true}
-        executionStatus={simulation ? 'idle' : 'running'}
+        readyScore={dashboard.viewModel?.health?.readyScore ?? (manifest?.confidence ? Math.round(manifest.confidence * 100) : 0)}
+        grade={dashboard.viewModel?.health?.grade ?? (manifest?.confidence ? (manifest.confidence > 0.8 ? 'A' : manifest.confidence > 0.6 ? 'B' : 'C') : 'F')}
+        agentsOnline={dashboard.viewModel?.health?.agentsOnline ?? 6}
+        agentsTotal={dashboard.viewModel?.health?.agentsTotal ?? 6}
+        busConnected={dashboard.viewModel?.health?.busConnected ?? true}
+        sseConnected={dashboard.viewModel?.health?.sseConnected ?? dashboard.connected}
+        executionStatus={dashboard.viewModel?.execution?.status ?? 'idle'}
         simulation={simulation}
       />
 

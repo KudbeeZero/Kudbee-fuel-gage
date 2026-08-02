@@ -4,6 +4,7 @@
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "missionId": "THINKBOX-009",
   "name": "Continuous Engineering Learning Engine",
   "objective": "Continuous Engineering Learning Engine",
@@ -38,10 +39,17 @@
   "objective": "Product Validation Sprint",
   "featureBranch": "feature/thinkbox-pr013",
 >>>>>>> Stashed changes
+=======
+  "missionId": "THINKBOX-014A",
+  "name": "Fix crash + wire WorkspaceViewModel",
+  "objective": "Fix crash + wire WorkspaceViewModel",
+  "featureBranch": "feature/thinkbox-pr014a",
+>>>>>>> Stashed changes
   "expectedPr": null,
   "stackPosition": 0,
   "owner": "KILOH",
   "state": "active",
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
@@ -62,6 +70,9 @@
 >>>>>>> Stashed changes
 =======
   "startedAt": "2026-08-02T07:29:00.378Z",
+>>>>>>> Stashed changes
+=======
+  "startedAt": "2026-08-02T07:45:50.349Z",
 >>>>>>> Stashed changes
   "completedAt": null,
   "authority": "Engineering Governance",
