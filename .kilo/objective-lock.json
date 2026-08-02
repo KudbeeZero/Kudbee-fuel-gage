@@ -1,6 +1,6 @@
 {
   "objectiveId": "session-001-handoff",
-  "prNumber": null,
+  "prNumber": 253,
   "branch": "feature/ops-006-ci-finalization",
   "parent": "main",
   "stackPosition": 0,
