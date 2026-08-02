@@ -1,8 +1,8 @@
 {
   "objectiveId": "ops-006-release",
-  "prNumber": null,
+  "prNumber": 247,
   "branch": "feature/ops-006-v1-release",
   "parent": "main",
-  "stackPosition": 0,
-  "declaredAt": "2026-08-02T02:37:29.514Z"
+  "stackPosition": 1,
+  "declaredAt": "2026-08-02T02:45:55.978Z"
 }
