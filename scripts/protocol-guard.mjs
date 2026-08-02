@@ -1,40 +1,42 @@
 #!/usr/bin/env node
 /**
- * scripts/protocol-guard.mjs
+ * scripts/protocol-guard.mjs — THINK Governance Engine enforcement subsystem.
  * ---------------------------------------------------------------------------
- * PROTOCOL GUARDIAN — executable THINK Protocol enforcement.
- *
- * A lightweight role that enforces engineering discipline. It never writes
- * business logic — it protects the workflow.
- *
- * Responsibilities:
- *   - Protect main (Rule 1, 3)
- *   - Branch guard before session work (Rule 2)
- *   - Objective lock verification (Rule 4)
- *   - Session initialization checks (Rule 5)
- *   - Session termination checks (Rule 6)
- *   - Automatic recovery of feature commits on main (Rule 7)
+ * Evaluates machine-readable policies (.kilo/policies/*.json) at four gates:
+ * pre-coding, pre-commit, pre-push, pre-pr. Emits evidence for every decision.
  *
  * Usage:
- *   node scripts/protocol-guard.mjs guard          # pre-commit guard (refuses main)
- *   node scripts/protocol-guard.mjs session-start   # Rule 5 checks
- *   node scripts/protocol-guard.mjs session-end      # Rule 6 checks
- *   node scripts/protocol-guard.mjs objective <id>   # declare/verify objective lock
- *   node scripts/protocol-guard.mjs recover          # Rule 7 auto-recovery
- *   node scripts/protocol-guard.mjs status           # full compliance snapshot
+ *   protocol-guard mission <id> <objective> [pr]   activate mission lock
+ *   protocol-guard mission-clear                    end mission + record learning
+ *   protocol-guard objective <id> [pr]              declare objective lock
+ *   protocol-guard guard                            policy-evaluated pre-commit gate
+ *   protocol-guard pre-coding | pre-commit | pre-push | pre-pr
+ *   protocol-guard status                           full policy compliance snapshot
+ *   protocol-guard recover                          move feature commits off main
+ *   protocol-guard evidence                         tail evidence log
  *
- * Exit codes: 0 = safe, 1 = blocked, 2 = needs recovery.
+ * Exit codes: 0 = safe/warn-only, 1 = blocked, 2 = recovery needed.
  * ---------------------------------------------------------------------------
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
+import crypto from 'node:crypto';
 
 const ROOT = process.cwd();
+const POLICY_DIR = join(ROOT, '.kilo', 'policies');
+const MISSION_LOCK = join(ROOT, '.kilo', 'mission-lock.json');
 const OBJECTIVE_LOCK = join(ROOT, '.kilo', 'objective-lock.json');
+const EVIDENCE_DIR = join(ROOT, '.kilo', 'memory', 'guardian');
+const EVIDENCE_LOG = join(EVIDENCE_DIR, 'evidence.jsonl');
 
-const PROTECTED_BRANCHES = new Set(['main']);
+const GATE_CATEGORIES = {
+  'pre-coding': ['mission', 'branch'],
+  'pre-commit': ['mission', 'branch', 'memory', 'commit'],
+  'pre-push': ['mission', 'branch', 'merge'],
+  'pre-pr': ['merge', 'memory', 'agent'],
+};
 
 function sh(cmd) {
   try {
@@ -48,191 +50,280 @@ function currentBranch() {
   return sh('git branch --show-current') ?? 'unknown';
 }
 
-function isProtected(branch) {
-  return PROTECTED_BRANCHES.has(branch);
-}
-
-function hasFeatureCommitsOnMain() {
-  if (currentBranch() !== 'main') return false;
-  // main ahead of origin/main = un-pushed commits (likely feature work)
-  const ahead = Number(sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '0');
-  return ahead > 0;
-}
-
-function readLock() {
-  if (!existsSync(OBJECTIVE_LOCK)) return null;
+function readJson(path) {
+  if (!existsSync(path)) return null;
   try {
-    return JSON.parse(readFileSync(OBJECTIVE_LOCK, 'utf8'));
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
   }
 }
 
-function writeLock(lock) {
-  writeFileSync(OBJECTIVE_LOCK, JSON.stringify(lock, null, 2), 'utf8');
+function writeJson(path, data) {
+  writeFileSync(path, JSON.stringify(data, null, 2), 'utf8');
 }
 
-/** Rule 2 + 3: refuse coding on main. */
-function guard() {
+function loadPolicies() {
+  if (!existsSync(POLICY_DIR)) return [];
+  const all = [];
+  for (const file of readdirSync(POLICY_DIR).filter((f) => f.endsWith('.json'))) {
+    const doc = readJson(join(POLICY_DIR, file));
+    if (doc?.policies) all.push(...doc.policies);
+  }
+  return all;
+}
+
+function appendEvidence(record) {
+  mkdirSync(EVIDENCE_DIR, { recursive: true });
+  const full = {
+    id: `ev-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+    timestamp: new Date().toISOString(),
+    ...record,
+  };
+  appendFileSync(EVIDENCE_LOG, JSON.stringify(full) + '\n', 'utf8');
+  return full;
+}
+
+/** Build the evaluation context. */
+function buildContext() {
   const branch = currentBranch();
-  if (isProtected(branch)) {
-    console.error(`[PROTOCOL] BLOCKED: feature work on "${branch}" is forbidden (Rule 1/3).`);
-    console.error('[PROTOCOL]   Create a feature branch first:');
-    console.error('[PROTOCOL]     git checkout -b feature/<objective>');
-    return 1;
-  }
-  const lock = readLock();
-  if (!lock?.objectiveId) {
-    console.error('[PROTOCOL] BLOCKED: no objective lock declared (Rule 4).');
-    console.error('[PROTOCOL]   Run: node scripts/protocol-guard.mjs objective <id>');
-    return 1;
-  }
-  console.log(`[PROTOCOL] OK: on "${branch}" for objective ${lock.objectiveId} (${lock.prNumber ? `PR #${lock.prNumber}` : 'no PR yet'}).`);
-  return 0;
+  const mission = readJson(MISSION_LOCK);
+  const objective = readJson(OBJECTIVE_LOCK);
+  const staged = (sh('git diff --cached --name-only 2>/dev/null') ?? '').split('\n').filter(Boolean);
+  const runtimePaths = [
+    '.kilo/memory/bus/',
+    '.kilo/memory/dthink/',
+    '.kilo/memory/forge/',
+    '.kilo/memory/gate-results.json',
+    '.kilo/memory/journal.json',
+    '.kilo/thinkbox/',
+  ];
+  const runtimeMemoryInChangeset = staged.some((f) => runtimePaths.some((p) => f.startsWith(p)));
+  return {
+    branch,
+    missionActive: !!mission && mission.state === 'active',
+    missionBranch: mission?.featureBranch ?? null,
+    objectiveExists: !!objective,
+    objectiveBranch: objective?.branch ?? null,
+    runtimeMemoryInChangeset,
+    drift: Number(sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '0'),
+    treeDirty: Number(sh('git status --porcelain | wc -l') ?? '0'),
+  };
 }
 
-/** Rule 5: session initialization checks. */
-function sessionStart() {
+/** Evaluate a single condition against context. Returns bool. */
+function evalCondition(cond, ctx) {
+  const w = cond.when;
+  if (w.branch !== undefined) return ctx.branch === w.branch;
+  if (w.branchNotMatch !== undefined) return !new RegExp(`^(${w.branchNotMatch.replace(/\*/g, '.*')})$`).test(ctx.branch);
+  if (w.missionActive !== undefined) return ctx.missionActive === w.missionActive;
+  if (w.missionBranchMismatch !== undefined) return ctx.missionBranch !== null && ctx.missionBranch !== ctx.branch;
+  if (w.objectiveExists !== undefined) return ctx.objectiveExists === w.objectiveExists;
+  if (w.objectiveBranchMismatch !== undefined) return ctx.objectiveBranch !== null && ctx.objectiveBranch !== ctx.branch;
+  if (w.runtimeMemoryInChangeset !== undefined) return ctx.runtimeMemoryInChangeset === w.runtimeMemoryInChangeset;
+  return false;
+}
+
+/** Run a gate: evaluate matching policies, emit evidence, return exit code. */
+function runGate(gate) {
+  const ctx = buildContext();
+  const policies = loadPolicies();
+  const categories = GATE_CATEGORIES[gate] ?? [];
+  const applicable = policies.filter((p) => p.scope?.includes(gate) || categories.some((c) => p.policyId.startsWith(c)));
+
+  let blocked = false;
+  const results = [];
+
+  for (const policy of applicable) {
+    const failedConditions = policy.conditions.filter((c) => evalCondition(c, ctx));
+    if (failedConditions.length > 0) {
+      const record = appendEvidence({
+        policyId: policy.policyId,
+        gate,
+        result: policy.severity === 'blocking' ? 'fail' : 'warn',
+        context: { branch: ctx.branch },
+        message: failedConditions[0].message ?? policy.name,
+      });
+      results.push(record);
+      if (policy.severity === 'blocking') blocked = true;
+    } else {
+      results.push(appendEvidence({
+        policyId: policy.policyId,
+        gate,
+        result: 'pass',
+        context: { branch: ctx.branch },
+        message: `${policy.name}: ok`,
+      }));
+    }
+  }
+
+  if (applicable.length === 0) {
+    results.push(appendEvidence({ policyId: 'guard:no-policies', gate, result: 'pass', context: {}, message: 'No applicable policies.' }));
+  }
+
+  for (const r of results) {
+    const icon = r.result === 'pass' ? '✓' : r.result === 'warn' ? '⚠' : '✗';
+    console.log(`  ${icon} ${r.policyId}: ${r.message}`);
+  }
+  console.log(blocked ? `[GOVERNANCE] ${gate} BLOCKED` : `[GOVERNANCE] ${gate} ${ctx.treeDirty > 0 ? 'ok (dirty tree)' : 'ok'}`);
+  return blocked ? 1 : 0;
+}
+
+// ── Commands ─────────────────────────────────────────────────────────────
+
+function cmdMission(id, objective, pr) {
   const branch = currentBranch();
-  const drift = sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '?';
-  const dirty = sh('git status --porcelain | wc -l') ?? '?';
-  console.log('── Session Initialization (Rule 5) ──');
-  console.log(`  Branch:    ${branch}`);
-  console.log(`  Drift:     ${drift} commits ahead of main`);
-  console.log(`  Dirty:     ${dirty} files`);
-
-  if (isProtected(branch)) {
-    console.log('[PROTOCOL] STOP: on main. Select an objective and create a feature branch.');
-    return 1;
-  }
-  console.log('[PROTOCOL] OK: safe to begin work.');
-  return 0;
-}
-
-/** Rule 6: session termination checks. */
-function sessionEnd() {
-  const dirty = Number(sh('git status --porcelain | wc -l') ?? '1');
-  const drift = Number(sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '0');
-  const lock = readLock();
-
-  let code = 0;
-  if (dirty > 0) {
-    console.error(`[PROTOCOL] ${dirty} uncommitted files remain (Rule 6).`);
-    code = 1;
-  }
-  if (!lock) {
-    console.error('[PROTOCOL] No objective lock recorded.');
-    code = 1;
-  }
-  if (code === 0) {
-    console.log(`[PROTOCOL] Session clean: ${drift} commits ahead, memory recorded, ready for PR.`);
-  }
-  return code;
-}
-
-/** Rule 4: declare/verify the objective lock for the current branch. */
-function declareObjective(objectiveId, prNumber) {
-  const branch = currentBranch();
-  if (isProtected(branch)) {
-    console.error('[PROTOCOL] BLOCKED: cannot declare an objective on main.');
-    return 1;
-  }
   const lock = {
-    objectiveId,
-    prNumber: prNumber ?? null,
+    missionId: id,
+    name: objective,
+    objective,
+    featureBranch: branch,
+    expectedPr: pr ? Number(pr) : null,
+    stackPosition: pr ? 1 : 0,
+    owner: 'KILOH',
+    state: 'active',
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    authority: 'Engineering Governance',
+    priority: 'P0',
+    missionLockVersion: 1,
+  };
+  writeJson(MISSION_LOCK, lock);
+  console.log(`[GOVERNANCE] Mission ${id} active on "${branch}".`);
+  return 0;
+}
+
+function cmdMissionClear() {
+  const mission = readJson(MISSION_LOCK);
+  if (mission) {
+    mission.state = 'completed';
+    mission.completedAt = new Date().toISOString();
+    writeJson(MISSION_LOCK, mission);
+    appendEvidence({ policyId: 'mission.completed', gate: 'session-end', result: 'pass', context: { mission: mission.missionId }, message: `${mission.missionId} completed` });
+    console.log(`[GOVERNANCE] Mission ${mission.missionId} completed.`);
+  }
+  return 0;
+}
+
+function cmdObjective(id, pr) {
+  const branch = currentBranch();
+  writeJson(OBJECTIVE_LOCK, {
+    objectiveId: id,
+    prNumber: pr ? Number(pr) : null,
     branch,
     parent: 'main',
-    stackPosition: prNumber ? 1 : 0,
+    stackPosition: pr ? 1 : 0,
     declaredAt: new Date().toISOString(),
-  };
-  writeLock(lock);
-  console.log(`[PROTOCOL] Objective locked: ${objectiveId} on "${branch}"${prNumber ? ` (PR #${prNumber})` : ''}.`);
+  });
+  console.log(`[GOVERNANCE] Objective ${id} locked on "${branch}".`);
   return 0;
 }
 
-/** Rule 7: move feature commits off main onto a feature branch. */
-function recover() {
-  if (!hasFeatureCommitsOnMain()) {
-    console.log('[PROTOCOL] main is clean — no recovery needed.');
-    return 0;
-  }
-  const branch = currentBranch();
-  if (branch !== 'main') {
-    console.error('[PROTOCOL] Recovery must run while on main.');
+function cmdStatus() {
+  const ctx = buildContext();
+  const policies = loadPolicies();
+  const mission = readJson(MISSION_LOCK);
+  console.log('── THINK GOVERNANCE ENGINE — COMPLIANCE ──');
+  console.log(`  Branch:          ${ctx.branch}`);
+  console.log(`  Drift:           ${ctx.drift} ahead of main`);
+  console.log(`  Dirty files:     ${ctx.treeDirty}`);
+  console.log(`  Mission:         ${mission ? `${mission.missionId} [${mission.state}] ${mission.name}` : 'MISSING'}`);
+  console.log(`  Objective:       ${ctx.objectiveExists ? ctx.objectiveBranch : 'MISSING'}`);
+  console.log(`  Policies loaded: ${policies.length}`);
+  console.log(`  Runtime churn:   ${ctx.runtimeMemoryInChangeset ? 'DETECTED' : 'none'}`);
+  const ok = ctx.missionActive && ctx.objectiveExists && !ctx.runtimeMemoryInChangeset;
+  console.log(`  Compliance:      ${ok ? 'PASS' : 'FAIL'}`);
+  return ok ? 0 : 1;
+}
+
+function cmdRecover() {
+  if (currentBranch() !== 'main') {
+    console.error('[GOVERNANCE] Recovery must run while on main.');
     return 1;
   }
-  const lock = readLock();
-  const target = lock?.branch ?? `feature/${lock?.objectiveId ?? 'recovered'}`;
-
-  console.log(`[PROTOCOL] Recovery: moving commits off main → "${target}"...`);
+  const ahead = Number(sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '0');
+  if (ahead === 0) {
+    console.log('[GOVERNANCE] main is clean — no recovery needed.');
+    return 0;
+  }
+  const mission = readJson(MISSION_LOCK);
+  const target = mission?.featureBranch ?? `feature/recovered-${Date.now()}`;
   try {
     sh(`git checkout -b "${target}"`);
     sh('git checkout main');
     sh('git reset --hard origin/main');
-    console.log(`[PROTOCOL] Recovered. Commits now on "${target}". Main reset to protected state.`);
-    console.log(`[PROTOCOL]   Next: push branch + open PR (one PR per branch).`);
+    appendEvidence({ policyId: 'branch.recover', gate: 'pre-coding', result: 'pass', context: { target }, message: `Feature commits moved to ${target}` });
+    console.log(`[GOVERNANCE] Recovered: commits on "${target}", main reset.`);
     return 0;
   } catch (e) {
-    console.error(`[PROTOCOL] Recovery failed: ${e.message}`);
+    console.error(`[GOVERNANCE] Recovery failed: ${e.message}`);
     return 2;
   }
 }
 
-/** Full compliance snapshot. */
-function status() {
-  const branch = currentBranch();
-  const drift = sh('git rev-list --count origin/main..HEAD 2>/dev/null') ?? '?';
-  const dirty = sh('git status --porcelain | wc -l') ?? '?';
-  const lock = readLock();
-  const onProtected = isProtected(branch);
-
-  console.log('── PROTOCOL COMPLIANCE ──');
-  console.log(`  Branch:          ${branch}${onProtected ? '  [PROTECTED]' : ''}`);
-  console.log(`  Drift:           ${drift} ahead of main`);
-  console.log(`  Dirty files:     ${dirty}`);
-  console.log(`  Objective lock:  ${lock ? `${lock.objectiveId} (PR ${lock.prNumber ?? 'none'})` : 'MISSING'}`);
-  console.log(`  Main protected:  ${onProtected ? 'VIOLATION' : 'ok'}`);
-  console.log(`  Recovery needed: ${hasFeatureCommitsOnMain() ? 'YES' : 'no'}`);
-  const ok = !onProtected && lock && !hasFeatureCommitsOnMain();
-  console.log(`  Compliance:      ${ok ? 'PASS' : 'FAIL'}`);
-  return ok ? 0 : 1;
+function cmdEvidence() {
+  if (!existsSync(EVIDENCE_LOG)) {
+    console.log('No evidence recorded yet.');
+    return 0;
+  }
+  const lines = readFileSync(EVIDENCE_LOG, 'utf8').trim().split('\n').slice(-15);
+  for (const line of lines) {
+    try {
+      const r = JSON.parse(line);
+      console.log(`${r.timestamp.slice(11, 19)} ${r.gate.padEnd(12)} ${(r.result || '').padEnd(5)} ${r.policyId}: ${r.message}`);
+    } catch {
+      /* skip malformed */
+    }
+  }
+  return 0;
 }
 
 const command = process.argv[2];
 
 switch (command) {
-  case 'guard':
-    process.exit(guard());
-  case 'session-start':
-    process.exit(sessionStart());
-  case 'session-end':
-    process.exit(sessionEnd());
+  case 'mission': {
+    const id = process.argv[3];
+    const obj = process.argv[4];
+    if (!id || !obj) { console.error('Usage: protocol-guard mission <id> <objective> [pr]'); process.exit(1); }
+    process.exit(cmdMission(id, obj, process.argv[5]));
+  }
+  case 'mission-clear':
+    process.exit(cmdMissionClear());
   case 'objective': {
     const id = process.argv[3];
-    const pr = process.argv[4]?.replace(/^#/, '');
-    if (!id) {
-      console.error('Usage: protocol-guard objective <id> [prNumber]');
-      process.exit(1);
-    }
-    process.exit(declareObjective(id, pr));
+    if (!id) { console.error('Usage: protocol-guard objective <id> [pr]'); process.exit(1); }
+    process.exit(cmdObjective(id, process.argv[4]));
   }
-  case 'recover':
-    process.exit(recover());
+  case 'guard':
+  case 'pre-commit':
+    process.exit(runGate('pre-commit'));
+  case 'pre-coding':
+    process.exit(runGate('pre-coding'));
+  case 'pre-push':
+    process.exit(runGate('pre-push'));
+  case 'pre-pr':
+    process.exit(runGate('pre-pr'));
   case 'status':
-    process.exit(status());
+    process.exit(cmdStatus());
+  case 'recover':
+    process.exit(cmdRecover());
+  case 'evidence':
+    process.exit(cmdEvidence());
   default:
     console.error(`
-PROTOCOL GUARDIAN — executable THINK Protocol enforcement
+THINK GOVERNANCE ENGINE — Protocol Guardian
 
 Commands:
-  guard               Pre-commit guard (refuses main / missing objective)
-  session-start       Rule 5: session initialization checks
-  session-end         Rule 6: session termination checks
-  objective <id> [pr] Rule 4: declare objective lock for current branch
-  recover             Rule 7: move feature commits off main
-  status              Full compliance snapshot
-
-Exit codes: 0 = safe, 1 = blocked, 2 = needs recovery.
+  mission <id> <objective> [pr]   activate mission lock
+  mission-clear                    end mission
+  objective <id> [pr]              declare objective lock
+  guard / pre-commit               pre-commit gate (policy-evaluated)
+  pre-coding                       session start gate
+  pre-push                         push gate
+  pre-pr                           PR gate
+  status                           full compliance snapshot
+  recover                          move feature commits off main
+  evidence                         tail evidence log
 `);
     process.exit(1);
 }

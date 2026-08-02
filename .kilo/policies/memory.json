@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "category": "memory",
+  "policies": [
+    {
+      "policyId": "memory.runtime-excluded",
+      "name": "Runtime Memory Excluded From Git",
+      "severity": "blocking",
+      "description": "Ephemeral runtime memory (bus, dthink, forge, journal, thinkbox) must not enter feature commits.",
+      "scope": ["pre-commit", "ci"],
+      "conditions": [
+        {
+          "id": "no-runtime-churn",
+          "when": { "runtimeMemoryInChangeset": true },
+          "then": "block",
+          "message": "Runtime memory churn detected in changeset. Discard: git checkout -- .kilo/memory/"
+        }
+      ],
+      "excludedPaths": [
+        ".kilo/memory/bus/",
+        ".kilo/memory/dthink/",
+        ".kilo/memory/forge/",
+        ".kilo/memory/gate-results.json",
+        ".kilo/memory/journal.json",
+        ".kilo/thinkbox/"
+      ]
+    },
+    {
+      "policyId": "memory.durable-committed",
+      "name": "Durable Knowledge Committed",
+      "severity": "warn",
+      "description": "Meaningful engineering work records durable knowledge (learnings/snippets/decisions).",
+      "scope": ["pre-pr"],
+      "conditions": [
+        {
+          "id": "knowledge-recorded",
+          "when": { "knowledgeMissingForObjective": true },
+          "then": "warn",
+          "message": "No learning/snippet recorded for this objective. Run: learning-cycle run"
+        }
+      ]
+    }
+  ]
+}

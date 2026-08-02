@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "category": "agent",
+  "policies": [
+    {
+      "policyId": "agent.metadata-complete",
+      "name": "Agent Metadata Complete",
+      "severity": "warn",
+      "description": "Every discovered agent declares category, owner, responsibilities, and capabilities.",
+      "scope": ["bootstrap", "ci"],
+      "conditions": [
+        {
+          "id": "no-anonymous-agents",
+          "when": { "anonymousAgents": true },
+          "then": "warn",
+          "message": "Agents missing metadata: {agents}. Complete company-manifest."
+        }
+      ]
+    }
+  ]
+}

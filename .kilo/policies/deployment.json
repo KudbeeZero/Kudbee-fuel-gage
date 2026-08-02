@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "category": "deployment",
+  "policies": [
+    {
+      "policyId": "deploy.production-approval",
+      "name": "Production Requires Approval",
+      "severity": "blocking",
+      "description": "Production deployments and config changes require explicit human approval.",
+      "scope": ["deploy", "ci"],
+      "conditions": [
+        {
+          "id": "prod-approved",
+          "when": { "productionChangeWithoutApproval": true },
+          "then": "block",
+          "message": "Production change requires human approval (THINK Governance Engine Rule: prod is protected)."
+        }
+      ]
+    },
+    {
+      "policyId": "deploy.staging-auto",
+      "name": "Staging Auto-Deploy Allowed",
+      "severity": "allow",
+      "description": "Staging auto-deployment from the staging branch is permitted.",
+      "scope": ["deploy"],
+      "conditions": [
+        {
+          "id": "staging-allowed",
+          "when": { "stagingDeploy": true },
+          "then": "allow"
+        }
+      ]
+    },
+    {
+      "policyId": "deploy.review-automatic",
+      "name": "Review Apps Automatic",
+      "severity": "allow",
+      "description": "Review apps create automatically per PR and destroy on staleness.",
+      "scope": ["deploy"],
+      "conditions": [
+        {
+          "id": "review-auto",
+          "when": { "reviewAppDeploy": true },
+          "then": "allow"
+        }
+      ]
+    },
+    {
+      "policyId": "deploy.production-destruction-never",
+      "name": "Production Destruction Never Automatic",
+      "severity": "blocking",
+      "description": "Destructive production operations (delete dyno/app/data) require GATE approval.",
+      "scope": ["deploy"],
+      "conditions": [
+        {
+          "id": "destructive-needs-gate",
+          "when": { "productionDestruction": true },
+          "then": "block",
+          "message": "Production destruction is never automatic. Requires GATE approval."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "category": "branch",
+  "policies": [
+    {
+      "policyId": "branch.main-protected",
+      "name": "Main is Protected",
+      "severity": "blocking",
+      "description": "No feature work is committed directly to main.",
+      "scope": ["pre-commit", "pre-push", "ci"],
+      "conditions": [
+        {
+          "id": "not-on-main",
+          "when": { "branch": "main" },
+          "then": "block",
+          "message": "Feature work on main is forbidden (Rule 1). Create a feature branch."
+        }
+      ],
+      "recovery": { "command": "protocol-guard recover" }
+    },
+    {
+      "policyId": "branch.naming",
+      "name": "Branch Naming Policy",
+      "severity": "warn",
+      "description": "Feature branches use the feature/ or fix/ or chore/ prefix.",
+      "scope": ["pre-commit", "pre-push"],
+      "conditions": [
+        {
+          "id": "valid-prefix",
+          "when": { "branchNotMatch": "feature/*|fix/*|chore/*|docs/*" },
+          "then": "warn",
+          "message": "Branch '{branch}' does not match feature/*, fix/*, chore/*, docs/*."
+        }
+      ]
+    },
+    {
+      "policyId": "branch.one-objective",
+      "name": "One Objective Per Branch",
+      "severity": "blocking",
+      "description": "A feature branch serves exactly one objective declared in the objective lock.",
+      "scope": ["pre-commit", "pre-pr"],
+      "conditions": [
+        {
+          "id": "objective-matches-branch",
+          "when": { "objectiveBranchMismatch": true },
+          "then": "block",
+          "message": "Objective lock branch does not match current branch."
+        }
+      ]
+    }
+  ]
+}

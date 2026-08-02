@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "category": "merge",
+  "policies": [
+    {
+      "policyId": "merge.one-pr-per-branch",
+      "name": "One PR Per Branch",
+      "severity": "warn",
+      "description": "A feature branch maps to exactly one open PR.",
+      "scope": ["pre-pr", "ci"],
+      "conditions": [
+        {
+          "id": "pr-assigned",
+          "when": { "prMissingForBranch": true },
+          "then": "warn",
+          "message": "Branch '{branch}' has no open PR. Open one: gh pr create"
+        }
+      ]
+    },
+    {
+      "policyId": "merge.stack-integrity",
+      "name": "Stack Integrity",
+      "severity": "blocking",
+      "description": "A stacked PR references a valid, merged (or open) parent.",
+      "scope": ["pre-pr", "ci"],
+      "conditions": [
+        {
+          "id": "parent-valid",
+          "when": { "stackParentInvalid": true },
+          "then": "block",
+          "message": "Stack parent is invalid (missing base or unmerged base)."
+        }
+      ]
+    },
+    {
+      "policyId": "merge.squash-only",
+      "name": "Squash Merge Only",
+      "severity": "warn",
+      "description": "PRs merge via squash to keep main history linear.",
+      "scope": ["merge"],
+      "conditions": [
+        {
+          "id": "use-squash",
+          "when": { "mergeMethod": "merge" },
+          "then": "warn",
+          "message": "Use squash merge: gh pr merge <n> --squash"
+        }
+      ]
+    }
+  ]
+}
