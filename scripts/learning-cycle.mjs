@@ -131,6 +131,29 @@ switch (command) {
     for (const c of KNOWLEDGE_CLASSIFICATIONS) console.log(`  - ${c}`);
     break;
   }
+  case 'mission': {
+    // Record a completed mission's learnings into durable knowledge.
+    const missionId = process.argv[3];
+    const summary = process.argv[4] ?? 'Mission completed';
+    if (!missionId) {
+      console.error('Usage: learning-cycle mission <missionId> [summary]');
+      process.exit(1);
+    }
+    const record = writeLearning({
+      type: 'mission-learning',
+      agentId: 'kiloh',
+      missionId,
+      summary,
+      data: { classifications: ['workflow-improvement', 'architecture'], source: 'learning-cycle mission' },
+    });
+    console.log(`Recorded mission learning: ${record.id} (${missionId})`);
+    try {
+      execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', 'system:mission', `${missionId}: ${summary}`], { timeout: 5000 });
+    } catch {
+      /* best-effort */
+    }
+    break;
+  }
   default: {
     console.error(`
 THINK Protocol — Continuous Engineering Learning
@@ -139,6 +162,7 @@ Commands:
   run                Run full learning cycle (all core agents)
   report <agent>     Generate one agent's learning report
   classify           List knowledge classifications
+  mission <id> [summary]   Record a completed mission's learnings
 `);
     process.exit(1);
   }

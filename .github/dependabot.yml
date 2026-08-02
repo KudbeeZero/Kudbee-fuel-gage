@@ -1,0 +1,24 @@
+# Dependabot — weekly npm dependency updates.
+# THINK Governance Engine: dependency hygiene is part of the security posture.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security
+    ignore:
+      - dependency-name: "typescript"
+      - dependency-name: "@typescript/native"
+      - dependency-name: "@typescript/typescript6"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci

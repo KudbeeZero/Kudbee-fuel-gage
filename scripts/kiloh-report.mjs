@@ -236,6 +236,31 @@ function buildReport() {
       risk: 'Low',
       impact: 'High',
     },
+    activeMission: (() => {
+      try {
+        const m = JSON.parse(readFileSync(join(ROOT, '.kilo', 'mission-lock.json'), 'utf8'));
+        return m.missionId;
+      } catch {
+        return null;
+      }
+    })(),
+    missionActive: (() => {
+      try {
+        const m = JSON.parse(readFileSync(join(ROOT, '.kilo', 'mission-lock.json'), 'utf8'));
+        return m.state === 'active';
+      } catch {
+        return false;
+      }
+    })(),
+    currentObjective: (() => {
+      try {
+        const o = JSON.parse(readFileSync(join(ROOT, '.kilo', 'objective-lock.json'), 'utf8'));
+        return o.objectiveId;
+      } catch {
+        return null;
+      }
+    })(),
+    tiles: Object.fromEntries(Object.entries(score.breakdown).map(([k, v]) => [k, v])),
     closingQuestions: {
       stop: 'Ship a large mixed PR instead of small vertical slices.',
       start: 'Generate this report at session start + end.',
@@ -249,7 +274,30 @@ function buildReport() {
 
 const flag = process.argv[2];
 
-if (flag === '--score') {
+if (flag === '--dashboard') {
+  const r = buildReport();
+  const line = (t) => console.log(t);
+  line('╔══════════════════════════════════════════════════════════════════╗');
+  line('║  ENGINEERING DASHBOARD — THINK Governance Engine                ║');
+  line(`║  ${r.generatedAt.slice(0, 19)}  |  READINESS: ${r.readinessScore.total}/100 (${r.readinessScore.band})`);
+  line('╠══════════════════════════════════════════════════════════════════╣');
+  line(`║  MISSION:     ${r.activeMission ?? 'none'}  (lock: ${r.missionActive ? 'active' : 'MISSING'})`);
+  line(`║  OBJECTIVE:   ${r.currentObjective ?? 'none'}`);
+  line(`║  BRANCH:      ${r.repositoryHealth.branch}  drift ${r.repositoryHealth.drift}  tree ${r.repositoryHealth.workingTree} dirty`);
+  line(`║  PRs:         ${r.openPullRequests.length} open  |  ${r.openPullRequests.filter((p) => p.mergeReady).length} merge-ready`);
+  line('╠══════════════════════════════════════════════════════════════════╣');
+  line('║  HEALTH TILES:');
+  for (const [k, v] of Object.entries(r.tiles ?? {})) line(`║    ${k.padEnd(24)} ${String(v).padEnd(6)}`);
+  line('╠══════════════════════════════════════════════════════════════════╣');
+  line(`║  THINKBOX:    detection ${r.thinkboxStatus.detectionEngine} modules | workspaces ${r.thinkboxStatus.workspacesDetected}`);
+  line(`║  PROTOCOL:    ${r.thinkProtocolCompliance.violations.length === 0 ? 'COMPLIANT' : 'VIOLATIONS: ' + r.thinkProtocolCompliance.violations.join(', ')}`);
+  line(`║  TECH DEBT:   TODO ${r.technicalDebt.todos} | any ${r.technicalDebt.explicitAny} | skipped ${r.technicalDebt.disabledTests}`);
+  line('╠══════════════════════════════════════════════════════════════════╣');
+  line(`║  RECOMMENDED NEXT: ${r.recommendedNextObjective.objective}`);
+  line(`║  ${r.recommendedNextObjective.reason}`);
+  line(`║  TOP RISK: ${r.risks[0]?.severity} — ${r.risks[0]?.impact}`);
+  line('╚══════════════════════════════════════════════════════════════════╝');
+} else if (flag === '--score') {
   const report = buildReport();
   console.log(`System Readiness Score: ${report.readinessScore.total}/100 (${report.readinessScore.band})`);
   console.log(JSON.stringify(report.readinessScore.breakdown, null, 2));
