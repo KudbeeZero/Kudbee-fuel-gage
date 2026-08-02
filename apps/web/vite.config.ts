@@ -21,9 +21,10 @@ export default defineConfig(() => {
     },
     server: {
       port: 5173,
+      host: true,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      allowedHosts: ['*'],
+      allowedHosts: true,
       proxy: {
         '/api': 'http://127.0.0.1:3000',
         '/health': 'http://127.0.0.1:3000',
