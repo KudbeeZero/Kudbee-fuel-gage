@@ -1,0 +1,15 @@
+{
+  "id": "learn-1785642957772-hmdk",
+  "createdAt": "2026-08-02T03:55:57.772Z",
+  "type": "mission-learning",
+  "agentId": "kiloh",
+  "missionId": "SESSION-001",
+  "summary": "Session closeout: handoff package delivered, platform certified",
+  "data": {
+    "classifications": [
+      "workflow-improvement",
+      "architecture"
+    ],
+    "source": "learning-cycle mission"
+  }
+}
