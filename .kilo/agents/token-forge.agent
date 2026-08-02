@@ -1,7 +1,13 @@
 ---
 id: token-forge
 category: training
+description: Structured THINK token lifecycle manager
+triggers: think, token, forge, promote, prune, efficacy
 schedule: on-demand
+actions: recall, mint, challenge, update
+uuid: mem-002
+memoryId: token-forge
+created: 2026-07-31
 status: active
 script: |
   echo "[TokenForge] Think token lifecycle manager"

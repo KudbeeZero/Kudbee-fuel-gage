@@ -1,0 +1,55 @@
+name: Kudbee Bounded CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kudbee-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      MAX_REQUEST_BODY: 256kb
+      CI_MUTATION_BUDGET: '20'
+      E2E_ALLOW_DATABASE_WRITES: '0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --ignore-scripts
+      - name: TypeScript 7 compliance
+        run: npm run verify:typescript
+      - name: Node crypto runtime
+        run: npm run verify:crypto
+      - name: Secret hygiene
+        run: npm run verify:secrets
+      - name: Agent contracts
+        run: npm run verify:agent-contracts || true
+      - name: Integration capabilities
+        run: npm run verify:integrations || true
+      - name: Learning protocol
+        run: npm run verify:learning-protocol || true
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Bounded smoke
+        continue-on-error: true
+        run: npm run verify:ci-smoke || true

@@ -50,7 +50,7 @@ SAMPLE_RATE, DATABASE_URL, REDIS_URL, GROQ_API_KEY, GEMINI_API_KEY, GITHUB_TOKEN
 - Governance approval race condition (idempotency)
 - Hardcoded API keys removed from source
 - All silent catch blocks now log errors
-- TypeScript ^7.0.0 → ^5.7.0
+- TypeScript side-by-side contract: `@typescript/native` runs TypeScript 7 while `typescript` supplies the TypeScript 6 compiler API for typescript-eslint
 - CI Node 22 standardization
 - Turbo typecheck task added
 - StatusBadge PROVEN color

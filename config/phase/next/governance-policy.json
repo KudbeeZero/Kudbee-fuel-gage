@@ -2,6 +2,10 @@
   "version": 1,
   "name": "low-capability-safe-phase-governance",
   "purpose": "Prevent omission, unsafe scope expansion, unsupported claims, and unreviewed release actions when tasks are executed by weaker models.",
+  "companyAgentManifest": "config/agents/company-manifest.json",
+  "integrationManifest": "config/integrations/manifest.json",
+  "learningProtocol": "config/think/protocol.json",
+  "requiredOperatingGates": ["npm run verify:agent-contracts", "npm run verify:integrations", "npm run verify:learning-protocol"],
   "layers": [
     { "id": "L0", "name": "Intent", "rule": "Every task has one goal, explicit non-goals, bounded scope, and a measurable acceptance condition." },
     { "id": "L1", "name": "Preconditions", "rule": "The task packet, required files, dependencies, prior task status, and rollback plan must be available before editing." },
@@ -21,6 +25,6 @@
     "config/agents.json",
     "package-lock.json"
   ],
-  "humanApprovalKeywords": ["authentication", "tenant", "secret", "credential", "database migration", "delete", "purge", "deploy", "production", "authorization"],
+  "humanApprovalKeywords": ["authentication", "tenant", "secret", "credential", "database migration", "delete", "purge", "deploy", "production", "authorization", "provider write", "destructive"],
   "requiredReportFields": ["taskId", "model", "status", "changedFiles", "commands", "evidence", "risks", "rollback", "nextDependency"]
 }

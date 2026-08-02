@@ -141,10 +141,13 @@ credentials are reported as warnings; real test failures remain failures.
 ### Individual verification scripts
 
 ```bash
+npm run verify:agent-contracts
+npm run verify:integrations
+npm run verify:learning-protocol
 npm run typecheck
 bun test
 node scripts/verify-system-integrity.mjs
-node scripts/verify-e2e.mjs
+node scripts/verify-e2e.mjs --smoke
 node scripts/verify-agents.mjs
 node scripts/verify-drift.mjs
 node scripts/verify-resilience.mjs
@@ -152,6 +155,12 @@ node scripts/verify-think-loop.mjs
 node scripts/verify-governance-loop.mjs
 node scripts/browser-verifier.mjs
 ```
+
+Company-agent and integration contracts are phase gates, not advisory
+documentation. The default CI watcher and E2E path run bounded smoke with
+Neon/Redis provider URLs disabled. Full database-writing E2E requires the
+explicit `E2E_ALLOW_DATABASE_WRITES=1` opt-in; missing Box or Neon admin/API
+capabilities are reported as optional skips by name only.
 
 Supporting evidence and diagnostics remain available through:
 

@@ -1,6 +1,38 @@
 {
   "journal": [
     {
+      "session": "ses-1785464961489-f067bc71",
+      "date": "2026-07-31T02:29:21.876Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785465951255-385222f0",
+      "date": "2026-07-31T02:45:51.600Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785466055433-33c2e876",
+      "date": "2026-07-31T02:47:35.772Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1785467088694-4b14261b",
+      "date": "2026-07-31T03:04:49.016Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
+    },
+    {
       "session": "ses-1785467258324-e8c1704d",
       "date": "2026-07-31T03:07:38.750Z",
       "type": "bootstrap",
@@ -127,71 +159,18 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785558722432-db856912",
-      "date": "2026-08-01T04:32:02.708Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785559051260-28ef4088",
-      "date": "2026-08-01T04:37:31.506Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785559051260-28ef4088",
-      "date": "2026-08-01T04:57:03.000Z",
-      "type": "heroku-pipeline",
-      "summary": "Heroku pipeline workflow perfected: 3 environments (dev/staging/prod), EDISBOX integration, CI bounds, deploy scripts, PR stack config updated to PR #233",
-      "filesChanged": [
-        "AGENTS.md",
-        "TERMINAL.md",
-        "BUILD.md",
-        "README.md",
-        "app.json",
-        "heroku-pipelines.json",
-        "config/pr/stack.json",
-        "scripts/deploy-dev.sh",
-        "scripts/deploy-prod.sh",
-        "scripts/edisbox-deploy.mjs",
-        "scripts/edisbox-pipeline.mjs",
-        ".kilo/memory/snippets/heroku-pipeline-setup.md"
-      ],
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
-      "session": "ses-1785566092483-63741287",
-      "date": "2026-08-01T06:34:52.723Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 80,
+    "sessions": 76,
     "ciPassRate": "82%"
   },
   "health": {
-    "overall": "GREEN",
-    "githubActions": "6 workflows active (CodeQL, Deploy to Heroku Staging, Session Logger, Kudbee CI, Copilot cloud agent, CodeQL legacy)",
-    "herokuPipeline": "3 environments configured (dev/staging/prod)",
-    "edisbox": "integrated — edisbox-deploy.mjs, edisbox-pipeline.mjs, box-web-verify.mjs",
-    "prStack": "PR #233 (staging/security-durability → main) with EDISBOX verification",
-    "ciBounds": "CI_MUTATION_BUDGET=20, MAX_REQUEST_BODY=256kb/512kb, DB_POOL_MAX=5/10",
+    "overall": "YELLOW",
     "frontend": "3 fixes deployed",
     "thinkForge": "4 tokens processed",
     "relations": "10 nodes, 13 edges",
     "knownIssues": [
-      "PR #233 CI failure: missing verify:typescript script in package.json on that branch",
       "8 e2e checks fail without Redis (billing-blocked GitHub Actions)",
       "Heroku CLI not available in container",
       "DATABASE_URL points to localhost (needs Neon Postgres for production)",

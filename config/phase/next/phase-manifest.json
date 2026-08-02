@@ -10,13 +10,22 @@
   },
   "sharedRules": [
     "Use a dedicated worktree per model task",
+    "Use @typescript/native for the TypeScript 7 npx tsc compiler and typescript only as the TypeScript 6 compiler-API alias",
+    "Never introduce TypeScript 5.x or lower in direct constraints or resolved compiler entries",
     "Do not edit production secrets",
     "Do not treat localStorage as authentication",
     "Do not claim a check passed without current command evidence",
     "Record changed files, tests, risks, and rollback steps",
+    "Use company agent and integration manifests as required authority boundaries",
+    "Run bounded E2E smoke by default; database-writing E2E requires E2E_ALLOW_DATABASE_WRITES=1",
     "Human approval is required for authentication, tenant, data, and deployment changes"
   ],
   "requiredCommands": [
+    "npm run verify:crypto",
+    "npm run verify:typescript",
+    "npm run verify:agent-contracts",
+    "npm run verify:integrations",
+    "npm run verify:learning-protocol",
     "npm run typecheck",
     "bun test",
     "node scripts/verify-system-integrity.mjs",

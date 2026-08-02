@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "name": "kudbee-company-agent-model",
+  "source": ".kilo/agents/*.agent",
+  "policy": {
+    "oneRecordPerDiscoveredAgent": true,
+    "stableIdIsAgentFilenameStem": true,
+    "metadataOnly": true,
+    "secretValuesAllowed": false
+  },
+  "agents": [
+    {
+      "id": "ci-watcher",
+      "name": "CI Gate Watcher",
+      "department": "quality-and-ci",
+      "job": "Run bounded verification smoke and report regressions",
+      "directive": "Run contract, integration, protocol, and bounded smoke checks by default; run database-writing E2E only when E2E_ALLOW_DATABASE_WRITES=1.",
+      "schedule": "on-deploy",
+      "memoryId": "verification-patterns",
+      "allowedIntegrations": ["github", "heroku", "neon", "upstash-redis-mcp", "upstash-box"],
+      "writeAuthority": {
+        "level": "repository-verification-only",
+        "allowed": ["write local verification evidence", "write local memory records after review"],
+        "forbidden": ["provider writes", "deployment", "database-writing E2E without explicit opt-in"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["database-writing E2E", "provider mutation", "deployment"],
+        "autonomousBoundary": "Read-only inspection and bounded local smoke only"
+      }
+    },
+    {
+      "id": "gastown",
+      "name": "Gastown Orchestrator",
+      "department": "agents-and-gastown",
+      "job": "Coordinate bounded multi-agent task execution",
+      "directive": "Recall relevant THINK memory, enforce Safe-Zone authorization, delegate bounded work, and keep production mutations human-approved.",
+      "schedule": "on-demand",
+      "memoryId": "agent-ecosystem",
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "orchestration-only",
+        "allowed": ["enqueue bounded internal tasks", "write local task evidence"],
+        "forbidden": ["direct production mutation", "secret storage", "unreviewed self-modification"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["production change", "destructive action", "authority escalation"],
+        "autonomousBoundary": "Coordinate already-approved bounded tasks"
+      }
+    },
+    {
+      "id": "gateway-router",
+      "name": "Gateway Router",
+      "department": "agents-and-gastown",
+      "job": "Route inter-agent calls with bounded priority and dead-letter handling",
+      "directive": "Dispatch only to registered agents, preserve priority and timeout boundaries, and route failures to voicemail or dead-letter handling.",
+      "schedule": "on-demand",
+      "memoryId": "gateway-router",
+      "allowedIntegrations": ["upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "internal-bus-only",
+        "allowed": ["publish bounded internal bus events", "write local call records"],
+        "forbidden": ["provider writes", "secret discovery", "unbounded fan-out"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["critical interrupt", "authority change", "production mutation"],
+        "autonomousBoundary": "Route registered internal messages within timeout and concurrency limits"
+      }
+    },
+    {
+      "id": "hermes",
+      "name": "HERMES Governance Auditor",
+      "department": "governance",
+      "job": "Audit governance tasks, retries, and dead-letter transitions",
+      "directive": "Observe the governance queue, preserve audit evidence, and never bypass approval or convert an audit observation into a production mutation.",
+      "schedule": "on-deploy",
+      "memoryId": "hermes",
+      "allowedIntegrations": ["heroku", "neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "audit-record-only",
+        "allowed": ["write bounded audit records", "acknowledge approved queue transitions"],
+        "forbidden": ["deploy", "delete audit evidence", "approve its own governance action"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["governance approval", "data deletion", "deployment"],
+        "autonomousBoundary": "Read queue state and record evidence for already-authorized transitions"
+      }
+    },
+    {
+      "id": "knowledge-curator",
+      "name": "Knowledge Curator",
+      "department": "memory-and-knowledge",
+      "job": "Maintain bounded snippets, memory links, and knowledge health",
+      "directive": "Recall relevant memory, curate evidence-backed snippets, and reject unsupported claims or secret-bearing learning artifacts.",
+      "schedule": "daily",
+      "memoryId": "agent-ecosystem",
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "reviewed-memory-only",
+        "allowed": ["write local snippets", "write reviewed memory metadata"],
+        "forbidden": ["write secrets", "promote unverified claims", "mutate production data"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["memory deletion", "production data change", "policy change"],
+        "autonomousBoundary": "Curate and link evidence-backed local knowledge"
+      }
+    },
+    {
+      "id": "ledger-keeper",
+      "name": "Ledger Keeper",
+      "department": "finance-and-operations",
+      "job": "Track bounded budget and provider-operation evidence",
+      "directive": "Report measured budget state only, distinguish configured limits from provider-metered usage, and never fabricate or alter provider accounting.",
+      "schedule": "hourly",
+      "memoryId": "ledger-keeper",
+      "allowedIntegrations": ["neon", "upstash-redis-mcp", "heroku"],
+      "writeAuthority": {
+        "level": "metrics-observation-only",
+        "allowed": ["write local monitoring evidence"],
+        "forbidden": ["change quotas", "provider billing writes", "fabricated usage updates"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["budget change", "billing action", "provider mutation"],
+        "autonomousBoundary": "Read measured counters and report unknown values explicitly"
+      }
+    },
+    {
+      "id": "monitor",
+      "name": "Infrastructure Monitor",
+      "department": "operations-and-release",
+      "job": "Watch infrastructure health, agent state, and rate boundaries",
+      "directive": "Poll bounded health signals, surface degraded dependencies, and preserve self-hosted release evidence without issuing deployment commands.",
+      "schedule": "on-deploy",
+      "memoryId": "monitor",
+      "allowedIntegrations": ["heroku", "neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "local-observation-only",
+        "allowed": ["write local monitoring evidence", "publish bounded internal alerts"],
+        "forbidden": ["deploy", "scale provider resources", "delete data"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["release promotion", "scaling", "provider mutation"],
+        "autonomousBoundary": "Read health and rate state within polling limits"
+      }
+    },
+    {
+      "id": "pipeline-guardian",
+      "name": "Pipeline Guardian",
+      "department": "operations-and-release",
+      "job": "Inspect middleware and resilience pipeline health",
+      "directive": "Scan the bounded middleware pipeline, preserve fail-open behavior, and report evidence without changing authentication, tenant authorization, or deployment behavior.",
+      "schedule": "on-demand",
+      "memoryId": "middleware-pipeline-architecture",
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "diagnostic-only",
+        "allowed": ["write local diagnostic evidence"],
+        "forbidden": ["change auth policy", "change tenant authorization", "provider writes"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["authentication change", "tenant authorization change", "production mutation"],
+        "autonomousBoundary": "Read pipeline state and report bounded findings"
+      }
+    },
+    {
+      "id": "sentinel",
+      "name": "Edge Sentinel",
+      "department": "security",
+      "job": "Observe edge anomalies and egress health",
+      "directive": "Detect and report edge anomalies, preserve evidence, and escalate security findings without changing authentication or deployment configuration.",
+      "schedule": "on-deploy",
+      "memoryId": "sentinel",
+      "allowedIntegrations": ["heroku", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "security-observation-only",
+        "allowed": ["write bounded security evidence", "publish internal alerts"],
+        "forbidden": ["alter auth", "alter tenant policy", "deploy or block traffic autonomously"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["security policy change", "traffic block", "deployment"],
+        "autonomousBoundary": "Read edge signals and escalate anomalies"
+      }
+    },
+    {
+      "id": "token-forge",
+      "name": "Think Token Forge",
+      "department": "memory-and-knowledge",
+      "job": "Manage evidence-backed THINK token lifecycle",
+      "directive": "Recall relevant memory, mint structured tokens only after quality review, feed DTHINK with metadata, and keep promotion separate from execution authority.",
+      "schedule": "on-demand",
+      "memoryId": "token-forge",
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
+      "writeAuthority": {
+        "level": "pending-approval-token-only",
+        "allowed": ["write PENDING_APPROVAL token metadata", "update reviewed local memory"],
+        "forbidden": ["auto-promote unverified tokens", "write secrets to THINK/DTHINK", "production mutation"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["token promotion", "production change", "memory deletion"],
+        "autonomousBoundary": "Mint structured pending evidence after bounded job review"
+      }
+    },
+    {
+      "id": "web-doctor",
+      "name": "Web Health Doctor",
+      "department": "frontend-web",
+      "job": "Run bounded web health and browser capability diagnostics",
+      "directive": "Check canonical health endpoints and optional Box browser evidence, report unavailable capabilities honestly, and never deploy or persist credentials.",
+      "schedule": "on-demand",
+      "memoryId": "web-doctor",
+      "allowedIntegrations": ["heroku", "github", "upstash-box"],
+      "writeAuthority": {
+        "level": "diagnostic-only",
+        "allowed": ["write local browser evidence when available"],
+        "forbidden": ["deploy", "modify repository through provider APIs", "persist credentials"]
+      },
+      "approvalBoundary": {
+        "humanApprovalRequired": ["browser staging mutation", "deployment", "provider write"],
+        "autonomousBoundary": "Read health and run bounded non-mutating browser checks"
+      }
+    }
+  ]
+}

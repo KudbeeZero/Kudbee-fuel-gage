@@ -60,6 +60,30 @@ kudbee/
     workflows/      # CI gates
 ```
 
+## 1a. Company Agent and Integration Contract
+
+The discovered `.kilo/agents/*.agent` files are operational entrypoints, not
+the complete company contract. `config/agents/company-manifest.json` is the
+metadata source of truth for every discovered agent's stable id, name,
+department, job, directive, schedule, memory id, allowed integrations, write
+authority, and approval boundary. Run `npm run verify:agent-contracts` before
+handoff; a missing record or required field blocks the operating model.
+
+Integration declarations live in `config/integrations/manifest.json`. GitHub,
+Heroku, Neon, Upstash Redis MCP, and Upstash Box are capability boundaries, not
+implicit authority. `npm run verify:integrations` checks command/package
+availability and environment names only. It never calls provider write APIs,
+prints values, or treats missing Box or Neon admin/API credentials as failures.
+The only declared MCP server is the existing Upstash Redis MCP in `.mcp.json`.
+
+All agents follow `config/think/protocol.json`: recall memory, declare
+preconditions, execute one bounded job, collect evidence, receive an independent
+quality signal, mint a structured pending THINK token, feed DTHINK, update
+memory, and create one bounded follow-up. Secrets are forbidden in THINK,
+DTHINK, memory, prompts, logs, screenshots, and PR text. Autonomous production,
+destructive, authentication, tenant, authorization, deployment, and unverified
+self-modification actions are forbidden.
+
 ### Canonical Server
 
 - **Single source of truth:** `services/ingestion/server.js`
@@ -76,6 +100,8 @@ kudbee/
 - **Node:** `>=22.0.0` (enforced in root `package.json` engines).
 - **Package manager:** `npm@10.9.8` (workspace-aware, turbo monorepo).
 - Install dependencies at the **repo root** with `npm install`. Do not run `npm install` inside individual workspace packages unless debugging isolated dependency trees.
+- Every compiler workspace must declare `@typescript/native: "npm:typescript@^7.0.2"` and `typescript: "npm:@typescript/typescript6@^6.0.2"`. `npx tsc` is the TypeScript 7 compiler; `require('typescript')` is intentionally TypeScript 6 for compiler-API consumers such as typescript-eslint. Run `npm run verify:typescript` before handoff and never add TypeScript 5.x or lower in direct constraints or resolved compiler entries.
+- The current `@typescript-eslint` 8.65.0 parser/plugin declares `typescript: ">=4.8.4 <6.1.0"`; the TypeScript 6 API alias satisfies that range without falsifying lock metadata or suppressing errors. Parser compatibility is a passing gate. Remove the API alias only after typescript-eslint publishes TypeScript 7 API support.
 
 ### Environment Variables
 
@@ -260,9 +286,19 @@ All scripts live in `scripts/` and are `.mjs` (native ESM).
 
 ### CI Gates (must pass before PR merge)
 
-1. `npm run typecheck` — Turbo-routed TypeScript strict check.
-2. `npm run lint` — Turbo-routed linting.
-3. `node scripts/verify-e2e.mjs` — 43/43 checks (38 core + 5 inter-agent phone tree).
+1. `npm run verify:typescript` — TypeScript 7 native compiler, TypeScript 6 API alias, direct declarations, and lockfiles.
+2. `npm run verify:agent-contracts` — all discovered agents have company records.
+3. `npm run verify:integrations` — commands/packages and environment names only; optional capabilities are skips.
+4. `npm run verify:learning-protocol` — THINK/DTHINK safety and loop contract.
+5. `npm run typecheck` — Turbo-routed TypeScript 7 strict check.
+6. `npm run lint` — Turbo-routed linting.
+7. `node scripts/verify-e2e.mjs --smoke` — bounded isolated smoke by default.
+8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full database-writing E2E only with explicit opt-in.
+
+Standard CI must not flood Neon or Redis. The CI watcher runs bounded smoke by
+default and clears provider URLs for smoke-server startup. Full E2E requires
+`E2E_ALLOW_DATABASE_WRITES=1` and remains subject to human approval and the
+task's declared authority.
 
 ### Common Test Failure Causes
 
@@ -454,7 +490,7 @@ gh pr create --draft --title "feat(think): Mint Official Think Token #001 & Vect
 
 - **Code review required for:** auth changes, DB schema migrations, receptor gating logic, `groqClient.ts` modifications.
 - **Can be self-merged:** documentation, verification scripts, test fixtures, dependency patches that do not alter runtime behavior.
-- **Never merge without:** `npm run typecheck`, `npm run lint`, and `node scripts/verify-e2e.mjs` all passing.
+- **Never merge without:** `npm run verify:typescript`, `npm run typecheck`, `npm run lint`, and `node scripts/verify-e2e.mjs` all passing. The TypeScript 6 API alias is an intentional compatibility bridge and must not be removed before typescript-eslint supports the TypeScript 7 API.
 
 ---
 

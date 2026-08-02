@@ -22,6 +22,11 @@ delete worktrees automatically without an explicit human instruction.
    - `node scripts/verify-next-phase.mjs --full`
    - `node scripts/dthink-pipeline.mjs stats`
 
+   Integration preflight reports command/package availability and environment
+   names only. Missing Box or Neon admin/API credentials are optional skips.
+   The default E2E preflight is bounded smoke; full database-writing E2E is
+   allowed only when `E2E_ALLOW_DATABASE_WRITES=1` is explicitly set.
+
 4. If `$1` is "create":
    - Require a clean or intentionally staged worktree.
    - Run the preflight and stop on any failure.
