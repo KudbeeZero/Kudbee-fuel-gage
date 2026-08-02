@@ -1,0 +1,35 @@
+{
+  "id": "learn-1785634694744-3qp2",
+  "createdAt": "2026-08-02T01:38:14.745Z",
+  "type": "learning-cycle",
+  "agentId": "kiloh",
+  "sessionId": "ses-1785634693245-05d1c8de",
+  "date": "2026-08-02",
+  "summary": "Learning cycle: 3 agents reported",
+  "data": {
+    "reports": [
+      {
+        "agentId": "pipeline-guardian",
+        "timestamp": "2026-08-02T01:38:13.043Z",
+        "decisionsLogged": "337",
+        "actionsRecorded": ".kilo/skill/pipeline-guardian/LEARNINGS.json\n3",
+        "status": "reported"
+      },
+      {
+        "agentId": "ci-watcher",
+        "timestamp": "2026-08-02T01:38:13.110Z",
+        "decisionsLogged": "337",
+        "actionsRecorded": ".kilo/skill/ci-watcher/LEARNINGS.json\n4",
+        "status": "reported"
+      },
+      {
+        "agentId": "knowledge-curator",
+        "timestamp": "2026-08-02T01:38:13.178Z",
+        "decisionsLogged": "337",
+        "actionsRecorded": ".kilo/skill/knowledge-curator/LEARNINGS.json\n3",
+        "status": "reported"
+      }
+    ]
+  },
+  "contractVersion": "1.0.0"
+}
