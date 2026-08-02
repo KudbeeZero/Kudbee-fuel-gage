@@ -20,3 +20,9 @@ Manage sandboxed AI agent containers for KUDBEE.
 Uses UPSTASH_BOX_API_KEY from Heroku config vars.
 Boxes are ephemeral by default (auto-freeze when idle).
 Keep-alive boxes require paid plan.
+
+## ⚠ Persistent shared box — DO NOT DELETE
+`coherent-beagle-67807` is the shared test environment (labels: kudbee,
+browser-verify, test). Use `pause()` after work — never `/box delete`.
+Full recipe: `.kilo/memory/snippets/box-redis-test-environment.snippet`.
+CI workflow: `.github/workflows/box-test.yml`.
