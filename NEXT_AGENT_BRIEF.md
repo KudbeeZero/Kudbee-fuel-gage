@@ -1,64 +1,95 @@
-# NEXT_AGENT_BRIEF — Session Onboarding Package
+# NEXT AGENT BRIEF — OPS-015 Handoff
 
-**To:** Next cloud agent | **From:** KILOH (SESSION-001) | **Read time:** <5 min
+**Date:** 2026-08-02T09:15Z | **Session:** Handoff | **For:** Fresh Cloud Agent
 
 ---
 
-## You Are Starting From
+## Six Bootstrap Questions
 
-- **Engineering OS v1.0 — Certified (90/100), baseline frozen.**
-- **No re-discovery needed.** All audits, governance, and infrastructure
-  documentation exist and are current.
+| # | Question | Answer |
+|:--|:---|:---|
+| 1 | What branch am I on? | Start from `main`. Do not begin on a feature branch. |
+| 2 | What PR am I responsible for? | **PR #266** (feature/thinkbox-pr014b) — the release candidate |
+| 3 | What is the single objective? | **Rebase #266 on main, fix typecheck, verify CI, merge to main** |
+| 4 | What evidence says I'm not done? | `gh run list --branch feature/thinkbox-pr014b --status failure` shows CI failure |
+| 5 | What URL do I use to test? | `https://<deploy-url>/terminal.html` after build |
+| 6 | What is the first manual verification? | Open THINKBOX. Verify no crash. Type `/status` in terminal. |
 
-## The Mission Handed To You
+---
 
-> **THINKBOX PR-002 — Dependency Resolution Engine.**
-> Build the second THINKBOX stage: given a detected workspace (PR-001), resolve
-> its dependency graph offline (no install). Plan:
-> `THINKBOX_PR002_IMPLEMENTATION_GUIDE.md`.
+## Current State
 
-## Do NOT Re-Discover
-
-- Governance (20 policies active, 4 gates) — `protocol-guard status` will tell you
-- Infrastructure (2 apps, healthy) — validated this session
-- Cost (~$50/mo) — cost guard live
-- Agent fleet (11, metadata complete)
-- CI (GitHub Actions only — Heroku CI retired)
-- The product definition (`THINKBOX_SPEC.md`)
-
-## Known Open Items (handle carefully)
-
-| Item | Status | Action |
-|:---|:---|:---|
-| PR #245 (OPS-004 docs) | open, conflicts | merge or close as superseded (docs preserved in handoff) |
-| Config 4 duplicates | staged | needs B-3 approval before removal |
-| Scheduler add-on | provisioned | verify jobs; remove if idle (~$10/mo) |
-| ledger-keeper | idle | activate for cost reporting |
-| External provider costs | unverified | dashboard-only (Neon/Upstash/Groq/DeepSeek) |
-
-## Immediate Priorities
-
-1. Run `node scripts/session-bootstrap.mjs`
-2. Verify `node scripts/protocol-guard.mjs status` → PASS
-3. Merge or close PR #245
-4. Create `feature/thinkbox-pr002`, declare mission THINKBOX-002
-5. Implement per the implementation guide (M1→M4)
-
-## Standing Rules (governance-enforced)
-
-- One objective → one branch → one PR → merge continuously
-- Run `pr-sync.sh sync` before any merge
-- Major dependency bumps require an assessment (never auto-merge)
-- Production changes require human approval
-- Run `learning-cycle mission <id>` at mission end
-- **No session ends until the next engineer is in a better position**
-
-## First Commands
-
-```bash
-node scripts/session-bootstrap.mjs
-node scripts/kiloh-report.mjs --dashboard
-node scripts/protocol-guard.mjs status
-git checkout main && git pull && git checkout -b feature/thinkbox-pr002
-node scripts/protocol-guard.mjs mission THINKBOX-002 "Dependency Resolution Engine"
 ```
+Branch:       main (clean, 0 ahead)
+Open PRs:     7 (#266 is RC0 target)
+Superseded:   12 closed today
+CI:           GREEN on main (46/46 tests, 38/38 E2E)
+             FAILED on PR #266 (needs rebase)
+RC0:          NOT YET — 2 P0 blockers
+```
+
+## PR #266 — What It Contains
+
+100 files, 10,263 additions. This is the CUMULATIVE product PR containing ALL code from PR-002 through PR-014B:
+- Intelligence engine (7 package manager parsers)
+- Provision planning (8-phase plan, dependency graph)
+- Live orchestration (BUS/SSE events, agent swarm, healing)
+- Execution engine (commanded queue, approval gates)
+- Engineering workspace (left rail, 14 panels)
+- Mission planning (task decomposition, agent assignment)
+- Dashboard integration (WorkspaceViewModel, health overlay)
+- Continuous learning (records, profiles, recommendations)
+- Integration validation (replay, diagnostics)
+- Alpha operations (Today's Mission, Inbox, Journal)
+- OPS engine (provider registry, cost tracker, KPIs)
+- **Crash fix** (ReferenceError — simulation variable)
+- **LiveTerminal** (BUS/SSE streaming, commands, filters)
+
+## P0 Blockers for RC0
+
+| # | Blocker | Fix |
+|:--|:---|:---|
+| 1 | PR #266 needs rebase onto main | `git rebase main` — main has diverged |
+| 2 | thinkbox typecheck fails in CI | Add `"typecheck": "tsc --noEmit"` to `services/thinkbox/package.json` |
+
+## Frontend — What Exists
+
+| Status | Count | Components |
+|:---|:---:|:---|
+| **LIVE** | 4 | LiveTerminal, MissionPlanner, EngineeringGraphView, DashboardHealthOverlay, WorkspaceStatusBar |
+| **MOCK** | 4 | LearningCenter, ReplayPanel, DiagnosticsPanel, TodaysMission, MissionInbox, EngineeringReviewPanel, ExcellenceScoreCard, CostDashboard, ProviderDashboard, EngineeringKPIs |
+| **STUB** | 10 | AgentSwarm, TimelinePanel, ExecutionPanel, MissionCenter, WorkspaceExplorer, NotificationCenter, MemoryPanel, PluginManager, WorkspaceInspector |
+
+**0 components are connected to live BUS/SSE data.** This is the next integration priority after RC0.
+
+## Immediate Next Action
+
+```
+git checkout feature/thinkbox-pr014b
+git rebase main
+# Fix typecheck: add "typecheck" script to services/thinkbox/package.json
+git push --force-with-lease
+# Wait for CI green
+# Merge to main
+```
+
+## URLs to Know
+
+| URL | Purpose |
+|:---|:---|
+| `https://github.com/KudbeeZero/Kudbee-fuel-gage/pull/266` | Release Candidate PR |
+| `https://github.com/KudbeeZero/Kudbee-fuel-gage` | Repository |
+| `/terminal.html` | Standalone terminal (after Vite build) |
+| `/docs/OPS_014_RELEASE_DECISION.md` | Full release decision |
+| `/docs/VIEW_THIS_FIRST.md` | Manual test guide |
+| `/docs/FRONTEND_FEATURES.md` | Frontend inventory |
+| `/docs/THREE_LAWS_OF_ENGINEERING_MATURITY.md` | Permanent rules |
+| `/config/pr/stack.json` | Stack manifest |
+
+## Protocol Active
+
+- THINK Protocol v3: 7 immutable principles, 11 enforceable policies
+- PR Classification: governance / product / infrastructure
+- Stack depth: max 3
+- OPS vs THINKBOX separation enforced
+- PR Exit Interview script: `scripts/pr-exit-interview.mjs`
