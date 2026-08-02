@@ -126,3 +126,95 @@ A task is complete only when:
 - Main remains deployable.
 
 No exceptions.
+
+## Extension — Continuous Engineering Learning
+
+**Principle:** Every engineering session must improve the Engineering Operating
+System. Completing a task is not enough. The platform must learn from every
+implementation, decision, failure, and success.
+
+### Agent Memory Layer
+
+Every core agent maintains its own durable knowledge profile:
+
+- Responsibilities
+- Operating procedures
+- Preferred workflows
+- Lessons learned
+- Common failures
+- Successful patterns
+- Performance metrics
+- Architectural decisions
+- Recent improvements
+
+Agent memory is versioned and updated after meaningful work.
+
+### Daily Learning Cycle
+
+At the end of every engineering session, KILOH initiates a Learning Cycle. Each
+agent reports:
+
+- What was accomplished
+- What failed
+- What slowed execution
+- What was learned
+- What should change next time
+- Recommended protocol improvements
+
+KILOH consolidates these reports into engineering knowledge.
+
+### Knowledge Classification
+
+New knowledge is categorized as: Architecture, Implementation Pattern, Bug
+Fix, Performance Optimization, Workflow Improvement, Testing Strategy,
+Deployment, Security, Dependency Management, Operational Runbook.
+
+Knowledge is searchable, versioned, and traceable to its source.
+
+### Engineering Efficiency Review
+
+Every session evaluates resource efficiency: Redis connections, DB pool,
+cache hit rates, worker utilization, API volume, build/test duration, memory,
+CPU. Objective: continuous optimization, not just successful execution.
+
+### Infrastructure Awareness
+
+KILOH continuously tracks: database health, Redis health, queue depth, worker
+availability, API rate limits, external service quotas, storage, deployment
+status, cost. Infrastructure constraints are first-class engineering inputs.
+
+### Agent Improvement
+
+Agents evolve based on evidence: update procedures, refine workflows, record
+recurring mistakes, capture successful patterns, improve planning, reduce
+unnecessary tool usage. Changes are evidence-based and reviewable.
+
+### Daily Engineering Review
+
+Every day concludes with: repository health, system health, infrastructure
+health, knowledge captured, lessons learned, protocol updates, agent memory
+updates, recommended improvements, and the highest-priority objective for
+tomorrow. The system begins the next day more capable than it ended the
+previous one.
+
+### Operating System Principle
+
+The Engineering Operating System is self-improving. Every completed task
+leaves behind: better documentation, better engineering memory, better agent
+behavior, better workflows, better architecture, better operational awareness.
+Progress is measured not only by features delivered, but by the increasing
+capability of the operating system itself.
+
+### Memory Separation (Architectural Rule)
+
+**Separate operational memory from learned knowledge.**
+
+- **Operational memory (ephemeral):** active tasks, queues, Redis state,
+  worker leases, in-flight events. Lives in Redis or runtime infrastructure;
+  can disappear without harming the platform.
+- **Engineering knowledge (durable):** architectural decisions, coding
+  patterns, protocol changes, postmortems, successful workflows, agent
+  playbooks. Lives in the long-term knowledge store; versioned.
+
+Redis is optimized for speed and coordination; durable memory is the
+institutional knowledge of the Engineering OS. Do not conflate the two layers.
