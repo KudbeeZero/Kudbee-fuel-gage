@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785709973419-1206b1d5",
+  "agentId": "hermes",
+  "decision": "run:OPS: audit agent fleet + governance ledger health",
+  "context": {
+    "action": "execute",
+    "task": "OPS: audit agent fleet + governance ledger health",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-02T22:32:53.419Z",
+  "decoded": false
+}

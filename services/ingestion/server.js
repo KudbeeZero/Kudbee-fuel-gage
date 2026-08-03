@@ -5713,7 +5713,7 @@ if (fs.existsSync(distPath)) {
       }
     },
   }));
-  app.get('*', fileLimiter, (req, res) => {
+  app.get('/{*path}', fileLimiter, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
