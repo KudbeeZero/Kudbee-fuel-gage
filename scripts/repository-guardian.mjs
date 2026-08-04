@@ -116,6 +116,24 @@ async function main() {
   } catch { missionOk = false; }
   check('active mission', missionOk, missionOk ? missionDetail : 'roadmap unreadable');
 
+  // 9. Pipeline integrity — all 3 Heroku environments must exist (dev→staging→prod)
+  let pipelineOk = true; let pipelineDetail = '';
+  if (process.env.HEROKU_API_KEY) {
+    try {
+      const expected = ['kudbee-fuel-gage-dev', 'kudbee-fuel-gage-staging', 'kudbee-fuel-gage'];
+      for (const app of expected) {
+        const r = await fetch(`https://api.heroku.com/apps/${app}`, {
+          headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, 'Accept': 'application/vnd.heroku+json; version=3' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!r.ok) { pipelineOk = false; pipelineDetail = `missing: ${app}`; break; }
+      }
+    } catch (e) { pipelineOk = false; pipelineDetail = e.message; }
+  } else {
+    pipelineOk = false; pipelineDetail = 'HEROKU_API_KEY not set (cannot verify)';
+  }
+  check('pipeline integrity (dev/staging/prod)', pipelineOk, pipelineOk ? 'all 3 apps exist' : pipelineDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {

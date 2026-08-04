@@ -152,7 +152,16 @@
       "prevention": "Single-user directive: no password gates anywhere. Backend AND frontend must match.",
       "impact": "Users blocked at login screen",
       "lessons": []
+    },
+    {
+      "session": "dev-app-missing",
+      "timestamp": "2026-08-04T10:19:49.797Z",
+      "rootCause": "kudbee-fuel-gage-dev app was deleted during branch cleanup — dev→staging→prod pipeline broken; only 2 of 3 environments existed",
+      "fix": "Recreated dev app via Heroku API (heroku-26), copied staging config, set Node buildpack via buildpack-installations endpoint, deployed main",
+      "prevention": "The 3-environment pipeline is part of the deploy contract. Guardian/deploy checks must verify all 3 apps exist before cleanup operations.",
+      "impact": "Development environment was unreachable; no pre-staging validation",
+      "lessons": []
     }
   ],
-  "updatedAt": "2026-08-04T10:04:04.518Z"
+  "updatedAt": "2026-08-04T10:19:49.799Z"
 }
