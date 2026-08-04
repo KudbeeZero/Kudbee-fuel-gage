@@ -695,7 +695,31 @@
       "type": "workspace:deps-resolved",
       "agentId": "system",
       "timestamp": "2026-08-04T14:09:31.422Z"
+    },
+    {
+      "id": "136593ff-cd19-4276-96ea-4b617ae9e64c",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-04T14:25:15.825Z"
+    },
+    {
+      "id": "960ce0fd-b893-4b86-9dde-a0da84fde075",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-04T14:25:15.961Z"
+    },
+    {
+      "id": "084ae3eb-645d-47b5-a8b6-c5735c122071",
+      "type": "workspace:deps-resolved",
+      "agentId": "system",
+      "timestamp": "2026-08-04T14:25:26.404Z"
+    },
+    {
+      "id": "9d014e1b-a982-4d1f-b670-f5632a72cfbb",
+      "type": "workspace:provisioned",
+      "agentId": "system",
+      "timestamp": "2026-08-04T14:25:27.694Z"
     }
   ],
-  "totalEntries": 116
+  "totalEntries": 120
 }
