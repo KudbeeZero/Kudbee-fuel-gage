@@ -184,6 +184,63 @@ async function handleAsk(prompt) {
   }
 }
 
+// ── /code — Gemini coding assistant (writes + self-improves code) ───────────
+
+async function handleCode(prompt) {
+  if (!prompt) return { type: 'terminal:error', message: '/code requires a request. Usage: /code <what to write/fix>' };
+
+  const rate = checkRateLimit();
+  if (!rate.allowed) {
+    return { type: 'terminal:error', message: `Rate limit exceeded. Try again in ${Math.ceil(rate.resetMs / 1000)}s.` };
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!geminiKey) return { type: 'terminal:error', message: 'Gemini API key not configured.' };
+
+  try {
+    const { createProvider } = await import('@kudbee/utils/llm/providers');
+    const client = createProvider({
+      kind: 'gemini', model: 'gemini-flash-latest', apiKey: geminiKey,
+      temperature: 0.2, maxTokens: 2048,
+    });
+
+    const t0 = Date.now();
+    const resp = await client.complete({
+      systemPrompt:
+        'You are the Kudbee engineering agent, trained to write production-grade code. ' +
+        'Follow Kudbee conventions: single quotes, trailing commas, printWidth 100, LF line endings. ' +
+        'For Node scripts use ESM (.mjs/.ts) with node: prefix for builtins. ' +
+        'Return ONLY the code and a brief 1-2 sentence explanation. Never invent APIs — use standard libraries.',
+      userPrompt: prompt,
+      temperature: 0.2,
+      maxTokens: 2048,
+    });
+    const latency = Date.now() - t0;
+    const tokens = (resp.usage?.promptTokens ?? 0) + (resp.usage?.completionTokens ?? 0);
+
+    // Record the learning — every code generation feeds DTHINK so the
+    // system learns what was produced and why.
+    try {
+      const { execFile } = await import('node:child_process');
+      execFile('node', ['scripts/dthink-pipeline.mjs', 'feed', 'code:generated',
+        `${prompt.slice(0, 80)} — ${tokens} tokens, ${latency}ms`],
+        { cwd: process.cwd(), timeout: 15000 }, () => {});
+    } catch {}
+
+    return {
+      type: 'code:response',
+      prompt,
+      code: resp.text,
+      model: resp.model,
+      latencyMs: latency,
+      usage: resp.usage,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Gemini code call failed: ${e.message}`, timestamp: new Date().toISOString() };
+  }
+}
+
 async function handleRoadmap() {
   const { getRoadmapStatus } = await import('./roadmap.mjs');
   return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
@@ -282,6 +339,11 @@ async function dispatchCommand(input) {
       return { type: 'terminal:error', message: '/ask requires a question. Usage: /ask <your question>' };
     }
     return handleAsk(prompt);
+  }
+  if (cmd === '/code') {
+    const prompt = raw.replace(/^\/code\s+/i, '').trim();
+    if (!prompt) return { type: 'terminal:error', message: '/code requires a request. Usage: /code <write/fix code>' };
+    return handleCode(prompt);
   }
 
   // Explicit subcommands
