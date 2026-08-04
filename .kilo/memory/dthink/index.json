@@ -665,7 +665,13 @@
       "type": "redis:quota-prevention",
       "agentId": "system",
       "timestamp": "2026-08-04T09:39:42.667Z"
+    },
+    {
+      "id": "54803529-98d3-4869-b0ca-17969cf0954d",
+      "type": "pipeline:dev-restored",
+      "agentId": "system",
+      "timestamp": "2026-08-04T10:19:49.832Z"
     }
   ],
-  "totalEntries": 111
+  "totalEntries": 112
 }
