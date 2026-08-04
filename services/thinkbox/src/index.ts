@@ -1,5 +1,5 @@
 import { intakeAndDetect } from './orchestrator.ts';
-import { listWorkspaces } from './registry.ts';
+import { listWorkspaces, getWorkspace } from './registry.ts';
 import { createMissionGraph } from './planning/planner.ts';
 import { extractLearning } from './learning/index.ts';
 import { validateCompleteWorkflow } from './integration/validation.ts';
@@ -8,6 +8,8 @@ import { generateDailyReview, computeExcellenceScore } from './excellence/engine
 import { getBestProvider, getAllEvaluations } from './providers/index.ts';
 import { getTodaysCosts, generateOptimizations } from './cost/tracker.ts';
 import { getEngineeringKPIs, getEngineeringScorecard, verifyEngineeringReady } from './metrics/engineering.ts';
+import { buildManifest } from './intelligence/engine.ts';
+import { publishWorkspaceEvent } from './events.ts';
 
 const [command, ...args] = process.argv.slice(2);
 const arg = args[0];
@@ -24,6 +26,7 @@ switch (command) {
   case 'cost': { const c = getTodaysCosts(); const o = generateOptimizations(); console.log(JSON.stringify({ today: c.totalCost, budgetHealth: c.budgetHealth, optimizations: o.length })); break; }
   case 'kpi': { const k = getEngineeringKPIs(); const sc = getEngineeringScorecard(); console.log(JSON.stringify({ ciPassRate: k.ciPassRate, scorecard: sc.total, grade: sc.grade })); break; }
   case 'ready': { const v = verifyEngineeringReady(); console.log(JSON.stringify({ ready: v.ready, score: v.score, checks: v.checks.map(c => c.name) })); break; }
+  case 'deps': { if (!arg) { console.error('Usage: deps <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const m = buildManifest(ws); console.log(JSON.stringify(m, null, 2)); publishWorkspaceEvent({ topic: 'workspace:deps-resolved', workspace: ws }); break; }
   case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}`); break; }
-  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | list'); process.exit(1); }
+  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | deps | list'); process.exit(1); }
 }
