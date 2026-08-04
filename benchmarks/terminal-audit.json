@@ -1,0 +1,416 @@
+[
+  {
+    "command": "/terminal",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/command",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/api",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/execute",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/swarm",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/shield",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/agent",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/threshold",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/json",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/ask",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/min",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/utils",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/llm",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/providers",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/lib",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/budget",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/echo",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/code",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/fix",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/dthink-pipeline",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/roadmap",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/forecast",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/failure-forecaster",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/handoff",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/pulse",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/engineering-health",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/guardian",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/repository-guardian",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/crypto",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/verify-crypto-runtime",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/memory",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/snippets",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/crypto-posture-learnings",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/middleware",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/agents",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/invariants",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/verify-invariants",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/scorecard",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/struggle",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/struggle-log",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/services",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/db",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/crucible",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/security",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/health",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/status",
+    "inDispatcher": true,
+    "inUI": true,
+    "action": "KEEP"
+  },
+  {
+    "command": "/scheduler",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/help",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/mobile",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/phases",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/sec",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/brief",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/health-metrics",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/preflight",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/crypt",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/pipeline",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/laws",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/grade",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/struggles",
+    "inDispatcher": true,
+    "inUI": false,
+    "action": "VERIFY"
+  },
+  {
+    "command": "/title",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/style",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/head",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/div",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/span",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/button",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/ci",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/script",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/body",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  },
+  {
+    "command": "/html",
+    "inDispatcher": false,
+    "inUI": true,
+    "action": "DEAD_OR_UNREGISTERED"
+  }
+]

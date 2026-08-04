@@ -1,0 +1,404 @@
+[
+  {
+    "file": "AGENTS.md",
+    "ageDays": 0,
+    "sizeKb": 10,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "AGENT_ARCHITECTURE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "AGENT_METADATA_COMPLETE.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "BRANCH_NAMING_POLICY.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "BUILD.md",
+    "ageDays": 0,
+    "sizeKb": 8,
+    "action": "KEEP"
+  },
+  {
+    "file": "CI_ENFORCEMENT.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "KEEP"
+  },
+  {
+    "file": "CI_PIPELINE_AUDIT.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "CONFIG_CONSOLIDATION.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "COST_GUARD_SPEC.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "CURRENT_AGENT_REGISTRY.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "CURRENT_ARCHITECTURE.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "CURRENT_COST_STATUS.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "CURRENT_INFRASTRUCTURE.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "CURRENT_ROADMAP.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "DAILY_DASHBOARD_MVP.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "DATA_INFRASTRUCTURE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "DEPENDABOT_PR240_ANALYSIS.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "ENGINEERING_COST_MODEL.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "ENGINEERING_DASHBOARD_SPEC.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "ENGINEERING_OS_BASELINE_v1.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ENGINEERING_OS_BASELINE_v2.2.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ENGINEERING_OS_CERTIFICATION_v1.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ENGINEERING_OS_v1_RELEASE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ENGINEERING_ROADMAP_V2.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "KEEP"
+  },
+  {
+    "file": "ENGINEERING_STATE.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "ENGINEERING_WORKFLOW_AUDIT.md",
+    "ageDays": 0,
+    "sizeKb": 7,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "FINAL_COST_REPORT.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "GITHUB_GOVERNANCE_AUDIT.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "GOVERNANCE_ACTIVATION.md",
+    "ageDays": 0,
+    "sizeKb": 5,
+    "action": "KEEP"
+  },
+  {
+    "file": "GUARDIAN_IMPLEMENTATION.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "GUARDIAN_SPEC.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "KEEP"
+  },
+  {
+    "file": "HEROKU_CI_DISABLE_VERIFICATION.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "HEROKU_INFRASTRUCTURE_AUDIT.md",
+    "ageDays": 0,
+    "sizeKb": 8,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "HEROKU_PIPELINE_AUDIT.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "INFRASTRUCTURE_STATUS_v1.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "KILOH_ENGINEERING_STANDARDS.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "KILOH_REPORT.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "MISSION_LOCK.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "MODEL_CONTRACT.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "NEXT_AGENT_BOOTSTRAP.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  },
+  {
+    "file": "NEXT_AGENT_BRIEF.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "OPS-002_FINAL_REVIEW.md",
+    "ageDays": 0,
+    "sizeKb": 5,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "OPS_003_FINAL_REVIEW.md",
+    "ageDays": 0,
+    "sizeKb": 5,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "OPS_005_FINAL_REVIEW.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "OPS_006_FINAL_REVIEW.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ORPHAN_APP_CLEANUP_REPORT.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "ORPHAN_APP_DELETION_MANIFEST.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "KEEP"
+  },
+  {
+    "file": "OUTING_PLAN.md",
+    "ageDays": 0,
+    "sizeKb": 8,
+    "action": "KEEP"
+  },
+  {
+    "file": "PRODUCTION_VALIDATION_v2.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "KEEP"
+  },
+  {
+    "file": "PROTOCOL_POLICY_SCHEMA.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "RC1_READINESS.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "README.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "RUNTIME_ARCHITECTURE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "SESSION_FINAL_REPORT.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "SESSION_HANDOFF.md",
+    "ageDays": 0,
+    "sizeKb": 2,
+    "action": "ARCHIVE"
+  },
+  {
+    "file": "STATE_OF_THE_OS.md",
+    "ageDays": 0,
+    "sizeKb": 16,
+    "action": "KEEP"
+  },
+  {
+    "file": "TECHNOLOGY.md",
+    "ageDays": 0,
+    "sizeKb": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "TERMINAL.md",
+    "ageDays": 0,
+    "sizeKb": 17,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "THINKBOX_PR002_IMPLEMENTATION_GUIDE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "THINKBOX_PR002_PLAN.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "THINKBOX_SPEC.md",
+    "ageDays": 0,
+    "sizeKb": 5,
+    "action": "CANONICAL"
+  },
+  {
+    "file": "THINK_PROTOCOL.md",
+    "ageDays": 0,
+    "sizeKb": 9,
+    "action": "KEEP"
+  },
+  {
+    "file": "THINK_PROTOCOL_COMPLIANCE.md",
+    "ageDays": 0,
+    "sizeKb": 4,
+    "action": "KEEP"
+  },
+  {
+    "file": "claude.md",
+    "ageDays": 0,
+    "sizeKb": 3,
+    "action": "KEEP"
+  },
+  {
+    "file": "kudbee-mcp-server.md",
+    "ageDays": 0,
+    "sizeKb": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "roadmap.md",
+    "ageDays": 0,
+    "sizeKb": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "start-redis.md",
+    "ageDays": 0,
+    "sizeKb": 1,
+    "action": "KEEP"
+  }
+]

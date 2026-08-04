@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-08-04T21:51:40.164Z",
+  "sourceFiles": {
+    "total": 549,
+    "jsTs": 411,
+    "mjsJs": 138
+  },
+  "scripts": 114,
+  "cliCommands": 48,
+  "githubWorkflows": 5,
+  "markdownDocs": 170,
+  "topLevelDocs": 67,
+  "knowledgeStores": 41,
+  "terminalCommands": 59,
+  "nodeDependencies": 15,
+  "packageSizeKb": 4,
+  "bootstrapKb": 10,
+  "graph": {
+    "nodes": 82,
+    "edges": 135
+  },
+  "targets": {
+    "files_10pct": 55,
+    "scripts_15pct": 17,
+    "docs_30pct": 51,
+    "bootstrap_25pct": 2
+  }
+}
