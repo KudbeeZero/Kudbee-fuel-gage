@@ -288,3 +288,41 @@ After running bootstrap, confirm ALL of these are loaded:
 - [ ] CI GREEN (`node scripts/system-status.mjs check`)
 
 If ANY checkbox fails, run `/load` for the full enterprise bootstrap sequence.
+
+## PR Workflow — Standard Operating Procedure
+
+**Mission:** Every implementation PR must answer: "What user-visible improvement or engineering reliability improvement will exist after this PR merges?"
+
+### Before writing code
+1. **Read NEXT_AGENT_BOOTSTRAP.md** — understand the approved mission.
+2. **Verify git state** — `git status`, `git log --oneline -3`. Must be on a feature branch (`feature/*`, `fix/*`, `feat/*`) from `main`.
+3. **Verify the approved mission** — one objective, no architecture expansion, no duplicate components.
+
+### During implementation
+1. **One objective per PR** — no scope creep.
+2. **Commit locally first** — `git add`, `git commit`. Verify typecheck + build LOCAL before pushing.
+3. **Prefer fewer than 15 files** and fewer than 250-500 lines changed.
+4. **Run required verification locally**: `npm run typecheck`, `npm run build`, `npm run lint`.
+
+### Opening the PR
+1. `git push origin <branch>`
+2. `gh pr create --title "..." --body "..." --base main`
+3. Write body with: **Problem → Fix → Verified** sections.
+4. Include rollback plan (revert commit, delete branch).
+
+### Merging
+1. **Wait for CI** — all checks must be green (verify + CodeQL + box-test + docs-check).
+2. **Merge with squash** — `gh pr merge <number> --squash --delete-branch`
+3. **Pull main** — `git checkout main && git pull origin main`
+4. **Clean up** — working tree must return to clean.
+
+### After merge
+1. Deploy to **staging first** (never directly to production without staging verification).
+2. Verify endpoints on staging.
+3. If blocking fix → deploy to production.
+4. Record DTHINK events for the session.
+
+### Rate limits & budgets
+- `/ask` command: 10 requests/min (configurable via `/threshold set askRateLimit <number>`)
+- Circuit breaker: 5 consecutive failures → OPEN for 30-60s → HALF_OPEN probe → CLOSED
+- Redis quota: 500k/month. Hermes respects circuit breaker. Local filesystem fallback when exhausted.
