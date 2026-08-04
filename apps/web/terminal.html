@@ -3,165 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<<<<<<< ours
-    <title>KUDBEE Terminal — Ollama Chat</title>
-    <style>
-      #terminal-boot { 
-        position: fixed; 
-        inset: 0; 
-        z-index: 10; 
-        display: grid; 
-        place-items: center; 
-        padding: 24px; 
-        color: #cbd5e1; 
-        background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
-        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-        transition: opacity 0.5s ease-out;
-      }
-      #terminal-boot[hidden] { display: none; }
-      #terminal-boot.fade-out { opacity: 0; pointer-events: none; }
-      #terminal-boot-card { 
-        width: min(560px, 100%); 
-        border: 1px solid #334155; 
-        border-radius: 12px; 
-        padding: 20px; 
-        background: #111827; 
-        box-shadow: 0 18px 60px #0008;
-        position: relative;
-        overflow: hidden;
-      }
-      #terminal-boot-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(45deg, transparent, rgba(59, 130, 246, 0.1), transparent);
-        animation: pulse 3s ease-in-out infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { transform: rotate(0deg); opacity: 0.5; }
-        50% { transform: rotate(180deg); opacity: 1; }
-      }
-      #terminal-boot-title { 
-        color: #f8fafc; 
-        font-size: 14px; 
-        font-weight: 700;
-        position: relative;
-        z-index: 1;
-      }
-      #terminal-boot-detail { 
-        margin-top: 8px; 
-        color: #94a3b8; 
-        white-space: pre-wrap; 
-        overflow-wrap: anywhere;
-        position: relative;
-        z-index: 1;
-      }
-      #terminal-snippet {
-        margin-top: 16px;
-        padding: 12px;
-        background: rgba(59, 130, 246, 0.1);
-        border-left: 3px solid #3b82f6;
-        border-radius: 4px;
-        color: #60a5fa;
-        font-size: 11px;
-        position: relative;
-        z-index: 1;
-        animation: fadeIn 0.5s ease-in;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      #terminal-progress {
-        margin-top: 16px;
-        height: 4px;
-        background: #1e293b;
-        border-radius: 2px;
-        overflow: hidden;
-        position: relative;
-        z-index: 1;
-      }
-      #terminal-progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-        width: 0%;
-        transition: width 0.3s ease-out;
-        animation: progressPulse 2s ease-in-out infinite;
-      }
-      @keyframes progressPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-      }
-      #terminal-diagnostic-panel { margin-top: 16px; position: relative; z-index: 1; }
-      #terminal-diagnostic-panel[hidden] { display: none; }
-      #terminal-diagnostic-panel button { 
-        margin-right: 8px; 
-        border: 1px solid #475569; 
-        border-radius: 6px; 
-        padding: 6px 10px; 
-        color: #e2e8f0; 
-        background: #1e293b; 
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      #terminal-diagnostic-panel button:hover {
-        background: #334155;
-        border-color: #64748b;
-      }
-      .kudbee-logo {
-        font-size: 24px;
-        font-weight: 900;
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 12px;
-        position: relative;
-        z-index: 1;
-      }
-    </style>
-  </head>
-  <body style="margin:0; background:#0a0a0f; height:100vh">
-    <div id="root" style="height:100%"></div>
-    <div id="terminal-boot" role="status" aria-live="polite">
-      <div id="terminal-boot-card">
-        <div class="kudbee-logo">KUDBEE</div>
-        <div id="terminal-boot-title">Initializing Terminal...</div>
-        <div id="terminal-boot-detail">Loading the interactive runtime environment.</div>
-        <div id="terminal-snippet">THINK: Knowledge is the bridge between data and wisdom.</div>
-        <div id="terminal-progress">
-          <div id="terminal-progress-bar"></div>
-        </div>
-        <div id="terminal-diagnostic-panel" hidden>
-          <button id="terminal-copy-diagnostics" type="button">Copy diagnostics</button>
-          <button id="terminal-retry" type="button">Retry</button>
-        </div>
-      </div>
-=======
     <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
     <title>KUDBEE Terminal</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       :root{
-        --bg: #020617; --surface: #0f172a; --card: #111827; --card-hover: #1e293b;
-        --border: #1e293b; --border-active: #334155;
-        --text: #e2e8f0; --text-dim: #94a3b8; --muted: #64748b;
-        --emerald: #34d399; --emerald-bg: rgba(52,211,153,0.08);
-        --amber: #f59e0b; --amber-bg: rgba(245,158,11,0.08);
-        --rose: #f87171; --rose-bg: rgba(248,113,113,0.08);
-        --blue: #60a5fa; --blue-bg: rgba(96,165,250,0.08);
-        --radius: 8px; --radius-lg: 12px;
+        --bg:#020617;--surface:#0f172a;--card:#111827;--card-hover:#1e293b;
+        --border:#1e293b;--border-active:#334155;
+        --text:#e2e8f0;--text-dim:#94a3b8;--muted:#64748b;
+        --emerald:#34d399;--emerald-bg:rgba(52,211,153,.08);
+        --amber:#f59e0b;--amber-bg:rgba(245,158,11,.08);
+        --rose:#f87171;--rose-bg:rgba(248,113,113,.08);
+        --blue:#60a5fa;--blue-bg:rgba(96,165,250,.08);
+        --radius:8px;
       }
+      html,body{height:100%}
       body{
         font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
         background:var(--bg);color:var(--text);min-height:100vh;
         -webkit-font-smoothing:antialiased;
       }
       #app{display:flex;height:100vh;overflow:hidden}
-      /* ── Launch screen ── */
+      /* ── Launch ── */
       #launch{
         position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;
         align-items:center;justify-content:center;background:var(--bg);
@@ -169,35 +32,26 @@
       }
       #launch.hidden{opacity:0;visibility:hidden;pointer-events:none}
       #launch-logo{
-        font-size:32px;font-weight:800;letter-spacing:-.02em;
+        font-size:30px;font-weight:800;letter-spacing:-.02em;
         background:linear-gradient(135deg,var(--emerald),var(--blue));
         -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-        margin-bottom:4px;
       }
-      #launch-sub{font-size:12px;color:var(--muted);margin-bottom:32px}
-      #launch-bar{
-        width:240px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;
-      }
-      #launch-fill{height:100%;width:0;background:var(--emerald);border-radius:2px;transition:width .3s}
-      #launch-msg{font-size:10px;color:var(--muted);margin-top:12px;min-height:16px}
-      /* ── Sidebar ── */
-      #sidebar{
-        width:280px;min-width:280px;background:var(--surface);
-        border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:auto;
-      }
-      .side-section{border-bottom:1px solid var(--border);padding:14px 16px}
-      .side-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:8px}
-      .agent-item{
-        display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;
-        font-size:11px;cursor:default;transition:background .15s;
-      }
+      #launch-sub{font-size:11px;color:var(--muted);margin:4px 0 28px}
+      #launch-bar{width:220px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+      #launch-fill{height:100%;width:0;background:var(--emerald);transition:width .3s}
+      #launch-msg{font-size:10px;color:var(--muted);margin-top:10px;min-height:14px}
+      /* ── Left ── */
+      #sidebar{width:250px;min-width:250px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+      .side-section{border-bottom:1px solid var(--border);padding:12px 14px}
+      .side-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin-bottom:6px}
+      .agent-item{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:5px;font-size:11px}
       .agent-item:hover{background:var(--card-hover)}
       .agent-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-      .agent-dot.online{background:var(--emerald);box-shadow:0 0 6px var(--emerald)}
+      .agent-dot.online{background:var(--emerald);box-shadow:0 0 5px var(--emerald)}
       .agent-dot.unknown{background:var(--muted)}
-      .agent-subs{font-size:9px;color:var(--muted)}
-      /* Shield */
-      .shield-metric{margin-bottom:8px}
+      .agent-subs{font-size:9px;color:var(--muted);margin-left:auto}
+      /* ── Shield ── */
+      .shield-metric{margin-bottom:7px}
       .shield-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}
       .shield-key{font-weight:700}
       .shield-val{color:var(--muted);font-size:9px}
@@ -205,78 +59,65 @@
       .shield-fill{height:100%;border-radius:2px;transition:width .3s}
       /* ── Main ── */
       #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-      #topbar{
-        display:flex;align-items:center;gap:12px;padding:10px 16px;
-        border-bottom:1px solid var(--border);background:var(--surface);font-size:10px;
-      }
+      #topbar{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);font-size:10px}
       .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
       .dot.live{background:var(--emerald);box-shadow:0 0 8px var(--emerald)}
       .dot.degraded{background:var(--amber);box-shadow:0 0 8px var(--amber)}
       .dot.offline{background:var(--rose);box-shadow:0 0 8px var(--rose)}
       .spacer{flex:1}
-      .badge{
-        font-size:9px;padding:2px 8px;border-radius:10px;background:var(--border);
-        color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em;
-      }
-      /* ── Terminal content ── */
-      #output{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px}
-      #output .msg{padding:10px 14px;border-radius:var(--radius);font-size:12px;max-width:88%;line-height:1.5;animation:msgIn .15s ease-out}
+      .badge{font-size:9px;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+      /* ── Output ── */
+      #output{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:4px}
+      #output .msg{padding:9px 13px;border-radius:var(--radius);font-size:12px;max-width:88%;line-height:1.5;animation:msgIn .15s ease-out}
       @keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
       #output .msg.cmd{align-self:flex-end;background:var(--blue);color:#020617;font-weight:600;border-radius:var(--radius) var(--radius) 4px var(--radius)}
       #output .msg.resp{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-radius:4px var(--radius) var(--radius) var(--radius)}
-      #output .msg.error{align-self:flex-start;background:var(--rose-bg);border:1px solid rgba(248,113,113,0.3);color:var(--rose)}
-      #output .msg.info{align-self:center;font-size:10px;color:var(--muted);background:transparent;padding:4px 8px;max-width:100%}
-      #output .mono{font-family:inherit;font-size:10px;color:var(--muted);white-space:pre-wrap;word-break:break-word;margin-top:4px}
-      .token-stats{font-size:9px;color:var(--muted);margin-top:4px}
-      /* ── Input bar ── */
-      #input-bar{display:flex;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface);gap:8px}
-      #cmd-input{
-        flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
-        padding:10px 14px;color:var(--text);font:inherit;font-size:12px;outline:none;
-        transition:border-color .15s;
-      }
+      #output .msg.error{align-self:flex-start;background:var(--rose-bg);border:1px solid rgba(248,113,113,.3);color:var(--rose)}
+      #output .msg.info{align-self:center;font-size:10px;color:var(--muted);background:transparent;padding:3px 8px;max-width:100%}
+      #output .mono{font-family:inherit;font-size:10px;color:var(--muted);white-space:pre-wrap;word-break:break-word;margin-top:3px}
+      /* ── Quick commands ── */
+      #quickbar{display:flex;gap:6px;padding:6px 14px 0;flex-wrap:wrap}
+      .qc{font-size:9px;padding:3px 9px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;transition:all .15s}
+      .qc:hover{border-color:var(--emerald);color:var(--emerald)}
+      /* ── Input ── */
+      #input-bar{display:flex;padding:9px 14px;border-top:1px solid var(--border);background:var(--surface);gap:8px}
+      #cmd-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;color:var(--text);font:inherit;font-size:12px;outline:none;transition:border-color .15s}
       #cmd-input:focus{border-color:var(--emerald)}
-      #run-btn{
-        padding:10px 18px;background:var(--emerald);color:#020617;border:none;
-        border-radius:var(--radius);font:inherit;font-size:12px;font-weight:700;
-        cursor:pointer;transition:opacity .15s;
-      }
+      #run-btn{padding:9px 16px;background:var(--emerald);color:#020617;border:none;border-radius:var(--radius);font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s}
       #run-btn:hover{opacity:.85}
-      #run-btn:active{opacity:.7}
-      #cmd-hint{font-size:9px;color:var(--muted);text-align:right;padding-right:4px}
-      /* ── Right panel ── */
-      #right{
-        width:260px;min-width:260px;background:var(--surface);
-        border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:auto;
-      }
-      .phase-item{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:4px;font-size:10px;transition:background .1s}
+      /* ── Right ── */
+      #right{width:240px;min-width:240px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+      .phase-item{display:flex;justify-content:space-between;align-items:center;padding:3px 6px;border-radius:4px;font-size:10px}
       .phase-item:hover{background:var(--card-hover)}
-      .phase-id{font-weight:700;font-size:9px;width:42px;flex-shrink:0}
+      .phase-id{font-weight:700;font-size:9px;width:38px;flex-shrink:0}
       .phase-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .phase-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
       .p-shipped{color:var(--emerald)}.p-verified{color:var(--blue)}.p-in_progress{color:var(--amber)}.p-planned{color:var(--muted)}
       .bus-feed{font-size:9px;color:var(--muted)}
-      .bus-feed div{padding:3px 0;border-bottom:1px solid rgba(30,41,59,0.4)}
-      /* ── Responsive ── */
-      @media(max-width:768px){
+      .bus-feed div{padding:2px 0;border-bottom:1px solid rgba(30,41,59,.4)}
+      /* ── Pulse (engineering health) ── */
+      .pulse-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0}
+      .pulse-val{font-weight:700}
+      .pulse-val.ok{color:var(--emerald)}.pulse-val.warn{color:var(--amber)}
+      /* ── Mobile ── */
+      @media(max-width:820px){
         #sidebar,#right{display:none}
         #main{width:100%}
         #output .msg{max-width:95%}
+        #quickbar{overflow-x:auto;flex-wrap:nowrap}
       }
     </style>
   </head>
   <body>
-    <!-- Launch screen -->
     <div id="launch">
       <div id="launch-logo">KUDBEE</div>
-      <div id="launch-sub">Engineering OS v2.2</div>
+      <div id="launch-sub">Engineering OS v2.2 — Enterprise Control</div>
       <div id="launch-bar"><div id="launch-fill"></div></div>
       <div id="launch-msg">Initializing terminal runtime...</div>
     </div>
 
-    <!-- Main app -->
     <div id="app">
-      <!-- Sidebar -->
+      <!-- Left: fleet + shield -->
       <div id="sidebar">
         <div class="side-section">
           <div class="side-label">Swarm Fleet</div>
@@ -288,28 +129,41 @@
         </div>
       </div>
 
-      <!-- Main: topbar + terminal -->
+      <!-- Main -->
       <div id="main">
         <div id="topbar">
           <span class="dot offline" id="sys-dot"></span>
           <span id="sys-status">OFFLINE</span>
           <span class="spacer"></span>
-          <span id="sys-sha" class="badge">—</span>
+          <span id="sys-branch" class="badge">—</span>
           <span id="sys-env" class="badge">STAGING</span>
         </div>
+        <div id="quickbar">
+          <span class="qc" onclick="quick('/swarm')">swarm</span>
+          <span class="qc" onclick="quick('/shield')">shield</span>
+          <span class="qc" onclick="quick('/roadmap')">roadmap</span>
+          <span class="qc" onclick="quick('/pulse')">pulse</span>
+          <span class="qc" onclick="quick('/security')">security</span>
+          <span class="qc" onclick="quick('/echo')">echo</span>
+          <span class="qc" onclick="quick('/forecast')">forecast</span>
+          <span class="qc" onclick="quick('/handoff')">handoff</span>
+        </div>
         <div id="output"></div>
-        <div style="padding:0 16px"><div id="cmd-hint">Try: /swarm status, /shield monitor, /roadmap, /ask &lt;question&gt;, /help</div></div>
         <div id="input-bar">
           <input id="cmd-input" placeholder="/ask What is the current mission?" autofocus autocomplete="off"
-            onkeydown="if(event.key==='Enter')execute();" />
+            onkeydown="if(event.key==='Enter')execute()" />
           <button id="run-btn" onclick="execute()">RUN</button>
         </div>
       </div>
 
-      <!-- Right panel -->
+      <!-- Right: pulse + roadmap + bus -->
       <div id="right">
         <div class="side-section">
-          <div class="side-label">Roadmap to Production</div>
+          <div class="side-label">Engineering Health</div>
+          <div id="pulse"><span style="color:var(--muted);font-size:10px">connecting...</span></div>
+        </div>
+        <div class="side-section">
+          <div class="side-label">Roadmap</div>
           <div id="roadmap"><span style="color:var(--muted);font-size:10px">connecting...</span></div>
         </div>
         <div class="side-section">
@@ -317,132 +171,13 @@
           <div class="bus-feed" id="bus-feed"><span style="color:var(--muted);font-size:10px">connecting...</span></div>
         </div>
       </div>
->>>>>>> theirs
     </div>
+
     <script>
-<<<<<<< ours
-      (() => {
-        const boot = document.getElementById('terminal-boot');
-        const title = document.getElementById('terminal-boot-title');
-        const detail = document.getElementById('terminal-boot-detail');
-        const snippet = document.getElementById('terminal-snippet');
-        const progressBar = document.getElementById('terminal-progress-bar');
-        const panel = document.getElementById('terminal-diagnostic-panel');
-        const diagnostics = { startedAt: new Date().toISOString(), mounted: false, events: [] };
-        let mounted = false;
-        let progressInterval;
-        let snippetInterval;
-
-        const snippets = [
-          'THINK: Knowledge is the bridge between data and wisdom.',
-          'KUDBEE: Orchestrating intelligence across distributed systems.',
-          'THINK: Every agent is a node in the collective consciousness.',
-          'KUDBEE: Building the future of autonomous collaboration.',
-          'THINK: From chaos emerges order, from data emerges insight.',
-          'KUDBEE: Where artificial meets authentic intelligence.',
-          'THINK: The swarm thinks as one, yet each agent knows itself.',
-          'KUDBEE: Transforming complexity into clarity.',
-          'THINK: Memory is the foundation of learning.',
-          'KUDBEE: Empowering agents with persistent knowledge.',
-          'THINK: In the network of minds, no thought is isolated.',
-          'KUDBEE: Scaling intelligence through distributed wisdom.',
-          'THINK: Every decision is a step toward optimization.',
-          'KUDBEE: The architecture of autonomous excellence.',
-          'THINK: Data flows like rivers through the neural landscape.',
-          'KUDBEE: Where agents become architects of possibility.'
-        ];
-
-        const redact = (value) => String(value || '').slice(0, 240).replace(/(api[_-]?key|token|secret|password)=?[^\s&]+/gi, '$1=[redacted]');
-        const persist = () => { try { sessionStorage.setItem('kudbee-terminal-diagnostics', JSON.stringify(diagnostics)); } catch {} };
-        const record = (event) => { diagnostics.events.push({ at: new Date().toISOString(), ...event }); diagnostics.events = diagnostics.events.slice(-20); persist(); };
-        
-        const showFailure = (message) => {
-          if (mounted) return;
-          clearInterval(progressInterval);
-          clearInterval(snippetInterval);
-          title.textContent = 'Terminal startup needs attention';
-          detail.textContent = `${message}\n\nUse Copy diagnostics before retrying. No credentials are included.`;
-          snippet.textContent = 'ERROR: System initialization interrupted.';
-          snippet.style.borderLeftColor = '#ef4444';
-          snippet.style.background = 'rgba(239, 68, 68, 0.1)';
-          snippet.style.color = '#fca5a5';
-          panel.hidden = false;
-        };
-
-        // Animate progress bar
-        let progress = 0;
-        progressInterval = setInterval(() => {
-          progress += Math.random() * 15;
-          if (progress > 90) progress = 90;
-          progressBar.style.width = progress + '%';
-        }, 300);
-
-        // Rotate snippets
-        let snippetIndex = 0;
-        snippetInterval = setInterval(() => {
-          snippetIndex = (snippetIndex + 1) % snippets.length;
-          snippet.style.animation = 'none';
-          setTimeout(() => {
-            snippet.textContent = snippets[snippetIndex];
-            snippet.style.animation = 'fadeIn 0.5s ease-in';
-          }, 50);
-        }, 3000);
-
-        window.__KUDBEE_TERMINAL_DIAGNOSTICS__ = diagnostics;
-        window.__KUDBEE_TERMINAL_DIAGNOSTICS__.getReport = () => JSON.stringify(diagnostics, null, 2);
-        
-        window.addEventListener('error', (event) => {
-          const target = event.target;
-          const asset = target && (target.src || target.href);
-          record({ kind: asset ? 'asset-error' : 'runtime-error', message: redact(event.message || 'resource failed'), asset: asset || undefined });
-          showFailure(asset ? `Unable to load terminal asset: ${asset}` : `Runtime error: ${redact(event.message || 'unknown error')}`);
-        }, true);
-        
-        window.addEventListener('unhandledrejection', (event) => {
-          const message = redact(event.reason?.message || event.reason || 'unhandled promise rejection');
-          record({ kind: 'unhandled-rejection', message });
-          showFailure(`Unhandled startup error: ${message}`);
-        });
-        
-        window.addEventListener('kudbee:terminal_error', (event) => {
-          const message = redact(event.detail?.message || 'terminal component error');
-          record({ kind: 'component-error', panel: event.detail?.panel, message });
-          showFailure(`Terminal component error: ${message}`);
-        });
-        
-        window.addEventListener('kudbee:terminal_mounted', () => {
-          mounted = true;
-          diagnostics.mounted = true;
-          diagnostics.mountedAt = new Date().toISOString();
-          persist();
-          clearInterval(progressInterval);
-          clearInterval(snippetInterval);
-          progressBar.style.width = '100%';
-          setTimeout(() => {
-            boot.classList.add('fade-out');
-            setTimeout(() => boot.hidden = true, 500);
-          }, 300);
-        }, { once: true });
-        
-        document.getElementById('terminal-copy-diagnostics').addEventListener('click', async () => {
-          const report = window.__KUDBEE_TERMINAL_DIAGNOSTICS__.getReport();
-          try { await navigator.clipboard.writeText(report); } catch { detail.textContent = `${detail.textContent}\n\n${report}`; }
-        });
-        
-        document.getElementById('terminal-retry').addEventListener('click', () => window.location.reload());
-        
-        setTimeout(() => {
-          if (!mounted) {
-            record({ kind: 'mount-timeout', message: 'React terminal did not mount within 12 seconds' });
-            showFailure('The terminal did not finish mounting within 12 seconds.');
-          }
-        }, 12000);
-      })();
-=======
       const API = '';
-      const cmds = []; let cmdIdx = -1; let sysOnline = false;
+      const cmds = []; let cmdIdx = -1;
 
-      // ── Launch sequence ──
+      // ── Launch ──
       (async function boot(){
         const fill = document.getElementById('launch-fill');
         const msg = document.getElementById('launch-msg');
@@ -450,71 +185,63 @@
           ['Connecting to Control Tower...', 20],
           ['Verifying agent fleet...', 45],
           ['Loading shield metrics...', 70],
-          ['Syncing roadmap...', 90],
+          ['Syncing roadmap + health...', 90],
           ['Ready.', 100]
         ];
         for(const [text, pct] of steps){
           fill.style.width = pct + '%';
           msg.textContent = text;
-          await new Promise(r=>setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 250));
         }
         document.getElementById('launch').classList.add('hidden');
         init();
       })();
 
-      // ── API helper ──
       async function call(endpoint, opts = {}){
-        const signal = AbortSignal.timeout(20000);
         try {
-          const res = await fetch(API + endpoint, { headers: {'Content-Type':'application/json'}, signal, ...opts });
+          const res = await fetch(API + endpoint, {
+            headers: {'Content-Type':'application/json'},
+            signal: AbortSignal.timeout(20000), ...opts
+          });
           return await res.json();
-        } catch(e) { return { error: e.message }; }
+        } catch { return { error: 'network' }; }
       }
 
       // ── Top bar ──
       async function updateTopBar(){
-        try {
-          const h = await call('/health');
-          if(!h || h.error){ setTop('OFFLINE','offline'); return; }
-          sysOnline = h.status === 'ok' || h.dependencies;
-          setTop(sysOnline ? 'ONLINE' : 'DEGRADED', sysOnline ? 'live' : 'degraded');
-          document.getElementById('sys-env').textContent = (h.phase || '—').toUpperCase();
-        } catch { setTop('OFFLINE','offline'); }
+        const h = await call('/health');
+        if(!h || h.error){ setTop('OFFLINE','offline'); return; }
+        sysOnline = h.status === 'ok' || h.dependencies;
+        setTop(sysOnline ? 'ONLINE' : 'DEGRADED', sysOnline ? 'live' : 'degraded');
+        document.getElementById('sys-env').textContent = (h.phase || '—').toUpperCase();
       }
       function setTop(label, cls){
         document.getElementById('sys-status').textContent = label;
         document.getElementById('sys-dot').className = 'dot ' + cls;
       }
 
-      // ── Swarm tree ──
+      // ── Fleet ──
       async function updateSwarm(){
-        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/swarm status'}) });
-        if(!r || r.type !== 'swarm:status') return document.getElementById('swarm-tree').innerHTML =
-          '<span style="color:var(--rose);font-size:10px">swarm unreachable</span>';
+        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/swarm'}) });
+        if(!r || r.type !== 'swarm:status') return;
         document.getElementById('swarm-tree').innerHTML = (r.tree||[]).map(a =>
-          '<div class="agent-item">'
-          + '<span class="agent-dot ' + (a.status==='online'?'online':'unknown') + '"></span>'
-          + a.agent
-          + '<span style="flex:1"></span>'
-          + '<span class="agent-subs">' + (a.subs?.length||0) + '</span>'
-          + '</div>'
+          '<div class="agent-item"><span class="agent-dot ' + (a.status==='online'?'online':'unknown') + '"></span>'
+          + a.agent + '<span class="agent-subs">' + (a.subs?.length||0) + '</span></div>'
         ).join('');
       }
 
       // ── Shield ──
       async function updateShield(){
-        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/shield monitor'}) });
+        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/shield'}) });
         if(!r || r.type !== 'shield:metrics') return;
         const layers = r.layers || {};
         let h = '';
         for(const [k,l] of Object.entries(layers)){
-          const mag = l.magnitude||0; const safe = l.status==='safe';
-          h += '<div class="shield-metric">'
-            + '<div class="shield-row"><span class="shield-key">' + l.name + ' (' + k + ')</span><span class="shield-val">' + mag.toFixed(2) + (safe?' ✓':' ⚠') + '</span></div>'
-            + '<div class="shield-track"><div class="shield-fill" style="width:'+(mag*100)+'%;background:'+(safe?'var(--emerald)':'var(--amber)')+'"></div></div>'
-            + '</div>';
+          const mag = l.magnitude||0, safe = l.status==='safe';
+          h += '<div class="shield-metric"><div class="shield-row"><span class="shield-key">' + l.name + ' (' + k + ')</span>'
+            + '<span class="shield-val">' + mag.toFixed(2) + '</span></div>'
+            + '<div class="shield-track"><div class="shield-fill" style="width:' + (mag*100) + '%;background:' + (safe?'var(--emerald)':'var(--amber)') + '"></div></div></div>';
         }
-        h += '<div style="font-size:10px;color:var(--muted);margin-top:4px">' + (r.overall||'') + '</div>';
         document.getElementById('shield-metrics').innerHTML = h;
       }
 
@@ -522,33 +249,45 @@
       async function updateRoadmap(){
         const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/roadmap'}) });
         if(!r || r.total === undefined) return;
-        const phaseDot = {shipped:'●',verified:'○',in_progress:'◉',planned:'·'};
         document.getElementById('roadmap').innerHTML = (r.phases||[]).map(p =>
-          '<div class="phase-item">'
-          + '<span class="phase-id p-' + p.status + '">' + p.id + '</span>'
-          + '<span class="phase-name">' + p.name + '</span>'
-          + '<span class="phase-dot p-' + p.status + '"></span>'
-          + '</div>'
+          '<div class="phase-item"><span class="phase-id p-' + p.status + '">' + p.id + '</span>'
+          + '<span class="phase-name">' + p.name + '</span><span class="phase-dot p-' + p.status + '"></span></div>'
         ).join('');
       }
 
-      // ── Bus feed ──
-      async function updateBus(){
-        const el = document.getElementById('bus-feed');
-        try {
-          const r = await call('/api/ci/status');
-          el.innerHTML = '<div>CI: ' + (r.status||'?') + '</div>';
-        } catch { el.innerHTML = '<div>bus offline</div>'; }
+      // ── Engineering health pulse ──
+      async function updatePulse(){
+        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command:'/pulse'}) });
+        if(!r || r.type !== 'health:pulse') return;
+        const m = r.metrics || {};
+        const row = (label, val, ok) =>
+          '<div class="pulse-row"><span>' + label + '</span><span class="pulse-val ' + (ok?'ok':'warn') + '">' + val + '</span></div>';
+        document.getElementById('pulse').innerHTML =
+          row('CI', (m.ciDetail||'?') + ' ' + (m.ci||0) + '%', (m.ci||0) >= 90) +
+          row('Tests/E2E', (m.tests||'?') + ' / ' + (m.e2e||'?'), true) +
+          row('Agents', (m.agents||'?') + '/11', (m.agents||0) >= 10) +
+          row('Knowledge', (m.knowledgeHealth||0) + '%', (m.knowledgeHealth||0) >= 90) +
+          row('Mock data', m.mockData || 0, !(m.mockData > 0)) +
+          row('Bootstrap', (m.bootstrapAgeHours ?? '?') + 'h', (m.bootstrapAgeHours ?? 24) < 24) +
+          row('Avg PR files', m.avgPrFiles || '?', true) +
+          row('Learning', m.learningEventsToday || 0, true);
       }
 
-      // ── Command execution ──
+      // ── Bus ──
+      async function updateBus(){
+        const r = await call('/api/ci/status');
+        document.getElementById('bus-feed').innerHTML =
+          '<div>CI: ' + (r.status||'?') + '</div><div>last: ' + (r.lastRun ? new Date(r.lastRun).toLocaleTimeString() : '—') + '</div>';
+      }
+
+      // ── Terminal ──
       function addMsg(type, text, extra){
         const o = document.getElementById('output');
-        const div = document.createElement('div');
-        div.className = 'msg ' + type;
-        div.textContent = text;
-        if(extra) { const pre = document.createElement('div'); pre.className = 'mono'; pre.textContent = extra; div.appendChild(pre); }
-        o.appendChild(div);
+        const d = document.createElement('div');
+        d.className = 'msg ' + type;
+        d.textContent = text;
+        if(extra){ const p = document.createElement('div'); p.className='mono'; p.textContent = extra; d.appendChild(p); }
+        o.appendChild(d);
         o.scrollTop = o.scrollHeight;
       }
       async function execute(cmd){
@@ -558,52 +297,49 @@
         addMsg('cmd', command);
         cmds.push(command); cmdIdx = cmds.length;
         input.value = '';
-        try {
-          const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command}) });
-          if(r.error || r.type === 'terminal:error'){
-            addMsg('error', '✗ ' + (r.message || r.error));
-          } else if(r.answer){
-            addMsg('resp', r.answer,
-              'model: ' + r.model + ' · ' + r.latencyMs + 'ms · '
-              + (r.usage?.promptTokens||0) + '+' + (r.usage?.completionTokens||0) + ' tokens'
-            );
-          } else if(r.percentComplete !== undefined){
-            addMsg('info', 'Roadmap: ' + r.percentComplete + '% · ' + r.total + ' phases · ' + r.shipped + ' shipped');
-          } else if(r.type){
-            addMsg('resp', JSON.stringify(r).slice(0, 500));
-          }
-        } catch(e){ addMsg('error', '✗ ' + e.message); }
-        updateSwarm(); updateShield(); updateRoadmap(); updateBus();
+        const r = await call('/api/terminal/execute', { method:'POST', body:JSON.stringify({command}) });
+        if(r.error || r.type === 'terminal:error'){
+          addMsg('error', '✗ ' + (r.message || r.error || 'command failed'));
+        } else if(r.answer){
+          addMsg('resp', r.answer, 'model: ' + (r.model||'?') + ' · ' + (r.latencyMs||0) + 'ms · '
+            + (r.usage?.promptTokens||0) + '+' + (r.usage?.completionTokens||0) + ' tokens');
+        } else if(r.percentComplete !== undefined){
+          addMsg('info', 'Roadmap: ' + r.percentComplete + '% · ' + r.shipped + '/' + r.total + ' shipped');
+        } else if(r.metrics){
+          const m = r.metrics;
+          addMsg('resp', 'ENGINEERING HEALTH', 'CI: ' + (m.ciDetail||'?') + ' ' + (m.ci||0) + '%\nTests/E2E: ' + (m.tests||'?') + '/' + (m.e2e||'?')
+            + '\nAgents: ' + (m.agents||'?') + '/11 · Mock: ' + (m.mockData||0) + '\nBootstrap: ' + (m.bootstrapAgeHours ?? '?') + 'h · Avg PR: ' + (m.avgPrFiles||'?') + ' files');
+        } else if(r.code){
+          addMsg('resp', r.code, 'generated by ' + (r.model||'gemini'));
+        } else if(r.type){
+          addMsg('resp', JSON.stringify(r).slice(0, 600));
+        }
+        updateSwarm(); updateShield(); updateRoadmap(); updatePulse(); updateBus();
+      }
+      function quick(cmd){
+        const input = document.getElementById('cmd-input');
+        input.value = cmd;
+        execute();
       }
 
       // ── Init ──
       async function init(){
-        await Promise.all([updateTopBar(), updateSwarm(), updateShield(), updateRoadmap(), updateBus()]);
+        await Promise.all([updateTopBar(), updateSwarm(), updateShield(), updateRoadmap(), updatePulse(), updateBus()]);
         setInterval(updateTopBar, 15000);
         setInterval(updateSwarm, 10000);
         setInterval(updateShield, 10000);
         setInterval(updateRoadmap, 30000);
+        setInterval(updatePulse, 30000);
         setInterval(updateBus, 20000);
         document.getElementById('cmd-input').focus();
       }
 
-      // ── Keyboard shortcuts ──
+      // ── Keyboard ──
       document.addEventListener('keydown', e => {
-        if(e.key === 'ArrowUp' && cmdIdx > 0){
-          e.preventDefault();
-          document.getElementById('cmd-input').value = cmds[--cmdIdx] || '';
-        }
-        if(e.key === 'ArrowDown' && cmdIdx < cmds.length - 1){
-          e.preventDefault();
-          document.getElementById('cmd-input').value = cmds[++cmdIdx] || '';
-        }
-        if(e.ctrlKey && e.key === 'l'){
-          e.preventDefault();
-          document.getElementById('output').innerHTML = '';
-        }
+        if(e.key === 'ArrowUp' && cmdIdx > 0){ e.preventDefault(); document.getElementById('cmd-input').value = cmds[--cmdIdx] || ''; }
+        if(e.key === 'ArrowDown' && cmdIdx < cmds.length - 1){ e.preventDefault(); document.getElementById('cmd-input').value = cmds[++cmdIdx] || ''; }
+        if(e.ctrlKey && e.key === 'l'){ e.preventDefault(); document.getElementById('output').innerHTML = ''; }
       });
->>>>>>> theirs
     </script>
-    <script type="module" src="/src/terminal.tsx"></script>
   </body>
 </html>

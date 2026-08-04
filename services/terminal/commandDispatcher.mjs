@@ -147,6 +147,233 @@ async function handleHandoff() {
   }
 }
 
+<<<<<<< ours
+=======
+// ── /pulse — Engineering Health (Directive #9: health, not features) ─────────
+
+async function handlePulse() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/engineering-health.mjs', '--json'], { cwd: root, timeout: 25000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try { return { type: 'health:pulse', ...JSON.parse(out), timestamp: new Date().toISOString() }; }
+    catch { return { type: 'health:pulse', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Pulse unavailable: ${e.message}` };
+  }
+}
+
+// ── /guardian — Repository preflight gate (OPS-GIT-002 Rule 9) ───────────────
+
+async function handleGuardian() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/repository-guardian.mjs', '--json'], { cwd: root, timeout: 25000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try { return { type: 'guardian:report', ...JSON.parse(out), timestamp: new Date().toISOString() }; }
+    catch { return { type: 'guardian:report', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Guardian unavailable: ${e.message}` };
+  }
+}
+
+// ── /crypto — Live crypto posture (runtime gate + node identity) ─────────────
+
+async function handleCrypto() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/verify-crypto-runtime.mjs'], { cwd: root, timeout: 20000, maxBuffer: 1024 * 256 },
+        (err, stdout) => res({ code: err ? err.code ?? 1 : 0, out: stdout || err?.message || '' }));
+    });
+    const passCount = (out.out.match(/\[PASS\]/g) || []).length;
+    const failCount = (out.out.match(/\[FAIL\]/g) || []).length;
+    return {
+      type: 'crypto:posture',
+      gate: out.code === 0 ? 'PASS' : 'FAIL',
+      passChecks: passCount,
+      failChecks: failCount,
+      detail: out.out.split('\n').filter(l => l.includes('[PASS]') || l.includes('[FAIL]')).slice(0, 20),
+      knowledgeCard: '.kilo/memory/snippets/crypto-posture-learnings.md',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Crypto gate unavailable: ${e.message}` };
+  }
+}
+
+// ── Scheduler handlers ────────────────────────────────────────────────────────
+
+async function handleSchedulerStatus() {
+  return {
+    type: 'scheduler:status',
+    jobs: [
+      { name: 'canary-probe', schedule: 'every 10 min', description: 'Proactive health probe (Heroku Scheduler)' },
+      { name: 'autonomous-maintenance', schedule: 'every 6 hours', description: 'GitHub Actions — self-heal gates + nightly review' },
+      { name: 'hermes-audit', schedule: 'every 60s', description: 'Hermes worker audit pass (memory + logic findings)' },
+    ],
+    total: 3,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function handleSchedulerRun(jobName) {
+  const valid = ['canary-probe', 'autonomous-maintenance', 'hermes-audit'];
+  if (!jobName || !valid.includes(jobName)) {
+    return { type: 'terminal:error', message: `Unknown scheduler job "${jobName}". Try: ${valid.join(', ')}` };
+  }
+  return {
+    type: 'scheduler:run',
+    job: jobName,
+    status: 'queued',
+    note: 'Scheduler jobs are triggered externally (Heroku Scheduler / GitHub Actions). This confirms the job is recognized.',
+    timestamp: new Date().toISOString(),
+  };
+}
+
+// ── /middleware — Live middleware chain report (ties dispatcher to pipeline) ──
+
+const MIDDLEWARE_LAYERS = [
+  { id: 1, name: 'Request Duration Tracker', impl: 'server.js inline', guard: null, status: 'active' },
+  { id: 2, name: 'Spheroid Audit', impl: 'spheroidGuard', guard: '5/45s', status: 'active' },
+  { id: 3, name: 'Rate Limiter', impl: 'middlewareGuard', guard: '5/30s + atomic EVAL', status: 'active' },
+  { id: 4, name: '15s Timeout', impl: 'timingGuard', guard: '3/60s', status: 'active' },
+  { id: 5, name: 'CORS Handler', impl: 'inline allowlist', guard: null, status: 'active' },
+  { id: 6, name: 'Body Parser', impl: 'express.json 10mb', guard: null, status: 'active' },
+  { id: 7, name: 'Bearer Auth', impl: 'authGuard', guard: '3/30s, HMAC+Ed25519', status: 'DISENGAGED (single-user)' },
+  { id: 8, name: 'KiloBridge Budget', impl: 'budgetGuard', guard: '3/30s, Redis INCRBY', status: 'DISENGAGED (v2.2)' },
+  { id: 9, name: 'ECP Singleflight', impl: 'ecpGuard', guard: '3/60s, response replay', status: 'active' },
+  { id: 10, name: 'API Rate Limiter', impl: 'express-rate-limit', guard: '100/min/IP global', status: 'active' },
+  { id: 11, name: 'Zod Validation', impl: 'validationGuard', guard: '2/30s', status: 'active' },
+  { id: 'R', name: 'Global Error Handler', impl: '4-arg Express', guard: null, status: 'active' },
+];
+
+async function handleMiddleware() {
+  const active = MIDDLEWARE_LAYERS.filter(l => l.status === 'active').length;
+  const disengaged = MIDDLEWARE_LAYERS.filter(l => l.status.includes('DISENGAGED')).length;
+  return {
+    type: 'middleware:report',
+    total: MIDDLEWARE_LAYERS.length,
+    active,
+    disengaged,
+    layers: MIDDLEWARE_LAYERS,
+    guardian: 'pipeline-guardian.agent scans these via `node scripts/agents.mjs run pipeline-guardian`',
+    timestamp: new Date().toISOString(),
+  };
+}
+
+// ── /struggle — The Struggle Log (friction → learning, never repeats) ─────────
+
+async function handleStruggle(mode = 'list') {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const scriptArgs = mode === 'trends' ? ['trends'] : ['list', '8'];
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/struggle-log.mjs', ...scriptArgs], { cwd: root, timeout: 15000, maxBuffer: 1024 * 256 },
+        (err, stdout) => res(stdout || err?.message || ''));
+    });
+    return {
+      type: 'struggle:log',
+      mode,
+      entries: out.split('\n').filter(l => l.includes(']') || l.includes('.')),
+      note: '/struggle trends → repeating patterns; /struggle list → recent',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Struggle log unavailable: ${e.message}` };
+  }
+}
+
+async function handleCrucible(mode = 'status') {
+  try {
+    // Status mode: read the ledger count without running a cycle.
+    if (mode === 'status' || mode === 'report') {
+      const { execFile } = await import('node:child_process');
+      const { join, dirname } = await import('node:path');
+      const { fileURLToPath } = await import('node:url');
+      const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+      // Try live ledger query via a small node one-liner against the pool.
+      const script = `
+        import { readFileSync } from "node:fs";
+        try { const e = JSON.parse(readFileSync(process.env.CRUCIBLE_ENV_FILE || "", "utf8")); for (const [k,v] of Object.entries(e)) if (v) process.env[k]=v; } catch {}
+        const { getDbPool } = await import("./services/lib/db.js");
+        const pool = getDbPool();
+        try {
+          const r = await pool.query("SELECT COUNT(*) as n FROM reasoning_ledger WHERE provider LIKE '%crucible%'");
+          const recent = await pool.query("SELECT id, result_status, created_at FROM reasoning_ledger WHERE provider LIKE '%crucible%' ORDER BY created_at DESC LIMIT 3");
+          console.log(JSON.stringify({ count: r.rows[0].n, recent: recent.rows.map(x => ({ id: String(x.id).slice(0,8), status: JSON.parse(x.result_status)?.status, at: x.created_at })) }));
+        } catch (e) { console.log(JSON.stringify({ error: e.message })); }
+        process.exit(0);
+      `;
+      const out = await new Promise(res => {
+        execFile('node', ['--input-type=module', '-e', script], {
+          cwd: root, timeout: 20000, maxBuffer: 1024 * 256,
+          env: { ...process.env, CRUCIBLE_ENV_FILE: process.env.CRUCIBLE_ENV_FILE || '' },
+        }, (err, stdout) => res(stdout || err?.message || '{}'));
+      });
+      // stdout may contain [DB] log lines — extract the last JSON line.
+      const jsonLine = out.split('\n').filter(l => l.trim().startsWith('{')).pop() || out;
+      try {
+        const parsed = JSON.parse(jsonLine);
+        return {
+          type: 'crucible:status',
+          operational: !parsed.error,
+          ledgerEntries: parsed.count ?? null,
+          recent: parsed.recent ?? [],
+          maxCyclesPerBoot: 5,
+          note: 'Run /crucible run to execute a new adversarial cycle.',
+          timestamp: new Date().toISOString(),
+        };
+      } catch {
+        return { type: 'crucible:status', operational: false, ledgerEntries: null, raw: out.slice(0, 300), timestamp: new Date().toISOString() };
+      }
+    }
+
+    // Run mode: execute one adversarial cycle with a hard timeout.
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const script = `
+      const { runCrucibleCycle } = await import("./services/agents/crucible.js");
+      const timer = setTimeout(() => { console.log(JSON.stringify({ success: false, message: "timeout" })); process.exit(1); }, 40000);
+      const r = await runCrucibleCycle();
+      clearTimeout(timer);
+      console.log(JSON.stringify({ success: r.success, cycle: r.cycle, maxCycles: r.maxCycles, taskId: r.taskId, traceId: r.traceId, message: r.message }));
+      process.exit(0);
+    `;
+    const out = await new Promise(res => {
+      execFile('node', ['--input-type=module', '-e', script], { cwd: root, timeout: 45000, maxBuffer: 1024 * 256 }, (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    const jsonLine = out.split('\n').filter(l => l.trim().startsWith('{')).pop() || out;
+    try {
+      const parsed = JSON.parse(jsonLine);
+      return { type: 'crucible:run', ...parsed, timestamp: new Date().toISOString() };
+    } catch {
+      return { type: 'crucible:run', success: false, raw: out.slice(0, 300), timestamp: new Date().toISOString() };
+    }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Crucible unavailable: ${e.message}` };
+  }
+}
+
+>>>>>>> theirs
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
@@ -239,6 +466,21 @@ async function dispatchCommand(input) {
   if (cmd === '/echo') return handleEcho();
   if (cmd === '/forecast') return handleForecast();
   if (cmd === '/handoff' || cmd === '/brief') return handleHandoff();
+<<<<<<< ours
+=======
+  if (cmd === '/pulse' || cmd === '/health-metrics') return handlePulse();
+  if (cmd === '/guardian' || cmd === '/preflight') return handleGuardian();
+  if (cmd === '/crypto' || cmd === '/crypt') return handleCrypto();
+  if (cmd === '/middleware' || cmd === '/pipeline') return handleMiddleware();
+  if (cmd === '/crucible') {
+    const mode = parts[1] || 'status';
+    return handleCrucible(mode);
+  }
+  if (cmd === '/struggle' || cmd === '/struggles') {
+    const mode = parts[1] || 'list';
+    return handleStruggle(mode);
+  }
+>>>>>>> theirs
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {

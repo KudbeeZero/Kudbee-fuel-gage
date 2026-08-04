@@ -58,7 +58,6 @@ import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
 import { apiGet } from './lib/apiClient';
 import { useOsSnapshot } from './components/OsStreamProvider';
-import { LoginView } from './components/LoginView';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
 
@@ -141,9 +140,9 @@ export interface DashboardSummary {
 // --- MAIN APPLICATION ENTRY WITH SIDEBAR ROUTING ---
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    typeof window !== 'undefined' && localStorage.getItem('kudbee_session') === 'authenticated'
-  );
+  // Single-user directive (Engineering OS v2.2): no password gate.
+  // The backend security layers are disengaged; the UI enters directly.
+  const [isAuthenticated] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
@@ -480,16 +479,6 @@ export default function App() {
     return null;
   }
 
-  if (!isAuthenticated) {
-    return (
-      <>
-        {!reducedMotion && <div className="crt-overlay" />}
-        {!reducedMotion && <div className="crt-scanline" />}
-        <LoginView onAuthenticate={() => setIsAuthenticated(true)} />
-      </>
-    );
-  }
-
   return (
     <div className={`min-h-screen ${theme === 'Midnight' ? 'theme-midnight bg-black text-zinc-100' : 'theme-deepspace bg-slate-950 text-slate-300'} font-sans flex flex-col selection:bg-emerald-500/30`}>
       {!reducedMotion && <div className="crt-overlay" />}
@@ -508,16 +497,6 @@ export default function App() {
               <span className="font-mono text-[9px] text-emerald-500 uppercase tracking-widest block mt-1">Fuel Gauge v1.0</span>
             </div>
           </div>
-          <button 
-            onClick={() => {
-              localStorage.removeItem('kudbee_session');
-              setIsAuthenticated(false);
-            }}
-            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer ml-auto"
-            title="Lock Session"
-          >
-            <Lock className="w-4 h-4" />
-          </button>
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -635,16 +614,6 @@ export default function App() {
                     <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.7)]"></span>
                   </div>
-                  <button 
-                    onClick={() => {
-                      localStorage.removeItem('kudbee_session');
-                      setIsAuthenticated(false);
-                    }}
-                    className="p-1.5 text-slate-500 hover:text-red-400 bg-slate-900 rounded border border-slate-800 transition-colors cursor-pointer"
-                    title="Lock Session"
-                  >
-                    <Lock className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
               <div className="w-full">
