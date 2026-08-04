@@ -1,0 +1,11 @@
+{
+  "id": "dec-1785811354648-4a035ebb",
+  "agentId": "ci-watcher",
+  "decision": "verification_complete",
+  "context": {
+    "context": "bounded contract, integration, learning, smoke, and knowledge gates executed",
+    "source": "terminal"
+  },
+  "timestamp": "2026-08-04T02:42:34.648Z",
+  "decoded": false
+}
