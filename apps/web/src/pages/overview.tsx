@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -10,12 +10,15 @@ import {
   Database,
   Radio,
   RefreshCw,
+  Scale,
   ShieldCheck,
   WifiOff,
   XCircle,
 } from 'lucide-react';
 import { useOverviewHealth, type HealthSignal, type IncidentSeverity, type OverviewIncident, type OverviewState } from '../hooks/useOverviewHealth';
 import { SystemPulse } from '../components/dashboard/SystemPulse';
+import { useGovernanceHealth } from '../hooks/useGovernanceHealth';
+import { apiGet } from '../lib/apiClient';
 
 interface OverviewPageProps {
   onNavigate: (tab: string) => void;
@@ -127,7 +130,15 @@ function IncidentList({ incidents, selectedId, onSelect }: { incidents: Overview
 
 export function OverviewPage({ onNavigate }: OverviewPageProps) {
   const { overview, loading, error, refreshing, refresh } = useOverviewHealth();
+  const { health: govHealth } = useGovernanceHealth(5000);
+  const [proposals, setProposals] = useState<{id:string; action:string; tags:string[]; created_at:string}[]>([]);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(overview.incidents[0]?.id ?? null);
+
+  useEffect(() => {
+    apiGet<{id:string; action:string; tags:string[]; created_at:string}[]>('/api/governance/proposed')
+      .then(d => setProposals(Array.isArray(d) ? d.slice(0, 5) : []))
+      .catch(() => setProposals([]));
+  }, []);
   const selectedIncident = overview.incidents.find((incident) => incident.id === selectedIncidentId) || overview.incidents[0] || null;
   const overallStyle = stateStyles[overview.overallState];
 
@@ -155,6 +166,25 @@ export function OverviewPage({ onNavigate }: OverviewPageProps) {
       </header>
 
       <SystemPulse />
+
+      {proposals.length > 0 && (
+        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-amber-300/80">
+            <Scale className="h-3.5 w-3.5" /> Governance Queue
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {proposals.slice(0, 4).map(p => (
+              <div key={p.id} className="flex items-center justify-between rounded-md border border-slate-800/60 bg-slate-950/40 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-slate-200">{p.action}</p>
+                  <p className="text-[10px] text-slate-500">{p.tags?.join(', ')}</p>
+                </div>
+                <span className="shrink-0 font-mono text-[9px] text-slate-600">{new Date(p.created_at).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className={`relative overflow-hidden rounded-2xl border p-5 sm:p-6 ${overallStyle.border} ${overallStyle.background}`}>
         <div className="absolute -right-16 -top-24 h-56 w-56 rounded-full bg-emerald-300/[0.06] blur-3xl" />
