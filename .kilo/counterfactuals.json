@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T21:20:08.521Z",
+  "records": [
+    {
+      "recordId": "CF-1785878408521",
+      "decision": "DEC-0001",
+      "chosenStrategy": "Weighted multi-signal ranking: semantic 0.40, verification 0.15, KD 0.10, recency 0.10, frequency 0.15, approval 0.10",
+      "winner": "chosen",
+      "alternatives": [
+        {
+          "name": "Keep keyword overlap",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        },
+        {
+          "name": "KD-dominated weighting (0.20)",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        }
+      ],
+      "chosenEvidence": {
+        "precision": 0.083,
+        "recall": 0.25,
+        "run": "RUN-003"
+      },
+      "confidence": 0.88,
+      "status": "CONFIRMED",
+      "reason": "Chosen path measured 8.3% precision / 25.0% recall on RUN-003; no alternative shows better measured evidence.",
+      "replayedAt": "2026-08-04T21:20:08.521Z"
+    },
+    {
+      "recordId": "CF-1785878415311",
+      "decision": "DEC-0002",
+      "chosenStrategy": "Stop weight tuning; pivot to benchmark suite expansion",
+      "winner": "unevaluated",
+      "alternatives": [
+        {
+          "name": "Search wider weight space",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        },
+        {
+          "name": "Increase iterations",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        },
+        {
+          "name": "Accept local optimum",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        }
+      ],
+      "chosenEvidence": {
+        "precision": null,
+        "recall": null,
+        "run": "OPT-1"
+      },
+      "confidence": 0.92,
+      "status": "INSUFFICIENT_DATA",
+      "reason": "No measured outcome evidence exists yet \u2014 cannot judge.",
+      "replayedAt": "2026-08-04T21:20:15.311Z"
+    },
+    {
+      "recordId": "CF-1785878415348",
+      "decision": "DEC-0003",
+      "chosenStrategy": "Every PR/incident proposes a Draft benchmark; human approval promotes to Canonical",
+      "winner": "unevaluated",
+      "alternatives": [
+        {
+          "name": "Manual benchmark authoring",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        },
+        {
+          "name": "Auto-promote all drafts",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        }
+      ],
+      "chosenEvidence": {
+        "precision": null,
+        "recall": null,
+        "run": "COVERAGE-001"
+      },
+      "confidence": 0.89,
+      "status": "INSUFFICIENT_DATA",
+      "reason": "No measured outcome evidence exists yet \u2014 cannot judge.",
+      "replayedAt": "2026-08-04T21:20:15.348Z"
+    }
+  ]
+}
