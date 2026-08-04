@@ -17,7 +17,6 @@
  *   3. VERIFY   — staging validation and mobile testing
  * ---------------------------------------------------------------------------
  */
-
 export const ROADMAP = {
   version: '0.1',
   updatedAt: '2026-08-04T00:30:00Z',
@@ -128,7 +127,7 @@ export function getRoadmapStatus() {
   };
 }
 
-// Phase 11 added by agent_1e4b0149 on 2026-08-04T03:20Z
+
 ROADMAP.phases.push({
   id: 'PHASE-11',
   name: 'Terminal Gemini Integration',
@@ -136,4 +135,13 @@ ROADMAP.phases.push({
   status: 'shipped',
   dependsOn: ['PHASE-5'],
   scope: '/ask command with real Gemini inference, token tracking, budget gate',
+});
+
+ROADMAP.phases.push({
+  id: "PHASE-12",
+  name: "Autonomous Self-Healing + Inventions",
+  category: "OPS",
+  status: "in_progress",
+  dependsOn: ["PHASE-11"],
+  scope: "THINK token learning loop, Echo Prompt Library, Failure Forecaster, self-heal gates every 6h",
 });

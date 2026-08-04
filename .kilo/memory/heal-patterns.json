@@ -1,0 +1,10 @@
+{
+  "patterns": [
+    {
+      "signature": "error TSN: Cannot find name \"foo\"|Error: Command failed with exit code N|Failed to compile",
+      "diagnosis": "FIX: define foo before use — add `const foo = 1;` to the file.",
+      "createdAt": "2026-08-04T06:18:05.272Z",
+      "hits": 2
+    }
+  ]
+}

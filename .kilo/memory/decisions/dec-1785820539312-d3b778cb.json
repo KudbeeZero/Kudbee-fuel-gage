@@ -1,0 +1,10 @@
+{
+  "id": "dec-1785820539312-d3b778cb",
+  "agentId": "ci-watcher",
+  "decision": "error:critical production verification after hermes quota fix",
+  "context": {
+    "error": "Command failed: set -eu\n\necho \"[ci-watcher] Running bounded verification smoke...\"\n\necho \"\"\necho \"  Gate 1: Agent contracts\"\nnpm run verify:agent-contracts\n\necho \"\"\necho \"  Gate 2: Integration availability\"\nnpm run verify:integrations\n\necho \"\"\necho \"  Gate 3: Node crypto runtime\"\nnpm run verify:crypto\n\necho \"\"\necho \"  Gate 4: Learning protocol\"\nnpm run verify:learning-protocol\n\necho \"\"\necho \"  Gate 5: E2E smoke (provider writes disabled)\"\nif [ \"${E2E_ALLOW_DATABASE_WRITES:-0}\" = \"1\" ]; then\n  echo \"  E2E_ALLOW_DATABASE_WRITES=1; running full database-writing E2E\"\n  node scripts/verify-e2e.mjs\nelse\n  echo \"  E2E_ALLOW_DATABASE_WRITES is not 1; running isolated bounded smoke\"\n  node scripts/verify-e2e.mjs --smoke\nfi\n\nif [ \"${CI_WATCHER_FULL:-0}\" = \"1\" ]; then\n  echo \"\"\n  echo \"  Extended gates: Typecheck\"\n  npm run typecheck\n\n  echo \"\"\n  echo \"  Extended gates: Tests\"\n  (cd services/lib && npx -y bun test test/)\n\n  echo \"\"\n  echo \"  Extended gates: Build\"\n  npm run build --workspace=@kudbee/web\nelse\n  echo \"\"\n  echo \"  Extended gates skipped by default; set CI_WATCHER_FULL=1 for local extended checks\"\nfi\n\necho \"\"\necho \"  Gate 5: Knowledge health\"\nnode scripts/snippet-agent.mjs health\n\nnode scripts/agents.mjs decide ci-watcher \"verification_complete\" \"bounded contract, integration, learning, smoke, and knowledge gates executed\"\n[E2E] Fatal error: Cannot find module 'tsx/cli'\nRequire stack:\n- /workspace/2e6dc741-8901-47c1-a77a-1e16175361df/sessions/agent_1e4b0149-e4bd-48d0-8b36-d143adea47d0/scripts/verify-e2e.mjs\n[E2E] VERIFICATION FAILED\n"
+  },
+  "timestamp": "2026-08-04T05:15:39.312Z",
+  "decoded": false
+}

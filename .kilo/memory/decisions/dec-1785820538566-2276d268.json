@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785820538566-2276d268",
+  "agentId": "ci-watcher",
+  "decision": "run:critical production verification after hermes quota fix",
+  "context": {
+    "action": "execute",
+    "task": "critical production verification after hermes quota fix",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T05:15:38.566Z",
+  "decoded": false
+}

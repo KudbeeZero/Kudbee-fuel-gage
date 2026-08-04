@@ -187,11 +187,20 @@
       "score": 8
     },
     {
+<<<<<<< ours
       "query": "audit middleware layers for production readiness",
       "timestamp": "2026-08-04T05:03:28.753Z",
       "score": 8
     }
   ],
   "lastRecall": "2026-08-04T05:03:28.753Z",
+=======
+      "query": "audit middleware after hermes circuit breaker deploy",
+      "timestamp": "2026-08-04T05:15:38.631Z",
+      "score": 9
+    }
+  ],
+  "lastRecall": "2026-08-04T05:15:38.631Z",
+>>>>>>> theirs
   "recallCount": 38
 }

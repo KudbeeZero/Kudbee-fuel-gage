@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785820538566-27b17e81",
+  "agentId": "pipeline-guardian",
+  "decision": "run:audit middleware after hermes circuit breaker deploy",
+  "context": {
+    "action": "execute",
+    "task": "audit middleware after hermes circuit breaker deploy",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T05:15:38.567Z",
+  "decoded": false
+}

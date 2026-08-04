@@ -143,14 +143,39 @@ const app = express();
 if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 
 // --- CORS Handling (must be first middleware) ---
-const corsAllowOrigin = (process.env.CORS_ALLOW_ORIGINS || '*').split(',')[0].trim();
+// Strict allowlist — never wildcard in production. Falls back to same-origin.
+const allowedOrigins = new Set(
+  (process.env.CORS_ALLOW_ORIGINS || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com,https://kudbee-fuel-gage-330ade653a62.herokuapp.com')
+    .split(',').map(s => s.trim()).filter(Boolean)
+);
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', corsAllowOrigin);
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins.values().next().value || '');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Pass, X-Requested-With');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
   if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
+
+// --- Security Headers (military-grade baseline, zero friction) ---
+// CSP frame-ancestors blocks clickjacking; HSTS forces TLS; X-Content-Type
+// prevents MIME sniffing; Referrer-Policy limits leakage. Frame-Options is
+// redundant with CSP but kept for legacy browser coverage.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 
@@ -228,6 +253,16 @@ app.use(bearerAuth({ required: false }));
 
 // --- Phase 66: KiloBridge Token Budget Gate — enforces per-tenant token caps ---
 app.use(kiloBridgeBudget());
+
+// --- Global API rate limit (100 req/min/IP) — abuse & DoS defense ---
+// Exempts health probes, SSE streams, and the SPA shell (static assets).
+app.use((req, res, next) => {
+  const p = req.path;
+  if (p === '/health' || p.startsWith('/api/os-stream') || p.startsWith('/api/events') || p.startsWith('/assets/') || p === '/' || p.endsWith('.html') || p.endsWith('.js') || p.endsWith('.css')) {
+    return next();
+  }
+  apiLimiter(req, res, next);
+});
 
 // --- Phase 66: ECP Singleflight Cache — deduplicates concurrent GET requests ---
 app.use(ecpSingleflight());

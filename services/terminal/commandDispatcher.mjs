@@ -125,7 +125,85 @@ async function handleSchedulerRun(jobName) {
   }
 }
 
+<<<<<<< ours
 async function handleSchedulerStatus() {
+=======
+// ── /handoff — Instant situational awareness for any agent ───────────────────
+
+async function handleHandoff() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/handoff.mjs', '--json'], { cwd: root, timeout: 20000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try { return { type: 'handoff:briefing', ...JSON.parse(out), timestamp: new Date().toISOString() }; }
+    catch { return { type: 'handoff:briefing', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Handoff unavailable: ${e.message}` };
+  }
+}
+
+// ─── Main Dispatcher ─────────────────────────────────────────────────────────
+
+const HELP_TEXT = [
+  'KUDBEE Terminal — command reference',
+  '',
+  '  /ask <question>     Ask Gemini (plain text also works)',
+  '  /swarm [status]     Agent fleet tree',
+  '  /shield [monitor]   P·L·R·I shield metrics',
+  '  /roadmap            Phases to production',
+  '  /security           Security posture report',
+  '  /health             System health',
+  '  /status             System + fleet summary',
+  '  /agents             Alias for /swarm',
+  '  /scheduler [status] Scheduler jobs',
+  '  /threshold set k v  Adjust a threshold',
+  '  /agent kill <id>    Terminate an agent',
+  '  /help               This reference',
+  '',
+  'Tip: type any plain message to ask Gemini directly.',
+].join('\n');
+
+async function handleHelp() {
+  return { type: 'terminal:help', help: HELP_TEXT, timestamp: new Date().toISOString() };
+}
+
+async function handleHealth() {
+  return { type: 'terminal:health', status: 'ok', timestamp: new Date().toISOString() };
+}
+
+// ── Security posture report (ties hardening into the terminal) ─────────────
+
+async function handleSecurity() {
+  const report = {
+    type: 'security:posture',
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    },
+    cors: 'strict allowlist (staging + production origins only)',
+    rateLimit: '100 req/min/IP global · /health + SSE + static exempt',
+    bodyLimit: '10mb',
+    auth: 'open-access (single-user Engineering OS v2.2 directive)',
+    dependencies: {
+      runtime: '0 known vulnerabilities',
+      devToolchain: '17 (Expo/mobile: uuid, xcode, bunyan — not shipped to prod)',
+    },
+    timestamp: new Date().toISOString(),
+  };
+  return report;
+}
+
+async function handleStatus() {
+  const [swarm, shield] = await Promise.allSettled([handleSwarmStatus(), handleShieldMonitor()]);
+>>>>>>> theirs
   return {
     type: 'scheduler:status',
     jobs: Object.entries(SCHEDULER_JOBS).map(([name, j]) => ({ name, schedule: j.schedule, description: j.description })),
@@ -141,6 +219,41 @@ async function dispatchCommand(input) {
   const parts = (input || '').trim().split(/\s+/);
   const cmd = parts[0]?.toLowerCase();
 
+<<<<<<< ours
+=======
+  // Plain text (no slash) → treat as a question to Gemini
+  if (!cmd?.startsWith('/')) {
+    return handleAsk(raw);
+  }
+
+  // Bare commands default to their primary action
+  if (cmd === '/swarm') return handleSwarmStatus();
+  if (cmd === '/shield') return handleShieldMonitor();
+  if (cmd === '/scheduler') return handleSchedulerStatus();
+  if (cmd === '/agents') return handleSwarmStatus();
+  if (cmd === '/help' || cmd === '/?') return handleHelp();
+  if (cmd === '/health') return handleHealth();
+  if (cmd === '/status') return handleStatus();
+  if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
+  if (cmd === '/security' || cmd === '/sec') return handleSecurity();
+  if (cmd === '/echo') return handleEcho();
+  if (cmd === '/forecast') return handleForecast();
+  if (cmd === '/handoff' || cmd === '/brief') return handleHandoff();
+  if (cmd === '/ask') {
+    const prompt = raw.replace(/^\/ask\s+/i, '').trim();
+    if (!prompt) {
+      return { type: 'terminal:error', message: '/ask requires a question. Usage: /ask <your question>' };
+    }
+    return handleAsk(prompt);
+  }
+  if (cmd === '/code') {
+    const prompt = raw.replace(/^\/code\s+/i, '').trim();
+    if (!prompt) return { type: 'terminal:error', message: '/code requires a request. Usage: /code <write/fix code>' };
+    return handleCode(prompt);
+  }
+
+  // Explicit subcommands
+>>>>>>> theirs
   if (cmd === '/swarm' && parts[1] === 'status') return handleSwarmStatus();
   if (cmd === '/shield' && parts[1] === 'monitor') return handleShieldMonitor();
   if (cmd === '/agent' && parts[1] === 'kill') return handleAgentKill(parts[2]);
