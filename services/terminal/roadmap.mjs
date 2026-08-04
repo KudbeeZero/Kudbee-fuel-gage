@@ -19,8 +19,8 @@
  */
 export const ROADMAP = {
   version: '0.1',
-  updatedAt: '2026-08-04T00:30:00Z',
-  mission: 'OPS-017',
+  updatedAt: '2026-08-04T13:18:00Z',
+  mission: 'THINKBOX-016',
   missionStatement:
     'Kudbee is a self-improving Engineering OS. We operate 24/7 on our own servers, ' +
     'learning from every decision, failure, and success. We observe → decide → act → ' +
@@ -71,7 +71,7 @@ export const ROADMAP = {
       id: 'PHASE-6',
       name: 'Production Rollout',
       category: 'OPS',
-      status: 'in_progress',
+      status: 'shipped',
       dependsOn: ['PHASE-4', 'PHASE-5'],
       scope: 'Deploy to kudbee-fuel-gage prod, verify health, enable monitoring',
     },
@@ -79,7 +79,7 @@ export const ROADMAP = {
       id: 'PHASE-7',
       name: 'THINKBOX Product Layer',
       category: 'THINKBOX',
-      status: 'planned',
+      status: 'in_progress',
       dependsOn: ['PHASE-5'],
       scope: 'PR-002 Dependency Resolution Engine + user-facing features',
     },

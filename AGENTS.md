@@ -160,7 +160,7 @@ node scripts/failure-forecaster.mjs   # predict next failing gate
 - **.kilo/skill/:** 5 skills (ci-watcher, knowledge-curator, kudbee, pipeline-guardian,
   terminal-diagnostic)
 
-## PHASE-6 Production Verification (2026-08-04)
+## PHASE-6 Production Verification (2026-08-04) — SHIPPED
 
 ### Verified ✅
 
@@ -194,23 +194,33 @@ node scripts/system-status.mjs check
 → CI GREEN, Tests 46/46, Build 290kB, E2E 38/38, Pipelines 6/6, Agents 11, PRs 0
 ```
 
-### Remaining (33%)
+### Production dyno formation (all UP)
 
-PHASE-6 scope: "Deploy to kudbee-fuel-gage prod, verify health, enable monitoring"
+| Dyno | Size | State | Command |
+|:---|:---|:---|:---|
+| web | Basic | up | `npx tsx services/ingestion/server.js` |
+| monitor-worker | Basic | up | `node services/monitor/agent.js` |
+| hermes-worker | Basic | up | `npx tsx worker.js` |
+| sentinel | Basic | up | `npx tsx services/sentinel/src/index.ts` |
 
-- **Deploy:** ✅ Done — production healthy, release a2ae80b
-- **Verify health:** ✅ Done — all dependencies green, 11 agents active
-- **Enable monitoring:** Requires Heroku CLI / dashboard access to verify:
-  - `monitor-worker` dyno (`services/monitor/agent.js`) — defined in Procfile for production
-  - `sentinel` dyno (`services/sentinel/src/index.ts`) — defined in Procfile for production
-  - Confirm config vars: `GEMINI_API_KEY`, `DATABASE_URL`, `REDIS_URL`, `REDIS_WORKER_URL`
+### Bug fixed: GEMENI_API_KEY → GEMINI_API_KEY
+
+Production had `GEMENI_API_KEY` (typo) — the codebase references `GEMINI_API_KEY`
+in 6 files. This meant Gemini was silently disabled in production. Fixed via
+Heroku Platform API PATCH. Verified: `/ask hello` returns model `gemini-flash-latest`
+in 1305ms, budget $0.05/$50 (0.09%).
+
+### Roadmap update
+
+- PHASE-6: `in_progress` → `shipped`
+- PHASE-7 (THINKBOX-016): `planned` → `in_progress`
+- Mission: OPS-017 → THINKBOX-016
 
 ### Next safe action
 
-1. **Investigate `/status` reporting `online:0`** despite agent-status endpoint showing 11 active agents — likely a polling/metrics bridge gap
-2. Verify monitor-worker + sentinel dynos are running in production (Heroku Dashboard → Resources)
-3. Stamp PHASE-6 as shipped in `services/terminal/roadmap.mjs`
-4. Close OPS-017 mission, open THINKBOX-016 (PHASE-7)
+1. Deploy roadmap update to staging, verify `/roadmap` shows PHASE-6 shipped
+2. Promote to production
+3. Open THINKBOX-016 work: PR-002 Dependency Resolution Engine
 
 ## Links
 
