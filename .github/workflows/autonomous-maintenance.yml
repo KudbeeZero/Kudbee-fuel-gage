@@ -40,6 +40,14 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
+      - name: Engineering health pulse
+        run: |
+          node scripts/engineering-health.mjs 2>&1 | tail -12
+
+      - name: Self-review (propose ONE improvement)
+        run: |
+          node scripts/nightly-review.mjs 2>&1 | tail -12
+
       - name: Report system state
         run: |
           node scripts/system-status.mjs check 2>&1 | tail -12
