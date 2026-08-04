@@ -184,6 +184,11 @@ async function handleAsk(prompt) {
   }
 }
 
+async function handleRoadmap() {
+  const { getRoadmapStatus } = await import('./roadmap.mjs');
+  return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 async function dispatchCommand(input) {
