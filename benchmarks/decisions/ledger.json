@@ -68,6 +68,28 @@
       "reviewDate": null,
       "outcome": null,
       "supersedes": null
+    },
+    {
+      "id": "DEC-0004",
+      "mission": "STAB-002",
+      "problem": "Connect 39 orphan THINK tokens to incidents/decisions/benchmarks",
+      "alternatives": [
+        "Manual linking",
+        "Leave disconnected"
+      ],
+      "chosen": "Evidence-based domain + agent linking in knowledge-graph",
+      "evidence": "Graph edges 34→108, orphans 39→5, both audits pass",
+      "benchmarksConsulted": [
+        "GRAPH-AUDIT"
+      ],
+      "risksAccepted": "",
+      "rollbackPlan": "git revert 3a70708",
+      "confidence": 90,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-04T21:47:50.677Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
     }
   ]
 }
