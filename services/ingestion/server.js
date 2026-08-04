@@ -403,9 +403,77 @@ app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
 });
 
+// Upstash Vector (think-search) status — server-side proxy so the frontend
+// never needs the search REST URL/token. Cached 30s.
+let _vectorCache = { at: 0, data: null };
+app.get('/api/system/vector-status', async (_req, res) => {
+  const now = Date.now();
+  if (_vectorCache.data && now - _vectorCache.at < 30_000) return res.json(_vectorCache.data);
+  const searchUrl = process.env.UPSTASH_SEARCH_REST_URL;
+  const searchToken = process.env.UPSTASH_SEARCH_REST_TOKEN;
+  if (!searchUrl || !searchToken) {
+    return res.json({ status: 'unknown', detail: 'UPSTASH_SEARCH_REST_URL not configured', dimension: null, vectorCount: null, indexType: null });
+  }
+  try {
+    const r = await fetch(`${searchUrl}/info`, {
+      headers: { Authorization: `Bearer ${searchToken}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    const body = await r.json();
+    const info = body.result || body;
+    const data = {
+      status: info.dimension ? 'ok' : 'unknown',
+      dimension: info.dimension ?? null,
+      vectorCount: info.vectorCount ?? null,
+      indexType: info.indexType ?? null,
+      similarity: info.similarityFunction ?? null,
+      detail: info.dimension ? `${info.dimension}-dim ${info.indexType ?? ''} · ${info.vectorCount ?? 0} vectors` : 'no index signal',
+      source: 'upstash-vector',
+    };
+    _vectorCache = { at: now, data };
+    return res.json(data);
+  } catch (e) {
+    return res.json({ status: 'error', detail: e.message, dimension: null, vectorCount: null, indexType: null });
+  }
+});
+
 // Self-hosted CI status — receives results from ci-self-hosted.mjs
 let _ciResults = { lastRun: null, status: 'unknown', results: [] };
-app.get('/api/ci/status', (_req, res) => { res.json(_ciResults); });
+let _ciFetchCache = { at: 0, data: null };
+const CI_CACHE_MS = 60_000;
+
+// Live CI status from GitHub Actions (public API, no token needed) with a
+// 60s cache. Falls back to the last POSTed report when GitHub is unreachable.
+app.get('/api/ci/status', async (_req, res) => {
+  const now = Date.now();
+  if (_ciFetchCache.data && now - _ciFetchCache.at < CI_CACHE_MS) {
+    return res.json(_ciFetchCache.data);
+  }
+  try {
+    const gh = await fetch('https://api.github.com/repos/KudbeeZero/Kudbee-fuel-gage/actions/runs?branch=main&per_page=1', {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'kudbee-control-tower' },
+      signal: AbortSignal.timeout(8000),
+    });
+    const body = await gh.json();
+    const run = body.workflow_runs?.[0];
+    if (run) {
+      const data = {
+        status: run.status === 'completed' ? (run.conclusion === 'success' ? 'GREEN' : run.conclusion === 'failure' ? 'FAIL' : 'WARN') : 'RUNNING',
+        lastRun: run.created_at,
+        runId: run.id,
+        headSha: run.head_sha?.slice(0, 7) ?? null,
+        workflow: run.name ?? run.workflow_name ?? null,
+        source: 'github-actions',
+      };
+      _ciFetchCache = { at: now, data };
+      return res.json(data);
+    }
+  } catch {
+    /* GitHub unreachable — fall through to cached report */
+  }
+  res.json(_ciResults);
+});
+
 app.post('/api/ci/status', (req, res) => {
   _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
   console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
@@ -3673,10 +3741,20 @@ app.get('/api/system/health-deep', async (_req, res) => {
       // Run an active probe directly against the pool (NOT through runQuery,
       // which falls back to in-memory) so the status reflects the REAL Neon
       // connection, not a cached health flag that may be transiently stale.
+      // Retry once after a short pause: cold-start pools (sparse long-range
+      // connections) can take a moment to establish TLS + auth. A transient
+      // warm-up must never be reported as OFFLINE.
       const pool = getDbPool();
       if (pool) {
-        const result = await pool.query('SELECT 1 as ok');
-        dbOk = Array.isArray(result.rows) && result.rows[0]?.ok === 1;
+        try {
+          const result = await pool.query('SELECT 1 as ok');
+          dbOk = Array.isArray(result.rows) && result.rows[0]?.ok === 1;
+        } catch (firstErr) {
+          await new Promise((r) => setTimeout(r, 1200));
+          const result = await pool.query('SELECT 1 as ok');
+          dbOk = Array.isArray(result.rows) && result.rows[0]?.ok === 1;
+          if (!dbOk) dbError = firstErr instanceof Error ? firstErr.message : String(firstErr);
+        }
       }
       const latencyMs = Date.now() - t0;
       services.postgres = {

@@ -57,11 +57,11 @@ export function useSystemPulse(pollMs = 15000): SystemPulseState {
           services?: Record<string, { status: string; latencyMs: number | null }>;
           commit?: string;
         }>('/api/system/health-deep'),
-        fetchJson<{ status?: string; lastRun?: string | null }>('/api/ci/status'),
+        fetchJson<{ status?: string; lastRun?: string | null; source?: string }>('/api/ci/status'),
         fetchJson<{ protocol?: string; stats?: { totalPassed?: number } }>('/api/system/synapse-status'),
         fetchJson<{ status?: string; provider?: string }>('/api/qstash/health'),
-        fetchJson<{ result?: { vectorCount?: number; dimension?: number; indexType?: string } }>(
-          (window as unknown as { __VECTOR_URL__?: string }).__VECTOR_URL__ || ''
+        fetchJson<{ status?: string; dimension?: number | null; vectorCount?: number | null; indexType?: string | null; detail?: string; source?: string }>(
+          '/api/system/vector-status'
         ),
       ]);
 
@@ -99,14 +99,14 @@ export function useSystemPulse(pollMs = 15000): SystemPulseState {
       });
 
       // Vector
-      const vec = vector?.result;
+      const vec = vector;
       items.push({
         key: 'vector',
         label: 'Vector Index',
-        status: vec?.dimension ? 'ok' : 'unknown',
-        detail: vec ? `${vec.dimension}-dim ${vec.indexType ?? ''} · ${vec.vectorCount ?? 0} vectors` : 'No index signal',
+        status: vec?.status === 'ok' ? 'ok' : vec?.status === 'error' ? 'error' : 'unknown',
+        detail: vec?.detail ?? 'No index signal',
         latencyMs: null,
-        source: 'think-search',
+        source: vec?.source ?? 'think-search',
       });
 
       // Workflow engine
@@ -144,7 +144,7 @@ export function useSystemPulse(pollMs = 15000): SystemPulseState {
         setState({
           sha: healthDeep?.commit?.slice(0, 7) ?? 'unknown',
           environment: import.meta.env.MODE === 'production' ? 'Production' : 'Staging',
-          mission: 'OPS-017',
+          mission: 'OPS-017', // updated from roadmap endpoint in SystemPulse
           items,
           lastUpdated: new Date().toISOString(),
           connected: true,

@@ -185,6 +185,34 @@ async function handleGuardian() {
   }
 }
 
+// ── /crypto — Live crypto posture (runtime gate + node identity) ─────────────
+
+async function handleCrypto() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/verify-crypto-runtime.mjs'], { cwd: root, timeout: 20000, maxBuffer: 1024 * 256 },
+        (err, stdout) => res({ code: err ? err.code ?? 1 : 0, out: stdout || err?.message || '' }));
+    });
+    const passCount = (out.out.match(/\[PASS\]/g) || []).length;
+    const failCount = (out.out.match(/\[FAIL\]/g) || []).length;
+    return {
+      type: 'crypto:posture',
+      gate: out.code === 0 ? 'PASS' : 'FAIL',
+      passChecks: passCount,
+      failChecks: failCount,
+      detail: out.out.split('\n').filter(l => l.includes('[PASS]') || l.includes('[FAIL]')).slice(0, 20),
+      knowledgeCard: '.kilo/memory/snippets/crypto-posture-learnings.md',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Crypto gate unavailable: ${e.message}` };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
@@ -275,6 +303,7 @@ async function dispatchCommand(input) {
   if (cmd === '/handoff' || cmd === '/brief') return handleHandoff();
   if (cmd === '/pulse' || cmd === '/health-metrics') return handlePulse();
   if (cmd === '/guardian' || cmd === '/preflight') return handleGuardian();
+  if (cmd === '/crypto' || cmd === '/crypt') return handleCrypto();
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
