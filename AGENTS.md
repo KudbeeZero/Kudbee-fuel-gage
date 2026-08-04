@@ -6,7 +6,7 @@
 node scripts/handoff.mjs --stamp
 ```
 
-**This is the mandatory HANDOFF BRIEFING.** It tells you instantly, no matter
+**This is the mandatory HANDOFF BRIEFING.** It tells you instantly — no matter
 what branch you're on or what you were doing:
 - **WHO you are** (agent id, current role)
 - **WHERE you are** (git branch, HEAD SHA, dirty file count)
@@ -15,333 +15,163 @@ what branch you're on or what you were doing:
 - **WHAT happened recently** (last 5 DTHINK events)
 - **WHERE the system lives** (staging/prod/terminal/github links)
 
-The manifest is stamped to `.kilo/handoff.json` for machine-readable access.
-If any briefing field is missing or wrong, the mission lock or roadmap is out
-of sync — resolve that BEFORE starting work. You are in charge: state your
-role, your mission, and your first action to the human, then move.
+The manifest is stamped to `.kilo/handoff.json` (machine-readable). If any
+field is missing or wrong, the mission lock or roadmap is out of sync —
+resolve that BEFORE starting work. State your role + first action to the
+human, then move.
 
-Then run the full bootstrap to load the deep context:
+Then load deep context:
+
 ```bash
 node scripts/session-bootstrap.mjs
 ```
 
-**This is mandatory.** It loads:
-- 8 integration pipelines (checkpoint, auto-registration, BUS→CACHE, Think Forge, skill import, voicemail, EDISBOX deploy, review-app config)
-- 3 terminal agents with decision history and recall logs
-- 8 knowledge snippets with semantic recall tracking
-- 9 serial bus events (replayable audit trail)
-- Phone tree with 3 inter-agent calls logged
-- Current CI status: **GREEN** (46/46 tests, 290kB build, 38/38 e2e)
-- Memory journal with session history
+This loads: integration pipelines, terminal agents with decision history,
+knowledge snippets, serial bus events, phone tree, current CI status, and
+the memory journal.
 
-**Without this, you are blind.** The bootstrap output becomes your working context.
-If the command fails, the TERMINAL.md reference document and `.kilo/skill/kudbee/SKILL.md` contain fallback instructions.
+## Interactive Terminal — the control plane
 
-## Plugin Arsenal (14 slash commands + 4 skills + 2 subagents)
+The interactive terminal (`services/terminal/commandDispatcher.mjs`) is the
+primary interface for operating the system. Commands are executed server-side
+via `POST /api/terminal/execute` (no auth required — open access):
 
-After bootstrap, ALL of these are available. The agent MUST load them into its working context:
-
-### Slash Commands (`.kilo/command/*.md`)
-Used via `/name` in the terminal. Full list: `ls .kilo/command/`
-
-| Command | What it loads |
-|:---|:---|
-| `/load` | Master bootstrap — 8-phase enterprise sequence (session, fleet, context, plugins, routing, escalation, spin-up, report) |
-| `/status` | 7-phase diagnostic — memory layers, tools, gaps, Think Forge, other agents |
-| `/think` | DTHINK console — problem audit, challenge audit, state verification, THINK Protocol vNext daily cycle |
-| `/sync` | Terminal→UI bridge — pushes state to web app via agent-bridge |
-| `/report` | Standardized standby report — all agents use identical format |
-| `/handoff` | Human-in-the-loop — escalation, audit trail, operator routing |
-| `/broadcast` | Multi-agent bus broadcast — publish to all cloud agents |
-| `/patch` | Live UI update — terminal work reflected in web app in <8s |
-| `/memory` | Interactive recall — phone tree, voicemails, decisions, HITL check |
-| `/continue` | Session resume — 7-step: bootstrap, voicemails, fleet, forge, mirror, verify |
-| `/stream` | Stream Lab — Cache↔BUS↔Frontend↔DTHINK flow |
-| `/verify` | CI gates — typecheck + tests + build + e2e + knowledge extraction |
-| `/pr` | PR lifecycle — status, review, create, verify+PR, merge |
-| `/help` | Interactive terminal launch — phone tree, fleet, knowledge, bus, DTHINK + full reference |
-
-### Skills (`.kilo/skill/*/SKILL.md`)
-Loaded automatically by Kilo. Available in the skill menu:
-
-| Skill | Source | What it provides |
-|:---|:---|:---|
-| `kudbee` | Project skill | Interactive 10-action Control Tower menu with full architecture docs |
-| `ci-watcher` | Terminal agent | CI verification — typecheck, tests, build, e2e |
-| `knowledge-curator` | Terminal agent | Memory curation — snippet health, knowledge graph |
-| `pipeline-guardian` | Terminal agent | Middleware pipeline — 11 layer scan, guard status |
-
-### Subagents (`.kilo/agent/*.md`)
-Loaded by Kilo's agent system. Available via Task tool:
-
-| Agent | File | Purpose |
-|:---|:---|:---|
-| `AGENTS.kilo` | `.kilo/agent/AGENTS.kilo.md` | Canonical global agent guide — architecture, contracts, patterns |
-| `middleware` | `.kilo/agent/middleware.md` | Middleware specialist — 7-layer pipeline, fail-open semantics |
-| `session_checkpoint` | `.kilo/agent/session_checkpoint.md` | Session persistence — checkpoint + recovery |
-
-### Terminal Agents (`.kilo/agents/*.agent`)
-Executable script agents with memories and decision logs:
-
-| Agent | Schedule | Purpose |
-|:---|:---|:---|
-| `pipeline-guardian` | on-demand | Scans 11 middleware layers, detects failures |
-| `ci-watcher` | on-deploy | Runs verification suite, checks CI gates |
-| `knowledge-curator` | daily | Curates snippets, cross-references, prunes stale entries |
-
----
-
-## Session-Level Instructions
-
-> **Head file** — first file read on session start.
-> **Last verified: 2026-07-30T11:04:25+00:00
-
-### Integration Pipelines (7 implemented)
-
-| # | Pipeline | File | Purpose |
-|:--|:---|:---|:---|
-| 1 | Session Checkpointing | `scripts/session-checkpoint.mjs` | Auto-commits `.kilo/memory/` to git on session end (object permanence) |
-| 2 | Agent Auto-Registration | `scripts/session-bootstrap.mjs` | Glob-discovers `.kilo/agents/*.agent` with fault isolation (plug-and-play swarm) |
-| 3 | BUS→CACHE Bridge | `scripts/bus-to-cache.mjs` | Event-driven cache invalidation — bus events invalidate L1/L2 cache (self-regulating nervous system) |
-| 4 | Think Forge Live Feed | `scripts/think-forge-bridge.mjs` | Auto-streams snippet recalls into `think_tokens` pgvector (continuous context injection) |
-| 5 | Skill Auto-Import | `scripts/skill-auto-import.mjs` | Terminal agents export learnings as `.kilo/skill/` entries (knowledge flywheel) |
-| 6 | Voicemail & Interrupts | `scripts/cloud-agent.mjs` | 3s timeout, offline voicemail, CRITICAL priority interrupts with BUS→CACHE flush |
-| 7 | EDISBOX Deploy Pipeline | `scripts/edisbox-pipeline.mjs` | Upstash Box integration — staging HTTP verification, release evidence, Redis audit, DTHINK feed |
-
-### Heroku Pipeline Workflow (3 environments)
-
-| Environment | App | Branch | Deploy Script | EDISBOX |
-|:---|:---|:---|:---|:---|
-| **Development** | `kudbee-fuel-gage-dev` | `session/agent_*` | `scripts/deploy-dev.sh` | ✓ verify |
-| **Staging** | `kudbee-fuel-gage-staging` | `staging/security-durability` | `scripts/deploy-staging.sh` | ✓ verify |
-| **Production** | `kudbee-fuel-gage` | `main` | `scripts/deploy-prod.sh` | ✓ verify |
-
-**CI Bounds** (enforced in all environments):
-- `CI_MUTATION_BUDGET=20` — max CI mutations per run
-- `MAX_REQUEST_BODY=256kb` (CI) / `512kb` (staging/prod)
-- `DB_POOL_MAX=5` (CI/dev) / `10` (staging/prod)
-- `MONTHLY_DB_OPERATION_BUDGET=500000` (CI/dev) / `2000000` (staging) / `5000000` (prod)
-
-### GitHub Actions Workflows (6 active)
-
-| Workflow | Status | Trigger | Purpose |
-|:---|:---|:---|:---|
-| **CodeQL** | Active | Push/PR | Security analysis |
-| **Deploy to Heroku Staging** | Active | Push to staging | Auto-deploy staging |
-| **Session Logger** | Active | Session events | Archive session data |
-| **Kudbee CI** | Active | Push/PR | Typecheck + lint + build + e2e |
-| **Copilot cloud agent** | Active | Manual | Cloud agent orchestration |
-| **CodeQL (legacy)** | Active | Push/PR | Security analysis (legacy config) |
-
-**CI Bounds** (enforced in Kudbee CI workflow):
-- `CI_MUTATION_BUDGET=20` — max CI mutations per run
-- `MAX_REQUEST_BODY=256kb` (CI) / `512kb` (staging/prod)
-- `DB_POOL_MAX=5` (CI/dev) / `10` (staging/prod)
-- `MONTHLY_DB_OPERATION_BUDGET=500000` (CI/dev) / `2000000` (staging) / `5000000` (prod)
-- `E2E_ALLOW_DATABASE_WRITES=0` — CI does not write to database
-
-Terminal agents respect a global concurrency cap (default: 3 concurrent). The agent-bridge tracks running agents and queues overflow. Rate limits propagate from the Express middleware layers through to terminal agent execution.
-
-```bash
-node scripts/agent-bridge.mjs rate          # Current rate limit state
-node scripts/agent-bridge.mjs acquire <id>  # Acquire execution slot
-node scripts/agent-bridge.mjs release <id>  # Release slot
+```
+/ask <q>      Gemini answer (plain text auto-routes here)
+/code <req>   Gemini writes production-grade code (Kudbee conventions)
+/swarm        Agent fleet tree (10 agents)
+/shield       P·L·R·I shield metrics
+/roadmap      Phases to production (11 committed)
+/security     Security posture report
+/echo         Echo Prompt Library — self-improving prompts
+/forecast     Failure Forecaster — predicts next failure
+/handoff      Instant situational awareness (same as handoff.mjs)
+/status       System + fleet summary
+/help         Full command reference
 ```
 
-### Management Commands
+The terminal UI is served at `/terminal.html` (vanilla HTML/CSS/JS, no React).
+AgentTerminal dock: `apps/web/src/components/studio/AgentTerminal.tsx`.
+
+## Deploy flow (Heroku)
 
 ```bash
-node scripts/agents.mjs status              # Agent fleet dashboard
-node scripts/agents.mjs run <id> <task>     # Execute terminal agent
-node scripts/agents.mjs recall <id> <query> # Agent-specific recall
-node scripts/agents.mjs decode <id>         # Audit decisions
-node scripts/snippet-agent.mjs recall <q>   # Cross-agent knowledge search
-node scripts/snippet-agent.mjs graph <id>   # Knowledge graph walk
-node scripts/snippet-agent.mjs health       # Knowledge store health
+# Deploy staging or production — git push triggers build + BootVerify
+git push https://git.heroku.com/kudbee-fuel-gage-staging.git main:main
+git push https://git.heroku.com/kudbee-fuel-gage.git main:main
 ```
 
-### Worker Polling Strategy
+- **Procfile release command:** `node scripts/boot-verify.mjs` — boots the
+  server on port 9900 and waits for `/health` before releasing. If it times
+  out, the release FAILS and the previous release stays active.
+- **Express 5 gotcha:** the SPA catch-all route must be `app.get('/{*path}')`.
+  `app.get('*')` throws `PathError: Missing parameter name` on boot.
+- **`.npmrc` is required** (`legacy-peer-deps=true`) — Heroku's plain `npm ci`
+  fails without it (react 19 / react-native peer conflict).
+- Staging apps: `kudbee-fuel-gage-staging` (web + hermes-worker).
+- Production: `kudbee-fuel-gage` (web + hermes-worker + monitor-worker + sentinel).
 
-The governance task worker (`services/agents/worker.ts`) polls the task queue using a **TCP BRPOP** pattern against the Redis queue `kudbee-governance-tasks`. Each poll uses a **5-second blocking timeout** before the worker loops again.
+## Security posture (Engineering OS v2.2)
 
-### Retry & DLQ Policy
+- **Password-based access control is DISENGAGED** — no bearerAuth, no synapse
+  gate, no X-Agent-Pass required, no login. Single-user directive.
+- Invisible defense-in-depth remains ACTIVE: security headers (CSP, HSTS,
+  nosniff, X-Frame-Options DENY), strict CORS allowlist (staging + prod
+  origins, no wildcard), global rate limit 100 req/min/IP (health/SSE/static
+  exempt), 10mb body limit.
+- `/security` in the terminal reports the live posture.
 
-- **MAX_ATTEMPTS:** 3. Task that throws 3 consecutive times moves to **DLQ** `kudbee-governance-tasks-failed`.
-- State transitions broadcast over `kudbee:events` Redis pub/sub channel.
+## Self-healing & self-improvement
 
-### CI Gates
+```bash
+node scripts/self-heal.mjs check      # run gates (typecheck/crypto/secrets)
+node scripts/self-heal.mjs diagnose   # + Gemini diagnosis on failure
+node scripts/self-heal.mjs heal       # recall-first loop, mints THINK token
+node scripts/failure-forecaster.mjs   # predict next failing gate
+node scripts/agent-bootstrap.mjs loop # tap in anywhere, learn, contribute
+```
 
-1. `npm run verify:typescript` — required TypeScript 7.0.2 direct-constraint and lockfile gate.
-2. `npm run verify:agent-contracts` — all 11 discovered company agents have metadata and authority records.
-3. `npm run verify:integrations` — command/package availability and environment names only; optional provider capabilities skip explicitly.
-4. `npm run verify:learning-protocol` — structured THINK/DTHINK learning loop and safety rules.
-5. `npm run typecheck` — Turbo-routed TypeScript strict check across the monorepo.
+- **THINK token loop:** failures are signature-matched against
+  `.kilo/memory/heal-patterns.json` BEFORE calling Gemini. Known patterns are
+  fixed from memory (zero LLM cost); new patterns are Gemini-diagnosed then
+  minted. Every fix feeds DTHINK + a snippet card.
+- **Echo Prompt Library** (`services/terminal/echoLibrary.mjs`): every Gemini
+  interaction is scored; prompts auto-improve after 5+ interactions.
+- **Circuit breaker** (`services/lib/circuitBreaker.ts`): CLOSED→OPEN→HALF_OPEN
+  with local-state fallback — survives Redis quota exhaustion. Use
+  `breaker.execute(fn, fallback)` to protect any call site. Hermes heartbeats
+  write to `.kilo/memory/local-state/` when Redis is unavailable.
+- **Scheduled self-heal:** `.github/workflows/autonomous-maintenance.yml` runs
+  every 6 hours (gates + Gemini diagnosis on failure).
+
+## Architecture (facts not obvious from filenames)
+
+- **Canonical server entrypoint:** `services/ingestion/server.js` — do NOT
+  create `server.ts` or duplicate entrypoints.
+- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*`. All `npm install` must run at root.
+- **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`. `packages/opencode` uses **bun**.
+- **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
+- **Redis:** `REDIS_URL` (Fast Brain) / `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`). Monthly quota 500k — the circuit breaker protects it.
+- **Gemini:** `GEMINI_API_KEY` (on Heroku staging) + model `gemini-flash-latest` (2.0/2.5 deprecated for new keys). Provider factory: `packages/utils/src/llm/providers.ts`.
+- **Roadmap:** `services/terminal/roadmap.mjs` — machine-readable phases, mission statement, `/roadmap` command.
+
+## CI Gates (must pass)
+
+1. `npm run verify:typescript` — TS 7.0.2 direct-constraint + lockfile gate.
+2. `npm run verify:agent-contracts` — all discovered agents have metadata.
+3. `npm run verify:integrations` — command/package availability only.
+4. `npm run verify:learning-protocol` — THINK/DTHINK loop + safety rules.
+5. `npm run typecheck` — Turbo-routed TS strict check.
 6. `npm run lint` — Turbo-routed linting.
-7. `node scripts/verify-e2e.mjs --smoke` — bounded smoke with provider URLs disabled.
-8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full database-writing E2E only with explicit opt-in.
+7. `node scripts/verify-e2e.mjs --smoke` — bounded smoke (no provider URLs).
+8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full E2E only with opt-in.
 
-The self-hosted runner remains authoritative while GitHub Actions are bounded
-by the existing billing decision. Standard CI never uses a configured
-`DATABASE_URL` or Redis endpoint for database-writing E2E unless the explicit
-write opt-in is present. Authentication, tenant authorization, and deployment
-commands are outside this workflow and remain unchanged.
-
-All agents must run `npm run verify:typescript` before handoff and may not
-introduce TypeScript 5.x or lower anywhere in direct constraints or resolved
-compiler entries. The side-by-side contract is intentional: `npx tsc` resolves
-the `@typescript/native` alias and runs TypeScript 7, while
-`require('typescript').version` resolves the `@typescript/typescript6` alias and
-uses TypeScript 6 only for compiler-API consumers such as typescript-eslint.
-The current typescript-eslint peer range `>=4.8.4 <6.1.0` is satisfied by that
-API alias, so parser compatibility is a passing gate. The bounded follow-up is
-to remove the TypeScript 6 API alias only after typescript-eslint publishes
-TypeScript 7 API support.
-
-### Safe-Zone Engine Lifecycle
-
-- **Singleton pattern:** `SafeZoneEngine` instantiated once per process.
-- **Bootstrap:** `engine.bootstrap(workspaceRoot)` wires Control Tower gateway.
-- **Trajectory evaluation:** `engine.evaluateTrajectory()` computes threat scores.
-- **Circuit breaker:** Upstash Redis adaptive breaker opens at `MAX_REQUESTS_LIMIT` (500k).
-
-### Key References
-
-| File | What It Contains |
-|:---|:---|
-| `TERMINAL.md` | Full terminal agent system documentation (living document) |
-| `.kilo/agent/AGENTS.kilo.md` | Canonical global agent guide (all architecture, contracts, patterns) |
-| `.kilo/skill/kudbee/SKILL.md` | Interactive project skill with 10-action menu |
-| `BUILD.md` | Build architecture, tab layout, verification |
-| `README.md` | Documentation scan, work notes, project status |
-| `OUTING_PLAN.md` | 20-phase enterprise hardening plan |
-| `STATE_OF_THE_OS.md` | 25 documented production fixes |
-| `packages/opencode/src/kilocode/kudbee/` | Safe-Zone Engine package |
-| `services/lib/redis.js` | Adaptive circuit breaker for Upstash Redis |
-| `services/agents/worker.ts` | Governance worker with exponential backoff |
+All agents must run `npm run verify:typescript` before handoff. TypeScript
+contract: `npx tsc` resolves `@typescript/native` (TS 7); the TS 6 API alias
+is for typescript-eslint only. Never introduce TS 5.x or lower.
 
 ## Key Commands
 
 ```bash
-npm ci                              # install at repo root (never inside workspace packages)
+npm ci                              # root only, never inside workspace packages
 npm run typecheck                   # Turbo-routed TS7 strict check
-npm run verify:typescript            # TS7 native compiler + TS6 API alias gate
+npm run verify:typescript           # TS7 native compiler + TS6 API alias gate
 npm run lint                        # Turbo-routed linting
-node scripts/verify-e2e.mjs         # 38-check E2E suite (needs REDIS_URL + DATABASE_URL)
 npm run build                       # Turbo build (dependsOn typecheck + lint)
 cd apps/web && npm run build        # Vite prod build for Control Tower
 cd apps/mobile && npx tsc --noEmit  # Mobile type-check
+node scripts/system-status.mjs check  # CI + tests + build + E2E + pipelines
+node scripts/agents.mjs status     # Agent fleet dashboard
+node scripts/snippet-agent.mjs health  # Knowledge store health
 ```
-
-`packages/opencode` uses **bun** (not npm):
-```bash
-cd packages/opencode && bun run typecheck && bun test
-```
-
-### Secret-Safe Workflow
-
-- Secret values belong only in the hosting provider's secret manager or an ignored local `.env`.
-- Run `npm run verify:secrets` for a name-only presence and tracked-file leak check.
-- Run `npm run verify:box-web` when `UPSTASH_BOX_API_KEY` is configured; it uses the official Upstash Box API without printing the key.
-- Redis MCP is for operational Redis commands, not secret discovery or secret storage.
-- Never place credentials in GitHub comments, PR bodies, logs, DTHINK, THINK, screenshots, or agent prompts.
-
-### Company Agent and Integration Rules
-
-- `config/agents/company-manifest.json` is required for every discovered `.kilo/agents/*.agent`; stable ids equal filename stems.
-- `config/integrations/manifest.json` declares GitHub CLI/API, Heroku CLI/API, Neon `DATABASE_URL`/`pg` plus optional provider API, Upstash Redis MCP, and Upstash Box SDK boundaries.
-- `npm run verify:integrations` reports only names and statuses. Missing Box, Neon admin/API, provider CLIs, or MCP package resolution are explicit optional skips.
-- Follow `config/think/protocol.json` for recall, preconditions, bounded execution, evidence, quality signal, pending token, DTHINK, memory update, and bounded follow-up.
-
-## Terminal Entrypoints
-
-- **CLI orchestrator:** `npx tsx services/agent/cli.ts "your prompt"` — Kudbee Group 7 Multi-Agent Orchestrator.
-- **Web terminal:** served at `/terminal.html` by the Vite dev server — "KUDBEE Terminal — Ollama Chat" SPA.
-- **AgentTerminal:** collapsible in-studio dock (`apps/web/src/components/studio/AgentTerminal.tsx`) with `kudbee@studio:~$` prompt.
-
-## Architecture (facts not obvious from filenames)
-
-- **Canonical server entrypoint:** `services/ingestion/server.js` — **do not create** `server.ts` or duplicate entrypoints.
-- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*`. All `npm install` must run at root.
-- **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`.
-- **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
-- **Redis:** `REDIS_URL` (Fast Brain: telemetry) and `REDIS_WORKER_URL` (Slow Brain: workers, falls back to `REDIS_URL`).
 
 ## Critical Gotchas
 
-- **groqClient.ts import extension:** Must import `./budgetGate.ts` (`.ts` extension). The `.js` counterpart does not exist.
-- **agent registry is loaded at boot:** Modify `config/agents.json` before spawning the server, not after.
-- **.env loading in scripts:** Standalone `.mjs` scripts must call `try { process.loadEnvFile('.env'); } catch {}` at the top.
-- **`think_tokens` ≠ `vector_memory`:** Minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
-- **NODE_ENV=test** relaxes rate limits but NOT auth. Authenticated endpoints still require `X-Agent-Pass`.
-- **.env* is gitignored** with exceptions: `.env.example`, `config/template.env`, `config/.env.example`.
+- **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension).
+- **.env loading in scripts:** standalone `.mjs` scripts should call
+  `try { process.loadEnvFile('.env'); } catch {}` at the top.
+- **`think_tokens` ≠ `vector_memory`:** minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
+- **.env* is gitignored** except `.env.example`, `config/template.env`, `config/.env.example`.
+- **Dependency version cascade:** merging multiple lockfile-touching PRs in
+  quick succession corrupts `package-lock.json`. Regenerate from a green
+  baseline incrementally (install on top of the existing lockfile, never
+  `rm package-lock.json` blindly). CI `paths` filters must include
+  `package-lock.json` + `.npmrc`.
+- **express hoisting:** `services/telemetry/degradation-monitor.ts` imports
+  express — express must be a ROOT dependency or the server fails to boot.
 
 ## Code Style
 
-- **Prettier:** single quotes, trailing commas (es5), printWidth 100, LF line endings.
-- **Imports:** `server.js` and lib files use `node:` prefix for Node builtins.
-- **`// kilocode_change` markers:** Required when modifying `apps/web/src/hooks/useToolInterceptor.ts` or `services/agent/cli.ts`.
+- **Prettier:** single quotes, trailing commas (es5), printWidth 100, LF.
+- **Imports:** server.js and lib files use `node:` prefix for builtins.
+- **`// kilocode_change` markers:** required in `apps/web/src/hooks/useToolInterceptor.ts` and `services/agent/cli.ts`.
 
-## Verifiers
+## PR Workflow (Standard Operating Procedure)
 
-| Script | Port | Purpose |
-|:---|---:|:---|
-| `scripts/verify-e2e.mjs` | 9876 | Full 38-check suite (must pass all) |
-| `scripts/verify-think-loop.mjs` | 9878 | Think token mint + vector retrieval |
-| `scripts/verify-governance-loop.mjs` | 9877 | Governance promotion + recycling |
-| `scripts/verify-agents.mjs` | — | Agent identity + pass verification |
-
-## New Session Checklist (every cloud agent MUST verify)
-
-After running bootstrap, confirm ALL of these are loaded:
-
-- [ ] Memory journal loaded (run `node scripts/session-bootstrap.mjs`)
-- [ ] Agent fleet visible (`node scripts/agents.mjs status`)
-- [ ] Knowledge store healthy (`node scripts/snippet-agent.mjs health`)
-- [ ] Serial bus replayable (`node scripts/serial-bus.mjs history 5`)
-- [ ] Phone tree active (`node scripts/phone-tree.mjs tree`)
-- [ ] DTHINK pipeline recording (`node scripts/dthink-pipeline.mjs stats`)
-- [ ] 14 slash commands available (`ls .kilo/command/`)
-- [ ] 4 skills loaded (kudbee, ci-watcher, knowledge-curator, pipeline-guardian)
-- [ ] 3 terminal agents online (pipeline-guardian, ci-watcher, knowledge-curator)
-- [ ] Frontend synced (`node scripts/agent-bridge.mjs state`)
-- [ ] CI GREEN (`node scripts/system-status.mjs check`)
-
-If ANY checkbox fails, run `/load` for the full enterprise bootstrap sequence.
-
-## PR Workflow — Standard Operating Procedure
-
-**Mission:** Every implementation PR must answer: "What user-visible improvement or engineering reliability improvement will exist after this PR merges?"
-
-### Before writing code
-1. **Read NEXT_AGENT_BOOTSTRAP.md** — understand the approved mission.
-2. **Verify git state** — `git status`, `git log --oneline -3`. Must be on a feature branch (`feature/*`, `fix/*`, `feat/*`) from `main`.
-3. **Verify the approved mission** — one objective, no architecture expansion, no duplicate components.
-
-### During implementation
-1. **One objective per PR** — no scope creep.
-2. **Commit locally first** — `git add`, `git commit`. Verify typecheck + build LOCAL before pushing.
-3. **Prefer fewer than 15 files** and fewer than 250-500 lines changed.
-4. **Run required verification locally**: `npm run typecheck`, `npm run build`, `npm run lint`.
-
-### Opening the PR
-1. `git push origin <branch>`
-2. `gh pr create --title "..." --body "..." --base main`
-3. Write body with: **Problem → Fix → Verified** sections.
-4. Include rollback plan (revert commit, delete branch).
-
-### Merging
-1. **Wait for CI** — all checks must be green (verify + CodeQL + box-test + docs-check).
-2. **Merge with squash** — `gh pr merge <number> --squash --delete-branch`
-3. **Pull main** — `git checkout main && git pull origin main`
-4. **Clean up** — working tree must return to clean.
-
-### After merge
-1. Deploy to **staging first** (never directly to production without staging verification).
-2. Verify endpoints on staging.
-3. If blocking fix → deploy to production.
-4. Record DTHINK events for the session.
-
-### Rate limits & budgets
-- `/ask` command: 10 requests/min (configurable via `/threshold set askRateLimit <number>`)
-- Circuit breaker: 5 consecutive failures → OPEN for 30-60s → HALF_OPEN probe → CLOSED
-- Redis quota: 500k/month. Hermes respects circuit breaker. Local filesystem fallback when exhausted.
+1. One objective per PR; prefer <15 files, <250-500 lines.
+2. Commit locally, verify typecheck + build BEFORE pushing.
+3. PR body: **Problem → Fix → Verified** + rollback plan.
+4. Wait for CI (verify + CodeQL + box-test + docs-check all green).
+5. Merge with squash + delete branch. Pull main. Clean tree.
+6. Deploy staging first, verify, then production. Record DTHINK events.
+7. `/ask` is rate-limited (10/min default; `/threshold set askRateLimit N`).
