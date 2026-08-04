@@ -1,5 +1,5 @@
 {
-  "sequence": 58,
+  "sequence": 60,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -406,6 +406,20 @@
       "source": "cli",
       "sequence": 58,
       "timestamp": "2026-08-04T05:40:27.819Z"
+    },
+    {
+      "id": "evt-1785823765472-82f97c",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 59,
+      "timestamp": "2026-08-04T06:09:25.472Z"
+    },
+    {
+      "id": "evt-1785823792306-098e8a",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 60,
+      "timestamp": "2026-08-04T06:09:52.306Z"
     }
   ],
   "topicCounts": {
@@ -441,6 +455,7 @@
     "workspace:telepathy": 1,
     "system:ci": 1,
     "workspace:created": 5,
-    "workspace:detected": 5
+    "workspace:detected": 5,
+    "agent:registered": 2
   }
 }
