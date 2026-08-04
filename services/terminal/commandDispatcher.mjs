@@ -191,22 +191,85 @@ async function handleRoadmap() {
 
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
+const HELP_TEXT = [
+  'KUDBEE Terminal — command reference',
+  '',
+  '  /ask <question>     Ask Gemini (plain text also works)',
+  '  /swarm [status]     Agent fleet tree',
+  '  /shield [monitor]   P·L·R·I shield metrics',
+  '  /roadmap            Phases to production',
+  '  /health             System health',
+  '  /status             System + fleet summary',
+  '  /agents             Alias for /swarm',
+  '  /scheduler [status] Scheduler jobs',
+  '  /threshold set k v  Adjust a threshold',
+  '  /agent kill <id>    Terminate an agent',
+  '  /help               This reference',
+  '',
+  'Tip: type any plain message to ask Gemini directly.',
+].join('\n');
+
+async function handleHelp() {
+  return { type: 'terminal:help', help: HELP_TEXT, timestamp: new Date().toISOString() };
+}
+
+async function handleHealth() {
+  return { type: 'terminal:health', status: 'ok', timestamp: new Date().toISOString() };
+}
+
+async function handleStatus() {
+  const [swarm, shield] = await Promise.allSettled([handleSwarmStatus(), handleShieldMonitor()]);
+  return {
+    type: 'terminal:status',
+    fleet: swarm.status === 'fulfilled' ? swarm.value.tree?.length ?? 0 : 0,
+    online: swarm.status === 'fulfilled' ? swarm.value.online ?? 0 : 0,
+    shield: shield.status === 'fulfilled' ? shield.value.overall ?? 'n/a' : 'n/a',
+    timestamp: new Date().toISOString(),
+  };
+}
+
 async function dispatchCommand(input) {
-  const parts = (input || '').trim().split(/\s+/);
+  const raw = (input || '').trim();
+  if (!raw) return { type: 'terminal:error', message: 'Type a command or question.' };
+
+  const parts = raw.split(/\s+/);
   const cmd = parts[0]?.toLowerCase();
 
+  // Plain text (no slash) → treat as a question to Gemini
+  if (!cmd?.startsWith('/')) {
+    return handleAsk(raw);
+  }
+
+  // Bare commands default to their primary action
+  if (cmd === '/swarm') return handleSwarmStatus();
+  if (cmd === '/shield') return handleShieldMonitor();
+  if (cmd === '/scheduler') return handleSchedulerStatus();
+  if (cmd === '/agents') return handleSwarmStatus();
+  if (cmd === '/help' || cmd === '/?') return handleHelp();
+  if (cmd === '/health') return handleHealth();
+  if (cmd === '/status') return handleStatus();
+  if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
+  if (cmd === '/ask') {
+    const prompt = raw.replace(/^\/ask\s+/i, '').trim();
+    if (!prompt) {
+      return { type: 'terminal:error', message: '/ask requires a question. Usage: /ask <your question>' };
+    }
+    return handleAsk(prompt);
+  }
+
+  // Explicit subcommands
   if (cmd === '/swarm' && parts[1] === 'status') return handleSwarmStatus();
   if (cmd === '/shield' && parts[1] === 'monitor') return handleShieldMonitor();
   if (cmd === '/agent' && parts[1] === 'kill') return handleAgentKill(parts[2]);
   if (cmd === '/threshold' && parts[1] === 'set') return handleThresholdSet(parts[2], parts[3]);
   if (cmd === '/scheduler' && parts[1] === 'run') return handleSchedulerRun(parts[2]);
   if (cmd === '/scheduler' && parts[1] === 'status') return handleSchedulerStatus();
-  if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
-  if (cmd === '/ask') return handleAsk(input.replace(/^\/ask\s+/i, ''));
 
+  // Unknown command — help instead of dead end
   return {
     type: 'terminal:error',
-    message: `Unknown command: "${input}". Try /swarm status, /shield monitor, /agent kill [id], /threshold set [key] [value], /ask <question>, /roadmap`,
+    message: `Unknown command: "${cmd}". Type /help for the full command reference.`,
+    hint: HELP_TEXT.slice(0, 200),
     timestamp: new Date().toISOString(),
   };
 }
