@@ -426,15 +426,9 @@ export default function App() {
       });
     }
 
-    // Add randomized/simulated baseline so it is fully populated with nice values
-    bins.forEach((bin, idx) => {
-      const seed = (idx + now.getMinutes()) % 10;
-      const baseSuccess = 15 + (seed * 3) + Math.floor(Math.sin(idx * 2) * 4);
-      const baseFailure = Math.max(0, 1 + Math.floor(Math.cos(idx * 1.5) * 2) + (seed % 3));
-      
-      bin.success += baseSuccess;
-      bin.failure += baseFailure;
-    });
+    // NOTE: bins reflect ONLY real telemetry from the database.
+    // No simulated baseline — the histogram shows actual observed
+    // success/failure counts so the UI never fabricates data.
 
     return bins;
   }, [dbLogs]);

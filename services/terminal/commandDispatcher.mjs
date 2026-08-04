@@ -49,10 +49,29 @@ async function handleSwarmStatus() {
     'web-doctor': ['page-poller','mime-validator','render-checker'],
     'token-forge': ['thompson-sampler','cusum-tracker','mahalanobis-router'],
   };
-  for (const p of parents) {
-    tree.push({ agent: p, subs: subMap[p] || [], status: 'online' });
+
+  // Real status from the capability matrix: an agent present in
+  // kudbee:agents:matrix (with a non-empty 6-dim vector) is online.
+  // Absent agents are reported as unknown — never fabricated online.
+  const registered = new Set();
+  for (let i = 0; i < agents.length; i += 2) {
+    const name = agents[i];
+    const vec = agents[i + 1];
+    if (name && typeof vec === 'string' && vec.split(',').length >= 6) registered.add(name);
   }
-  return { type: 'swarm:status', tree, totalAgents: 40, timestamp: new Date().toISOString() };
+
+  for (const p of parents) {
+    tree.push({ agent: p, subs: subMap[p] || [], status: registered.has(p) ? 'online' : 'unknown' });
+  }
+
+  return {
+    type: 'swarm:status',
+    tree,
+    totalAgents: tree.length,
+    online: registered.size,
+    unknown: parents.length - registered.size,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 async function handleShieldMonitor() {
@@ -135,6 +154,11 @@ async function handleSchedulerStatus() {
   };
 }
 
+async function handleRoadmap() {
+  const { getRoadmapStatus } = await import('./roadmap.mjs');
+  return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 async function dispatchCommand(input) {
@@ -147,10 +171,11 @@ async function dispatchCommand(input) {
   if (cmd === '/threshold' && parts[1] === 'set') return handleThresholdSet(parts[2], parts[3]);
   if (cmd === '/scheduler' && parts[1] === 'run') return handleSchedulerRun(parts[2]);
   if (cmd === '/scheduler' && parts[1] === 'status') return handleSchedulerStatus();
+  if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
 
   return {
     type: 'terminal:error',
-    message: `Unknown command: "${input}". Try /swarm status, /shield monitor, /agent kill [id], /threshold set [key] [value]`,
+    message: `Unknown command: "${input}". Try /swarm status, /shield monitor, /agent kill [id], /threshold set [key] [value], /roadmap`,
     timestamp: new Date().toISOString(),
   };
 }

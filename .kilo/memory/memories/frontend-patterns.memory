@@ -180,8 +180,13 @@
       "query": "verify all middleware for ops-013",
       "timestamp": "2026-08-02T07:18:23.479Z",
       "score": 12
+    },
+    {
+      "query": "scan 11 middleware layers for degradation",
+      "timestamp": "2026-08-04T02:38:37.004Z",
+      "score": 8
     }
   ],
-  "lastRecall": "2026-08-02T07:18:23.479Z",
-  "recallCount": 36
+  "lastRecall": "2026-08-04T02:38:37.004Z",
+  "recallCount": 37
 }
