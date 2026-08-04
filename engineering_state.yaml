@@ -6,7 +6,7 @@ engineering_state:
   release: staging
   branch: main
   commit: 21d755d
-  current_mission: OPS-CI-002
+  current_mission: STAB-002
   next_mission: THINKBOX-016
   blockers: []
   risks:
@@ -17,3 +17,4 @@ engineering_state:
     - hardcoded passkey
     - 45% CI failure rate
     - direct pushes to main
+  mission_state: COMPLETE

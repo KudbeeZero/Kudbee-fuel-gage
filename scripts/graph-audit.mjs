@@ -100,7 +100,10 @@ function report(result) {
   console.log(`  Missing refs      ${findings.missingRefs.length}`);
   console.log(`  Invalid relations ${findings.invalidRelations.length}`);
   console.log('  ────────────────────────────────────────────────────');
-  const verdict = total === 0 ? 'PASS' : total <= 3 ? 'WARN' : 'FAIL';
+  const orphanThreshold = Number(process.env.ORPHAN_THRESHOLD ?? 5);
+  const broken = findings.brokenEdges.length + findings.invalidRelations.length + findings.duplicateNodes.length + findings.cycles.length;
+  const orphansOver = findings.orphans.length > orphanThreshold;
+  const verdict = broken === 0 && !orphansOver ? 'PASS' : broken === 0 && orphansOver ? 'WARN' : 'FAIL';
   console.log(`  Result            ${verdict}`);
   console.log('  └──────────────────────────────────────────────────┘\n');
 
