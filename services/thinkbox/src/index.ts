@@ -9,6 +9,7 @@ import { getBestProvider, getAllEvaluations } from './providers/index.ts';
 import { getTodaysCosts, generateOptimizations } from './cost/tracker.ts';
 import { getEngineeringKPIs, getEngineeringScorecard, verifyEngineeringReady } from './metrics/engineering.ts';
 import { buildManifest } from './intelligence/engine.ts';
+import { generateProvisioning } from './provisioning/index.ts';
 import { publishWorkspaceEvent } from './events.ts';
 
 const [command, ...args] = process.argv.slice(2);
@@ -27,6 +28,7 @@ switch (command) {
   case 'kpi': { const k = getEngineeringKPIs(); const sc = getEngineeringScorecard(); console.log(JSON.stringify({ ciPassRate: k.ciPassRate, scorecard: sc.total, grade: sc.grade })); break; }
   case 'ready': { const v = verifyEngineeringReady(); console.log(JSON.stringify({ ready: v.ready, score: v.score, checks: v.checks.map(c => c.name) })); break; }
   case 'deps': { if (!arg) { console.error('Usage: deps <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const m = buildManifest(ws); console.log(JSON.stringify(m, null, 2)); publishWorkspaceEvent({ topic: 'workspace:deps-resolved', workspace: ws }); break; }
+  case 'provision': { if (!arg) { console.error('Usage: provision <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const intel = buildManifest(ws); const result = generateProvisioning(intel); if (!result.success) { console.error('Provisioning failed:', result.errors, result.warnings); process.exit(1); } console.log(JSON.stringify(result.config, null, 2)); publishWorkspaceEvent({ topic: 'workspace:provisioned', workspace: ws }); break; }
   case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}`); break; }
-  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | deps | list'); process.exit(1); }
+  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | deps | provision | list'); process.exit(1); }
 }
