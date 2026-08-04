@@ -440,6 +440,81 @@ async function handleMiddleware() {
   };
 }
 
+// ── /crucible — Adversarial agent challenge (failed-state review loop) ───────
+
+async function handleCrucible(mode = 'status') {
+  try {
+    // Status mode: read the ledger count without running a cycle.
+    if (mode === 'status' || mode === 'report') {
+      const { execFile } = await import('node:child_process');
+      const { join, dirname } = await import('node:path');
+      const { fileURLToPath } = await import('node:url');
+      const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+      // Try live ledger query via a small node one-liner against the pool.
+      const script = `
+        import { readFileSync } from "node:fs";
+        try { const e = JSON.parse(readFileSync(process.env.CRUCIBLE_ENV_FILE || "", "utf8")); for (const [k,v] of Object.entries(e)) if (v) process.env[k]=v; } catch {}
+        const { getDbPool } = await import("./services/lib/db.js");
+        const pool = getDbPool();
+        try {
+          const r = await pool.query("SELECT COUNT(*) as n FROM reasoning_ledger WHERE provider LIKE '%crucible%'");
+          const recent = await pool.query("SELECT id, result_status, created_at FROM reasoning_ledger WHERE provider LIKE '%crucible%' ORDER BY created_at DESC LIMIT 3");
+          console.log(JSON.stringify({ count: r.rows[0].n, recent: recent.rows.map(x => ({ id: String(x.id).slice(0,8), status: JSON.parse(x.result_status)?.status, at: x.created_at })) }));
+        } catch (e) { console.log(JSON.stringify({ error: e.message })); }
+        process.exit(0);
+      `;
+      const out = await new Promise(res => {
+        execFile('node', ['--input-type=module', '-e', script], {
+          cwd: root, timeout: 20000, maxBuffer: 1024 * 256,
+          env: { ...process.env, CRUCIBLE_ENV_FILE: process.env.CRUCIBLE_ENV_FILE || '' },
+        }, (err, stdout) => res(stdout || err?.message || '{}'));
+      });
+      // stdout may contain [DB] log lines — extract the last JSON line.
+      const jsonLine = out.split('\n').filter(l => l.trim().startsWith('{')).pop() || out;
+      try {
+        const parsed = JSON.parse(jsonLine);
+        return {
+          type: 'crucible:status',
+          operational: !parsed.error,
+          ledgerEntries: parsed.count ?? null,
+          recent: parsed.recent ?? [],
+          maxCyclesPerBoot: 5,
+          note: 'Run /crucible run to execute a new adversarial cycle.',
+          timestamp: new Date().toISOString(),
+        };
+      } catch {
+        return { type: 'crucible:status', operational: false, ledgerEntries: null, raw: out.slice(0, 300), timestamp: new Date().toISOString() };
+      }
+    }
+
+    // Run mode: execute one adversarial cycle with a hard timeout.
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const script = `
+      const { runCrucibleCycle } = await import("./services/agents/crucible.js");
+      const timer = setTimeout(() => { console.log(JSON.stringify({ success: false, message: "timeout" })); process.exit(1); }, 40000);
+      const r = await runCrucibleCycle();
+      clearTimeout(timer);
+      console.log(JSON.stringify({ success: r.success, cycle: r.cycle, maxCycles: r.maxCycles, taskId: r.taskId, traceId: r.traceId, message: r.message }));
+      process.exit(0);
+    `;
+    const out = await new Promise(res => {
+      execFile('node', ['--input-type=module', '-e', script], { cwd: root, timeout: 45000, maxBuffer: 1024 * 256 }, (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    const jsonLine = out.split('\n').filter(l => l.trim().startsWith('{')).pop() || out;
+    try {
+      const parsed = JSON.parse(jsonLine);
+      return { type: 'crucible:run', ...parsed, timestamp: new Date().toISOString() };
+    } catch {
+      return { type: 'crucible:run', success: false, raw: out.slice(0, 300), timestamp: new Date().toISOString() };
+    }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Crucible unavailable: ${e.message}` };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
@@ -534,6 +609,10 @@ async function dispatchCommand(input) {
   if (cmd === '/guardian' || cmd === '/preflight') return handleGuardian();
   if (cmd === '/crypto' || cmd === '/crypt') return handleCrypto();
   if (cmd === '/middleware' || cmd === '/pipeline') return handleMiddleware();
+  if (cmd === '/crucible') {
+    const mode = parts[1] || 'status';
+    return handleCrucible(mode);
+  }
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
