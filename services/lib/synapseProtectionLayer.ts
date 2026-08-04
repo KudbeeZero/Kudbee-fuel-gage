@@ -270,6 +270,7 @@ export async function synapseProtectionMiddleware(req: Request, res: Response, n
     // behavioral gate is redundant for these and would false-positive
     // on Upstash's delivery IPs (no agent headers).
     '/api/qstash',
+    '/v1/chat/completions',
   ];
   if (browserPaths.some((p) => req.path.startsWith(p))) {
     state.stats.totalPassed++;
