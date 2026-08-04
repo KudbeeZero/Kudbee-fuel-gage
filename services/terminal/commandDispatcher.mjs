@@ -462,6 +462,28 @@ async function handleInvariants() {
   }
 }
 
+// ── /scorecard — Engineering Scorecard (evidence-computed, every score real) ──
+
+async function handleScorecard() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/verify-invariants.mjs', '--scorecard'], { cwd: root, timeout: 90000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try {
+      const parsed = JSON.parse(out);
+      return { type: 'scorecard:report', ...parsed, timestamp: new Date().toISOString() };
+    }
+    catch { return { type: 'scorecard:report', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Scorecard unavailable: ${e.message}` };
+  }
+}
+
 // ── /struggle — The Struggle Log (friction → learning, never repeats) ─────────
 
 async function handleStruggle(mode = 'list') {
@@ -659,6 +681,7 @@ async function dispatchCommand(input) {
     return handleCrucible(mode);
   }
   if (cmd === '/invariants' || cmd === '/laws') return handleInvariants();
+  if (cmd === '/scorecard' || cmd === '/grade') return handleScorecard();
   if (cmd === '/struggle' || cmd === '/struggles') {
     const mode = parts[1] || 'list';
     return handleStruggle(mode);

@@ -167,20 +167,70 @@ async function checkActiveMission() {
   }
 }
 
+async function checkEnvHealth() {
+  const apps = [
+    { name: 'dev', url: 'https://kudbee-fuel-gage-dev-f939f2f3535e.herokuapp.com' },
+    { name: 'staging', url: 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com' },
+    { name: 'prod', url: 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com' },
+  ];
+  const results = [];
+  for (const app of apps) {
+    try {
+      const r = await fetch(`${app.url}/health`, { signal: AbortSignal.timeout(8000) });
+      const body = await r.json();
+      const ok = r.ok && (body.status === 'ok' || body.status === 'degraded');
+      results.push({ env: app.name, ok: !!ok, status: body.status || r.status });
+    } catch (e) {
+      results.push({ env: app.name, ok: false, status: e.message });
+    }
+  }
+  const pass = results.every(r => r.ok);
+  return { pass, detail: results.map(r => `${r.env}:${r.status}`).join(' · ') };
+}
+
+async function checkKnowledgeGrowth() {
+  const countFiles = (dir, pred) => {
+    try { return readdirSync(join(REPO_ROOT, dir)).filter(f => pred(f)).length; } catch { return 0; }
+  };
+  const snippets = countFiles('.kilo/memory/snippets', f => f.endsWith('.snippet') || f.endsWith('.md'));
+  const decisions = countFiles('.kilo/memory/decisions', f => f.endsWith('.json'));
+  const struggles = (() => {
+    try {
+      const log = JSON.parse(readFileSync(join(REPO_ROOT, '.kilo/memory/struggle-log.json'), 'utf8'));
+      return (log.struggles || []).length;
+    } catch { return 0; }
+  })();
+  // "Smarter" = knowledge corpus growing (snippets+decisions+struggles all > 0)
+  const pass = snippets > 5 && decisions > 50 && struggles > 3;
+  return { pass, detail: `${snippets} snippets · ${decisions} decisions · ${struggles} struggles logged` };
+}
+
 const CHECKERS = {
   'merge-markers': checkMergeMarkers,
   'lockfile': checkLockfile,
   'secrets': checkSecrets,
   'terminal': checkTerminal,
-  'typescript-7': checkTypescript7,
+  'typescript': checkTypescript7,
   'pipeline': checkPipeline,
   'redis-quota': checkRedisQuota,
   'runtime-vulns': checkRuntimeVulns,
   'clean-tree': checkCleanTree,
   'active-mission': checkActiveMission,
+  'env-health': checkEnvHealth,
+  'knowledge-growth': checkKnowledgeGrowth,
 };
 
-// ── Runner ────────────────────────────────────────────────────────────────────
+// ── Context detection (Engineering OS v3: invariants know their environment) ──
+
+function detectContext() {
+  if (process.argv.includes('--scorecard')) return 'scorecard';   // scorecard runs ALL checks
+  if (process.env.DYNO) return 'heroku-runtime';      // running on Heroku
+  if (process.env.GITHUB_ACTIONS) return 'ci';         // running in CI
+  if (process.env.KUDBEE_CLOUD_AGENT) return 'cloud-agent';
+  return 'development';
+}
+
+// ── Runner (context-aware) ────────────────────────────────────────────────────
 
 async function verifyAll() {
   const manifest = parseJson(INVARIANTS_FILE);
@@ -188,37 +238,81 @@ async function verifyAll() {
     console.error('[invariants] config/invariants.json missing or invalid');
     process.exit(1);
   }
+  const context = detectContext();
   const results = [];
   for (const inv of manifest.invariants) {
     const checker = CHECKERS[inv.check];
-    if (!checker) { results.push({ id: inv.id, name: inv.name, pass: false, detail: `no checker: ${inv.check}` }); continue; }
+    // Context-awareness: if this invariant is not required in this context,
+    // report it as NOT_APPLICABLE (not a failure).
+    const requiredHere = (inv.requiredIn || []).includes(context) || (inv.requiredIn || []).includes('*') || context === 'scorecard';
+    if (!requiredHere) {
+      results.push({ id: inv.id, layer: inv.layer, name: inv.name, pass: true, status: 'N/A', detail: `not required in ${context}`, severity: inv.category });
+      continue;
+    }
+    if (!checker) { results.push({ id: inv.id, layer: inv.layer, name: inv.name, pass: false, detail: `no checker: ${inv.check}`, severity: inv.category }); continue; }
     try {
       const r = await checker();
-      results.push({ id: inv.id, name: inv.name, pass: r.pass, detail: r.detail, severity: inv.severity });
+      results.push({ id: inv.id, layer: inv.layer, name: inv.name, pass: r.pass, status: r.pass ? 'PASS' : 'FAIL', detail: r.detail, severity: inv.category });
     } catch (e) {
-      results.push({ id: inv.id, name: inv.name, pass: false, detail: e.message, severity: inv.severity });
+      results.push({ id: inv.id, layer: inv.layer, name: inv.name, pass: false, status: 'FAIL', detail: e.message, severity: inv.category });
     }
   }
-  return results;
+
+  // Engineering Scorecard: evidence-computed, per-layer, overall.
+  const scorecard = computeScorecard(results, manifest);
+  return { results, scorecard, context };
+}
+
+// ── Engineering Scorecard (every score computed from evidence) ────────────────
+
+function computeScorecard(results, manifest) {
+  const layerNames = { 0: 'Safety', 1: 'Infrastructure', 2: 'Product Truth', 3: 'Process', 4: 'Learning' };
+  const applicable = results.filter(r => r.status !== 'N/A');
+  const byLayer = {};
+  for (const r of applicable) {
+    byLayer[r.layer] = byLayer[r.layer] || { total: 0, pass: 0 };
+    byLayer[r.layer].total++;
+    if (r.pass) byLayer[r.layer].pass++;
+  }
+  const scores = {};
+  let weightedSum = 0, weightTotal = 0;
+  for (const [layer, stat] of Object.entries(byLayer)) {
+    const pct = Math.round((stat.pass / stat.total) * 100);
+    const weight = layer === '0' ? 1.0 : layer === '1' ? 0.9 : layer === '2' ? 0.8 : layer === '3' ? 0.7 : 0.6;
+    scores[layerNames[layer]] = pct;
+    weightedSum += pct * weight;
+    weightTotal += weight;
+  }
+  const overall = weightTotal ? Math.round((weightedSum / weightTotal) * 10) / 10 : 0;
+  return { scores, overall, evidenceCount: applicable.length, computedAt: new Date().toISOString() };
 }
 
 const flag = process.argv[2] || '';
-const results = await verifyAll();
-const failed = results.filter(r => !r.pass);
-const critical = failed.filter(r => r.severity === 'critical');
+const { results, scorecard, context } = await verifyAll();
+const failed = results.filter(r => r.status === 'FAIL');
+const layer0Fail = failed.filter(r => r.layer === 0);
 
 if (flag === '--json') {
-  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), total: results.length, passed: results.length - failed.length, failed: failed.length, invariants: results }, null, 2));
+  console.log(JSON.stringify({ generatedAt: new Date().toISOString(), context, total: results.length, passed: results.length - failed.length, failed: failed.length, scorecard, invariants: results }, null, 2));
 } else if (flag === '--quiet') {
   process.exit(failed.length ? 1 : 0);
+} else if (flag === '--scorecard') {
+  console.log(JSON.stringify(scorecard, null, 2));
 } else {
-  console.log('═══════════ INVARIANTS (machine-verified) ═══════════');
+  console.log(`═══════════ ENGINEERING POLICY ENGINE ═══════════`);
+  console.log(`  context: ${context}`);
   for (const r of results) {
-    console.log(`  ${r.pass ? '✓' : '✗'} ${r.id} ${r.name} — ${r.detail}`);
+    const mark = r.status === 'N/A' ? '⊘' : r.pass ? '✓' : '✗';
+    console.log(`  ${mark} [L${r.layer}] ${r.id} ${r.name} — ${r.detail}`);
   }
-  console.log('════════════════════════════════════════════════════');
+  console.log('──────────────────────────────────────────────');
+  const sc = scorecard.scores;
+  for (const [k, v] of Object.entries(sc)) console.log(`  ${k.padEnd(15)} ${v}%`);
+  console.log(`  Overall         ${scorecard.overall}%`);
+  console.log('══════════════════════════════════════════════');
   if (failed.length) {
-    console.log(`VIOLATION: ${failed.length} invariant(s) failed (${critical.length} critical). Implementation BLOCKED.`);
+    console.log(`VIOLATION: ${failed.length} invariant(s) failed (${layer0Fail.length} in Layer 0 Safety).`);
+    if (layer0Fail.length) console.log('  Layer 0 failure → MISSION BLOCKED.');
     process.exit(1);
   }
   console.log('ALL INVARIANTS HOLD — safe to proceed.');

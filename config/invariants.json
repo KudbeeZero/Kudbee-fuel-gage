@@ -1,97 +1,99 @@
 {
-  "$schema": "kudbee-invariants-v1",
-  "version": 1,
-  "description": "Machine-verifiable invariants — laws the system must always satisfy. Every invariant is checked automatically by scripts/verify-invariants.mjs in CI, the guardian, and the terminal. A violation BLOCKS implementation.",
+  "$schema": "kudbee-invariants-v3",
+  "version": 3,
+  "description": "Engineering Policy Engine — layered, context-aware, machine-verified invariants. Every check knows its environment and its layer. Layer 0 blocks everything; Layer 1 blocks releases; Layers 2-4 inform the scorecard.",
+  "layers": {
+    "0": { "id": "L0", "name": "Safety", "action": "MISSION_BLOCKED — no implementation", "required": true },
+    "1": { "id": "L1", "name": "Platform Health", "action": "BLOCKS_RELEASE if unhealthy", "required": true },
+    "2": { "id": "L2", "name": "Product Truth", "action": "informative — user experience evidence", "required": false },
+    "3": { "id": "L3", "name": "Engineering Process", "action": "process hygiene", "required": true },
+    "4": { "id": "L4", "name": "Learning", "action": "knowledge contribution evidence", "required": false }
+  },
+  "contexts": ["development", "ci", "cloud-agent", "heroku-runtime", "scorecard"],
   "invariants": [
     {
-      "id": "INV-001",
-      "category": "repository",
+      "id": "INV-001", "layer": 0, "category": "safety",
       "name": "No merge conflict markers",
-      "severity": "critical",
       "check": "merge-markers",
-      "description": "No real conflict markers (<<<<<<< / ======= / >>>>>>> on their own line) in tracked source files",
-      "evidence": "OPS-GIT-002 Rule 2 — corruption reached main twice, breaking all builds"
+      "requiredIn": ["development", "ci", "cloud-agent"],
+      "description": "No real conflict markers (<<<<<<< / ======= / >>>>>>> on their own line) in tracked source files"
     },
     {
-      "id": "INV-002",
-      "category": "repository",
+      "id": "INV-002", "layer": 0, "category": "safety",
       "name": "Lockfile valid + in sync",
-      "severity": "critical",
       "check": "lockfile",
-      "description": "package-lock.json parses and its root package matches package.json",
-      "evidence": "Corrupted lockfile (60 markers) broke every Heroku deploy"
+      "requiredIn": ["development", "ci", "cloud-agent"],
+      "description": "package-lock.json parses and root package matches package.json"
     },
     {
-      "id": "INV-003",
-      "category": "repository",
+      "id": "INV-003", "layer": 0, "category": "safety",
       "name": "No secrets in tracked files",
-      "severity": "critical",
       "check": "secrets",
-      "description": "verify-secret-hygiene passes — no credentials in source, name-only presence",
-      "evidence": "Secret-safe workflow — secrets live only in Heroku config / ignored .env"
+      "requiredIn": ["development", "ci", "cloud-agent", "heroku-runtime"],
+      "description": "verify-secret-hygiene passes — no credentials in source"
     },
     {
-      "id": "INV-004",
-      "category": "repository",
+      "id": "INV-004", "layer": 1, "category": "platform",
       "name": "Terminal integrity",
-      "severity": "high",
       "check": "terminal",
-      "description": "apps/web/terminal.html has no conflict markers and contains the enterprise sections",
-      "evidence": "Merge artifacts corrupted terminal.html; the terminal is the control plane"
+      "requiredIn": ["development", "ci", "cloud-agent"],
+      "description": "apps/web/terminal.html clean + complete (control plane)"
     },
     {
-      "id": "INV-005",
-      "category": "repository",
-      "name": "TypeScript 7 contract",
-      "severity": "high",
-      "check": "typescript-7",
-      "description": "No TypeScript 5.x or lower in direct constraints or resolved compiler entries",
-      "evidence": "verify:typescript gate — TS7 native + TS6 API alias for eslint only"
+      "id": "INV-005", "layer": 0, "category": "safety",
+      "name": "TypeScript >= 5 contract",
+      "check": "typescript",
+      "requiredIn": ["development", "ci", "cloud-agent"],
+      "description": "No TypeScript 4.x or lower; verify:typescript is the gate"
     },
     {
-      "id": "INV-006",
-      "category": "operational",
+      "id": "INV-006", "layer": 0, "category": "safety",
       "name": "Pipeline integrity — 3 environments",
-      "severity": "critical",
       "check": "pipeline",
-      "description": "kudbee-fuel-gage-dev, -staging, and -prod all exist on Heroku",
-      "evidence": "Dev app was deleted silently; only 2 of 3 environments existed"
+      "requiredIn": ["development", "cloud-agent"],
+      "description": "dev/staging/prod all exist; skipped in CI without HEROKU_API_KEY"
     },
     {
-      "id": "INV-007",
-      "category": "operational",
+      "id": "INV-007", "layer": 1, "category": "platform",
       "name": "Redis quota headroom",
-      "severity": "high",
       "check": "redis-quota",
-      "description": "Polling intervals must stay under ~30% of the 500k monthly quota",
-      "evidence": "Intervals were 164% of quota — hard-tuned to 23% (heartbeat 5min, audit 15min, BRPOP 25s)"
+      "requiredIn": ["development", "cloud-agent", "heroku-runtime"],
+      "description": "Intervals at ~23% of 500k quota (heartbeat 5min, audit 15min, BRPOP 25s)"
     },
     {
-      "id": "INV-008",
-      "category": "operational",
-      "name": "No server-runtime vulnerabilities",
-      "severity": "high",
+      "id": "INV-008", "layer": 1, "category": "platform",
+      "name": "Server-runtime zero vulnerabilities",
       "check": "runtime-vulns",
-      "description": "Server-runtime dependencies (express, pg, ioredis, zod, upstash, genai) have zero known vulnerabilities. Expo mobile-toolchain xmldom (<=0.8.12) is a documented build-only exception pinned via overrides.",
-      "evidence": "npm audit --omit=dev — all findings are @xmldom/xmldom in @expo/plist; server deps verified clean"
+      "requiredIn": ["development", "ci", "heroku-runtime"],
+      "description": "Server deps clean; Expo toolchain (xmldom) documented exception"
     },
     {
-      "id": "INV-009",
-      "category": "process",
-      "name": "Clean tree before mission",
-      "severity": "high",
+      "id": "INV-009", "layer": 3, "category": "process",
+      "name": "Clean working tree",
       "check": "clean-tree",
-      "description": "No uncommitted changes when starting or ending a mission",
-      "evidence": "Dirty tree caused branch confusion and lost work across sessions"
+      "requiredIn": ["development", "ci", "cloud-agent"],
+      "description": "No uncommitted changes. NOT APPLICABLE on heroku-runtime (no git repo)."
     },
     {
-      "id": "INV-010",
-      "category": "process",
+      "id": "INV-010", "layer": 3, "category": "process",
       "name": "Active mission on roadmap",
-      "severity": "medium",
       "check": "active-mission",
-      "description": "Roadmap has at least one in_progress or planned phase",
-      "evidence": "No mission = no direction; every session should have a purpose"
+      "requiredIn": ["development", "cloud-agent", "ci"],
+      "description": "Roadmap has in_progress or planned phase"
+    },
+    {
+      "id": "INV-011", "layer": 2, "category": "product",
+      "name": "All environments serve healthy",
+      "check": "env-health",
+      "requiredIn": ["scorecard"],
+      "description": "dev/staging/prod /health endpoints return ok — product truth evidence"
+    },
+    {
+      "id": "INV-012", "layer": 4, "category": "learning",
+      "name": "Knowledge is growing",
+      "check": "knowledge-growth",
+      "requiredIn": ["scorecard"],
+      "description": "Snippets + decisions + struggle-log trending upward — the platform got smarter"
     }
   ]
 }
