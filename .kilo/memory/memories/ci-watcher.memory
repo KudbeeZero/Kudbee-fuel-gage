@@ -86,9 +86,19 @@
       "id": "dec-1785434412085-670284d4",
       "decision": "verification_complete",
       "timestamp": "2026-07-30T18:00:12.086Z"
+    },
+    {
+      "id": "dec-1785811354648-4a035ebb",
+      "decision": "verification_complete",
+      "timestamp": "2026-08-04T02:42:34.648Z"
+    },
+    {
+      "id": "dec-1785811374521-152d2662",
+      "decision": "verification_complete",
+      "timestamp": "2026-08-04T02:42:54.522Z"
     }
   ],
-  "totalActions": 38,
-  "lastAction": "2026-08-02T18:52:25.919Z",
+  "totalActions": 44,
+  "lastAction": "2026-08-04T02:42:54.522Z",
   "discoveredAt": "2026-07-27T18:44:38.562Z"
 }

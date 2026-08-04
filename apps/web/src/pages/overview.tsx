@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useOverviewHealth, type HealthSignal, type IncidentSeverity, type OverviewIncident, type OverviewState } from '../hooks/useOverviewHealth';
+import { SystemPulse } from '../components/dashboard/SystemPulse';
 
 interface OverviewPageProps {
   onNavigate: (tab: string) => void;
@@ -152,6 +153,8 @@ export function OverviewPage({ onNavigate }: OverviewPageProps) {
           Run health check
         </button>
       </header>
+
+      <SystemPulse />
 
       <section className={`relative overflow-hidden rounded-2xl border p-5 sm:p-6 ${overallStyle.border} ${overallStyle.background}`}>
         <div className="absolute -right-16 -top-24 h-56 w-56 rounded-full bg-emerald-300/[0.06] blur-3xl" />
