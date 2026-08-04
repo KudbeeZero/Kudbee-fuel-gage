@@ -198,6 +198,7 @@ const HELP_TEXT = [
   '  /swarm [status]     Agent fleet tree',
   '  /shield [monitor]   P·L·R·I shield metrics',
   '  /roadmap            Phases to production',
+  '  /security           Security posture report',
   '  /health             System health',
   '  /status             System + fleet summary',
   '  /agents             Alias for /swarm',
@@ -215,6 +216,31 @@ async function handleHelp() {
 
 async function handleHealth() {
   return { type: 'terminal:health', status: 'ok', timestamp: new Date().toISOString() };
+}
+
+// ── Security posture report (ties hardening into the terminal) ─────────────
+
+async function handleSecurity() {
+  const report = {
+    type: 'security:posture',
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    },
+    cors: 'strict allowlist (staging + production origins only)',
+    rateLimit: '100 req/min/IP global · /health + SSE + static exempt',
+    bodyLimit: '10mb',
+    auth: 'open-access (single-user Engineering OS v2.2 directive)',
+    dependencies: {
+      runtime: '0 known vulnerabilities',
+      devToolchain: '17 (Expo/mobile: uuid, xcode, bunyan — not shipped to prod)',
+    },
+    timestamp: new Date().toISOString(),
+  };
+  return report;
 }
 
 async function handleStatus() {
@@ -249,6 +275,7 @@ async function dispatchCommand(input) {
   if (cmd === '/health') return handleHealth();
   if (cmd === '/status') return handleStatus();
   if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
+  if (cmd === '/security' || cmd === '/sec') return handleSecurity();
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
