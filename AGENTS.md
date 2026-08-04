@@ -1,201 +1,168 @@
 # Kudbee AGENTS.md
 
-## ⚠️ CRITICAL: Run this FIRST — before reading any other files
+## Startup Sequence
 
 ```bash
-node scripts/handoff.mjs --stamp
+node scripts/handoff.mjs --stamp   # MANDATORY first — instant situational awareness
+node scripts/session-bootstrap.mjs # deep context: agents, snippets, CI, decisions
 ```
 
-**This is the mandatory HANDOFF BRIEFING.** It tells you instantly — no matter
-what branch you're on or what you were doing:
-- **WHO you are** (agent id, current role)
-- **WHERE you are** (git branch, HEAD SHA, dirty file count)
-- **WHAT the mission is** (current phase, progress %, mission statement)
-- **WHAT to do next** (first action recommendation)
-- **WHAT happened recently** (last 5 DTHINK events)
-- **WHERE the system lives** (staging/prod/terminal/github links)
+The handoff stamps `.kilo/handoff.json`. Bootstrap loads 11 terminal agents,
+9 knowledge snippets, CI status, and decision audit trails. Always run both
+before starting any work.
 
-The manifest is stamped to `.kilo/handoff.json` (machine-readable). If any
-field is missing or wrong, the mission lock or roadmap is out of sync —
-resolve that BEFORE starting work. State your role + first action to the
-human, then move.
+## Architecture
 
-Then load deep context:
+- **Entrypoint:** `services/ingestion/server.js` (`.js`, not `.ts`). Do NOT create `server.ts`.
+- **Monorepo:** `apps/*`, `services/*`, `packages/*`. All `npm install` at root only.
+- **Package manager:** `npm@10.9.8`, **Node:** `>=22.0.0` (engines: `22.x`).
+  `packages/opencode` uses **bun** for its own scripts.
+- **Database:** Neon Postgres + pgvector. Migrations run on boot. Embeddings: 1536-dim.
+- **Redis:** `REDIS_URL` (Fast Brain) / `REDIS_WORKER_URL` (Slow Brain, fallback to `REDIS_URL`).
+  Monthly quota 500k — circuit breaker protects it.
+- **Gemini:** model `gemini-flash-latest`. Provider factory: `packages/utils/src/llm/providers.ts`.
+- **Roadmap:** `services/terminal/roadmap.mjs` — machine-readable phases + mission statement.
 
-```bash
-node scripts/session-bootstrap.mjs
-```
+### TypeScript Dual Compiler (TS 5 + TS 7)
 
-This loads: integration pipelines, terminal agents with decision history,
-knowledge snippets, serial bus events, phone tree, current CI status, and
-the memory journal.
-
-## Interactive Terminal — the control plane
-
-The interactive terminal (`services/terminal/commandDispatcher.mjs`) is the
-primary interface for operating the system. Commands are executed server-side
-via `POST /api/terminal/execute` (no auth required — open access):
-
-```
-/ask <q>      Gemini answer (plain text auto-routes here)
-/code <req>   Gemini writes production-grade code (Kudbee conventions)
-/swarm        Agent fleet tree (10 agents)
-/shield       P·L·R·I shield metrics
-/roadmap      Phases to production (11 committed)
-/security     Security posture report
-/echo         Echo Prompt Library — self-improving prompts
-/forecast     Failure Forecaster — predicts next failure
-/handoff      Instant situational awareness (same as handoff.mjs)
-/status       System + fleet summary
-/help         Full command reference
-```
-
-The terminal UI is served at `/terminal.html` (vanilla HTML/CSS/JS, no React).
-AgentTerminal dock: `apps/web/src/components/studio/AgentTerminal.tsx`.
-
-## Deploy flow (Heroku)
-
-```bash
-# Deploy staging or production — git push triggers build + BootVerify
-git push https://git.heroku.com/kudbee-fuel-gage-staging.git main:main
-git push https://git.heroku.com/kudbee-fuel-gage.git main:main
-```
-
-- **Procfile release command:** `node scripts/boot-verify.mjs` — boots the
-  server on port 9900 and waits for `/health` before releasing. If it times
-  out, the release FAILS and the previous release stays active.
-- **Express 5 gotcha:** the SPA catch-all route must be `app.get('/{*path}')`.
-  `app.get('*')` throws `PathError: Missing parameter name` on boot.
-- **`.npmrc` is required** (`legacy-peer-deps=true`) — Heroku's plain `npm ci`
-  fails without it (react 19 / react-native peer conflict).
-- Staging apps: `kudbee-fuel-gage-staging` (web + hermes-worker).
-- Production: `kudbee-fuel-gage` (web + hermes-worker + monitor-worker + sentinel).
-
-## Security posture (Engineering OS v2.2)
-
-- **Password-based access control is DISENGAGED** — no bearerAuth, no synapse
-  gate, no X-Agent-Pass required, no login. Single-user directive.
-- Invisible defense-in-depth remains ACTIVE: security headers (CSP, HSTS,
-  nosniff, X-Frame-Options DENY), strict CORS allowlist (staging + prod
-  origins, no wildcard), global rate limit 100 req/min/IP (health/SSE/static
-  exempt), 10mb body limit.
-- `/security` in the terminal reports the live posture.
-
-## Self-healing & self-improvement
-
-```bash
-node scripts/self-heal.mjs check      # run gates (typecheck/crypto/secrets)
-node scripts/self-heal.mjs diagnose   # + Gemini diagnosis on failure
-node scripts/self-heal.mjs heal       # recall-first loop, mints THINK token
-node scripts/failure-forecaster.mjs   # predict next failing gate
-node scripts/agent-bootstrap.mjs loop # tap in anywhere, learn, contribute
-```
-
-- **THINK token loop:** failures are signature-matched against
-  `.kilo/memory/heal-patterns.json` BEFORE calling Gemini. Known patterns are
-  fixed from memory (zero LLM cost); new patterns are Gemini-diagnosed then
-  minted. Every fix feeds DTHINK + a snippet card.
-- **Echo Prompt Library** (`services/terminal/echoLibrary.mjs`): every Gemini
-  interaction is scored; prompts auto-improve after 5+ interactions.
-- **Circuit breaker** (`services/lib/circuitBreaker.ts`): CLOSED→OPEN→HALF_OPEN
-  with local-state fallback — survives Redis quota exhaustion. Use
-  `breaker.execute(fn, fallback)` to protect any call site. Hermes heartbeats
-  write to `.kilo/memory/local-state/` when Redis is unavailable.
-- **Scheduled self-heal:** `.github/workflows/autonomous-maintenance.yml` runs
-  every 6 hours (gates + Gemini diagnosis on failure).
-
-## Architecture (facts not obvious from filenames)
-
-- **Canonical server entrypoint:** `services/ingestion/server.js` — do NOT
-  create `server.ts` or duplicate entrypoints.
-- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*`. All `npm install` must run at root.
-- **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`. `packages/opencode` uses **bun**.
-- **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
-- **Redis:** `REDIS_URL` (Fast Brain) / `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`). Monthly quota 500k — the circuit breaker protects it.
-- **Gemini:** `GEMINI_API_KEY` (on Heroku staging) + model `gemini-flash-latest` (2.0/2.5 deprecated for new keys). Provider factory: `packages/utils/src/llm/providers.ts`.
-- **Roadmap:** `services/terminal/roadmap.mjs` — machine-readable phases, mission statement, `/roadmap` command.
-
-## CI Gates (must pass)
-
-1. `npm run verify:typescript` — TS 7.0.2 direct-constraint + lockfile gate.
-2. `npm run verify:agent-contracts` — all discovered agents have metadata.
-3. `npm run verify:integrations` — command/package availability only.
-4. `npm run verify:learning-protocol` — THINK/DTHINK loop + safety rules.
-5. `npm run typecheck` — Turbo-routed TS strict check.
-6. `npm run lint` — Turbo-routed linting.
-7. `node scripts/verify-e2e.mjs --smoke` — bounded smoke (no provider URLs).
-8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full E2E only with opt-in.
-
-All agents must run `npm run verify:typescript` before handoff. TypeScript
-contract: `npx tsc` resolves `@typescript/native` (TS 7); the TS 6 API alias
-is for typescript-eslint only. Never introduce TS 5.x or lower.
+- `typescript@5.9.3` at root — TS 5 API for typescript-eslint and IDE support.
+- `@typescript/native` (aliases `typescript@^7.0.2`) in EVERY workspace package —
+  the native TS 7 `tsc` binary. Resolution enforced by `scripts/verify-typescript-version.mjs`
+  and `scripts/verify-invariants.mjs`.
+- `npx tsc` resolves `@typescript/native` (TS 7); `typescript` is the TS 5 API alias.
+  Never downgrade either.
 
 ## Key Commands
 
 ```bash
-npm ci                              # root only, never inside workspace packages
-npm run typecheck                   # Turbo-routed TS7 strict check
-npm run verify:typescript           # TS7 native compiler + TS6 API alias gate
-npm run lint                        # Turbo-routed linting
-npm run build                       # Turbo build (dependsOn typecheck + lint)
-cd apps/web && npm run build        # Vite prod build for Control Tower
-cd apps/mobile && npx tsc --noEmit  # Mobile type-check
+npm ci                                # always at root; --legacy-peer-deps implied by .npmrc
+npm run typecheck                     # Turbo-routed TS strict check
+npm run verify:typescript             # same as typecheck (verifies lockfile contract in CI)
+npm run lint                          # Turbo-routed linting
+npm run build                         # Turbo build (dependsOn: typecheck + lint)
+bun test                              # test runner (bun, not jest/mocha)
+npm run format                        # Prettier — single quotes, es5 commas, 100 width, LF
+
+# Targeted checks
+cd apps/web && npm run build          # Vite prod build for Control Tower
+cd apps/mobile && npx tsc --noEmit    # Mobile type-check
+
+# System diagnostics
 node scripts/system-status.mjs check  # CI + tests + build + E2E + pipelines
-node scripts/agents.mjs status     # Agent fleet dashboard
-node scripts/snippet-agent.mjs health  # Knowledge store health
+node scripts/agents.mjs status        # Agent fleet dashboard
+node scripts/snippet-agent.mjs health # Knowledge store health
+node scripts/repository-guardian.mjs  # Guardian gate — run before any implementation
 ```
+
+## CI Gates (verify.yml)
+
+PRs and main pushes trigger the `Kudbee Bounded CI` workflow (20 min timeout):
+
+1. `npm ci --legacy-peer-deps --ignore-scripts`
+2. Machine-verifiable invariants (`verify-invariants.mjs`)
+3. TS 7 compliance (`verify:typescript`)
+4. Crypto runtime + secret hygiene
+5. Typecheck + Lint
+6. `bun test` (unit tests)
+7. Build
+8. Bounded smoke (`continue-on-error: true`)
+
+Three gates (`verify:agent-contracts`, `verify:integrations`, `verify:learning-protocol`)
+are stubs with `|| true`. Test/typecheck/lint are the hard gates.
+
+Also triggered: CodeQL (security analysis), Box Test (Upstash Box staging health),
+Autonomous Maintenance (every 6h: self-heal gates + Gemini diagnosis).
+
+## Deploy (Heroku)
+
+```bash
+git push https://git.heroku.com/kudbee-fuel-gage-staging.git main:main
+git push https://git.heroku.com/kudbee-fuel-gage.git main:main
+```
+
+- **Release:** `node scripts/boot-verify.mjs` boots server on :9900, waits for `/health`.
+  Timeout = deploy rolled back.
+- **.npmrc required** (`legacy-peer-deps=true`) — Heroku `npm ci` fails without it.
+- **Express 5:** catch-all must be `app.get('/{*path}')`, NOT `app.get('*')`.
+- Staging: `kudbee-fuel-gage-staging` (web + hermes-worker).
+- Production: `kudbee-fuel-gage` (web + hermes-worker + monitor-worker + sentinel).
+- Procfile defines 4 process types: web, monitor-worker, hermes-worker, sentinel.
+
+## Interactive Terminal
+
+Primary control plane: `services/terminal/commandDispatcher.mjs` → `POST /api/terminal/execute` (no auth).
+UI: `/terminal.html` (vanilla HTML/CSS/JS). Studio dock: `apps/web/src/components/studio/AgentTerminal.tsx`.
+
+Key commands: `/ask`, `/code`, `/swarm`, `/shield`, `/roadmap`, `/security`, `/echo`,
+`/forecast`, `/handoff`, `/status`, `/help`.
+
+## Self-Healing
+
+```bash
+node scripts/self-heal.mjs check      # run gates
+node scripts/self-heal.mjs diagnose   # + Gemini diagnosis on failure
+node scripts/self-heal.mjs heal       # recall-first loop, mints THINK token
+node scripts/failure-forecaster.mjs   # predict next failing gate
+```
+
+- **THINK token loop:** failures matched against `.kilo/memory/heal-patterns.json`
+  before calling Gemini. Known patterns fixed from memory (zero LLM cost).
+- **Circuit breaker:** `services/lib/circuitBreaker.ts` — CLOSED→OPEN→HALF_OPEN with
+  local-state fallback for Redis quota exhaustion.
+- **Echo Prompt Library:** `services/terminal/echoLibrary.mjs` — prompts auto-improve
+  after 5+ interactions.
+
+## PR Workflow
+
+1. One objective per PR; <15 files, <250-500 lines.
+2. Commit locally, verify typecheck + build BEFORE pushing.
+3. PR body: Problem → Fix → Verified + rollback plan.
+4. Wait for CI (all green).
+5. Merge squash + delete branch. Pull main. Clean tree.
+6. Deploy staging first, verify, then production. Record DTHINK events.
 
 ## Critical Gotchas
 
-- **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension).
-- **.env loading in scripts:** standalone `.mjs` scripts should call
-  `try { process.loadEnvFile('.env'); } catch {}` at the top.
-- **`think_tokens` ≠ `vector_memory`:** minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
-- **.env* is gitignored** except `.env.example`, `config/template.env`, `config/.env.example`.
-- **Dependency version cascade:** merging multiple lockfile-touching PRs in
-  quick succession corrupts `package-lock.json`. Regenerate from a green
-  baseline incrementally (install on top of the existing lockfile, never
-  `rm package-lock.json` blindly). CI `paths` filters must include
-  `package-lock.json` + `.npmrc`.
-- **express hoisting:** `services/telemetry/degradation-monitor.ts` imports
-  express — express must be a ROOT dependency or the server fails to boot.
+- **groqClient.ts import:** in `services/lib/ftwbMiddleware.ts`, must import
+  `./groqClient.ts` with the `.ts` extension.
+- **`.env` loading in scripts:** standalone `.mjs` scripts: `process.loadEnvFile('.env')`
+  wrapped in try/catch.
+- **think_tokens ≠ vector_memory:** minting a think token does NOT auto-sync —
+  call `storeMemoryText()` explicitly.
+- **express hoisting:** `services/telemetry/degradation-monitor.ts` imports express —
+  express must be a ROOT dependency.
+- **Dependency cascade:** multiple lockfile-touching PRs corrupt `package-lock.json`.
+  Regenerate incrementally on green baseline; never `rm package-lock.json` blindly.
+- **`.env*` gitignored** except `.env.example`, `config/template.env`, `config/.env.example`.
 
 ## Code Style
 
 - **Prettier:** single quotes, trailing commas (es5), printWidth 100, LF.
+  Config: `.prettierrc.json`.
 - **Imports:** server.js and lib files use `node:` prefix for builtins.
-- **`// kilocode_change` markers:** required in `apps/web/src/hooks/useToolInterceptor.ts` and `services/agent/cli.ts`.
+- **`// kilocode_change` markers:** required in `apps/web/src/hooks/useToolInterceptor.ts`
+  and `services/agent/cli.ts`.
 
-## PR Workflow (Standard Operating Procedure)
+## Repository Protection
 
-1. One objective per PR; prefer <15 files, <250-500 lines.
-2. Commit locally, verify typecheck + build BEFORE pushing.
-3. PR body: **Problem → Fix → Verified** + rollback plan.
-4. Wait for CI (verify + CodeQL + box-test + docs-check all green).
-5. Merge with squash + delete branch. Pull main. Clean tree.
-6. Deploy staging first, verify, then production. Record DTHINK events.
-7. `/ask` is rate-limited (10/min default; `/threshold set askRateLimit N`).
+- Never edit main directly: mission → branch → PR → CI → merge queue → main.
+- No merge markers in tracked files — they fail the push.
+- One terminal owner: `apps/web/terminal.html`. No duplicate production terminals.
+- Dirty tree = blocked. Resolve before any work.
+- Repair mode: restore last known-good version on a repair branch, replay changes,
+  verify, merge. Never improvise on main.
 
-## OPS-GIT-002 — Repository Protection Protocol
+## Kilo Config
 
-**The Guardian is the gate.** Every agent runs `/guardian` (or
-`node scripts/repository-guardian.mjs`) BEFORE any implementation. It checks:
-clean tree, no merge markers, lockfile valid, stack valid, terminal
-integrity, handoff current, bootstrap current, active mission. **If any
-check fails — STOP. Do not implement. Report.**
+- **kilo.json:** MCP for Upstash Redis via `@upstash/redis-mcp`.
+- **.kilo/command/:** 18 slash commands (`/status`, `/help`, `/pr`, `/verify`, etc.)
+- **.kilo/agent/:** 3 subagent definitions (AGENTS.kilo, middleware, session_checkpoint)
+- **.kilo/skill/:** 5 skills (ci-watcher, knowledge-curator, kudbee, pipeline-guardian,
+  terminal-diagnostic)
 
-- **Never edit main directly.** Every change: mission → branch → push →
-  draft PR → CI → merge queue → main. No exceptions except emergency hotfixes.
-- **Merge markers never reach GitHub.** Conflict markers (`<<<<<<<`,
-  `=======`, `>>>>>>>`) in any tracked source file fail the push. If you
-  find them committed (this happened twice: package-lock.json and
-  commandDispatcher.mjs), fix immediately via repair branch, never on main.
-- **One terminal owner:** `apps/web/terminal.html`. Other terminals are
-  archive/experimental — never duplicate production terminals.
-- **Build artifacts are never hand-edited.** Source → build → artifact →
-  deploy.
-- **Dirty tree = blocked.** If `git status` is dirty when starting a
-  mission, resolve it before anything else.
-- **Repair mode:** on corruption, create a repair branch, restore the last
-  known-good version, replay intended changes, open a repair PR, verify,
-  then merge. Never improvise on main.
+## Links
+
+- Staging: https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com
+- Production: https://kudbee-fuel-gage-330ade653a62.herokuapp.com
+- Terminal: https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/terminal.html
+- GitHub: https://github.com/KudbeeZero/Kudbee-fuel-gage
