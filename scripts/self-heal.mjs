@@ -20,13 +20,15 @@
  * ---------------------------------------------------------------------------
  */
 import { execFile } from 'node:child_process';
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
 const HEAL_DIR = join(REPO_ROOT, '.kilo', 'memory', 'heals');
+const PATTERNS_FILE = join(REPO_ROOT, '.kilo', 'memory', 'heal-patterns.json');
+const SNIPPET_DIR = join(REPO_ROOT, '.kilo', 'memory', 'snippets');
 
 const GATES = [
   { name: 'typecheck', cmd: 'npm', args: ['run', 'typecheck'], timeout: 180000 },
@@ -90,7 +92,7 @@ async function geminiDiagnose(failuresText) {
   }
 }
 
-async function recordLearning(gates, diagnosis) {
+async function recordLearning(gates, diagnosis, failuresText) {
   if (!existsSync(HEAL_DIR)) mkdirSync(HEAL_DIR, { recursive: true });
   const entry = {
     id: `heal-${Date.now()}`,
@@ -101,7 +103,107 @@ async function recordLearning(gates, diagnosis) {
   const file = join(HEAL_DIR, `${entry.id}.json`);
   writeFileSync(file, JSON.stringify(entry, null, 2));
   console.log(`[self-heal] recorded → ${file}`);
+
+  // ── Mint a THINK token: persist the failure pattern → fix so the
+  //    next occurrence is handled from memory, WITHOUT Gemini. ──
+  await mintThinkToken(failuresText, diagnosis, gates);
   return entry;
+}
+
+// ── Pattern store: failure signature → known fix ────────────────────────────
+
+function loadPatterns() {
+  try { return JSON.parse(readFileSync(PATTERNS_FILE, 'utf8')); } catch { return { patterns: [] }; }
+}
+
+function savePatterns(store) {
+  if (!existsSync(join(REPO_ROOT, '.kilo', 'memory'))) mkdirSync(join(REPO_ROOT, '.kilo', 'memory'), { recursive: true });
+  writeFileSync(PATTERNS_FILE, JSON.stringify(store, null, 2));
+}
+
+// Deterministic signature: extract error lines + gate name → stable key.
+function failureSignature(failuresText) {
+  return failuresText
+    .split('\n')
+    .filter(l => /error|Error|✖|Cannot|TS\d+|failed|ERR_/i.test(l))
+    .map(l => l.trim().replace(/\d+/g, 'N').slice(0, 80))
+    .slice(0, 5)
+    .join('|');
+}
+
+// Recall a known fix for this failure — no Gemini needed.
+function recallPattern(failuresText) {
+  const sig = failureSignature(failuresText);
+  const store = loadPatterns();
+  const hit = store.patterns.find(p => p.signature === sig);
+  if (hit) {
+    console.log(`[self-heal] ⚡ PATTERN RECALL — known fix found (${hit.hits} prior occurrences), Gemini NOT needed`);
+    return hit;
+  }
+  // Fuzzy: also match if 3+ of the signature lines appear in a stored pattern
+  const sigParts = sig.split('|');
+  const fuzzy = store.patterns.find(p => {
+    const parts = p.signature.split('|');
+    const overlap = parts.filter(x => sigParts.includes(x)).length;
+    return overlap >= 3;
+  });
+  if (fuzzy) {
+    console.log(`[self-heal] ⚡ FUZZY PATTERN RECALL — known fix found (${fuzzy.hits} prior occurrences)`);
+    return fuzzy;
+  }
+  return null;
+}
+
+async function mintThinkToken(failuresText, diagnosis, gates) {
+  const sig = failureSignature(failuresText);
+  const store = loadPatterns();
+  const existing = store.patterns.find(p => p.signature === sig);
+  if (existing) {
+    existing.hits = (existing.hits || 1) + 1;
+    existing.lastSeen = new Date().toISOString();
+    savePatterns(store);
+    console.log(`[self-heal] THINK token updated — pattern seen ${existing.hits}x`);
+  } else {
+    store.patterns.push({
+      signature: sig,
+      diagnosis,
+      createdAt: new Date().toISOString(),
+      hits: 1,
+    });
+    savePatterns(store);
+    console.log('[self-heal] 🧠 THINK TOKEN MINTED — new failure pattern stored for future recall');
+  }
+
+  // Feed DTHINK so the event is part of the system's memory stream
+  try {
+    await new Promise(res => execFile('node', ['scripts/dthink-pipeline.mjs', 'feed', 'think:heal',
+      `pattern minted — ${sig.slice(0, 100)}`], { cwd: REPO_ROOT, timeout: 15000 }, () => res()));
+  } catch {}
+
+  // Write a snippet card so knowledge recall surfaces it too
+  try {
+    if (!existsSync(SNIPPET_DIR)) mkdirSync(SNIPPET_DIR, { recursive: true });
+    const slug = `heal-pattern-${Date.now()}`;
+    const card = [
+      '# Self-Heal Pattern — learned fix',
+      '',
+      `> **Minted:** ${new Date().toISOString()} — recalled from memory, no Gemini needed next time`,
+      '',
+      '## Failure signature',
+      '```',
+      sig.slice(0, 400),
+      '```',
+      '',
+      '## Learned fix (from Gemini diagnosis)',
+      '```',
+      diagnosis.slice(0, 600),
+      '```',
+      '',
+      '## How to recall',
+      '`node scripts/self-heal.mjs heal` — pattern matching happens before any LLM call.',
+    ].join('\n');
+    writeFileSync(join(SNIPPET_DIR, `${slug}.md`), card);
+  } catch {}
 }
 
 // ── CLI ──
@@ -121,9 +223,18 @@ if (action === 'diagnose' || action === 'heal') {
     console.log('═ ALL GATES PASS — nothing to heal ═');
     process.exit(0);
   }
-  console.log('\n══ DIAGNOSING WITH GEMINI ══\n');
-  const diagnosis = await geminiDiagnose(failures);
-  console.log(diagnosis);
-  await recordLearning(results, diagnosis);
-  console.log('\n[self-heal] diagnosis recorded. Review before applying the fix.');
+
+  // ── RECALL FIRST: known patterns are handled from memory, no Gemini ──
+  const known = recallPattern(failures);
+  let diagnosis;
+  if (known) {
+    diagnosis = known.diagnosis;
+    console.log(`\n══ RECALLED FIX (from memory) ══\n${diagnosis}`);
+  } else {
+    console.log('\n══ NEW PATTERN — DIAGNOSING WITH GEMINI ══\n');
+    diagnosis = await geminiDiagnose(failures);
+    console.log(diagnosis);
+  }
+  await recordLearning(results, diagnosis, failures);
+  console.log('\n[self-heal] learning recorded. Review before applying the fix.');
 }
