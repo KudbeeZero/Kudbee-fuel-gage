@@ -134,7 +134,6 @@
     },
     {
 <<<<<<< ours
-<<<<<<< ours
       "id": "dec-1785819807332-03aba9b0",
       "decision": "curation_complete",
       "timestamp": "2026-08-04T05:03:27.332Z"
@@ -142,17 +141,12 @@
   ],
   "lastAction": "2026-08-04T05:03:27.332Z",
 =======
-=======
->>>>>>> theirs
       "id": "dec-1785820538826-1bf550d4",
       "decision": "curation_complete",
       "timestamp": "2026-08-04T05:15:38.826Z"
     }
   ],
   "lastAction": "2026-08-04T05:15:38.826Z",
-<<<<<<< ours
->>>>>>> theirs
-=======
 >>>>>>> theirs
   "totalActions": 52
 }

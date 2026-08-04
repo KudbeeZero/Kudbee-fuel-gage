@@ -1,50 +1,4 @@
 {
-<<<<<<< ours
-  "session": "chrome-mobile-black-screen",
-  "duration": "2026-07-28T20:00Z → 2026-07-29T02:07Z (~6 hours)",
-  "rootCause": "express.static served .js files as text/html; Chrome blocks module scripts with wrong MIME type",
-  "fix": "setHeaders in express.static to force application/javascript for .js files",
-  "impact": "13-char attribute (crossorigin) investigated → actual root cause was Content-Type header",
-  "lessons": [
-    "Always verify Content-Type headers on deployed assets — curl -sI url | grep Content-Type",
-    "Module scripts require application/javascript MIME type in Chrome",
-    "crossorigin attribute on same-origin modules triggers CORS preflight",
-    "Vite adds crossorigin automatically via modulePreload option",
-    "express.static can fall through to SPA catch-all if file not found → wrong MIME type",
-    "Heroku tarball URLs are cached — add ?t=N for fresh builds",
-    "Testing in incognito alone doesn't rule out browser caching issues",
-    "Always check the actual deployed HTML with curl — don't assume VS Code reflects deployed code"
-  ],
-  "phases": [
-    {"phase":1,"issue":"Black screen on mobile","attempt":"Added splash screen + loading spinner","result":"Still black, splash showed but React never mounted"},
-    {"phase":2,"issue":"Module script not executing","attempt":"Promise.race with 10s timeout","result":"Timeout never fired, module import hung"},
-    {"phase":3,"issue":"Chunk download","attempt":"Preload App chunk, reduce timeout","result":"Still spinning"},
-    {"phase":4,"issue":"React.lazy hanging","attempt":"Strip main.tsx to 4 lines vanilla JS","result":"v269 diagnostic — green text never appeared on mobile"},
-    {"phase":5,"issue":"Module script blocked entirely","attempt":"Remove crossorigin attribute","result":"No change"},
-    {"phase":6,"issue":"Vite not building","attempt":"Remove type=module, use dynamic import()","result":"Vite didn't process entry point — application/octet-stream error"},
-    {"phase":7,"issue":"Content-Type wrong","attempt":"curl -sI — MIME type text/html instead of application/javascript","result":"ROOT CAUSE FOUND"},
-    {"phase":8,"issue":"express.static fallthrough","attempt":"Add setHeaders to force correct MIME types","result":"FIXED — application/javascript, app loads"},
-    {"phase":9,"issue":"Vite modulePreload adds crossorigin","attempt":"Set modulePreload: false in vite.config","result":"redundant — MIME type was the real issue"}
-  ],
-  "thinkTokens": [
-    "tk-crossorigin-root-030: Root cause analysis (KD:100)",
-    "tk-system-scaffold-023: Database health verified",
-    "tk-v269-diagnostic-021: Module execution isolation test",
-    "tk-agent-diagnostic-022: 3-agent collaboration on diagnosis"
-  ],
-  "databases": {
-    "postgres": "Neon Serverless — ingestion_db + vector_memory (1536-dim) — healthy",
-    "redisFast": "whole-tapir-175740.upstash.io — 24 keys, terminal agents, budget",
-    "redisSlow": "creative-finch-182843.upstash.io — 1 key, REDIS_WORKER_URL, governance"
-  },
-  "commits": 15,
-  "prs": "#210-#215 all merged",
-  "agents": "pipeline-guardian (22 actions), knowledge-curator (18), ci-watcher (8)",
-  "tokenCount": 26,
-  "dthinkEntries": 39,
-  "createdAt": "2026-07-29T02:08:00Z"
-}
-=======
   "struggles": [
     {
       "session": "chrome-mobile-black-screen",
@@ -211,4 +165,3 @@
   ],
   "updatedAt": "2026-08-04T10:19:49.799Z"
 }
->>>>>>> theirs

@@ -63,7 +63,6 @@
     },
     {
 <<<<<<< ours
-<<<<<<< ours
       "query": "audit middleware layers for production readiness",
       "timestamp": "2026-08-04T05:03:28.752Z",
       "score": 12
@@ -71,17 +70,12 @@
   ],
   "lastRecall": "2026-08-04T05:03:28.752Z",
 =======
-=======
->>>>>>> theirs
       "query": "audit middleware after hermes circuit breaker deploy",
       "timestamp": "2026-08-04T05:15:38.628Z",
       "score": 15
     }
   ],
   "lastRecall": "2026-08-04T05:15:38.628Z",
-<<<<<<< ours
->>>>>>> theirs
-=======
 >>>>>>> theirs
   "recallCount": 13
 }
