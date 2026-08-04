@@ -5854,9 +5854,26 @@ if (fs.existsSync(distPath)) {
       } else if (filePath.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css; charset=UTF-8');
       }
+      // Hashed build assets are immutable; index.html must ALWAYS revalidate
+      // so browsers pick up new chunk hashes instead of requesting stale
+      // names that fall through to the SPA catch-all as text/html (which
+      // breaks lazy-loaded panels with "'text/html' is not a valid
+      // JavaScript MIME type").
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
     },
   }));
+  // SPA catch-all — serve index.html only for navigation-like paths.
+  // Missing asset requests (stale chunk hashes) must 404, NOT return HTML,
+  // so the browser fails fast instead of throwing JS MIME errors.
   app.get('/{*path}', fileLimiter, (req, res) => {
+    const p = req.path;
+    if (p.startsWith('/assets/') && !fs.existsSync(path.join(distPath, p))) {
+      return res.status(404).json({ error: 'asset not found', path: p });
+    }
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
