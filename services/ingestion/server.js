@@ -266,6 +266,16 @@ app.use((req, res, next) => {
   apiLimiter(req, res, next);
 });
 
+// --- Global API rate limit (100 req/min/IP) — abuse & DoS defense ---
+// Exempts health probes, SSE streams, and the SPA shell (static assets).
+app.use((req, res, next) => {
+  const p = req.path;
+  if (p === '/health' || p.startsWith('/api/os-stream') || p.startsWith('/api/events') || p.startsWith('/assets/') || p === '/' || p.endsWith('.html') || p.endsWith('.js') || p.endsWith('.css')) {
+    return next();
+  }
+  apiLimiter(req, res, next);
+});
+
 // --- Phase 66: ECP Singleflight Cache — deduplicates concurrent GET requests ---
 app.use(ecpSingleflight());
 
