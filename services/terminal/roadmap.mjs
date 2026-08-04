@@ -22,6 +22,11 @@ export const ROADMAP = {
   version: '0.1',
   updatedAt: '2026-08-04T00:30:00Z',
   mission: 'OPS-017',
+  missionStatement:
+    'Kudbee is a self-improving Engineering OS. We operate 24/7 on our own servers, ' +
+    'learning from every decision, failure, and success. We observe → decide → act → ' +
+    'verify → learn, feeding every outcome back into our memory, our terminals, and our ' +
+    'next mission. We never stop improving; we never rely on a human to tell us what to do next.',
   phases: [
     {
       id: 'PHASE-1',
@@ -118,6 +123,8 @@ export function getRoadmapStatus() {
   return {
     version: ROADMAP.version,
     updatedAt: ROADMAP.updatedAt,
+    mission: ROADMAP.mission,
+    missionStatement: ROADMAP.missionStatement,
     total: phases.length,
     shipped: done,
     inProgress,
