@@ -52,7 +52,6 @@ const OllamaChat = lazy(() => import('./pages/OllamaChat').then((m) => ({ defaul
 const HistoryPage = lazy(() => import('./pages/history').then((m) => ({ default: m.HistoryPage })));
 const SettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
 const IntelligenceView = lazy(() => import('./components/IntelligenceView').then((m) => ({ default: m.IntelligenceView })));
-const ControlTowerPanel = lazy(() => import('./components/dashboard/ControlTowerPanel').then((m) => ({ default: m.default })));
 import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
@@ -442,7 +441,6 @@ export default function App() {
     { icon: Gauge, label: 'OBSERVABILITY' },
     { icon: Zap, label: 'THINK' },
     { icon: Scale, label: 'GOVERNANCE' },
-    { icon: Shield, label: 'CONTROL TOWER' },
     { icon: TerminalSquare, label: 'HERMES' },
     { icon: Radio, label: 'SENTINEL' },
     { icon: Calculator, label: 'PLAYGROUND' },
@@ -765,10 +763,6 @@ export default function App() {
 
           {activeTab === 'GOVERNANCE' && (
             <PanelErrorBoundary panel={activeTab}><GovernancePage /></PanelErrorBoundary>
-          )}
-
-          {activeTab === 'CONTROL TOWER' && (
-            <PanelErrorBoundary panel={activeTab}><ControlTowerPanel /></PanelErrorBoundary>
           )}
 
           {activeTab === 'HERMES' && (
