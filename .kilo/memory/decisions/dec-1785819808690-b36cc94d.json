@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785819808690-b36cc94d",
+  "agentId": "pipeline-guardian",
+  "decision": "run:audit middleware layers for production readiness",
+  "context": {
+    "action": "execute",
+    "task": "audit middleware layers for production readiness",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T05:03:28.690Z",
+  "decoded": false
+}

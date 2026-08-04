@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785811116930-b864d453",
+  "agentId": "pipeline-guardian",
+  "decision": "run:scan 11 middleware layers for degradation",
+  "context": {
+    "action": "execute",
+    "task": "scan 11 middleware layers for degradation",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T02:38:36.930Z",
+  "decoded": false
+}

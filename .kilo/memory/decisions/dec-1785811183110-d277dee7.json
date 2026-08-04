@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785811183110-d277dee7",
+  "agentId": "ci-watcher",
+  "decision": "run:re-verify — diagnose E2E failure",
+  "context": {
+    "action": "execute",
+    "task": "re-verify — diagnose E2E failure",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T02:39:43.110Z",
+  "decoded": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785811347998-7d48296b",
+  "agentId": "ci-watcher",
+  "decision": "run:verify E2E after express hoist sync",
+  "context": {
+    "action": "execute",
+    "task": "verify E2E after express hoist sync",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T02:42:27.999Z",
+  "decoded": false
+}

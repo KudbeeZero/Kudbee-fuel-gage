@@ -55,8 +55,18 @@
       "query": "verify all middleware for ops-013",
       "timestamp": "2026-08-02T07:18:23.480Z",
       "score": 11
+    },
+    {
+      "query": "scan 11 middleware layers for degradation",
+      "timestamp": "2026-08-04T02:38:37.003Z",
+      "score": 10
+    },
+    {
+      "query": "audit middleware layers for production readiness",
+      "timestamp": "2026-08-04T05:03:28.752Z",
+      "score": 12
     }
   ],
-  "lastRecall": "2026-08-02T07:18:23.480Z",
-  "recallCount": 11
+  "lastRecall": "2026-08-04T05:03:28.752Z",
+  "recallCount": 13
 }

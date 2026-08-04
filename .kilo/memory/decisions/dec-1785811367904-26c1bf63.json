@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785811367904-26c1bf63",
+  "agentId": "ci-watcher",
+  "decision": "run:final E2E confirmation",
+  "context": {
+    "action": "execute",
+    "task": "final E2E confirmation",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T02:42:47.904Z",
+  "decoded": false
+}

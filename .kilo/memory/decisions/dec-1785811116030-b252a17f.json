@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785811116030-b252a17f",
+  "agentId": "ci-watcher",
+  "decision": "run:full system verification sweep — CI, tests, build, e2e",
+  "context": {
+    "action": "execute",
+    "task": "full system verification sweep — CI, tests, build, e2e",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T02:38:36.031Z",
+  "decoded": false
+}
