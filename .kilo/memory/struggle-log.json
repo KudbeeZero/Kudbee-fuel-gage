@@ -116,7 +116,43 @@
       "prevention": "Never let index.html be long-cached. Always verify Content-Type with curl -sI on deployed assets.",
       "impact": "Panels crashed with traceId diagnostics; boot splash stuck",
       "lessons": []
+    },
+    {
+      "session": "dispatcher-handlers-lost",
+      "timestamp": "2026-08-04T10:04:04.409Z",
+      "rootCause": "Merge reconstruction dropped 6 dispatcher handlers (ask/code/echo/forecast/roadmap/scheduler) — 'handleRoadmap is not defined' in live terminal",
+      "fix": "Restored full file from known-good commit 265d0af + re-added newer handlers (pulse/guardian/crypto/middleware)",
+      "prevention": "Never resolve merge conflicts by hand-picking — restore the full known-good file then re-apply deltas. /guardian should verify handler definitions.",
+      "impact": "Terminal commands /roadmap /ask /code broke on staging",
+      "lessons": []
+    },
+    {
+      "session": "ajv-hoisting-mobile",
+      "timestamp": "2026-08-04T10:04:04.443Z",
+      "rootCause": "Regenerated lockfile resolved ajv 6 at root (no dist/compile/codegen); schema-utils needs ajv 8 → mobile expo build failed",
+      "fix": "Added ajv@8, ajv-keywords, schema-utils to ROOT devDependencies so v8 wins hoisting",
+      "prevention": "Never rm package-lock.json blindly — install incrementally on existing lockfile. Verify mobile build after any lockfile regen.",
+      "impact": "Heroku build failed at mobile step",
+      "lessons": []
+    },
+    {
+      "session": "express5-catchall",
+      "timestamp": "2026-08-04T10:04:04.483Z",
+      "rootCause": "Express 5 path-to-regexp v8: app.get('*') throws PathError on boot — BootVerify timeout failed all deploys",
+      "fix": "Changed to app.get('/{*path}')",
+      "prevention": "Express 5 requires named wildcards. Any new route must use /{*path} syntax.",
+      "impact": "All Heroku deploys failed (releases 72-85)",
+      "lessons": []
+    },
+    {
+      "session": "login-gate-ui",
+      "timestamp": "2026-08-04T10:04:04.516Z",
+      "rootCause": "React SPA gated on localStorage session check → MASTER PASSKEY login screen despite backend auth disengaged",
+      "fix": "isAuthenticated always true; removed LoginView gate + Lock buttons",
+      "prevention": "Single-user directive: no password gates anywhere. Backend AND frontend must match.",
+      "impact": "Users blocked at login screen",
+      "lessons": []
     }
   ],
-  "updatedAt": "2026-08-04T09:55:23.902Z"
+  "updatedAt": "2026-08-04T10:04:04.518Z"
 }

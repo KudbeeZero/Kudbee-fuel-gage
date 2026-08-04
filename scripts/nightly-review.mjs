@@ -72,14 +72,58 @@ async function review() {
     }
   } catch {}
 
+  // ── Struggle log trends — repeating root causes demand action ──
+  try {
+    const logFile = join(MEMORY_DIR, 'struggle-log.json');
+    if (existsSync(logFile)) {
+      const log = JSON.parse(readFileSync(logFile, 'utf8'));
+      const struggles = Array.isArray(log.struggles) ? log.struggles : [];
+      // Group by normalized root cause (first 40 chars, lowercased)
+      const byCause = {};
+      for (const s of struggles) {
+        const raw = (s.rootCause || 'unknown').toLowerCase();
+        // Theme buckets: surface repeating PATTERNS, not exact strings
+        let key = raw.slice(0, 40);
+        if (raw.includes('mime') || raw.includes('text/html') || raw.includes('content-type')) key = 'MIME/content-type asset serving';
+        else if (raw.includes('quota') || raw.includes('max requests') || raw.includes('500000')) key = 'Redis quota exhaustion';
+        else if (raw.includes('conflict') || raw.includes('<<<<<<<') || raw.includes('merge marker')) key = 'merge conflict markers';
+        else if (raw.includes('express 5') || raw.includes('path-to-regexp') || raw.includes('patherror')) key = 'Express 5 route syntax';
+        byCause[key] = byCause[key] || { count: 0, sessions: [], prevention: s.prevention || '' };
+        byCause[key].count++;
+        byCause[key].sessions.push(s.session);
+        if (s.prevention && !byCause[key].prevention) byCause[key].prevention = s.prevention;
+      }
+      const repeating = Object.entries(byCause)
+        .filter(([, v]) => v.count >= 2)
+        .sort((a, b) => b[1].count - a[1].count);
+      if (repeating.length) {
+        const [cause, v] = repeating[0];
+        findings.struggleTrend = {
+          cause: cause.slice(0, 60),
+          count: v.count,
+          sessions: v.sessions.slice(0, 3),
+          prevention: v.prevention.slice(0, 120),
+        };
+      }
+    }
+  } catch {}
+
   // ── Which CI jobs wasted minutes? — latest system status ──
   const sysOut = await run('node', ['scripts/system-status.mjs', 'check']);
   if (/Docs stamped: 0\/5/i.test(sysOut)) {
     findings.slow.push('docs stamping — 0/5 documentation files timestamped');
   }
 
-  // ── Propose ONE improvement (prioritized) ──
-  if (findings.wasted.length) {
+  // ── Propose ONE improvement (prioritized: struggle trends first) ──
+  if (findings.struggleTrend) {
+    const t = findings.struggleTrend;
+    findings.improvement = {
+      title: `Break the repeating struggle: ${t.cause.slice(0, 50)} (${t.count}x)`,
+      detail: `This root cause has recurred ${t.count} times across sessions. Prevention on record: ${t.prevention.slice(0, 100)}`,
+      evidence: `struggle-log: ${t.sessions.join(', ')}`,
+      scope: 'small — apply the recorded prevention as a guard/test',
+    };
+  } else if (findings.wasted.length) {
     const w = findings.wasted[0];
     findings.improvement = {
       title: `Improve ${w.kind} prompt quality (${w.successRate}% success)`,
