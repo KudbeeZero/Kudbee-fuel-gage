@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { useOsSnapshot } from '../components/OsStreamProvider';
 import { useEventStream } from '../hooks/useEventStream';
-import { AgentTerminal } from '../components/studio/AgentTerminal';
+import { AgentTerminal } from '../components/studio/AgentTerminalXterm';
 import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBoundary';
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
