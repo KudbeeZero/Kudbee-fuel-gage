@@ -719,7 +719,37 @@
       "type": "workspace:provisioned",
       "agentId": "system",
       "timestamp": "2026-08-04T14:25:27.694Z"
+    },
+    {
+      "id": "6fb20bbf-0dbd-43e0-adf7-5d51dd11cf56",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-04T16:40:12.653Z"
+    },
+    {
+      "id": "7e777a0c-f15e-493b-9113-dc0dfc13db19",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-04T16:40:12.756Z"
+    },
+    {
+      "id": "4c256b2a-1a30-44d6-94ad-d7316c5f8c09",
+      "type": "workspace:created",
+      "agentId": "system",
+      "timestamp": "2026-08-04T16:40:19.623Z"
+    },
+    {
+      "id": "4d56ba0e-8b1b-466e-bbd5-056647c4f381",
+      "type": "workspace:detected",
+      "agentId": "system",
+      "timestamp": "2026-08-04T16:40:19.727Z"
+    },
+    {
+      "id": "5aacc773-3348-4256-b8ee-91c9da2cf58f",
+      "type": "workspace:graph-built",
+      "agentId": "system",
+      "timestamp": "2026-08-04T16:40:28.050Z"
     }
   ],
-  "totalEntries": 120
+  "totalEntries": 125
 }
