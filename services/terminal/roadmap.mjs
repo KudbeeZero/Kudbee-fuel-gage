@@ -59,7 +59,7 @@ export const ROADMAP = {
       id: 'PHASE-5',
       name: 'System Pulse Dashboard',
       category: 'THINKBOX',
-      status: 'in_progress',
+      status: 'shipped',
       dependsOn: ['PHASE-4'],
       scope: 'Live infra panel: Git SHA, env, Redis/QStash/Vector/Workflow/CI status',
     },
@@ -127,3 +127,13 @@ export function getRoadmapStatus() {
     phases,
   };
 }
+
+// Phase 11 added by agent_1e4b0149 on 2026-08-04T03:20Z
+ROADMAP.phases.push({
+  id: 'PHASE-11',
+  name: 'Terminal Gemini Integration',
+  category: 'THINKBOX',
+  status: 'shipped',
+  dependsOn: ['PHASE-5'],
+  scope: '/ask command with real Gemini inference, token tracking, budget gate',
+});

@@ -159,6 +159,51 @@ async function handleRoadmap() {
   return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
 }
 
+async function handleAsk(prompt) {
+  if (!prompt) return { type: 'terminal:error', message: '/ask requires a prompt. Usage: /ask <your question>' };
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!geminiKey) return { type: 'terminal:error', message: 'Gemini API key not configured. Add GEMINI_API_KEY to env.' };
+
+  try {
+    const { createProvider } = await import('@kudbee/utils/llm/providers');
+    const client = createProvider({ kind: 'gemini', model: 'gemini-flash-latest', apiKey: geminiKey, temperature: 0.3, maxTokens: 512 });
+    
+    const t0 = Date.now();
+    const resp = await client.complete({
+      systemPrompt: 'You are the Kudbee Control Tower assistant. Be concise. Answer the user directly.',
+      userPrompt: prompt,
+      temperature: 0.3,
+      maxTokens: 512,
+    });
+    const latency = Date.now() - t0;
+    const tokens = (resp.usage?.promptTokens ?? 0) + (resp.usage?.completionTokens ?? 0);
+    
+    // Budget tracking is best-effort (non-blocking if DB is slow)
+    let budget = null;
+    try {
+      const { estimateInceptionCost, trackSpend, getBudgetStatus } = await import('../lib/budgetGate.ts');
+      const cost = estimateInceptionCost(tokens);
+      if (cost > 0) void trackSpend(cost).catch(() => {});
+      const bs = await Promise.race([getBudgetStatus(), new Promise(r => setTimeout(() => r(null), 3000))]);
+      budget = bs;
+    } catch {}
+
+    return {
+      type: 'ask:response',
+      prompt,
+      answer: resp.text,
+      model: resp.model,
+      latencyMs: latency,
+      usage: resp.usage,
+      costUsd: tokens > 0 ? (tokens / 1000000) * 0.50 : null,
+      budget,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Gemini call failed: ${e.message}`, timestamp: new Date().toISOString() };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 async function dispatchCommand(input) {
@@ -172,10 +217,11 @@ async function dispatchCommand(input) {
   if (cmd === '/scheduler' && parts[1] === 'run') return handleSchedulerRun(parts[2]);
   if (cmd === '/scheduler' && parts[1] === 'status') return handleSchedulerStatus();
   if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
+  if (cmd === '/ask') return handleAsk(input.replace(/^\/ask\s+/i, ''));
 
   return {
     type: 'terminal:error',
-    message: `Unknown command: "${input}". Try /swarm status, /shield monitor, /agent kill [id], /threshold set [key] [value], /roadmap`,
+    message: `Unknown command: "${input}". Try /swarm status, /shield monitor, /agent kill [id], /threshold set [key] [value], /ask <question>, /roadmap`,
     timestamp: new Date().toISOString(),
   };
 }
