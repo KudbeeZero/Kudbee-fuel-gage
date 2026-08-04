@@ -104,8 +104,9 @@ export function buildArchitectureGraph(
 
   // Filter files based on options
   const filteredFiles = codeIndex.files.filter(fi => {
-    if (!includeTests && fi.path.includes('.test.')) return false;
-    if (!includeConfigs && ['config', 'test'].includes(detectModuleKind(fi.path))) return false;
+    const kind = detectModuleKind(fi.path);
+    if (!includeTests && kind === 'test') return false;
+    if (!includeConfigs && kind === 'config') return false;
     return true;
   });
 

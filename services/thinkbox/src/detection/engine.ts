@@ -15,6 +15,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
 import type { DetectionResult } from '../registry.ts';
+import { SKIP_DIRS } from '../collectFiles.ts';
 import {
   LANGUAGE_SIGNALS,
   FRAMEWORK_SIGNALS,
@@ -29,7 +30,6 @@ import {
 } from './signals.ts';
 
 const MAX_FILES_SCANNED = 50_000;
-const SKIP_DIRS = new Set(['.git', 'node_modules', '.next', '.turbo', 'dist', 'build', 'coverage', '.cache', '__pycache__', 'vendor', '.venv', 'venv', 'target', '.idea', '.vscode']);
 
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values)].sort();

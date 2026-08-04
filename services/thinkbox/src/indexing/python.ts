@@ -19,9 +19,30 @@ function estimateComplexity(content: string): number {
   return complexity;
 }
 
+/** Precompute a line-start offset table for O(log L) line lookup per index. */
+function buildLineOffsets(content: string): number[] {
+  const offsets: number[] = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content.charCodeAt(i) === 10) offsets.push(i + 1);
+  }
+  return offsets;
+}
+
+/** Binary-search the line number (1-based) for a character offset. */
+function lineAt(offsets: number[], index: number): number {
+  let lo = 0;
+  let hi = offsets.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (offsets[mid] <= index) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo + 1;
+}
+
 function extractSymbols(content: string, file: string): CodeSymbol[] {
   const symbols: CodeSymbol[] = [];
-  const lines = content.split('\n');
+  const lineOffsets = buildLineOffsets(content);
 
   // Function definitions
   const funcPattern = /^(?:async\s+)?def\s+(\w+)\s*\(([^)]*)\)(?:\s*->\s*(\S+))?/gm;
@@ -30,7 +51,7 @@ function extractSymbols(content: string, file: string): CodeSymbol[] {
       name: m[1],
       kind: 'function',
       file,
-      line: content.substring(0, m.index!).split('\n').length,
+      line: lineAt(lineOffsets, m.index!),
       exported: !m[1].startsWith('_'),
       parameters: m[2] ? m[2].split(',').map(p => p.trim().split(':')[0].split('=')[0].trim()).filter(Boolean) : [],
       returnType: m[3] || undefined,
@@ -44,7 +65,7 @@ function extractSymbols(content: string, file: string): CodeSymbol[] {
       name: m[1],
       kind: 'class',
       file,
-      line: content.substring(0, m.index!).split('\n').length,
+      line: lineAt(lineOffsets, m.index!),
       exported: !m[1].startsWith('_'),
     });
   }
