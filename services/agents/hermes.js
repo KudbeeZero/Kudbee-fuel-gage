@@ -21,7 +21,8 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getSlowRedisClient } from '../lib/redis.js';
+import { getSlowRedisClient, isUpstashMaxRequestsError } from '../lib/redis.js';
+import { hermesHeartbeatBreaker } from '../lib/circuitBreaker.ts';
 import { matchLogic, proposeAction, listProposed } from '../governance/router.js';
 import { runInsert } from '../lib/db.js';
 
@@ -104,23 +105,13 @@ export async function publishHeartbeat() {
   const payload = {
     agent: 'HERMES', status: 'Online', pid: process.pid, timestamp: new Date().toISOString()
   };
-  // Respect circuit breaker — skip Redis when quota exhausted
-  try {
-    const { getRedisQuotaBackoffRemaining } = await import('../lib/redis.js');
-    if (getRedisQuotaBackoffRemaining() > 0) return localHeartbeatWrite(payload);
-  } catch {}
-
-  try {
-    const redis = getSlowRedisClient({ label: 'hermes' });
-    await redis.set(HEARTBEAT_KEY, JSON.stringify(payload), 'EX', HEARTBEAT_TTL);
-  } catch (err) {
-    log.error('heartbeat write failed:', err.message);
-    try {
-      const { applyRedisQuotaBackoff } = await import('../lib/redis.js');
-      if (String(err.message).includes('max requests limit')) applyRedisQuotaBackoff(err);
-    } catch {}
-    return localHeartbeatWrite(payload);
-  }
+  await hermesHeartbeatBreaker.execute(
+    async () => {
+      const redis = getSlowRedisClient({ label: 'hermes' });
+      await redis.set(HEARTBEAT_KEY, JSON.stringify(payload), 'EX', HEARTBEAT_TTL);
+    },
+    async () => localHeartbeatWrite(payload)
+  );
 
   const appUrl = process.env.APP_URL || '';
   if (appUrl) {
