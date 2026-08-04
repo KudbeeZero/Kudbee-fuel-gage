@@ -104,63 +104,40 @@ async function handleAgentKill(agentId) {
 }
 
 async function handleThresholdSet(key, value) {
-  if (!key || value === undefined) return { error: 'Usage: /threshold set [key] [value]' };
-  const numValue = parseFloat(value);
-  if (isNaN(numValue)) return { error: 'Value must be a number' };
-  await redisCmd(['HSET', 'kudbee:config:thresholds', key, String(numValue)]);
-  return {
-    type: 'threshold:set',
-    key,
-    value: numValue,
-    timestamp: new Date().toISOString(),
-  };
+  QUANTUM_LAYER_THRESHOLDS[key] = value;
+  return { type: 'threshold:set', key, value, timestamp: new Date().toISOString() };
 }
 
-// ─── Scheduler Commands ──────────────────────────────────────────────────────
+// ── Simple in-memory rate limiter ──────────────────────────────────────────
+// Per-source window tracking. Default: 10 /ask calls per 60s window.
+// Configurable via /threshold set askRateLimit <maxPerMinute>
 
-const SCHEDULER_JOBS = {
-  'expiry-guard': { script: 'scripts/agent-expiry-guard.mjs full', schedule: 'daily @ 3:00 AM', description: 'Agent TTL/Redis registry refresh' },
-  'workspace-sync': { script: 'scripts/workspace-sync.mjs sync', schedule: 'every 10 minutes', description: 'Global tensor centroid alignment' },
-  'canary-probe': { script: 'scripts/canary-probe.mjs', schedule: 'every 10 minutes', description: 'API/DB/frontend health probe' },
-  'cleanup-traces': { script: 'scripts/cleanup-traces.mjs', schedule: 'daily @ 12:00 AM', description: 'Stale trace and audit purging' },
-  'gemini-trainer': { script: 'scripts/gemini-token-trainer.mjs', schedule: 'hourly', description: 'Gemini AI token analysis (≤50 free reqs/hr)' },
-  'workspace-full': { script: 'scripts/workspace-sync.mjs full', schedule: 'hourly at :0', description: 'Full-state workspace rollup' },
-};
+const RATE_STATE = new Map();
+const DEFAULT_ASK_LIMIT_PER_MIN = 10;
+const RATE_WINDOW_MS = 60_000;
 
-async function handleSchedulerRun(jobName) {
-  const job = SCHEDULER_JOBS[jobName];
-  if (!job) return { error: `Unknown job: "${jobName}". Available: ${Object.keys(SCHEDULER_JOBS).join(', ')}` };
-  try {
-    const { execFile } = await import('child_process');
-    const output = await new Promise((resolve, reject) => {
-      execFile('node', [job.script], { timeout: 30000, maxBuffer: 1024 * 500 }, (err, stdout) => {
-        if (err) reject(err);
-        else resolve(stdout);
-      });
-    });
-    return { type: 'scheduler:run', job: jobName, output: output.slice(0, 500), status: 'completed', timestamp: new Date().toISOString() };
-  } catch (e) {
-    return { type: 'scheduler:run', job: jobName, error: e.message?.slice(0, 200), status: 'failed', timestamp: new Date().toISOString() };
+function checkRateLimit(source = 'default') {
+  const now = Date.now();
+  const limit = Number(QUANTUM_LAYER_THRESHOLDS.askRateLimit) || DEFAULT_ASK_LIMIT_PER_MIN;
+  let entry = RATE_STATE.get(source);
+  if (!entry || now - entry.windowStart > RATE_WINDOW_MS) {
+    entry = { windowStart: now, count: 1 };
+    RATE_STATE.set(source, entry);
+    return { allowed: true, remaining: limit - 1, resetMs: RATE_WINDOW_MS };
   }
-}
-
-async function handleSchedulerStatus() {
-  return {
-    type: 'scheduler:status',
-    jobs: Object.entries(SCHEDULER_JOBS).map(([name, j]) => ({ name, schedule: j.schedule, description: j.description })),
-    total: Object.keys(SCHEDULER_JOBS).length,
-    dynoTier: 'Standard-1X (4 dynos, 2GB total)',
-    timestamp: new Date().toISOString(),
-  };
-}
-
-async function handleRoadmap() {
-  const { getRoadmapStatus } = await import('./roadmap.mjs');
-  return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
+  entry.count++;
+  const remaining = Math.max(0, limit - entry.count);
+  return { allowed: remaining > 0, remaining, resetMs: RATE_WINDOW_MS - (now - entry.windowStart) };
 }
 
 async function handleAsk(prompt) {
   if (!prompt) return { type: 'terminal:error', message: '/ask requires a prompt. Usage: /ask <your question>' };
+  
+  const rate = checkRateLimit();
+  if (!rate.allowed) {
+    return { type: 'terminal:error', message: `Rate limit exceeded. Try again in ${Math.ceil(rate.resetMs / 1000)}s. Limit: ${QUANTUM_LAYER_THRESHOLDS.askRateLimit || DEFAULT_ASK_LIMIT_PER_MIN}/min` };
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!geminiKey) return { type: 'terminal:error', message: 'Gemini API key not configured. Add GEMINI_API_KEY to env.' };
 
