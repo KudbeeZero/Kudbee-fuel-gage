@@ -21,7 +21,7 @@ const ROOT = process.cwd();
 
 /** Publish a workspace lifecycle event to the serial bus + DTHINK. */
 export function publishWorkspaceEvent(event: {
-  topic: 'workspace:created' | 'workspace:detected' | 'workspace:failed';
+  topic: 'workspace:created' | 'workspace:detected' | 'workspace:failed' | 'workspace:deps-resolved';
   workspace: Workspace;
   detection?: DetectionResult;
   summary?: EngineeringSummary;
@@ -54,9 +54,14 @@ export function publishWorkspaceEvent(event: {
     // Bus publication is best-effort; detection result is already durable.
   }
 
-  const summaryText = error
-    ? `THINKBOX ${workspace.name} failed: ${error}`
-    : `THINKBOX ${workspace.name} ${topic.replace('workspace:', '')} — ${detection?.languages.join(', ') || 'no languages'}`;
+  let summaryText: string;
+  if (error) {
+    summaryText = `THINKBOX ${workspace.name} failed: ${error}`;
+  } else if (topic === 'workspace:deps-resolved') {
+    summaryText = `THINKBOX ${workspace.name} dependency resolution complete`;
+  } else {
+    summaryText = `THINKBOX ${workspace.name} ${topic.replace('workspace:', '')} — ${detection?.languages.join(', ') || 'no languages'}`;
+  }
   try {
     execFileSync('node', ['scripts/dthink-pipeline.mjs', 'feed', topic, summaryText], { timeout: 10_000 });
   } catch {
