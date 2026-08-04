@@ -21,7 +21,7 @@ const ROOT = process.cwd();
 
 /** Publish a workspace lifecycle event to the serial bus + DTHINK. */
 export function publishWorkspaceEvent(event: {
-  topic: 'workspace:created' | 'workspace:detected' | 'workspace:failed' | 'workspace:deps-resolved' | 'workspace:provisioned';
+  topic: 'workspace:created' | 'workspace:detected' | 'workspace:failed' | 'workspace:deps-resolved' | 'workspace:provisioned' | 'workspace:indexed';
   workspace: Workspace;
   detection?: DetectionResult;
   summary?: EngineeringSummary;
@@ -61,6 +61,8 @@ export function publishWorkspaceEvent(event: {
     summaryText = `THINKBOX ${workspace.name} dependency resolution complete`;
   } else if (topic === 'workspace:provisioned') {
     summaryText = `THINKBOX ${workspace.name} environment provisioned`;
+  } else if (topic === 'workspace:indexed') {
+    summaryText = `THINKBOX ${workspace.name} code indexed`;
   } else {
     summaryText = `THINKBOX ${workspace.name} ${topic.replace('workspace:', '')} — ${detection?.languages.join(', ') || 'no languages'}`;
   }
