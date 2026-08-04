@@ -30,6 +30,9 @@ async function redisCmd(args) {
   } catch { return null; }
 }
 
+// ─── In-Memory Threshold & Rate Limit State ─────────────────────────────────
+const QUANTUM_LAYER_THRESHOLDS = {};
+
 // ─── Command Handlers ────────────────────────────────────────────────────────
 
 async function handleSwarmStatus() {
