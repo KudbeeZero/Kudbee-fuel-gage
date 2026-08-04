@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-04T21:32:21.002Z",
+  "source": "evidence-graph",
+  "missions": [
+    {
+      "id": "STAB-002",
+      "title": "Connect orphan knowledge nodes to incidents/decisions/benchmarks",
+      "impact": 80,
+      "evidence": 95,
+      "risk": 20,
+      "complexity": 35,
+      "cost": 30,
+      "learning": 85,
+      "confidence": 93,
+      "reason": "39 orphan nodes (77 total) reduce retrieval quality",
+      "evidenceRefs": [
+        "GRAPH-AUDIT",
+        "KNOWLEDGE-AUDIT"
+      ],
+      "estimatedFiles": 4,
+      "estimatedLoc": 220,
+      "kpi": "Retrieval precision/recall",
+      "priority": 83.1,
+      "scores": {
+        "impact": 80,
+        "evidence": 95,
+        "risk": 80,
+        "complexity": 65,
+        "cost": 70,
+        "learning": 85,
+        "confidence": 93
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "INT-029-GAP",
+      "title": "Replay 2 counterfactuals with measured evidence",
+      "impact": 65,
+      "evidence": 80,
+      "risk": 25,
+      "complexity": 45,
+      "cost": 35,
+      "learning": 75,
+      "confidence": 84,
+      "reason": "2 counterfactuals are INSUFFICIENT_DATA — need measured deltas",
+      "evidenceRefs": [
+        "COUNTERFACTUALS"
+      ],
+      "estimatedFiles": 2,
+      "estimatedLoc": 80,
+      "kpi": "Counterfactual confidence",
+      "priority": 71.9,
+      "scores": {
+        "impact": 65,
+        "evidence": 80,
+        "risk": 75,
+        "complexity": 55,
+        "cost": 65,
+        "learning": 75,
+        "confidence": 84
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-3",
+      "title": "Resolve recorded risk: duplicate frontend mock data",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: duplicate frontend mock data",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-4",
+      "title": "Resolve recorded risk: release promotion",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: release promotion",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-5",
+      "title": "Resolve recorded risk: terminal integration incomplete",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: terminal integration incomplete",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-6",
+      "title": "Resolve recorded risk: browser secrets in localStorage",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: browser secrets in localStorage",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-7",
+      "title": "Resolve recorded risk: hardcoded passkey",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: hardcoded passkey",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-8",
+      "title": "Resolve recorded risk: 45% CI failure rate",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: 45% CI failure rate",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    },
+    {
+      "id": "RISK-9",
+      "title": "Resolve recorded risk: direct pushes to main",
+      "impact": 75,
+      "evidence": 70,
+      "risk": 35,
+      "complexity": 50,
+      "cost": 40,
+      "learning": 60,
+      "confidence": 78,
+      "reason": "Recorded risk in engineering_state.yaml: direct pushes to main",
+      "evidenceRefs": [
+        "ENGINEERING-STATE"
+      ],
+      "estimatedFiles": 3,
+      "estimatedLoc": 120,
+      "kpi": "Operational risk reduction",
+      "priority": 67.3,
+      "scores": {
+        "impact": 75,
+        "evidence": 70,
+        "risk": 65,
+        "complexity": 50,
+        "cost": 60,
+        "learning": 60,
+        "confidence": 78
+      },
+      "weights": {
+        "impact": 0.25,
+        "evidence": 0.2,
+        "risk": 0.15,
+        "complexity": 0.1,
+        "cost": 0.05,
+        "learning": 0.15,
+        "confidence": 0.1
+      }
+    }
+  ]
+}
