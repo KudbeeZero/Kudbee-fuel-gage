@@ -11,6 +11,7 @@ import { getEngineeringKPIs, getEngineeringScorecard, verifyEngineeringReady } f
 import { buildManifest } from './intelligence/engine.ts';
 import { generateProvisioning } from './provisioning/index.ts';
 import { buildCodeIndex } from './indexing/index.ts';
+import { buildArchitectureGraph } from './architecture/index.ts';
 import { publishWorkspaceEvent } from './events.ts';
 
 const [command, ...args] = process.argv.slice(2);
@@ -31,6 +32,7 @@ switch (command) {
   case 'deps': { if (!arg) { console.error('Usage: deps <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const m = buildManifest(ws); console.log(JSON.stringify(m, null, 2)); publishWorkspaceEvent({ topic: 'workspace:deps-resolved', workspace: ws }); break; }
   case 'provision': { if (!arg) { console.error('Usage: provision <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const intel = buildManifest(ws); const result = generateProvisioning(intel); if (!result.success) { console.error('Provisioning failed:', result.errors, result.warnings); process.exit(1); } console.log(JSON.stringify(result.config, null, 2)); publishWorkspaceEvent({ topic: 'workspace:provisioned', workspace: ws }); break; }
   case 'index': { if (!arg) { console.error('Usage: index <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const idx = buildCodeIndex(ws); console.log(JSON.stringify({ workspaceId: idx.workspaceId, totalFiles: idx.totalFiles, totalLines: idx.totalLines, totalSymbols: idx.totalSymbols, languages: idx.languages, confidence: idx.confidence }, null, 2)); publishWorkspaceEvent({ topic: 'workspace:indexed', workspace: ws }); break; }
+  case 'graph': { if (!arg) { console.error('Usage: graph <workspaceId>'); process.exit(1); } const ws = getWorkspace(arg); if (!ws) { console.error(`Workspace not found: ${arg}`); process.exit(1); } const idx = buildCodeIndex(ws); const graph = buildArchitectureGraph(idx); console.log(JSON.stringify({ workspaceId: graph.workspaceId, modules: graph.metrics.totalModules, dependencies: graph.metrics.totalDependencies, avgComplexity: graph.metrics.avgComplexity, circularDeps: graph.metrics.circularDependencies.length }, null, 2)); publishWorkspaceEvent({ topic: 'workspace:graph-built', workspace: ws }); break; }
   case 'list': { for (const w of listWorkspaces()) console.log(`${w.workspaceId}  ${w.name}`); break; }
-  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | deps | provision | index | list'); process.exit(1); }
+  default: { console.error('OPS-013 CLI — detect | plan | learn | validate | replay | review | score | provider | cost | kpi | ready | deps | provision | index | graph | list'); process.exit(1); }
 }
