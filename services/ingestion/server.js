@@ -3859,53 +3859,82 @@ app.post('/v1/chat/completions', async (req, res) => {
       );
     }
 
-    // Multi-provider load balancing: if preferred provider is unhealthy or
-    // rate-limited, automatically failover to the next best healthy provider.
-    const initial = pickProvider(preferredProvider);
-    let selectedProvider = initial.id;
-    let failoverTriggered = false;
-    if (preferredProvider && preferredProvider !== selectedProvider) {
-      failoverTriggered = true;
-      routerState.failovers += 1;
-    }
+    // Real LLM inference via Gemini when configured. The chat completion is
+    // genuine (no simulation) — budget-gated and usage-tracked. When no
+    // provider key is available the response is explicitly flagged
+    // `simulated: true` so consumers never mistake fallback for real output.
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const selectedProvider = preferredProvider || 'gemini';
+    let content = '';
+    let simulated = false;
+    let latencyMs = 0;
+    let model = '';
 
-    // Simulate per-provider latency and trip the rate-limit threshold when
-    // the response would have been throttled.
-    const provider = PROVIDER_CONFIG[selectedProvider];
-    const simulatedLatency = provider
-      ? provider.baseLatencyMs + Math.floor(Math.random() * 60)
-      : 200;
-    if (provider && provider.rateLimitPct >= 0.9) {
-      const alt = pickProvider(null);
-      if (alt.id !== selectedProvider) {
-        failoverTriggered = true;
-        routerState.failovers += 1;
-        selectedProvider = alt.id;
-        PROVIDER_CONFIG[selectedProvider].rateLimitPct = Math.max(
-          0,
-          PROVIDER_CONFIG[selectedProvider].rateLimitPct - 0.05
+    if (geminiKey) {
+      const start = Date.now();
+      try {
+        const { checkBudgetOrThrow, trackSpend, estimateInceptionCost } = await import('../lib/budgetGate.ts');
+        const client = createProvider({
+          kind: 'gemini',
+          model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+          apiKey: geminiKey,
+          temperature: 0.3,
+          maxTokens: 1024,
+        });
+        await checkBudgetOrThrow(0, 1024, process.env.GEMINI_MODEL || 'gemini-2.0-flash');
+        const response = await client.complete({
+          systemPrompt:
+            'You are the Kudbee Control Tower assistant. Answer the user directly, be concise, and ground everything in what is known. Do not fabricate metrics, statuses, or infrastructure claims.',
+          userPrompt: incomingPrompt || 'Say hello.',
+          temperature: 0.3,
+          maxTokens: 1024,
+        });
+        latencyMs = Date.now() - start;
+        content = response.text;
+        model = response.model;
+        const tokens = (response.usage?.promptTokens ?? 0) + (response.usage?.completionTokens ?? 0);
+        const cost = estimateInceptionCost(tokens);
+        if (cost > 0) void trackSpend(cost);
+        console.log(`[Chat] Gemini real inference — ${response.model} ${latencyMs}ms ${tokens} tokens`);
+      } catch (providerErr) {
+        console.warn(
+          '[Chat] Gemini inference failed, falling back:',
+          providerErr instanceof Error ? providerErr.message : String(providerErr)
         );
+        simulated = true;
+        content =
+          routing.route === 'FAST_BRAIN'
+            ? `Fast Brain (${selectedProvider}): applied proven logic path "${routing.logic?.action ?? 'unknown'}".`
+            : 'Slow Brain: no proven semantic match found — LLM reasoning required.';
       }
+    } else {
+      // No provider key configured — explicit simulation fallback.
+      simulated = true;
+      content =
+        routing.route === 'FAST_BRAIN'
+          ? `Fast Brain (${selectedProvider}): applied proven logic path "${routing.logic?.action ?? 'unknown'}".`
+          : 'Slow Brain: no proven semantic match found — LLM reasoning required.';
+      const provider = PROVIDER_CONFIG[selectedProvider];
+      latencyMs = provider ? provider.baseLatencyMs + Math.floor(Math.random() * 60) : 200;
     }
-    if (provider) recordLatency(selectedProvider, simulatedLatency);
 
-    routerState.totalRequests += 1;
     const decision = {
-      id: `route-${Date.now()}-${routerState.totalRequests}`,
+      id: `route-${Date.now()}-${(routerState.totalRequests || 0) + 1}`,
       preferred: preferredProvider || null,
       selected: selectedProvider,
-      failover: failoverTriggered,
-      latencyMs: simulatedLatency,
+      failover: false,
+      latencyMs,
       ts: new Date().toISOString(),
     };
+    routerState.totalRequests = (routerState.totalRequests || 0) + 1;
     routerState.decisionLog = [decision, ...routerState.decisionLog].slice(0, 50);
-    publishEvent('router', decision);
 
     res.json({
       id: 'chatcmpl-' + Math.random().toString(36).slice(2, 10),
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: req.body.model || 'kudbee-vector-brain',
+      model: model || req.body.model || 'kudbee-vector-brain',
+      simulated,
       governance: {
         route: routing.route,
         matched: routing.matched,
@@ -3916,18 +3945,15 @@ app.post('/v1/chat/completions', async (req, res) => {
       router: {
         preferred: preferredProvider,
         selected: selectedProvider,
-        failoverTriggered,
-        latencyMs: simulatedLatency,
+        failoverTriggered: false,
+        latencyMs,
       },
       choices: [
         {
           index: 0,
           message: {
             role: 'assistant',
-            content:
-              routing.route === 'FAST_BRAIN'
-                ? `Fast Brain (${selectedProvider}): applied proven logic path "${routing.logic?.action ?? 'unknown'}".`
-                : `Slow Brain (${selectedProvider}): no proven semantic match found — LLM reasoning required.`,
+            content,
           },
           finish_reason: 'stop',
         },
