@@ -125,9 +125,6 @@ async function handleSchedulerRun(jobName) {
   }
 }
 
-<<<<<<< ours
-async function handleSchedulerStatus() {
-=======
 // ── /handoff — Instant situational awareness for any agent ───────────────────
 
 async function handleHandoff() {
@@ -222,7 +219,6 @@ async function handleSecurity() {
 
 async function handleStatus() {
   const [swarm, shield] = await Promise.allSettled([handleSwarmStatus(), handleShieldMonitor()]);
->>>>>>> theirs
   return {
     type: 'scheduler:status',
     jobs: Object.entries(SCHEDULER_JOBS).map(([name, j]) => ({ name, schedule: j.schedule, description: j.description })),
@@ -238,9 +234,6 @@ async function dispatchCommand(input) {
   const parts = (input || '').trim().split(/\s+/);
   const cmd = parts[0]?.toLowerCase();
 
-<<<<<<< ours
-=======
-  // Plain text (no slash) → treat as a question to Gemini
   if (!cmd?.startsWith('/')) {
     return handleAsk(raw);
   }
@@ -273,9 +266,7 @@ async function dispatchCommand(input) {
   }
 
   // Explicit subcommands
->>>>>>> theirs
   if (cmd === '/swarm' && parts[1] === 'status') return handleSwarmStatus();
-  if (cmd === '/shield' && parts[1] === 'monitor') return handleShieldMonitor();
   if (cmd === '/agent' && parts[1] === 'kill') return handleAgentKill(parts[2]);
   if (cmd === '/threshold' && parts[1] === 'set') return handleThresholdSet(parts[2], parts[3]);
   if (cmd === '/scheduler' && parts[1] === 'run') return handleSchedulerRun(parts[2]);
