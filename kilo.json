@@ -8,6 +8,14 @@
         "UPSTASH_REDIS_REST_URL": "${UPSTASH_REDIS_REST_URL}",
         "UPSTASH_REDIS_REST_TOKEN": "${UPSTASH_REDIS_REST_TOKEN}"
       }
+    },
+    "huggingface": {
+      "type": "remote",
+      "url": "https://huggingface.co/mcp",
+      "headers": {
+        "Authorization": "Bearer ${HUGGINGFACE_TOKEN}"
+      },
+      "enabled": true
     }
   }
 }
