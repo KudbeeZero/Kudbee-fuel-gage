@@ -39,3 +39,4 @@ kudbee_telemetry_db.json
 
 # THINKBOX runtime workspaces — derived detection state, never mergeable source.
 .kilo/thinkbox/
+.env
