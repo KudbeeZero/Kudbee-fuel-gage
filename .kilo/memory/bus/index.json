@@ -1,5 +1,5 @@
 {
-  "sequence": 60,
+  "sequence": 63,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -420,6 +420,27 @@
       "source": "cli",
       "sequence": 60,
       "timestamp": "2026-08-04T06:09:52.306Z"
+    },
+    {
+      "id": "evt-1785852552441-2d78ab",
+      "topic": "workspace:created",
+      "source": "cli",
+      "sequence": 61,
+      "timestamp": "2026-08-04T14:09:12.441Z"
+    },
+    {
+      "id": "evt-1785852552587-f8e82b",
+      "topic": "workspace:detected",
+      "source": "cli",
+      "sequence": 62,
+      "timestamp": "2026-08-04T14:09:12.587Z"
+    },
+    {
+      "id": "evt-1785852571362-54736b",
+      "topic": "workspace:deps-resolved",
+      "source": "cli",
+      "sequence": 63,
+      "timestamp": "2026-08-04T14:09:31.362Z"
     }
   ],
   "topicCounts": {
@@ -454,8 +475,9 @@
     "think:protocol": 1,
     "workspace:telepathy": 1,
     "system:ci": 1,
-    "workspace:created": 5,
-    "workspace:detected": 5,
-    "agent:registered": 2
+    "workspace:created": 6,
+    "workspace:detected": 6,
+    "agent:registered": 2,
+    "workspace:deps-resolved": 1
   }
 }
