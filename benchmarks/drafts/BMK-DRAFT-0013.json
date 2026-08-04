@@ -1,0 +1,54 @@
+{
+  "id": "BMK-DRAFT-0013",
+  "title": "Weight optimizer local optimum",
+  "level": 1,
+  "category": "frontend",
+  "stage": "Draft",
+  "difficulty": {
+    "technical_complexity": 1,
+    "cross_system_reasoning": 2,
+    "operational_impact": 1,
+    "learning_value": 3
+  },
+  "tags": [
+    "frontend"
+  ],
+  "prerequisites": [],
+  "problem": "The INT-011 weight optimizer ran 18 candidates against the benchmark suite and none beat the champion. The dataset is the bottleneck, not the algorithm. Plateau rule triggers: stop tuning, grow the suite.",
+  "evidence": [
+    "OPT-1 recorded in results-ledger.json",
+    "18 candidates, 0 better",
+    "champion precision 27.8%, recall 70.8%"
+  ],
+  "expected_root_cause": "",
+  "expected_resolution": "",
+  "expected_invariants": [],
+  "expected_think_tokens": [],
+  "expected_skills": [],
+  "expected_commands": [],
+  "expected_learning": {
+    "mint_token": false,
+    "forge_candidate": false,
+    "bootstrap_update": false
+  },
+  "ground_truth_verified": false,
+  "gold_standard": {
+    "root_cause": "",
+    "repair_steps": [],
+    "verification_steps": []
+  },
+  "_int018": {
+    "rules": {
+      "fixed_bug": false,
+      "new_pattern": false,
+      "benchmark_exists": false,
+      "existing_benchmark": null,
+      "draft_pending": null,
+      "proposes_new": true,
+      "creates_think_token": false,
+      "update_existing": false,
+      "supersedes_knowledge": false
+    },
+    "proposedAt": "2026-08-04T20:21:11.921Z"
+  }
+}

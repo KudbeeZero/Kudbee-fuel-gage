@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T20:42:40.567Z",
+  "decisions": [
+    {
+      "id": "DEC-0001",
+      "mission": "INT-001",
+      "problem": "Replace keyword-overlap retrieval with evidence-based ranking",
+      "alternatives": [
+        "Keep keyword overlap",
+        "KD-dominated weighting (0.20)"
+      ],
+      "chosen": "Weighted multi-signal ranking: semantic 0.40, verification 0.15, KD 0.10, recency 0.10, frequency 0.15, approval 0.10",
+      "evidence": "Benchmark RUN-003: precision +8.3%, recall +25.0% over baseline",
+      "benchmarksConsulted": [
+        "BMK-0011"
+      ],
+      "risksAccepted": "Semantic weighting favors recall over precision on small suites",
+      "rollbackPlan": "Restore EVIDENCE_WEIGHTS v1 in champion-challenger.mjs",
+      "confidence": 86,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-04T20:42:40.567Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
+    },
+    {
+      "id": "DEC-0002",
+      "mission": "INT-011",
+      "problem": "Weight optimizer found no better configuration on the 12-scenario suite",
+      "alternatives": [
+        "Search wider weight space",
+        "Increase iterations",
+        "Accept local optimum"
+      ],
+      "chosen": "Stop weight tuning; pivot to benchmark suite expansion",
+      "evidence": "OPT-1: 18 candidates, 0 winners; OPT-2: 18 candidates, 0 winners",
+      "benchmarksConsulted": [
+        "BMK-0011"
+      ],
+      "risksAccepted": "Suite too small to reward further tuning; overfitting risk if tuned on 12 scenarios",
+      "rollbackPlan": "Re-enable tuning after suite grows past ~30 scenarios",
+      "confidence": 90,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-04T20:42:49.104Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
+    },
+    {
+      "id": "DEC-0003",
+      "mission": "INT-018",
+      "problem": "Continuous benchmark generation as the suite growth engine",
+      "alternatives": [
+        "Manual benchmark authoring",
+        "Auto-promote all drafts"
+      ],
+      "chosen": "Every PR/incident proposes a Draft benchmark; human approval promotes to Canonical",
+      "evidence": "Coverage report: performance 0%, security 10%, disaster 14% under-trained",
+      "benchmarksConsulted": [
+        "BMK-0001 BMK-0002"
+      ],
+      "risksAccepted": "Draft queue could grow without review; auto-promotion rejected to preserve governance",
+      "rollbackPlan": "Reject drafts; prune benchmarks/drafts/",
+      "confidence": 88,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-04T20:42:56.829Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
+    }
+  ]
+}
