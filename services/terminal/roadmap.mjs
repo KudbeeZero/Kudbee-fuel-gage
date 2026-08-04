@@ -71,7 +71,7 @@ export const ROADMAP = {
       id: 'PHASE-6',
       name: 'Production Rollout',
       category: 'OPS',
-      status: 'planned',
+      status: 'in_progress',
       dependsOn: ['PHASE-4', 'PHASE-5'],
       scope: 'Deploy to kudbee-fuel-gage prod, verify health, enable monitoring',
     },
@@ -175,7 +175,7 @@ ROADMAP.phases.push({
   id: "PHASE-15",
   name: "Crypto Knowledge Loop + Crucible",
   category: "OPS",
-  status: "in_progress",
+  status: "shipped",
   dependsOn: ["PHASE-14"],
   scope: "Crypto posture knowledge card (/crypto command, 10-check gate), Crucible adversarial agent challenge, reasoning ledger + governance proposals from failed-state reviews",
 });
