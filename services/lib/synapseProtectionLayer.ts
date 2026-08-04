@@ -265,6 +265,11 @@ export async function synapseProtectionMiddleware(req: Request, res: Response, n
     '/api/ci/status',
     '/api/telemetry/ingest',
     '/api/telemetry/ingest/batch',
+    // QStash delivers with its own Upstash-Signature header, verified
+    // cryptographically by the QStash receiver middleware. The C4769
+    // behavioral gate is redundant for these and would false-positive
+    // on Upstash's delivery IPs (no agent headers).
+    '/api/qstash',
   ];
   if (browserPaths.some((p) => req.path.startsWith(p))) {
     state.stats.totalPassed++;
