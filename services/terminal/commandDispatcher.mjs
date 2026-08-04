@@ -440,6 +440,28 @@ async function handleMiddleware() {
   };
 }
 
+// ── /invariants — Machine-verifiable invariants report ────────────────────────
+
+async function handleInvariants() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/verify-invariants.mjs', '--json'], { cwd: root, timeout: 90000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try {
+      const parsed = JSON.parse(out);
+      return { type: 'invariants:report', ...parsed, timestamp: new Date().toISOString() };
+    }
+    catch { return { type: 'invariants:report', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Invariants unavailable: ${e.message}` };
+  }
+}
+
 // ── /struggle — The Struggle Log (friction → learning, never repeats) ─────────
 
 async function handleStruggle(mode = 'list') {
@@ -636,6 +658,7 @@ async function dispatchCommand(input) {
     const mode = parts[1] || 'status';
     return handleCrucible(mode);
   }
+  if (cmd === '/invariants' || cmd === '/laws') return handleInvariants();
   if (cmd === '/struggle' || cmd === '/struggles') {
     const mode = parts[1] || 'list';
     return handleStruggle(mode);

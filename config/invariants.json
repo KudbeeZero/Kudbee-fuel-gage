@@ -1,0 +1,97 @@
+{
+  "$schema": "kudbee-invariants-v1",
+  "version": 1,
+  "description": "Machine-verifiable invariants — laws the system must always satisfy. Every invariant is checked automatically by scripts/verify-invariants.mjs in CI, the guardian, and the terminal. A violation BLOCKS implementation.",
+  "invariants": [
+    {
+      "id": "INV-001",
+      "category": "repository",
+      "name": "No merge conflict markers",
+      "severity": "critical",
+      "check": "merge-markers",
+      "description": "No real conflict markers (<<<<<<< / ======= / >>>>>>> on their own line) in tracked source files",
+      "evidence": "OPS-GIT-002 Rule 2 — corruption reached main twice, breaking all builds"
+    },
+    {
+      "id": "INV-002",
+      "category": "repository",
+      "name": "Lockfile valid + in sync",
+      "severity": "critical",
+      "check": "lockfile",
+      "description": "package-lock.json parses and its root package matches package.json",
+      "evidence": "Corrupted lockfile (60 markers) broke every Heroku deploy"
+    },
+    {
+      "id": "INV-003",
+      "category": "repository",
+      "name": "No secrets in tracked files",
+      "severity": "critical",
+      "check": "secrets",
+      "description": "verify-secret-hygiene passes — no credentials in source, name-only presence",
+      "evidence": "Secret-safe workflow — secrets live only in Heroku config / ignored .env"
+    },
+    {
+      "id": "INV-004",
+      "category": "repository",
+      "name": "Terminal integrity",
+      "severity": "high",
+      "check": "terminal",
+      "description": "apps/web/terminal.html has no conflict markers and contains the enterprise sections",
+      "evidence": "Merge artifacts corrupted terminal.html; the terminal is the control plane"
+    },
+    {
+      "id": "INV-005",
+      "category": "repository",
+      "name": "TypeScript 7 contract",
+      "severity": "high",
+      "check": "typescript-7",
+      "description": "No TypeScript 5.x or lower in direct constraints or resolved compiler entries",
+      "evidence": "verify:typescript gate — TS7 native + TS6 API alias for eslint only"
+    },
+    {
+      "id": "INV-006",
+      "category": "operational",
+      "name": "Pipeline integrity — 3 environments",
+      "severity": "critical",
+      "check": "pipeline",
+      "description": "kudbee-fuel-gage-dev, -staging, and -prod all exist on Heroku",
+      "evidence": "Dev app was deleted silently; only 2 of 3 environments existed"
+    },
+    {
+      "id": "INV-007",
+      "category": "operational",
+      "name": "Redis quota headroom",
+      "severity": "high",
+      "check": "redis-quota",
+      "description": "Polling intervals must stay under ~30% of the 500k monthly quota",
+      "evidence": "Intervals were 164% of quota — hard-tuned to 23% (heartbeat 5min, audit 15min, BRPOP 25s)"
+    },
+    {
+      "id": "INV-008",
+      "category": "operational",
+      "name": "No server-runtime vulnerabilities",
+      "severity": "high",
+      "check": "runtime-vulns",
+      "description": "Server-runtime dependencies (express, pg, ioredis, zod, upstash, genai) have zero known vulnerabilities. Expo mobile-toolchain xmldom (<=0.8.12) is a documented build-only exception pinned via overrides.",
+      "evidence": "npm audit --omit=dev — all findings are @xmldom/xmldom in @expo/plist; server deps verified clean"
+    },
+    {
+      "id": "INV-009",
+      "category": "process",
+      "name": "Clean tree before mission",
+      "severity": "high",
+      "check": "clean-tree",
+      "description": "No uncommitted changes when starting or ending a mission",
+      "evidence": "Dirty tree caused branch confusion and lost work across sessions"
+    },
+    {
+      "id": "INV-010",
+      "category": "process",
+      "name": "Active mission on roadmap",
+      "severity": "medium",
+      "check": "active-mission",
+      "description": "Roadmap has at least one in_progress or planned phase",
+      "evidence": "No mission = no direction; every session should have a purpose"
+    }
+  ]
+}
