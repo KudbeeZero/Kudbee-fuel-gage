@@ -175,3 +175,27 @@ node scripts/snippet-agent.mjs health  # Knowledge store health
 5. Merge with squash + delete branch. Pull main. Clean tree.
 6. Deploy staging first, verify, then production. Record DTHINK events.
 7. `/ask` is rate-limited (10/min default; `/threshold set askRateLimit N`).
+
+## OPS-GIT-002 — Repository Protection Protocol
+
+**The Guardian is the gate.** Every agent runs `/guardian` (or
+`node scripts/repository-guardian.mjs`) BEFORE any implementation. It checks:
+clean tree, no merge markers, lockfile valid, stack valid, terminal
+integrity, handoff current, bootstrap current, active mission. **If any
+check fails — STOP. Do not implement. Report.**
+
+- **Never edit main directly.** Every change: mission → branch → push →
+  draft PR → CI → merge queue → main. No exceptions except emergency hotfixes.
+- **Merge markers never reach GitHub.** Conflict markers (`<<<<<<<`,
+  `=======`, `>>>>>>>`) in any tracked source file fail the push. If you
+  find them committed (this happened twice: package-lock.json and
+  commandDispatcher.mjs), fix immediately via repair branch, never on main.
+- **One terminal owner:** `apps/web/terminal.html`. Other terminals are
+  archive/experimental — never duplicate production terminals.
+- **Build artifacts are never hand-edited.** Source → build → artifact →
+  deploy.
+- **Dirty tree = blocked.** If `git status` is dirty when starting a
+  mission, resolve it before anything else.
+- **Repair mode:** on corruption, create a repair branch, restore the last
+  known-good version, replay intended changes, open a repair PR, verify,
+  then merge. Never improvise on main.

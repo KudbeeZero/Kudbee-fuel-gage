@@ -163,6 +163,28 @@ async function handlePulse() {
   }
 }
 
+// ── /guardian — Repository preflight gate (OPS-GIT-002 Rule 9) ───────────────
+
+async function handleGuardian() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/repository-guardian.mjs', '--json'], { cwd: root, timeout: 25000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try {
+      const parsed = JSON.parse(out);
+      return { type: 'guardian:report', ...parsed, timestamp: new Date().toISOString() };
+    }
+    catch { return { type: 'guardian:report', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Guardian unavailable: ${e.message}` };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
@@ -252,6 +274,7 @@ async function dispatchCommand(input) {
   if (cmd === '/forecast') return handleForecast();
   if (cmd === '/handoff' || cmd === '/brief') return handleHandoff();
   if (cmd === '/pulse' || cmd === '/health-metrics') return handlePulse();
+  if (cmd === '/guardian' || cmd === '/preflight') return handleGuardian();
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
