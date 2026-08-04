@@ -3756,7 +3756,7 @@ Emit only the minimal code/answer required. No apologies, no meta-commentary.
         selectedProvider === 'gemini'
           ? {
               kind: 'gemini',
-              model: 'gemini-2.0-flash',
+              model: 'gemini-flash-latest',
               temperature: 0.2,
               maxTokens: 512,
               apiKey: process.env.GEMINI_API_KEY,
@@ -3876,12 +3876,12 @@ app.post('/v1/chat/completions', async (req, res) => {
         const { checkBudgetOrThrow, trackSpend, estimateInceptionCost } = await import('../lib/budgetGate.ts');
         const client = createProvider({
           kind: 'gemini',
-          model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+          model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
           apiKey: geminiKey,
           temperature: 0.3,
           maxTokens: 1024,
         });
-        await checkBudgetOrThrow(0, 1024, process.env.GEMINI_MODEL || 'gemini-2.0-flash');
+        await checkBudgetOrThrow(0, 1024, process.env.GEMINI_MODEL || 'gemini-flash-latest');
         const response = await client.complete({
           systemPrompt:
             'You are the Kudbee Control Tower assistant. Answer the user directly, be concise, and ground everything in what is known. Do not fabricate metrics, statuses, or infrastructure claims.',
