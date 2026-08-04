@@ -28,6 +28,18 @@ import { runInsert } from '../lib/db.js';
 const AGENT_ID = `hermes-auditor-${process.pid}`;
 const PREFIX = '[HERMES:AUDITOR]';
 const HEARTBEAT_KEY = 'kudbee:agents:hermes';
+
+// ── Local filesystem fallback (72h Redis quota survival) ──────────────────
+import { join } from 'node:path';
+import { mkdirSync, existsSync, writeFileSync } from 'node:fs';
+const LOCAL_STATE_DIR = join(process.cwd(), '.kilo', 'memory', 'local-state');
+function localHeartbeatWrite(payload) {
+  try {
+    if (!existsSync(LOCAL_STATE_DIR)) mkdirSync(LOCAL_STATE_DIR, { recursive: true });
+    writeFileSync(join(LOCAL_STATE_DIR, 'hermes-heartbeat.json'), JSON.stringify(payload));
+    console.log(`${PREFIX} heartbeat → local filesystem (Redis unavailable)`);
+  } catch (e) { /* silent */ }
+}
 const HEARTBEAT_TTL = 30; // seconds — window the Control Tower treats as "Online"
 const LOG_STREAM_KEY = 'kudbee:hermes:log'; // surfaced in the dashboard terminal
 const LOG_STREAM_MAX = 200;
@@ -89,17 +101,25 @@ export const log = Object.freeze({
  * key as Offline. The worker also pushes this on a fixed interval.
  */
 export async function publishHeartbeat() {
-  const redis = getSlowRedisClient({ label: 'hermes' });
   const payload = {
-    agent: 'HERMES',
-    status: 'Online',
-    pid: process.pid,
-    timestamp: new Date().toISOString()
+    agent: 'HERMES', status: 'Online', pid: process.pid, timestamp: new Date().toISOString()
   };
+  // Respect circuit breaker — skip Redis when quota exhausted
   try {
+    const { getRedisQuotaBackoffRemaining } = await import('../lib/redis.js');
+    if (getRedisQuotaBackoffRemaining() > 0) return localHeartbeatWrite(payload);
+  } catch {}
+
+  try {
+    const redis = getSlowRedisClient({ label: 'hermes' });
     await redis.set(HEARTBEAT_KEY, JSON.stringify(payload), 'EX', HEARTBEAT_TTL);
   } catch (err) {
     log.error('heartbeat write failed:', err.message);
+    try {
+      const { applyRedisQuotaBackoff } = await import('../lib/redis.js');
+      if (String(err.message).includes('max requests limit')) applyRedisQuotaBackoff(err);
+    } catch {}
+    return localHeartbeatWrite(payload);
   }
 
   const appUrl = process.env.APP_URL || '';
@@ -141,6 +161,12 @@ export async function reportOffline() {
 async function auditMemoryLayer(redis) {
   const findings = [];
   try {
+    // Respect circuit breaker — skip when Redis quota exhausted
+    const { getRedisQuotaBackoffRemaining } = await import('../lib/redis.js');
+    if (getRedisQuotaBackoffRemaining() > 0) {
+      log.warn('auditMemoryLayer skipped — Redis quota backoff active');
+      return findings;
+    }
     const raw = await redis.lrange('kudbee:session_history', 0, -1);
     const seen = new Map();
     let duplicates = 0;
