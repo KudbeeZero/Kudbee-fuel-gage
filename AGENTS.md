@@ -160,6 +160,58 @@ node scripts/failure-forecaster.mjs   # predict next failing gate
 - **.kilo/skill/:** 5 skills (ci-watcher, knowledge-curator, kudbee, pipeline-guardian,
   terminal-diagnostic)
 
+## PHASE-6 Production Verification (2026-08-04)
+
+### Verified ✅
+
+```
+# Staging health
+curl https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/health
+→ {"status":"ok","dependencies":{"ingestion_db":"healthy","vector_memory":"healthy","redis":"healthy"}}
+
+curl https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/api/system/health-deep
+→ HEALTHY — Postgres 1ms, Redis 12ms, Agent ACTIVE_RUNNING, 0 pending triage
+
+# Production health (identical to staging)
+curl https://kudbee-fuel-gage-330ade653a62.herokuapp.com/health
+→ {"status":"ok","dependencies":{"ingestion_db":"healthy","vector_memory":"healthy","redis":"healthy"}}
+
+curl https://kudbee-fuel-gage-330ade653a62.herokuapp.com/api/system/health-deep
+→ HEALTHY — Postgres 2ms, Redis 12ms, Agent ACTIVE_RUNNING, 0 pending triage
+
+# Terminal API exercises
+curl -X POST https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/api/terminal/execute \
+  -H 'Content-Type: application/json' -d '{"command":"/status"}'
+→ fleet:10, shield PROMOTE
+
+# Surface validation
+Production /         → 200 (boot splash → React SPA)
+Production /terminal.html → 200 (xterm.js agent terminal)
+Production /mobile/  → 200 (React Native web bundle)
+
+# System status (local)
+node scripts/system-status.mjs check
+→ CI GREEN, Tests 46/46, Build 290kB, E2E 38/38, Pipelines 6/6, Agents 11, PRs 0
+```
+
+### Remaining (33%)
+
+PHASE-6 scope: "Deploy to kudbee-fuel-gage prod, verify health, enable monitoring"
+
+- **Deploy:** ✅ Done — production healthy, release a2ae80b
+- **Verify health:** ✅ Done — all dependencies green, 11 agents active
+- **Enable monitoring:** Requires Heroku CLI / dashboard access to verify:
+  - `monitor-worker` dyno (`services/monitor/agent.js`) — defined in Procfile for production
+  - `sentinel` dyno (`services/sentinel/src/index.ts`) — defined in Procfile for production
+  - Confirm config vars: `GEMINI_API_KEY`, `DATABASE_URL`, `REDIS_URL`, `REDIS_WORKER_URL`
+
+### Next safe action
+
+1. **Investigate `/status` reporting `online:0`** despite agent-status endpoint showing 11 active agents — likely a polling/metrics bridge gap
+2. Verify monitor-worker + sentinel dynos are running in production (Heroku Dashboard → Resources)
+3. Stamp PHASE-6 as shipped in `services/terminal/roadmap.mjs`
+4. Close OPS-017 mission, open THINKBOX-016 (PHASE-7)
+
 ## Links
 
 - Staging: https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com
