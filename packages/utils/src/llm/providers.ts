@@ -17,6 +17,31 @@
 export type ProviderKind = 'gemini' | 'vllm' | 'openai-compatible';
 
 /**
+ * OpenAI-compatible tool definition (mirrors the API contract so callers
+ * can declare tools without importing an SDK).
+ */
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+/**
+ * A tool call emitted by the model, matching the OpenAI `tool_calls` shape.
+ */
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+/**
  * Configuration required to instantiate a provider.
  */
 export interface ProviderConfig {
@@ -30,6 +55,8 @@ export interface ProviderConfig {
   maxTokens?: number;
   /** For vLLM/open-weights: the system prompt wrapper to enforce XML output. */
   xmlWrapper?: boolean;
+  /** Retry count when a tool call is required but the model emits text (default 2). */
+  toolCallRetries?: number;
 }
 
 /**
@@ -42,6 +69,18 @@ export interface CompletionRequest {
   maxTokens?: number;
   /** Optional JSON schema hint for structured output providers. */
   responseSchema?: unknown;
+  /** Tools available to the model. When present, tool calling is enabled. */
+  tools?: ToolDefinition[];
+  /**
+   * Tool selection policy:
+   *   'auto'       — model decides (default)
+   *   'required'   — force at least one tool call (used for retries when a
+   *                  system prompt mandates a tool but the model emits text)
+   *   {type:'function', function:{name}} — pin one tool
+   */
+  toolChoice?: 'auto' | 'required' | { type: 'function'; function: { name: string } };
+  /** When true, a response with zero tool calls is treated as a failure and retried. */
+  requireToolCall?: boolean;
 }
 
 /**
@@ -51,6 +90,8 @@ export interface CompletionResponse {
   text: string;
   model: string;
   provider: ProviderKind;
+  /** Tool calls the model emitted (empty when the model chose text). */
+  toolCalls?: ToolCall[];
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -232,6 +273,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
   private readonly temperature: number;
   private readonly maxTokens: number;
   private readonly xmlWrapper: boolean;
+  private readonly toolCallRetries: number;
 
   constructor(config: ProviderConfig) {
     if (!config.baseUrl) {
@@ -243,6 +285,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
     this.temperature = config.temperature ?? 0.2;
     this.maxTokens = config.maxTokens ?? 1024;
     this.xmlWrapper = config.xmlWrapper ?? true;
+    this.toolCallRetries = config.toolCallRetries ?? 2;
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
@@ -250,13 +293,11 @@ export class OpenAICompatibleProvider implements ModelProvider {
       ? wrapPromptForOpenWeights(request.systemPrompt, request.userPrompt)
       : `${request.systemPrompt}\n\n${request.userPrompt}`;
 
-    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`
-      },
-      body: JSON.stringify({
+    const maxRetries = request.requireToolCall ? this.toolCallRetries : 0;
+    let lastResponse: CompletionResponse | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const body: Record<string, unknown> = {
         model: this.model,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -264,29 +305,64 @@ export class OpenAICompatibleProvider implements ModelProvider {
         ],
         temperature: request.temperature ?? this.temperature,
         max_tokens: request.maxTokens ?? this.maxTokens
-      })
-    });
+      };
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`OpenAI-compatible completion failed (${res.status}): ${body}`);
+      if (request.tools && request.tools.length > 0) {
+        body.tools = request.tools;
+        // On retry attempts (or explicit 'required'), force a tool call.
+        body.tool_choice =
+          request.toolChoice === 'required' || attempt > 0
+            ? 'required'
+            : (request.toolChoice ?? 'auto');
+      }
+
+      const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const respBody = await res.text();
+        throw new Error(`OpenAI-compatible completion failed (${res.status}): ${respBody}`);
+      }
+
+      const data = (await res.json()) as {
+        choices: Array<{
+          message: { content?: string | null; tool_calls?: ToolCall[] };
+        }>;
+        usage?: { prompt_tokens: number; completion_tokens: number };
+      };
+
+      const message = data.choices[0]?.message;
+      const text = message?.content ?? '';
+      const toolCalls = message?.tool_calls ?? [];
+
+      lastResponse = {
+        text,
+        model: this.model,
+        provider: 'openai-compatible',
+        toolCalls,
+        usage: {
+          promptTokens: data.usage?.prompt_tokens ?? 0,
+          completionTokens: data.usage?.completion_tokens ?? 0
+        }
+      };
+
+      // If a tool call is mandatory and the model emitted none, retry with
+      // tool_choice='required' — this is the fix for models that ignore the
+      // tool-calling instruction in the system prompt (e.g. deepseek-v4-flash).
+      if (request.requireToolCall && toolCalls.length === 0 && attempt < maxRetries) {
+        continue;
+      }
+
+      return lastResponse;
     }
 
-    const data = (await res.json()) as {
-      choices: Array<{ message: { content: string } }>;
-      usage?: { prompt_tokens: number; completion_tokens: number };
-    };
-
-    const text = data.choices[0]?.message?.content ?? '';
-    return {
-      text,
-      model: this.model,
-      provider: 'openai-compatible',
-      usage: {
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0
-      }
-    };
+    return lastResponse as CompletionResponse;
   }
 
   async healthCheck(): Promise<boolean> {
