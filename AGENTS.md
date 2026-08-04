@@ -3,6 +3,25 @@
 ## ⚠️ CRITICAL: Run this FIRST — before reading any other files
 
 ```bash
+node scripts/handoff.mjs --stamp
+```
+
+**This is the mandatory HANDOFF BRIEFING.** It tells you instantly, no matter
+what branch you're on or what you were doing:
+- **WHO you are** (agent id, current role)
+- **WHERE you are** (git branch, HEAD SHA, dirty file count)
+- **WHAT the mission is** (current phase, progress %, mission statement)
+- **WHAT to do next** (first action recommendation)
+- **WHAT happened recently** (last 5 DTHINK events)
+- **WHERE the system lives** (staging/prod/terminal/github links)
+
+The manifest is stamped to `.kilo/handoff.json` for machine-readable access.
+If any briefing field is missing or wrong, the mission lock or roadmap is out
+of sync — resolve that BEFORE starting work. You are in charge: state your
+role, your mission, and your first action to the human, then move.
+
+Then run the full bootstrap to load the deep context:
+```bash
 node scripts/session-bootstrap.mjs
 ```
 

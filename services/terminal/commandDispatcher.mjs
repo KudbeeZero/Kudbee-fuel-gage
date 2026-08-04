@@ -295,6 +295,25 @@ async function handleForecast() {
   }
 }
 
+// ── /handoff — Instant situational awareness for any agent ───────────────────
+
+async function handleHandoff() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/handoff.mjs', '--json'], { cwd: root, timeout: 20000, maxBuffer: 1024 * 512 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try { return { type: 'handoff:briefing', ...JSON.parse(out), timestamp: new Date().toISOString() }; }
+    catch { return { type: 'handoff:briefing', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Handoff unavailable: ${e.message}` };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
@@ -384,6 +403,7 @@ async function dispatchCommand(input) {
   if (cmd === '/security' || cmd === '/sec') return handleSecurity();
   if (cmd === '/echo') return handleEcho();
   if (cmd === '/forecast') return handleForecast();
+  if (cmd === '/handoff' || cmd === '/brief') return handleHandoff();
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
