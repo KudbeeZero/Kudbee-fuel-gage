@@ -148,7 +148,34 @@ ROADMAP.phases.push({
   id: "PHASE-12",
   name: "Autonomous Self-Healing + Inventions",
   category: "OPS",
-  status: "in_progress",
+  status: "shipped",
   dependsOn: ["PHASE-11"],
   scope: "THINK token learning loop, Echo Prompt Library, Failure Forecaster, self-heal gates every 6h",
+});
+
+ROADMAP.phases.push({
+  id: "PHASE-13",
+  name: "Repository Guardian + Security Hardening",
+  category: "OPS",
+  status: "shipped",
+  dependsOn: ["PHASE-12"],
+  scope: "OPS-GIT-002 protocol (guardian gate, no merge markers on main, one terminal owner), invisible security (headers, CORS allowlist, rate limits), zero password gates, enterprise terminal cockpit",
+});
+
+ROADMAP.phases.push({
+  id: "PHASE-14",
+  name: "Engineering Health + Self-Review",
+  category: "OPS",
+  status: "shipped",
+  dependsOn: ["PHASE-13"],
+  scope: "/pulse live health dashboard (CI %, tests, agents, mock data), nightly self-review proposing ONE improvement, live CI status from GitHub, vector status proxy, postgres cold-start retry",
+});
+
+ROADMAP.phases.push({
+  id: "PHASE-15",
+  name: "Crypto Knowledge Loop + Crucible",
+  category: "OPS",
+  status: "in_progress",
+  dependsOn: ["PHASE-14"],
+  scope: "Crypto posture knowledge card (/crypto command, 10-check gate), Crucible adversarial agent challenge, reasoning ledger + governance proposals from failed-state reviews",
 });
