@@ -5746,7 +5746,14 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
 
 // --- Deploy Status (frontend-backend communication tunnel) ---
 app.get('/api/system/deploy-status', (_req, res) => {
-  const commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7) || 'unknown';
+  let commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7);
+  if (!commit && !process.env.IOP) {
+    try {
+      const dv = fs.readFileSync(path.join(__dirname, '../../.deploy-version.json'), 'utf8');
+      commit = JSON.parse(dv).sha?.slice(0, 7);
+    } catch {}
+  }
+  if (!commit) commit = 'unknown';
   res.json({
     commit,
     herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),

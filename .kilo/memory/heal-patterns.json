@@ -1,10 +1,28 @@
 {
   "patterns": [
     {
+      "signature": "Gemini API key not configured|GEMENI_API_KEY|GEMINI.*not set|Gemini.*triaged? disabled",
+      "diagnosis": "FIX: config var typo — check env var spelling. 'GEMENI_API_KEY' (misspelled) must be 'GEMINI_API_KEY'. Verify with: node scripts/verify-config-vars.mjs --heroku production. Then patch via Heroku API: set GEMINI_API_KEY, remove GEMENI_API_KEY.",
+      "createdAt": "2026-08-04T13:18:00.000Z",
+      "hits": 1
+    },
+    {
       "signature": "error TSN: Cannot find name \"foo\"|Error: Command failed with exit code N|Failed to compile",
       "diagnosis": "FIX: define foo before use — add `const foo = 1;` to the file.",
       "createdAt": "2026-08-04T06:18:05.272Z",
       "hits": 2
+    },
+    {
+      "signature": "Cannot find module.*express.*degradation-monitor|ERR_MODULE_NOT_FOUND.*express",
+      "diagnosis": "FIX: express hoisting — add express to root devDependencies. Run: npm install --save-dev express@^5.0.0 at root. Then regenerate lockfile: npm install --legacy-peer-deps. Never rm package-lock.json blindly.",
+      "createdAt": "2026-08-04T13:18:30.000Z",
+      "hits": 0
+    },
+    {
+      "signature": "HEROKU_SLUG_COMMIT not set|deploy-status.*unknown|commit.*unknown",
+      "diagnosis": "NON-CRITICAL: git SHA not injected into deploy-status. Check .deploy-version.json or use node scripts/verify-config-vars.mjs --heroku production. Can be fixed by writing git SHA to .deploy-version.json at build time.",
+      "createdAt": "2026-08-04T13:18:30.000Z",
+      "hits": 0
     }
   ]
 }
