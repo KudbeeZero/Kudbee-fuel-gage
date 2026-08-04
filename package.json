@@ -37,6 +37,8 @@
     "intelligence:replay": "node scripts/decision-replay.mjs",
     "knowledge:audit": "node scripts/knowledge-audit.mjs",
     "knowledge:lifecycle": "node scripts/knowledge-lifecycle.mjs",
+    "knowledge:graph": "node scripts/knowledge-graph.mjs",
+    "graph:audit": "node scripts/graph-audit.mjs",
     "intelligence:decide": "node scripts/decision-ledger.mjs",
     "intelligence:decisions": "node scripts/decision-ledger.mjs list",
     "verify:quick": "node scripts/verify-quick.mjs",
