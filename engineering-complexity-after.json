@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-08-04T21:55:00Z",
+  "mission": "STAB-004",
+  "before": {
+    "sourceFiles": 549,
+    "scripts": 114,
+    "docs": 170,
+    "topLevelDocs": 67,
+    "commands": 48,
+    "bootstrapKb": 10,
+    "graphNodes": 82,
+    "dependencies": 15
+  },
+  "after": {
+    "sourceFiles": 550,
+    "scripts": 115,
+    "docs": 171,
+    "topLevelDocs": 39,
+    "commands": 50,
+    "bootstrapKb": 10,
+    "graphNodes": 82,
+    "dependencies": 15
+  },
+  "archived": {
+    "docs": 29,
+    "to": "docs/archive/"
+  },
+  "delta": {
+    "topLevelDocs": "67 \u2192 39 (42% reduction)"
+  }
+}
