@@ -168,6 +168,12 @@ async function handleAsk(prompt) {
       budget = bs;
     } catch {}
 
+    // Echo: record this interaction so the prompt library can improve itself
+    try {
+      const { record } = await import('./echoLibrary.mjs');
+      record({ kind: 'ask', prompt, response: resp.text, tokens, latency, outcome: 'success' });
+    } catch {}
+
     return {
       type: 'ask:response',
       prompt,
@@ -244,6 +250,49 @@ async function handleCode(prompt) {
 async function handleRoadmap() {
   const { getRoadmapStatus } = await import('./roadmap.mjs');
   return { type: 'roadmap:status', ...getRoadmapStatus(), timestamp: new Date().toISOString() };
+}
+
+// ── /echo — Echo Prompt Library (self-improving prompts) ─────────────────────
+
+async function handleEcho() {
+  try {
+    const { score, suggestImprovement, bestPrompt } = await import('./echoLibrary.mjs');
+    const scores = score();
+    const kinds = Object.keys(scores);
+    const report = {
+      type: 'echo:library',
+      tracked: kinds,
+      scores,
+      improvement: {},
+      timestamp: new Date().toISOString(),
+    };
+    for (const k of ['ask', 'code', 'heal']) {
+      const s = suggestImprovement(k);
+      if (s.ready) report.improvement[k] = { successRate: s.successRate, suggestion: s.suggestion.slice(0, 120) };
+    }
+    return report;
+  } catch (e) {
+    return { type: 'terminal:error', message: `Echo library unavailable: ${e.message}` };
+  }
+}
+
+// ── /forecast — Failure Forecaster (predict before CI breaks) ────────────────
+
+async function handleForecast() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/failure-forecaster.mjs', '--json'], { cwd: root, timeout: 20000, maxBuffer: 1024 * 256 },
+        (err, stdout) => res(stdout || err?.message || '{}'));
+    });
+    try { return { type: 'forecast:report', ...JSON.parse(out), timestamp: new Date().toISOString() }; }
+    catch { return { type: 'forecast:report', raw: out.slice(0, 400), timestamp: new Date().toISOString() }; }
+  } catch (e) {
+    return { type: 'terminal:error', message: `Forecaster unavailable: ${e.message}` };
+  }
 }
 
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
@@ -333,6 +382,8 @@ async function dispatchCommand(input) {
   if (cmd === '/status') return handleStatus();
   if (cmd === '/roadmap' || cmd === '/phases') return handleRoadmap();
   if (cmd === '/security' || cmd === '/sec') return handleSecurity();
+  if (cmd === '/echo') return handleEcho();
+  if (cmd === '/forecast') return handleForecast();
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
     if (!prompt) {
