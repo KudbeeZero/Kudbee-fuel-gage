@@ -125,8 +125,13 @@
       "query": "thinkbox continuous learning engineering",
       "timestamp": "2026-08-02T06:54:31.135Z",
       "score": 5
+    },
+    {
+      "query": "audit middleware after hermes circuit breaker deploy",
+      "timestamp": "2026-08-04T05:15:38.630Z",
+      "score": 11
     }
   ],
-  "lastRecall": "2026-08-02T06:54:31.135Z",
-  "recallCount": 25
+  "lastRecall": "2026-08-04T05:15:38.630Z",
+  "recallCount": 26
 }

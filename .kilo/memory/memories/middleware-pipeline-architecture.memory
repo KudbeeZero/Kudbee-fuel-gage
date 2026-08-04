@@ -125,8 +125,13 @@
       "query": "scan 11 middleware layers for degradation",
       "timestamp": "2026-08-04T02:38:37.001Z",
       "score": 12
+    },
+    {
+      "query": "audit middleware after hermes circuit breaker deploy",
+      "timestamp": "2026-08-04T05:15:38.629Z",
+      "score": 14
     }
   ],
-  "lastRecall": "2026-08-04T02:38:37.001Z",
-  "recallCount": 25
+  "lastRecall": "2026-08-04T05:15:38.629Z",
+  "recallCount": 26
 }

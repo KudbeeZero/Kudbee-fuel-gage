@@ -1,0 +1,12 @@
+{
+  "id": "dec-1785820538572-e2dc143d",
+  "agentId": "knowledge-curator",
+  "decision": "run:curate hermes circuit breaker + local fallback knowledge",
+  "context": {
+    "action": "execute",
+    "task": "curate hermes circuit breaker + local fallback knowledge",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-04T05:15:38.572Z",
+  "decoded": false
+}

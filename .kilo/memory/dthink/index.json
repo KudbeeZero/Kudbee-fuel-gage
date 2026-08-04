@@ -611,7 +611,19 @@
       "type": "workspace:detected",
       "agentId": "system",
       "timestamp": "2026-08-02T07:51:52.480Z"
+    },
+    {
+      "id": "fa9fbcf9-d704-409b-8cd2-f9b1697f6cf1",
+      "type": "circuit-breaker:upgraded",
+      "agentId": "system",
+      "timestamp": "2026-08-04T05:27:02.457Z"
+    },
+    {
+      "id": "45c4fbe7-2aa6-429d-a6a6-440afc89d962",
+      "type": "production:redis-healthy",
+      "agentId": "system",
+      "timestamp": "2026-08-04T05:27:02.510Z"
     }
   ],
-  "totalEntries": 102
+  "totalEntries": 104
 }
