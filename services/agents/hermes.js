@@ -41,7 +41,9 @@ function localHeartbeatWrite(payload) {
     console.log(`${PREFIX} heartbeat → local filesystem (Redis unavailable)`);
   } catch (e) { /* silent */ }
 }
-const HEARTBEAT_TTL = 30; // seconds — window the Control Tower treats as "Online"
+const HEARTBEAT_TTL = 360; // seconds — window Control Tower treats as "Online".
+// Matches the 5-minute worker heartbeat interval (quota protection);
+// a 30s TTL would show the auditor as Offline between heartbeats.
 const LOG_STREAM_KEY = 'kudbee:hermes:log'; // surfaced in the dashboard terminal
 const LOG_STREAM_MAX = 200;
 const THINK_STREAM_KEY = 'kudbee:think:stream'; // live thought-stream for the dashboard

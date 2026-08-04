@@ -185,7 +185,11 @@ const TASK_QUEUE = 'kudbee-governance-tasks';
 const TASK_DLQ = 'kudbee-governance-tasks-failed';
 const EVENTS_CHANNEL = 'kudbee:events';
 const MAX_ATTEMPTS = 3;
-const BRPOP_TIMEOUT_MS = 5_000;
+// BRPOP timeout: 5s was 12 req/min = ~518k req/month when idle — more than
+// the entire Upstash 500k monthly quota. 25s keeps latency acceptable while
+// cutting idle polling to ~4 req/min (~173k/month absolute worst case; far
+// less in practice with quota backoff active).
+const BRPOP_TIMEOUT_MS = 25_000;
 const BASE_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 

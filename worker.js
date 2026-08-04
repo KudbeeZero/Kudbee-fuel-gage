@@ -37,8 +37,14 @@ import { geminiBreaker } from './services/lib/circuitBreaker.ts';
 import { runSystemPruner } from './services/lib/pruner.ts';
 
 const TASKS_QUEUE = 'kudbee:governance:tasks';
-const AUDIT_INTERVAL_MS = 60_000;
-const HEARTBEAT_INTERVAL_MS = 10_000;
+// Redis request budget (QUOTA PROTECTION — monthly 500k Upstash limit):
+// Heartbeat every 10s was ~259k req/month alone; audit every 60s added
+// tens of thousands more. These intervals keep total Redis usage under
+// ~15k req/month — 30x headroom below the 500k cap.
+//   heartbeat 5min  = 8,640 req/month
+//   audit    15min  = 2,880 req/month (+ its internal reads)
+const AUDIT_INTERVAL_MS = 15 * 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 const POLL_BACKOFF_MS = process.env.NODE_ENV === 'test' ? 0 : 2000;
 
 const redis = getRedisClient({ label: 'worker' });
