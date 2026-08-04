@@ -440,7 +440,30 @@ async function handleMiddleware() {
   };
 }
 
-// ── /crucible — Adversarial agent challenge (failed-state review loop) ───────
+// ── /struggle — The Struggle Log (friction → learning, never repeats) ─────────
+
+async function handleStruggle(mode = 'list') {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const scriptArgs = mode === 'trends' ? ['trends'] : ['list', '8'];
+    const out = await new Promise(res => {
+      execFile('node', ['scripts/struggle-log.mjs', ...scriptArgs], { cwd: root, timeout: 15000, maxBuffer: 1024 * 256 },
+        (err, stdout) => res(stdout || err?.message || ''));
+    });
+    return {
+      type: 'struggle:log',
+      mode,
+      entries: out.split('\n').filter(l => l.includes(']') || l.includes('.')),
+      note: '/struggle trends → repeating patterns; /struggle list → recent',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Struggle log unavailable: ${e.message}` };
+  }
+}
 
 async function handleCrucible(mode = 'status') {
   try {
@@ -612,6 +635,10 @@ async function dispatchCommand(input) {
   if (cmd === '/crucible') {
     const mode = parts[1] || 'status';
     return handleCrucible(mode);
+  }
+  if (cmd === '/struggle' || cmd === '/struggles') {
+    const mode = parts[1] || 'list';
+    return handleStruggle(mode);
   }
   if (cmd === '/ask') {
     const prompt = raw.replace(/^\/ask\s+/i, '').trim();
