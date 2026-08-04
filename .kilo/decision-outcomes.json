@@ -56,6 +56,29 @@
       "notes": "Draft flow works; suite growth in progress.",
       "supersedes": null,
       "calibrationDelta": 0.01
+    },
+    {
+      "reviewId": "REV-0004",
+      "decision": "DEC-0004",
+      "status": "SUCCESS",
+      "reviewDate": "2026-08-04T21:47:56.603Z",
+      "expected": {
+        "precision_delta": 0,
+        "recall_delta": 0
+      },
+      "actual": {
+        "precision_delta": 0,
+        "recall_delta": 0
+      },
+      "confidenceBefore": 0.9,
+      "confidenceAfter": 0.92,
+      "benchmarkRuns": [
+        "GRAPH-AUDIT",
+        "KNOWLEDGE-AUDIT"
+      ],
+      "notes": "Orphan tokens connected 39→5; both audits pass.",
+      "supersedes": null,
+      "calibrationDelta": 0.02
     }
   ]
 }

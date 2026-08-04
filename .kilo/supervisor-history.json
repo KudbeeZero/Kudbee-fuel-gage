@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T21:47:15.990Z",
+  "decisions": [
+    {
+      "decisionId": "SUP-1",
+      "mission": "STAB-002",
+      "verdict": "APPROVED",
+      "health": 82,
+      "answers": {
+        "exists": true,
+        "unique": true,
+        "evidence": true,
+        "rollback": true,
+        "metrics": true,
+        "priority": true
+      },
+      "decisions": [
+        "APPROVED: all six questions pass"
+      ],
+      "at": "2026-08-04T21:47:15.990Z"
+    },
+    {
+      "decisionId": "SUP-2",
+      "mission": "INT-029-GAP",
+      "verdict": "REQUEST_ROLLBACK",
+      "health": 47,
+      "answers": {
+        "exists": true,
+        "unique": true,
+        "evidence": true,
+        "rollback": false,
+        "metrics": false,
+        "priority": false
+      },
+      "decisions": [
+        "REQUEST_ROLLBACK: rollback not defined",
+        "BLOCKED: no success metrics",
+        "DEFERRED: higher-priority mission in queue"
+      ],
+      "at": "2026-08-04T21:47:22.437Z"
+    }
+  ]
+}
