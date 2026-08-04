@@ -6,54 +6,18 @@
  * Deterministic — same input → same output.
  */
 
-import { readdirSync, statSync } from 'node:fs';
-import { join, relative, basename } from 'node:path';
 import type { CodeIndex, IndexingOptions } from './types.ts';
 import { indexTypeScriptFiles } from './typescript.ts';
 import { indexPythonFiles } from './python.ts';
+import { collectFiles, MAX_FILES } from '../collectFiles.ts';
 import type { Workspace } from '../registry.ts';
-
-const MAX_FILES = 50_000;
-const SKIP_DIRS = new Set([
-  '.git', 'node_modules', '.next', '.turbo', 'dist', 'build',
-  'coverage', '.cache', '__pycache__', 'vendor', '.venv', 'venv',
-  'target', '.idea', '.vscode',
-]);
-
-function isDirectory(p: string): boolean {
-  try { return statSync(p).isDirectory(); } catch { return false; }
-}
-
-function collectFiles(root: string, options: IndexingOptions = {}): string[] {
-  const files: string[] = [];
-  const stack = [root];
-  const maxFiles = options.maxFiles ?? MAX_FILES;
-
-  while (stack.length > 0 && files.length < maxFiles) {
-    const dir = stack.pop()!;
-    let entries: string[];
-    try { entries = readdirSync(dir); } catch { continue; }
-
-    for (const e of entries) {
-      const fp = join(dir, e);
-      const rp = relative(root, fp);
-      if (isDirectory(fp)) {
-        if (!SKIP_DIRS.has(e)) stack.push(fp);
-      } else {
-        files.push(rp);
-      }
-    }
-  }
-
-  return files;
-}
 
 export function buildCodeIndex(
   workspace: Workspace,
   options: IndexingOptions = {},
 ): CodeIndex {
   const root = workspace.importPath;
-  const files = collectFiles(root, options);
+  const files = collectFiles(root, options.maxFiles ?? MAX_FILES);
 
   // Index by language
   const tsFiles = indexTypeScriptFiles(root, files, { maxFileSize: options.maxFileSize });

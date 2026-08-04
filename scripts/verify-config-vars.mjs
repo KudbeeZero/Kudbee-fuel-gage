@@ -16,7 +16,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 try { process.loadEnvFile('.env'); } catch {}
 
@@ -71,13 +71,25 @@ if (target) {
     if (!appName) { warn('heroku', `Unknown target "${target}"`); } else {
       let herokuVars;
       try {
-        const out = execSync(
-          `curl -s "https://api.heroku.com/apps/${appName}/config-vars" -H "Authorization: Bearer ${herokuKey}" -H "Accept: application/vnd.heroku+json; version=3"`,
+        // execFileSync avoids the shell, so the API key never appears in a
+        // command line (visible via `ps`) — it travels only in the header env.
+        const out = execFileSync(
+          'curl',
+          [
+            '-s',
+            '--max-time', '15',
+            `https://api.heroku.com/apps/${appName}/config-vars`,
+            '-H', `Authorization: Bearer ${herokuKey}`,
+            '-H', 'Accept: application/vnd.heroku+json; version=3',
+          ],
           { maxBuffer: 1024 * 1024, timeout: 15000 }
         );
         herokuVars = JSON.parse(out.toString());
       } catch (e) {
-        warn('heroku', `Failed to fetch config vars for ${appName}: ${e.message}`);
+        const detail = e && typeof e === 'object' && 'stdout' in e
+          ? String(e.stdout).slice(0, 200)
+          : String(e && e.message ? e.message : e).slice(0, 200);
+        warn('heroku', `Failed to fetch config vars for ${appName}: ${detail}`);
         herokuVars = {};
       }
 

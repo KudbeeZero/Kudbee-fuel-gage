@@ -6,7 +6,7 @@
  * ProjectIntelligenceManifest. Deterministic — same input → same output.
  */
 
-import { readdirSync, statSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, basename, extname, dirname } from 'node:path';
 import type { ProjectIntelligenceManifest, ScriptsInfo } from './types.ts';
 import { resolveNpm } from './npm.ts';
@@ -18,15 +18,9 @@ import { resolveGo } from './go.ts';
 import { detectEnv } from './env.ts';
 import { detectScripts } from './scripts.ts';
 import { detectServices } from './services.ts';
+import { collectFiles, MAX_FILES } from '../collectFiles.ts';
 import type { Workspace, DetectionResult } from '../registry.ts';
 import type { DependencyInfo, RuntimeInfo, DeployInfo, CiInfo, CdnInfo } from './types.ts';
-
-const MAX_FILES = 50_000;
-const SKIP_DIRS = new Set([
-  '.git', 'node_modules', '.next', '.turbo', 'dist', 'build',
-  'coverage', '.cache', '__pycache__', 'vendor', '.venv', 'venv',
-  'target', '.idea', '.vscode', '.git', '.github/workflows',
-]);
 
 const LANG_EXTS: Record<string, string> = {
   '.ts': 'typescript', '.tsx': 'typescript', '.js': 'javascript', '.jsx': 'javascript',
@@ -64,32 +58,8 @@ function readTextSafe(path: string): string | null {
   }
 }
 
-function isDirectory(p: string): boolean {
-  try { return statSync(p).isDirectory(); } catch { return false; }
-}
-
 function unique<T>(items: T[]): T[] {
   return [...new Set(items)].sort();
-}
-
-function collectFiles(root: string): string[] {
-  const files: string[] = [];
-  const stack = [root];
-  while (stack.length > 0 && files.length < MAX_FILES) {
-    const dir = stack.pop()!;
-    let entries: string[];
-    try { entries = readdirSync(dir); } catch { continue; }
-    for (const e of entries) {
-      const fp = join(dir, e);
-      const rp = relative(root, fp);
-      if (isDirectory(fp)) {
-        if (!SKIP_DIRS.has(e)) stack.push(fp);
-      } else {
-        files.push(rp);
-      }
-    }
-  }
-  return files;
 }
 
 function detectLanguages(files: string[]): string[] {

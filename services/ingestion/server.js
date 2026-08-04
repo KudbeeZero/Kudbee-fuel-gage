@@ -168,12 +168,23 @@ app.use((req, res, next) => {
 // CSP frame-ancestors blocks clickjacking; HSTS forces TLS; X-Content-Type
 // prevents MIME sniffing; Referrer-Policy limits leakage. Frame-Options is
 // redundant with CSP but kept for legacy browser coverage.
+//
+// CSP: terminal.html is a self-contained page with inline <script>/<style>,
+// so it gets a relaxed policy (script-src/style-src 'unsafe-inline'). Every
+// other surface keeps the strict default-src 'self' which blocks inline
+// scripts entirely — never widen this globally.
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  const isTerminalPage = req.path === '/terminal.html' || req.path.startsWith('/terminal.html/');
+  res.setHeader(
+    'Content-Security-Policy',
+    isTerminalPage
+      ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      : "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  );
   if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -340,6 +351,7 @@ function getDeployVersion() {
     const meta = JSON.parse(deployFile);
     if (meta.commit) return meta.commit.slice(0, 7);
     if (meta.version) return meta.version;
+    if (meta.sha) return meta.sha.slice(0, 7);
   } catch {}
   return 'dev';
 }

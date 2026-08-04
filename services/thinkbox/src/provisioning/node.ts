@@ -5,7 +5,7 @@
  * based on detected package managers, frameworks, and services.
  */
 
-import type { RuntimeRequirement, ServiceRequirement, ProvisionConfig } from './types.ts';
+import type { ServiceRequirement, ProvisionConfig } from './types.ts';
 import type { ProjectIntelligenceManifest } from '../intelligence/types.ts';
 
 function getNodeVersion(runtimes: ProjectIntelligenceManifest['runtimes']): string | null {
@@ -38,6 +38,21 @@ function getServiceImage(serviceName: string): string {
   return serviceMap[serviceName] || `${serviceName.toLowerCase()}:latest`;
 }
 
+/** Default internal ports per known service (used for the compose mapping). */
+function getServicePort(serviceName: string): number {
+  if (serviceName.includes('Postgres')) return 5432;
+  if (serviceName.includes('Redis')) return 6379;
+  if (serviceName.includes('MySQL')) return 3306;
+  if (serviceName.includes('Mongo')) return 27017;
+  if (serviceName.includes('Memcached')) return 11211;
+  return 5432;
+}
+
+/** Compose-safe service key; must match the host used in connection URLs. */
+function composeName(serviceName: string): string {
+  return serviceName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
 export function generateNodeProvisioning(manifest: ProjectIntelligenceManifest): ProvisionConfig {
   const nodeVersion = getNodeVersion(manifest.runtimes);
   const pm = manifest.packageManagers.length > 0 ? getPackageManager(manifest.packageManagers[0]) : 'npm';
@@ -57,7 +72,7 @@ export function generateNodeProvisioning(manifest: ProjectIntelligenceManifest):
     .map(s => ({
       name: s.name,
       image: getServiceImage(s.name),
-      port: s.name.includes('Postgres') ? 5432 : s.name.includes('Redis') ? 6379 : undefined,
+      port: getServicePort(s.name),
       envVars: s.envVarsRequired,
     }));
 
@@ -102,14 +117,14 @@ services:
     environment:
 ${envVars.map(e => `      ${e.name}: ${e.defaultValue || ''}`).join('\n')}
     depends_on:
-${services.map(s => `      - ${s.name.toLowerCase().replace(/\s+/g, '-')}`).join('\n')}
+${services.map(s => `      - ${composeName(s.name)}`).join('\n')}
 
-${services.map(s => `  ${s.name.toLowerCase().replace(/\s+/g, '-')}:
+${services.map(s => `  ${composeName(s.name)}:
     image: ${s.image}
     ports:
-      - "${s.port || '5432'}:${s.port || '5432'}"
+      - "${s.port}:${s.port}"
     environment:
-${s.envVars.map(e => `      ${e}: ${e === 'DATABASE_URL' ? 'postgresql://postgres:postgres@db:5432/app' : ''}`).join('\n')}
+${s.envVars.map(e => `      ${e}: ${e === 'DATABASE_URL' ? `postgresql://postgres:postgres@${composeName(s.name)}:5432/app` : ''}`).join('\n')}
 `).join('\n')}
 ` : '';
 
