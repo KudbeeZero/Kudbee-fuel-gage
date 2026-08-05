@@ -80,6 +80,14 @@
       "diagnosis": "The verify.yml workflow runs npm scripts that only exist on main but not on rebased PR branches. Errors: verify:agent-contracts, verify:integrations, verify:learning-protocol, verify:ci-smoke \u2014 missing from package.json.",
       "fix": "Add || true to all optional verify steps (agent-contracts, integrations, learning-protocol, ci-smoke). Core gates (verify:typescript, verify:crypto, verify:secrets, typecheck, lint, build) remain blocking.",
       "prevention": "Any new script added to verify.yml must be guarded with || true unless it exists in package.json on ALL branches. Alternatively, add continue-on-error: true to the step."
+    },
+    {
+      "id": "learn-kudbee-ci-009",
+      "date": "2026-08-05T18:35:00Z",
+      "pattern": "verify:secrets chains bun test on files that only exist on another release-train branch",
+      "diagnosis": "The security release train splits work across pr/v2.3-stabilization (#306), pr/v2.3-governance (#307), pr/v2.4-autonomy (#308). SEC-002 on #308 copied a stale verify:secrets referencing scripts/secret-hygiene.test.mjs which only exists on #306. CI 'Secret hygiene' gate failed: bun test cannot find the file.",
+      "fix": "Verify every script referenced in package.json exists on the CURRENT branch before committing. For multi-branch release trains, reference only test files present on that branch. E.g., verify:secrets on #308 runs keystone + terminal-auth fixtures only.",
+      "prevention": "Before editing package.json verify/script chains, run 'ls <referenced files>' on the current branch. Test files must exist on the branch, not just on main or another PR branch."
     }
   ]
 }
