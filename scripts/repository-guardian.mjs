@@ -134,6 +134,28 @@ async function main() {
   }
   check('pipeline integrity (dev/staging/prod)', pipelineOk, pipelineOk ? 'all 3 apps exist' : pipelineDetail);
 
+  // 10. INV-013 Keystone trust boundary — governance files may never be
+  // modified by an executing cloud agent. The keystone is a write-enforcement
+  // boundary: an agent's attempt to write a governance path is refused by the
+  // keystone module (governanceViolations). The guardian's job is to verify
+  // the keystone is intact and enforceable — not to block legitimate human-
+  // approved PRs that intentionally evolve governance.
+  let keystoneOk = true; let keystoneDetail = '';
+  try {
+    const { GOVERNANCE_PATHS, assertGovernancePathsProtected, governanceViolations } = await import('../services/lib/governanceKeystone.ts');
+    const assertErr = assertGovernancePathsProtected();
+    if (assertErr) { keystoneOk = false; keystoneDetail = assertErr; }
+    else {
+      // Prove the enforcement boundary works: a simulated agent write set
+      // touching a governance file must be flagged as a violation.
+      const simulated = governanceViolations(['src/agent-work.ts', 'AGENTS.md', 'MODEL_CONTRACT.md']);
+      const enforceWorks = simulated.length === 2 && simulated.includes('AGENTS.md') && simulated.includes('MODEL_CONTRACT.md');
+      if (!enforceWorks) { keystoneOk = false; keystoneDetail = 'keystone enforcement broken (governance writes not refused)'; }
+      else { keystoneDetail = `${GOVERNANCE_PATHS.length} paths agent-read-only; enforcement verified`; }
+    }
+  } catch (e) { keystoneOk = false; keystoneDetail = `keystone module unreadable: ${e.message}`; }
+  check('INV-013 keystone trust boundary', keystoneOk, keystoneOk ? keystoneDetail : keystoneDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {

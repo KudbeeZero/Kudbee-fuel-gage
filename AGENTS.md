@@ -200,6 +200,15 @@ check fails — STOP. Do not implement. Report.**
   commandDispatcher.mjs), fix immediately via repair branch, never on main.
 - **One terminal owner:** `apps/web/terminal.html`. Other terminals are
   archive/experimental — never duplicate production terminals.
+- **INV-013 Keystone trust boundary:** governance files (AGENTS.md,
+  MODEL_CONTRACT.md, engineering_state.yaml, REPOSITORY_MANIFEST.json,
+  kilo.json, repository-guardian.mjs, governanceKeystone.ts,
+  bearerAuthMiddleware.ts, verify-secret-hygiene.mjs, verify-quick.mjs,
+  .github/workflows/verify.yml, .github/workflows/codeql.yml) may never be
+  modified by an executing cloud agent. Any agent write to a listed path is
+  refused via `services/lib/governanceKeystone.ts`. Governance changes happen
+  only through human-approved PRs. `node scripts/repository-guardian.mjs`
+  verifies the keystone is intact and enforcement works.
 - **Build artifacts are never hand-edited.** Source → build → artifact →
   deploy.
 - **Dirty tree = blocked.** If `git status` is dirty when starting a

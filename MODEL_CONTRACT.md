@@ -1,5 +1,31 @@
 # MODEL CONTRACT
 
+## Keystone Trust Boundary (SEC-001 / INV-013)
+
+Governance files may NEVER be modified by an executing cloud agent.
+
+### Ownership Table
+
+| Artifact | Owner | Editable by |
+|:---|:---|:---|
+| `AGENTS.md` | Human | NO AGENT |
+| `MODEL_CONTRACT.md` | Human | NO AGENT |
+| `engineering_state.yaml` | Human | NO AGENT |
+| `REPOSITORY_MANIFEST.json` | Human | NO AGENT |
+| `kilo.json` | Human | NO AGENT |
+| `scripts/repository-guardian.mjs` | Human | NO AGENT |
+| `services/lib/governanceKeystone.ts` | Human | NO AGENT |
+| `services/lib/bearerAuthMiddleware.ts` | Human | NO AGENT |
+| `scripts/verify-secret-hygiene.mjs` | Human | NO AGENT |
+| `scripts/verify-quick.mjs` | Human | NO AGENT |
+| `.github/workflows/verify.yml` | Human | NO AGENT |
+| `.github/workflows/codeql.yml` | Human | NO AGENT |
+
+The canonical list lives in `services/lib/governanceKeystone.ts` — this table
+is documentation; the module is the source of truth. Any agent write to a
+listed path must be refused. `npm run guardian` verifies the keystone is
+intact and enforceable.
+
 ## Knowledge Governance (INT-040)
 
 Every durable knowledge object (THINK Token, Benchmark, Decision, Skill,
