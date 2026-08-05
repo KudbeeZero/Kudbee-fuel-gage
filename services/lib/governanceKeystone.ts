@@ -69,7 +69,10 @@ export function governanceViolations(changedFiles: string[]): string[] {
  * no longer references it). Returns an error string when compromised.
  */
 export function assertGovernancePathsProtected(): string | null {
-  if (GOVERNANCE_PATHS.length === 0) {
+  // Widened so the length guard remains a valid runtime assertion even though
+  // TS narrows the const tuple to its literal length.
+  const paths: readonly string[] = GOVERNANCE_PATHS;
+  if (paths.length === 0) {
     return 'governance keystone list is empty — ceiling is unenforced';
   }
   if (!GOVERNANCE_PATHS.includes('AGENTS.md')) {
