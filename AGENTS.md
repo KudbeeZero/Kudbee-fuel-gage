@@ -147,6 +147,14 @@ node scripts/snippet-agent.mjs health  # Knowledge store health
 
 ## Critical Gotchas
 
+- **Secret scanners detect real secrets, not placeholder syntax.** Security
+  invariants validate actual security violations, not template syntax used
+  for code generation. Placeholder credentials (`${VAR}`, `<TOKEN>`, `%ENV%`,
+  `process.env.X`, `env.X`) are templates, not secrets. When a scanner
+  false-positives on a template, fix the invariant (make it semantic) — never
+  contort generated code to dodge a regex. Fixtures:
+  `scripts/secret-hygiene.test.mjs` (PASS placeholders / FAIL literal creds /
+  WARN unknown env vars).
 - **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension).
 - **.env loading in scripts:** standalone `.mjs` scripts should call
   `try { process.loadEnvFile('.env'); } catch {}` at the top.
