@@ -209,6 +209,15 @@ check fails — STOP. Do not implement. Report.**
   refused via `services/lib/governanceKeystone.ts`. Governance changes happen
   only through human-approved PRs. `node scripts/repository-guardian.mjs`
   verifies the keystone is intact and enforcement works.
+- **INV-014 Terminal authorization boundary:** `/api/terminal/execute` is
+  gated whenever agent auth is provisioned (`AGENT_REGISTRY_PATH` set):
+  missing `X-Agent-Pass` → 401, invalid → 403, valid → 200. Without
+  provisioning the single-user workflow is unchanged (Mode A).
+- **One trust boundary per security PR:** every new security control must
+  protect exactly one trust boundary. Multiple trust boundaries may never be
+  introduced in the same PR. The security release train is SEC-001 keystone →
+  SEC-002 terminal auth → SEC-003 prompt-injection firewall → SEC-004 output
+  redaction → SEC-005 tamper-evident audit.
 - **Build artifacts are never hand-edited.** Source → build → artifact →
   deploy.
 - **Dirty tree = blocked.** If `git status` is dirty when starting a

@@ -156,6 +156,24 @@ async function main() {
   } catch (e) { keystoneOk = false; keystoneDetail = `keystone module unreadable: ${e.message}`; }
   check('INV-013 keystone trust boundary', keystoneOk, keystoneOk ? keystoneDetail : keystoneDetail);
 
+  // 11. INV-014 Terminal authorization boundary — privileged terminal
+  // execution must be gated whenever agent auth is provisioned.
+  // The gate is wired when server.js references terminalAuthGate on the
+  // execute route, and provisioning is signaled by AGENT_REGISTRY_PATH.
+  let terminalOk = true; let terminalDetail = '';
+  try {
+    const server = readFileSync(join(REPO_ROOT, 'services/ingestion/server.js'), 'utf8');
+    const gateWired = server.includes("app.post('/api/terminal/execute', terminalAuthGate");
+    const provisionFlag = server.includes('TERMINAL_AUTH_PROVISIONED');
+    const missing401 = server.includes("res.status(401).json({ error: 'unauthorized'");
+    const invalid403 = server.includes("res.status(403).json({ error: 'forbidden'");
+    terminalOk = gateWired && provisionFlag && missing401 && invalid403;
+    terminalDetail = terminalOk
+      ? 'execute gated (401 missing / 403 invalid / 200 valid when provisioned)'
+      : `wiring incomplete: gate=${gateWired} flag=${provisionFlag} 401=${missing401} 403=${invalid403}`;
+  } catch (e) { terminalOk = false; terminalDetail = `server.js unreadable: ${e.message}`; }
+  check('INV-014 terminal authorization boundary', terminalOk, terminalOk ? terminalDetail : terminalDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {
