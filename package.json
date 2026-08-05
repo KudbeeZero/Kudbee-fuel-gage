@@ -34,6 +34,7 @@
     "verify:integrations": "echo 'Integrations verified (stub)' && exit 0",
     "verify:learning-protocol": "echo 'Learning protocol verified (stub)' && exit 0",
     "intelligence:review": "node scripts/decision-outcome.mjs",
+    "intelligence:index": "node scripts/intelligence-index.mjs",
     "intelligence:replay": "node scripts/decision-replay.mjs",
     "knowledge:audit": "node scripts/knowledge-audit.mjs",
     "knowledge:lifecycle": "node scripts/knowledge-lifecycle.mjs",
