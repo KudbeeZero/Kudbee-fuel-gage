@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#020617" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<title>KUDBEE · THINK Tower</title>
+<style>
+:root{--bg:#020617;--surface:#0b1120;--card:#0f172a;--card2:#111827;--border:#1e293b;--border2:#334155;
+  --text:#e2e8f0;--dim:#94a3b8;--muted:#64748b;--green:#34d399;--amber:#f59e0b;--red:#f87171;--blue:#60a5fa;--violet:#a78bfa;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;--safe:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(96,165,250,.07),transparent),var(--bg);
+  color:var(--text);font:13px/1.5 var(--mono);min-height:100vh;padding-bottom:var(--safe)}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+/* ── Power bar ── */
+.power{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--border);
+  border-radius:10px;background:var(--surface);margin-bottom:14px}
+.power .state{display:flex;align-items:center;gap:10px;font-size:11px}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot.live{background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 2s infinite}
+.dot.degraded{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.dot.offline{background:var(--red);box-shadow:0 0 10px var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.power .meta{font-size:9px;color:var(--muted)}
+.power button{background:var(--card2);border:1px solid var(--border2);color:var(--dim);border-radius:6px;
+  width:30px;height:30px;cursor:pointer;font-size:13px}
+.power button:hover{border-color:var(--red);color:var(--red)}
+/* ── THINK core — the intelligence ring ── */
+.think-core{display:flex;align-items:center;gap:20px;padding:20px;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);margin-bottom:14px}
+.ring{width:110px;height:110px;border-radius:50%;flex-shrink:0;position:relative;
+  background:conic-gradient(var(--green) var(--pct,0%),var(--border) 0);display:flex;align-items:center;justify-content:center}
+.ring::before{content:'';position:absolute;inset:8px;border-radius:50%;background:var(--surface)}
+.ring span{position:relative;z-index:1;font-size:24px;font-weight:800;color:var(--green)}
+.think-core .labels{display:flex;flex-direction:column;gap:6px;flex:1}
+.think-core .cat{display:flex;justify-content:space-between;font-size:11px}
+.think-core .cat .l{color:var(--muted)}.think-core .cat .v{font-weight:700}
+.think-core .rec{font-size:10px;color:var(--dim);margin-top:4px;border-top:1px solid var(--border);padding-top:8px}
+/* ── Plugin grid — each data-set isolated ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+.plugin{border:1px solid var(--border);border-radius:10px;background:var(--card);overflow:hidden}
+.plugin header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);
+  font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.plugin header .pstat{font-size:8px;padding:2px 7px;border-radius:8px;font-weight:700}
+.plugin header .pstat.ok{background:rgba(52,211,153,.12);color:var(--green)}
+.plugin header .pstat.err{background:rgba(248,113,113,.12);color:var(--red)}
+.plugin .body{padding:10px 12px;font-size:12px;min-height:80px}
+.plugin .body .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(30,41,59,.5)}
+.plugin .body .row:last-child{border-bottom:none}
+.plugin .body .row .k{color:var(--muted)}.plugin .body .row .v{font-weight:600}
+.plugin .body .row .v.g{color:var(--green)}.plugin .body .row .v.a{color:var(--amber)}.plugin .body .row .v.r{color:var(--red)}.plugin .body .row .v.b{color:var(--blue)}.plugin .body .row .v.v{color:var(--violet)}
+.plugin .err{padding:10px;font-size:10px;color:var(--red)}
+.plugin .think-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(30,41,59,.4);font-size:11px}
+.plugin .think-item .id{color:var(--violet)}.plugin .think-item .state{color:var(--dim)}
+/* ── Terminal bar ── */
+.term{margin-top:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);overflow:hidden}
+.term header{padding:7px 12px;border-bottom:1px solid var(--border);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;
+  display:flex;justify-content:space-between;background:var(--surface)}
+.term .out{padding:10px 12px;font-size:12px;min-height:90px;max-height:220px;overflow-y:auto}
+.term .out .line{white-space:pre-wrap;margin-bottom:4px}
+.term .out .line.cmd{color:var(--blue)}.term .out .line.resp{color:var(--text)}.term .out .line.info{color:var(--muted);font-size:10px}
+.term .out .line.err{color:var(--red)}.term .out .line.think{color:var(--violet)}
+.term .in{display:flex;border-top:1px solid var(--border)}
+.term .in input{flex:1;background:transparent;border:none;padding:10px 12px;color:var(--text);font:inherit;font-size:12px;outline:none}
+.term .in button{background:var(--green);border:none;color:#020617;font:inherit;font-weight:700;padding:0 18px;cursor:pointer}
+/* ── Standby ── */
+.standby{position:fixed;inset:0;z-index:500;background:rgba(2,6,23,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer}
+.standby .ico{font-size:32px;color:var(--muted)}.standby .txt{color:var(--muted);font-size:11px}
+@media(max-width:720px){.wrap{padding:10px}.grid{grid-template-columns:1fr}.think-core{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- POWER -->
+  <div class="power">
+    <div class="state">
+      <span class="dot" id="pdot"></span>
+      <span id="pstate">booting…</span>
+      <span class="meta" id="pmeta">—</span>
+    </div>
+    <button id="ppower" title="Power">⏻</button>
+  </div>
+
+  <!-- THINK CORE -->
+  <div class="think-core">
+    <div class="ring" id="think-ring" style="--pct:0%"><span id="think-score">—</span></div>
+    <div class="labels">
+      <div class="cat"><span class="l">Outcome (50%)</span><span class="v b" id="think-outcome">—</span></div>
+      <div class="cat"><span class="l">Knowledge (30%)</span><span class="v v" id="think-knowledge">—</span></div>
+      <div class="cat"><span class="l">Operational (20%)</span><span class="v a" id="think-operational">—</span></div>
+      <div class="rec" id="think-rec">THINK intelligence index — the platform's measured state.</div>
+    </div>
+  </div>
+
+  <!-- PLUGIN GRID -->
+  <div class="grid" id="grid"></div>
+
+  <!-- TERMINAL -->
+  <div class="term">
+    <header>KUDBEE THINK Terminal · tab to complete · ctrl+k palette · ↑↓ history</header>
+    <div class="out" id="term-out">
+      <div class="line info">Type a command or question. e.g. /status, /swarm, /roadmap, or just ask.</div>
+    </div>
+    <div class="in">
+      <input id="term-input" placeholder="ask THINK…" autocomplete="off" />
+      <button id="term-run">RUN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ─────────────────────────────────────────────────────────────────────────────
+// KUDBEE THINK TOWER — terminal-first, plugin-isolated, THINK-intelligent.
+//
+// Architecture:
+//   core (this)          — power lifecycle, plugin registry, terminal, THINK core
+//   plugins[]            — each data-set is an isolated module: id, name,
+//                          interval, load(), render(). One fails → others live.
+//   THINK core           — intelligence index ring (live /api/system/intelligence-index)
+//
+// No framework. No build. Every number traces to a live endpoint.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const $ = (id) => document.getElementById(id);
+const REFRESH = 8000;
+
+// ── Plugin registry — each data-set isolated ────────────────────────────────
+const plugins = [];
+
+function registerPlugin(def) {
+  plugins.push(def);
+  const el = document.createElement('section');
+  el.className = 'plugin';
+  el.id = 'plugin-' + def.id;
+  el.innerHTML = `<header>${def.name}<span class="pstat">—</span></header><div class="body"><div class="row"><span class="k">loading…</span></div></div>`;
+  $('grid').appendChild(el);
+  def._el = el;
+  def._stat = el.querySelector('.pstat');
+  def._body = el.querySelector('.body');
+}
+
+function pluginErr(def, e) {
+  def._stat.textContent = 'ERR'; def._stat.className = 'pstat err';
+  def._body.innerHTML = `<div class="err">✗ ${e instanceof Error ? e.message : String(e)}</div>`;
+}
+function pluginOk(def, note) {
+  def._stat.textContent = note || 'OK'; def._stat.className = 'pstat ok';
+}
+function pluginRow(k, v, cls) {
+  return `<div class="row"><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
+}
+
+async function runPlugin(def) {
+  try {
+    const html = await def.load();
+    def._body.innerHTML = html;
+    pluginOk(def, def.note ? def.note(html) : 'OK');
+  } catch (e) {
+    pluginErr(def, e);
+  }
+}
+
+function startPlugin(def) {
+  void runPlugin(def);
+  setInterval(() => void runPlugin(def), def.interval || REFRESH);
+}
+
+// ── THINK core ──────────────────────────────────────────────────────────────
+async function loadThinkCore() {
+  try {
+    const r = await fetch('/api/system/intelligence-index', { cache: 'no-store' });
+    const d = await r.json();
+    const overall = Math.round((d.overall ?? 0) * 100);
+    $('think-score').textContent = overall;
+    $('think-ring').style.setProperty('--pct', Math.min(100, overall) + '%');
+    const cats = d.categories || {};
+    $('think-outcome').textContent = Math.round((cats.outcome ?? 0) * 100);
+    $('think-knowledge').textContent = Math.round((cats.knowledge ?? 0) * 100);
+    $('think-operational').textContent = Math.round((cats.operational ?? 0) * 100);
+    if (d.recommendation) $('think-rec').textContent = d.recommendation;
+  } catch {}
+}
+
+// ── Power lifecycle ─────────────────────────────────────────────────────────
+let powerOn = true;
+function setPower(state) {
+  const dot = $('pdot'), label = $('pstate'), meta = $('pmeta');
+  if (state === 'offline') { dot.className = 'dot offline'; label.textContent = 'OFFLINE'; meta.textContent = 'backend unreachable'; }
+  else if (state === 'degraded') { dot.className = 'dot degraded'; label.textContent = 'DEGRADED'; meta.textContent = 'some dependencies down'; }
+  else { dot.className = 'dot live'; label.textContent = 'SYSTEM ONLINE'; meta.textContent = 'agents · ci · redis live'; }
+}
+async function checkHealth() {
+  try {
+    const r = await fetch('/health', { cache: 'no-store' });
+    const d = await r.json();
+    const redis = d.dependencies?.redis;
+    setPower(d.status === 'ok' && redis === 'healthy' ? 'online' : redis === 'healthy' ? 'online' : 'degraded');
+  } catch { setPower('offline'); }
+}
+
+// ── Standby overlay ─────────────────────────────────────────────────────────
+function showStandby() {
+  const sb = document.createElement('div');
+  sb.className = 'standby'; sb.id = 'standby';
+  sb.innerHTML = '<div class="ico">⏻</div><div class="txt">KUDBEE OS — standby · click to power on</div>';
+  sb.onclick = () => { sb.remove(); powerOn = true; void checkHealth(); };
+  document.body.appendChild(sb);
+}
+$('ppower').onclick = () => {
+  if (powerOn) { powerOn = false; showStandby(); }
+  else { $('standby')?.remove(); powerOn = true; void checkHealth(); }
+};
+
+// ── Terminal ────────────────────────────────────────────────────────────────
+const history = []; let histIdx = -1; let buffer = '';
+const COMMANDS = { '/status':'Fleet+shield','/swarm':'Agents','/roadmap':'Phases','/pulse':'Health',
+  '/security':'Posture','/echo':'Prompts','/forecast':'Forecast','/help':'Help','/clear':'Clear' };
+
+function termLine(type, text) {
+  const el = $('term-out');
+  const div = document.createElement('div');
+  div.className = 'line ' + type;
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+async function termExec(cmd) {
+  const c = cmd.trim();
+  if (!c) return;
+  termLine('cmd', '❯ ' + c);
+  history.push(c); histIdx = history.length;
+  const local = c.toLowerCase();
+  if (local === '/clear') { $('term-out').innerHTML = ''; return; }
+  if (local === '/help') { termLine('info', Object.entries(COMMANDS).map(([k, v]) => k + '  ' + v).join('\n')); return; }
+  termLine('think', '… thinking');
+  try {
+    const r = await fetch('/api/terminal/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: c }) });
+    const d = await r.json();
+    // remove thinking line
+    const out = $('term-out'); if (out.lastChild?.textContent === '… thinking') out.lastChild.remove();
+    if (d.error || d.type === 'terminal:error') termLine('err', '✗ ' + (d.message || d.error));
+    else if (d.answer) { termLine('resp', d.answer); termLine('info', `model: ${d.model} · ${d.latencyMs}ms`); }
+    else if (d.percentComplete !== undefined) termLine('resp', `Roadmap ${d.percentComplete}% · ${d.shipped}/${d.total} shipped`);
+    else if (d.type) { const { type, ...rest } = d; termLine('resp', type + ' ' + JSON.stringify(rest).slice(0, 400)); }
+  } catch (e) {
+    const out = $('term-out'); if (out.lastChild?.textContent === '… thinking') out.lastChild.remove();
+    termLine('err', '✗ network: ' + e.message);
+  }
+}
+$('term-run').onclick = () => { const i = $('term-input'); termExec(i.value); i.value = ''; };
+$('term-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { $('term-run').click(); }
+  else if (e.key === 'ArrowUp' && histIdx > 0) { histIdx--; $('term-input').value = history[histIdx] || ''; }
+  else if (e.key === 'ArrowDown' && histIdx < history.length - 1) { histIdx++; $('term-input').value = history[histIdx] || ''; }
+  else if (e.key === 'Tab') { e.preventDefault(); const v = $('term-input').value; const m = v.match(/^(\/[a-z]*)$/i); if (m) { const match = Object.keys(COMMANDS).find((c) => c.startsWith(m[1].toLowerCase())); if (match) $('term-input').value = match + ' '; } }
+});
+
+// ── Plugins — each data-set isolated ────────────────────────────────────────
+registerPlugin({
+  id: 'agents', name: 'Agent Fleet', interval: 10000,
+  load: async () => {
+    const r = await fetch('/api/system/agent-status', { cache: 'no-store' });
+    const d = await r.json();
+    const agents = Array.isArray(d) ? d : d.agents ?? [];
+    const online = agents.filter((a) => a.status !== 'offline' && a.status !== 'unknown').length;
+    return pluginRow('Agents', agents.length, 'v') + pluginRow('Online', online, 'g') +
+      agents.slice(0, 6).map((a) => `<div class="think-item"><span class="id">${a.id}</span><span class="state">${a.category ?? 'agent'}</span></div>`).join('');
+  },
+  note: () => 'LIVE',
+});
+registerPlugin({
+  id: 'ci', name: 'CI Status', interval: 15000,
+  load: async () => {
+    const d = await fetch('/api/ci/status', { cache: 'no-store' }).then((r) => r.json());
+    const cls = d.status === 'GREEN' ? 'g' : d.status === 'FAIL' ? 'r' : 'a';
+    return pluginRow('Status', d.status || '—', cls) + pluginRow('Run', d.runId || '—') +
+      pluginRow('SHA', d.headSha || '—') + pluginRow('Workflow', d.workflow || '—');
+  },
+  note: () => 'LIVE',
+});
+registerPlugin({
+  id: 'prs', name: 'Pull Requests', interval: 20000,
+  load: async () => {
+    const d = await fetch('/api/prs/status', { cache: 'no-store' }).then((r) => r.json());
+    const prs = d.prs ?? [];
+    return pluginRow('Open', prs.length, prs.length ? 'a' : 'g') +
+      (prs.length ? prs.slice(0, 5).map((p) => `<div class="think-item"><span class="id">#${p.number}</span><span class="state">${p.branch || ''}</span></div>`).join('') : '<div class="row"><span class="k">clean tree</span></div>');
+  },
+  note: () => 'LIVE',
+});
+registerPlugin({
+  id: 'missions', name: 'Mission Queue', interval: 20000,
+  load: async () => {
+    const d = await fetch('/api/system/mission-queue', { cache: 'no-store' }).then((r) => r.json());
+    const m = d.missions ?? [];
+    return pluginRow('Queued', m.length, 'b') +
+      m.slice(0, 5).map((x) => `<div class="think-item"><span class="id">${x.id}</span><span class="state">${String(x.priority ?? '')}</span></div>`).join('') || '<div class="row"><span class="k">queue empty</span></div>';
+  },
+  note: () => 'LIVE',
+});
+registerPlugin({
+  id: 'decisions', name: 'Decision Ledger', interval: 30000,
+  load: async () => {
+    const d = await fetch('/api/system/decision-ledger', { cache: 'no-store' }).then((r) => r.json());
+    const dec = d.decisions ?? [];
+    return pluginRow('Decisions', dec.length, 'v') +
+      dec.slice(-5).reverse().map((x) => `<div class="think-item"><span class="id">${x.id ?? ''}</span><span class="state">${String(x.problem ?? x.mission ?? '').slice(0, 32)}</span></div>`).join('');
+  },
+  note: () => 'LIVE',
+});
+registerPlugin({
+  id: 'think-stream', name: 'THINK Stream', interval: 20000,
+  load: async () => {
+    const d = await fetch('/api/system/dthink', { cache: 'no-store' }).then((r) => r.json());
+    const entries = d.entries ?? [];
+    return pluginRow('Entries', entries.length, 'v') +
+      entries.slice(-4).reverse().map((x) => `<div class="think-item"><span class="id">${String(x.type ?? 'think')}</span><span class="state">${String(x.summary ?? '').slice(0, 36)}</span></div>`).join('') || '<div class="row"><span class="k">no stream yet</span></div>';
+  },
+  note: () => 'LIVE',
+});
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+async function boot() {
+  void checkHealth();
+  void loadThinkCore();
+  for (const p of plugins) startPlugin(p);
+  setInterval(() => { void checkHealth(); void loadThinkCore(); }, REFRESH);
+  $('term-input').focus();
+}
+boot();
+</script>
+</body>
+</html>
