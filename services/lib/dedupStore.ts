@@ -54,7 +54,8 @@ export function createDedupStore(opts: { windowMs?: number; redis?: any } = {}) 
 
     // In-memory fallback with manual cleanup.
     const now = Date.now();
-    if (fallback.has(key) && now - fallback.get(key) < windowMs) return true;
+    const seenAt = fallback.get(key);
+    if (seenAt !== undefined && now - seenAt < windowMs) return true;
     fallback.set(key, now);
     // Opportunistic cleanup to bound memory.
     if (fallback.size > 10_000) {
