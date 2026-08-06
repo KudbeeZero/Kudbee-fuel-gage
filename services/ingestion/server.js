@@ -70,6 +70,7 @@ import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
 import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
 import { outputRedactionMiddleware } from '../lib/outputRedactor.ts';
+import { disruptionLayer } from '../lib/disruptionLayer.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -195,6 +196,12 @@ app.use((req, res, next) => {
 // Parse JSON before inline POST routes and mounted routers. Without this,
 // dictionary, lifecycle, governance, and telemetry requests see an empty body.
 app.use(express.json({ limit: '10mb' }));
+
+// --- SEC-003 boundary on the REQUEST side: disruption layer ---
+// Screens incoming mutating requests (POST/PUT/PATCH/DELETE) for prompt
+// injection and tool-abuse patterns BEFORE they reach any handler.
+// Mounted after body parsing so the payload is available.
+app.use(disruptionLayer());
 
 // --- SEC-004 / INV-016: Output Redaction Layer ---
 // Everything leaving the system passes Redaction → Audit → Output. Wraps
