@@ -144,7 +144,11 @@ export function createOpsRouter(deps: OpsRouterDeps = {}) {
   router.post('/router/reset', async (req, res) => {
     if (auth && !(await auth(req, res))) return;
     try {
-      if (deps.redis) await deps.redis.del('kudbee:router:state');
+      try {
+        if (deps.redis) await deps.redis.del('kudbee:router:state');
+      } catch {
+        // Redis unavailable — nothing persisted to clear.
+      }
       res.json({ success: true, message: 'router state reset' });
     } catch {
       res.status(500).json({ error: 'reset failed' });
@@ -156,7 +160,11 @@ export function createOpsRouter(deps: OpsRouterDeps = {}) {
     try {
       const { agent } = req.body || {};
       if (!agent) return res.status(400).json({ error: 'agent required' });
-      if (deps.redis) await deps.redis.set('kudbee:router:state', JSON.stringify({ selected: agent, at: new Date().toISOString() }));
+      try {
+        if (deps.redis) await deps.redis.set('kudbee:router:state', JSON.stringify({ selected: agent, at: new Date().toISOString() }));
+      } catch {
+        // Redis unavailable — state is ephemeral in memory, still acknowledge.
+      }
       res.json({ success: true, selected: agent });
     } catch {
       res.status(500).json({ error: 'select failed' });
