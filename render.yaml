@@ -20,7 +20,7 @@ projects:
             repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
             plan: starter
             region: ohio
-            buildCommand: npm ci --legacy-peer-deps --include=dev
+            buildCommand: npm ci --legacy-peer-deps --include=dev && cd apps/web && npx vite build
             startCommand: npx tsx services/ingestion/server.js
             autoDeployTrigger: commit
             healthCheckPath: /health
@@ -106,7 +106,7 @@ projects:
             repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
             plan: free
             region: ohio
-            buildCommand: npm ci --legacy-peer-deps --include=dev
+            buildCommand: npm ci --legacy-peer-deps --include=dev && cd apps/web && npx vite build
             startCommand: npx tsx worker.js
             autoDeployTrigger: commit
             envVars:
