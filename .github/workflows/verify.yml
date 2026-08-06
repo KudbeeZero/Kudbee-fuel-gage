@@ -66,6 +66,10 @@ jobs:
         run: npm run verify:crypto
       - name: Secret hygiene
         run: npm run verify:secrets
+      - name: Required config vars (INV-019)
+        run: node scripts/verify-config-vars.mjs --heroku production
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
       - name: Agent contracts
         run: npm run verify:agent-contracts || true
       - name: Integration capabilities
