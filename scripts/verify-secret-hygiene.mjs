@@ -52,7 +52,7 @@ const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--excl
   .toString()
   .split('\0')
   .filter(Boolean);
-const allowedExamples = new Set(['config/template.env', 'config/.env.example', '.env.example', 'scripts/secret-hygiene.test.mjs']);
+const allowedExamples = new Set(['config/template.env', 'config/.env.example', '.env.example', 'scripts/secret-hygiene.test.mjs', 'scripts/output-redaction.test.mjs', 'scripts/xpia.test.mjs']);
 const trackedEnvFiles = tracked.filter((file) => {
   const base = path.basename(file);
   return (base === '.env' || base.startsWith('.env.')) && !allowedExamples.has(file);

@@ -484,9 +484,20 @@ export async function storeMemory(
 
 /** Convenience: embed text and store it in vector memory in one call. */
 export async function storeMemoryText(text: string, metadata: TopologyMetadata): Promise<StoreChunkResult> {
+  // SEC-003 / INV-015: no knowledge is persisted without passing XPIA
+  // inspection. BLOCK → refuse; REVIEW → persist flagged (never auto-retrieval).
+  const { screenXpia } = await import('../../scripts/xpia-screen.mjs');
+  const screening = screenXpia(text);
+  if (screening.verdict === 'BLOCK') {
+    // The failure variant is strictly { ok:false; error } — audit is logged,
+    // not returned, to keep the StoreChunkResult union valid.
+    console.warn(`[XPIA] BLOCKED knowledge write (${screening.categories.join(',')}): ${String(text).slice(0, 60)}`);
+    return { ok: false, error: 'knowledge:blocked' };
+  }
+  const screened = { ...metadata, xpia: screening.verdict, xpiaCategories: screening.categories, xpiaScreenedAt: screening.audit?.screenedAt };
   const { embedText } = await import('./embedText.ts');
   const embedding = await embedText(text);
-  return storeMemory(text, metadata, embedding);
+  return storeMemory(text, screened, embedding);
 }
 
 export { EMBEDDING_DIM };
