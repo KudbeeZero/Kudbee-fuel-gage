@@ -4661,14 +4661,6 @@ function resolveDistPath() {
   return candidates.find((p) => fs.existsSync(p)) || candidates[0];
 }
 
-function resolveMobileDistPath() {
-  const candidates = [
-    path.resolve(__dirname, '..', '..', 'apps', 'mobile', 'dist'),
-    path.join(process.cwd(), 'apps', 'mobile', 'dist'),
-  ];
-  return candidates.find((p) => fs.existsSync(p)) || candidates[0];
-}
-
 // --- Phase 20: Dynamic Policy Engine, Vector Sync, and Live Alerts -----------
 // In-memory state for the governance policy engine. Persists across the
 // process lifetime and is exposed to the UI through REST endpoints.
@@ -6002,20 +5994,6 @@ app.get('/middleware/health', (_req, res) => {
 });
 
 const distPath = resolveDistPath();
-const mobileDistPath = resolveMobileDistPath();
-
-if (fs.existsSync(mobileDistPath)) {
-  app.use('/mobile', express.static(mobileDistPath, {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-      if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=UTF-8');
-    },
-  }));
-  app.use('/mobile', (req, res, next) => {
-    if (req.method !== 'GET') return next();
-    return res.sendFile(path.join(mobileDistPath, 'index.html'));
-  });
-}
 
 if (fs.existsSync(distPath)) {
   const fileLimiter = rateLimit({
