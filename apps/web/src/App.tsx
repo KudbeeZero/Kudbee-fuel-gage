@@ -56,6 +56,7 @@ import { useUIStore } from './store/uiStore';
 import { useGovernanceHealth } from './hooks/useGovernanceHealth';
 import { normalizeTelemetryLogs, normalizeDashboardSummary } from './lib/normalizeTelemetry';
 import { apiGet } from './lib/apiClient';
+import { SystemPower } from './components/SystemPower';
 import { useOsSnapshot } from './components/OsStreamProvider';
 import { useAgentInterceptor, type PendingApproval } from './hooks/useAgentInterceptor';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
@@ -585,6 +586,11 @@ export default function App() {
       {/* MAIN DASHBOARD CONTENT */}
       <main className="flex-1 min-h-0 overflow-y-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950 relative" id="main-content-panel">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] mix-blend-overlay pointer-events-none"></div>
+
+        {/* OS POWER BAR — boot → online → standby, live data */}
+        <div className="sticky top-0 z-40">
+          <SystemPower />
+        </div>
         
         <div className={`max-w-7xl mx-auto relative z-0 transition-all duration-300 pb-28 sm:pb-36 ${
           displayDensity === 'Compact' 
@@ -640,67 +646,6 @@ export default function App() {
               </div>
             </div>
           </header>
-
-          {/* GLOBAL STATUS / ENVIRONMENT BAR */}
-          <div
-            id="global-status-bar"
-            className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3"
-          >
-            <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className={`${osConnected && os.services.postgres.ok && os.services.postgres.latencyMs !== null ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400' : 'bg-slate-600'} opacity-75`} />
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600'}`} />
-              </span>
-              <span className="font-mono text-xs text-slate-300">
-                Status: <span className={osConnected && os.services.postgres.ok ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>{
-                  osConnected ? (os.services.postgres.ok ? 'Online' : 'Degraded') : 'Connecting...'
-                }</span>
-              </span>
-              <span className="hidden sm:inline text-slate-700">|</span>
-
-              {/* Governance Status indicator */}
-              <span className="flex items-center gap-1.5 font-mono text-xs">
-                <Scale className={`h-3 w-3 ${govHealth.governanceActive ? 'text-emerald-400' : 'text-slate-500'}`} />
-                Governance:{' '}
-                <span className={govHealth.governanceActive ? 'text-emerald-400 font-semibold' : 'text-slate-500'}>
-                  {govHealth.governanceActive ? 'Active' : 'Offline'}
-                </span>
-                {govHealth.proposedCount > 0 && (
-                  <span
-                    className="ml-0.5 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300"
-                    title={`${govHealth.proposedCount} proposed logic action(s) pending review`}
-                  >
-                    {govHealth.proposedCount} pending review
-                  </span>
-                )}
-              </span>
-
-              <span className="hidden sm:inline text-slate-700">|</span>
-
-              {/* HERMES Auditor status indicator */}
-              <span className="flex items-center gap-1.5 font-mono text-xs">
-                {govHealth.hermes.online ? (
-                  <Wifi className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <WifiOff className="h-3 w-3 text-rose-400" />
-                )}
-                HERMES Auditor:{' '}
-                <span className={govHealth.hermes.online ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
-                  {govHealth.hermes.online ? 'Online' : 'Offline'}
-                </span>
-              </span>
-
-              <span className="hidden sm:inline text-slate-700">|</span>
-              <span className="font-mono text-xs text-slate-400 truncate">
-                View: <span className="text-emerald-400/80">{activeTab}</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">Docs</a>
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage/issues" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">Support</a>
-              <a href="https://github.com/KudbeeZero/Kudbee-fuel-gage" target="_blank" rel="noopener" className="hover:text-emerald-400 transition-colors">API</a>
-            </div>
-          </div>
 
            {/* ACTIVE VIEW ROUTER */}
           <Suspense fallback={<RouteFallback label="Loading" />}>
