@@ -592,6 +592,49 @@ app.get('/api/system/mission-queue', (_req, res) => {
   res.json({ missions: q.missions ?? [], source: 'mission-queue' });
 });
 
+// ── Agent lifecycle funnel ─────────────────────────────────────────────────
+// Aggregates mission-history into the 9 lifecycle stages so the tower can
+// visualize missions funneling through the pipeline (PROPOSED → COMPLETE).
+// Also exposes each mission's recent transitions for live "watch it move".
+const LIFECYCLE_STAGES = ['PROPOSED', 'APPROVED', 'BRANCH_CREATED', 'IMPLEMENTING', 'VERIFYING', 'READY_FOR_PR', 'MERGED', 'OBSERVING', 'COMPLETE'];
+
+app.get('/api/system/funnel', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const history = readJsonStore('.kilo/mission-history.json', { missions: [] });
+  const queue = readJsonStore('.kilo/mission-queue.json', { missions: [] });
+  const missions = (history.missions ?? []).concat(
+    (queue.missions ?? []).map((q) => ({ mission: q.id, state: q.state ?? 'PROPOSED', priority: q.priority, title: q.title, transitions: [] }))
+  );
+
+  // Aggregate by stage.
+  const stages = LIFECYCLE_STAGES.map((stage) => ({
+    stage,
+    count: missions.filter((m) => (m.state ?? '').toUpperCase() === stage).length,
+  }));
+
+  // Active missions with their recent transition trail (the moving part).
+  const active = missions
+    .filter((m) => (m.state ?? '').toUpperCase() !== 'COMPLETE')
+    .map((m) => ({
+      id: m.mission ?? m.id,
+      state: (m.state ?? 'PROPOSED').toUpperCase(),
+      priority: m.priority ?? null,
+      title: m.title ?? null,
+      lastTransition: m.transitions?.length
+        ? m.transitions[m.transitions.length - 1]
+        : null,
+    }));
+
+  res.json({
+    stages,
+    active,
+    total: missions.length,
+    funnel: LIFECYCLE_STAGES.filter((s) => missions.some((m) => (m.state ?? '').toUpperCase() === s)),
+    generatedAt: new Date().toISOString(),
+    source: 'mission-history',
+  });
+});
+
 app.get('/api/system/guardian-status', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const g = readJsonStore('.kilo/guardian-last.json', { checks: {} });

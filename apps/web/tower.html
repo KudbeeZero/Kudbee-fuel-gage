@@ -55,6 +55,20 @@ body{background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(96,165,250,.07)
 .plugin .err{padding:10px;font-size:10px;color:var(--red)}
 .plugin .think-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(30,41,59,.4);font-size:11px}
 .plugin .think-item .id{color:var(--violet)}.plugin .think-item .state{color:var(--dim)}
+/* ── Funnel ── */
+.funnel{display:flex;flex-direction:column;gap:4px;padding:4px 0}
+.funnel-stage{display:flex;align-items:center;gap:8px;font-size:10px;padding:5px 8px;border-radius:6px;border:1px solid rgba(30,41,59,.6);background:rgba(15,23,42,.6);position:relative;overflow:hidden}
+.funnel-stage .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(52,211,153,.1);transition:width .4s}
+.funnel-stage .name{position:relative;z-index:1;color:var(--dim);min-width:90px;font-weight:600}
+.funnel-stage .count{position:relative;z-index:1;margin-left:auto;font-weight:700;font-size:11px}
+.funnel-stage.active{border-color:rgba(52,211,153,.4)}
+.funnel-stage.active .name{color:var(--green)}
+.funnel-stage.active .fill{background:rgba(52,211,153,.15)}
+.funnel-stage.done{border-color:rgba(100,116,139,.3)}
+.funnel-stage.done .name{color:var(--muted)}
+.funnel-mission{display:flex;justify-content:space-between;padding:4px 0;font-size:10px;color:var(--text)}
+.funnel-mission .mid{color:var(--violet);font-weight:600}
+.funnel-mission .mstate{color:var(--green)}
 /* ── Terminal bar ── */
 .term{margin-top:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);overflow:hidden}
 .term header{padding:7px 12px;border-bottom:1px solid var(--border);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;
@@ -260,6 +274,30 @@ $('term-input').addEventListener('keydown', (e) => {
 });
 
 // ── Plugins — each data-set isolated ────────────────────────────────────────
+registerPlugin({
+  id: 'funnel', name: 'Agent Funnel · live lifecycle', interval: 8000,
+  load: async () => {
+    const r = await fetch('/api/system/funnel', { cache: 'no-store' });
+    const d = await r.json();
+    const stages = d.stages ?? [];
+    const max = Math.max(1, ...stages.map((s) => s.count));
+    const funnelHtml = stages.map((s) => {
+      const active = s.count > 0 && s.stage !== 'COMPLETE';
+      const done = s.stage === 'COMPLETE' && s.count > 0;
+      const pct = Math.round((s.count / max) * 100);
+      return `<div class="funnel-stage ${active ? 'active' : done ? 'done' : ''}">
+        <div class="fill" style="width:${pct}%"></div>
+        <span class="name">${s.stage.replace('_', ' ')}</span><span class="count">${s.count}</span></div>`;
+    }).join('');
+    const activeHtml = (d.active ?? []).slice(0, 4).map((m) =>
+      `<div class="funnel-mission"><span class="mid">${m.id}</span><span class="mstate">${m.state}</span></div>`).join('');
+    return `<div class="funnel">${funnelHtml}</div>
+      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+        ${activeHtml || '<div class="funnel-mission"><span class="mid">all missions complete</span></div>'}
+      </div>`;
+  },
+  note: () => 'LIVE',
+});
 registerPlugin({
   id: 'agents', name: 'Agent Fleet', interval: 10000,
   load: async () => {
