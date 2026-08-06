@@ -107,16 +107,27 @@ function classify(path, method) {
 const args = process.argv.slice(2);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const all = [...scanServer(), ...scanRouters()];
+  const all = [...scanRouters(), ...scanServer()];
   // Dedupe (router-mounted paths may also appear as server.js direct routes).
-  const seen = new Set();
+  // Router handlers win over inline server.js copies (audit/vector/etc.).
+  const seen = new Map();
   const routes = [];
   for (const r of all) {
     const key = r.method + ' ' + r.path;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const cls = classify(r.path, r.method);
-    routes.push({ ...r, ...cls });
+    const existing = seen.get(key);
+    if (existing) {
+      // Prefer the router entry (handler ends with .ts and is not server.js).
+      if (existing.handler === 'server.js' && r.handler !== 'server.js') {
+        existing.handler = r.handler;
+      }
+      continue;
+    }
+    seen.set(key, r);
+    routes.push(r);
+  }
+  // Apply auth/rate/category classification to every route.
+  for (const r of routes) {
+    Object.assign(r, classify(r.path, r.method));
   }
   routes.sort((a, b) => a.path.localeCompare(b.path));
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-06T07:21:34.639Z",
+  "generatedAt": "2026-08-06T07:30:46.518Z",
   "total": 153,
   "summary": {
     "byMethod": {
@@ -117,7 +117,7 @@
     {
       "method": "GET",
       "path": "/api/audit/export",
-      "handler": "server.js",
+      "handler": "audit.ts",
       "auth": "public",
       "rateLimit": "api",
       "category": "misc"
@@ -125,7 +125,7 @@
     {
       "method": "GET",
       "path": "/api/audit/vault",
-      "handler": "server.js",
+      "handler": "audit.ts",
       "auth": "public",
       "rateLimit": "api",
       "category": "misc"
@@ -133,7 +133,7 @@
     {
       "method": "POST",
       "path": "/api/audit/vault/anchor",
-      "handler": "server.js",
+      "handler": "audit.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
@@ -141,7 +141,7 @@
     {
       "method": "POST",
       "path": "/api/audit/vault/verify",
-      "handler": "server.js",
+      "handler": "audit.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
