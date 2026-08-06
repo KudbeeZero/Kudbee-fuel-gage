@@ -14,6 +14,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
+import { withRenderCache } from '../../lib/renderCache.ts';
 
 type Deps = {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
@@ -55,10 +56,14 @@ export function createTelemetryRouter({ runQuery }: Deps) {
   router.get('/logs', async (req, res) => {
     try {
       const limit = Number(req.query.limit) || 100;
-      const rows = await runQuery(
-        `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
-        [limit]
-      );
+      // Same hot-table read as /search — cache with a short TTL.
+      const rows = await withRenderCache(`telemetry:logs:${limit}`, 15, async () => {
+        const q = await runQuery(
+          `SELECT * FROM telemetry_traces ORDER BY timestamp DESC LIMIT $1`,
+          [limit]
+        );
+        return q as any[];
+      });
       return res.json(rows);
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -76,7 +81,7 @@ export function createTelemetryRouter({ runQuery }: Deps) {
       const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
 
       const conditions = [];
-      const params = [];
+      const params: unknown[] = [];
       let idx = 1;
 
       if (q) {
@@ -93,24 +98,30 @@ export function createTelemetryRouter({ runQuery }: Deps) {
       if (to) { conditions.push(`timestamp <= $${idx}`); params.push(to); idx++; }
 
       const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-      const rows = await runQuery(
-        `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
-         FROM telemetry_traces ${where} ORDER BY timestamp DESC LIMIT $${idx}`,
-        [...params, limit]
-      ).catch(() => []);
-
-      const results = (rows || []).map((r: any) => ({
-        id: r.id,
-        traceId: r.trace_id,
-        model: r.model,
-        provider: r.provider,
-        status: r.status,
-        cost: Number(r.cost || 0),
-        tokensIn: Number(r.tokens_in || 0),
-        tokensOut: Number(r.tokens_out || 0),
-        timestamp: r.timestamp,
-        projectName: r.project_name
-      }));
+      // Hot path: this ILIKE-across-5-columns query runs on every dashboard
+      // search. Short-TTL cache keeps the last-query results local to Render
+      // (private-network Postgres) instead of round-tripping Neon. Falls back
+      // to a direct query when RENDER_PG_URL is unset or the cache errors.
+      const cacheKey = `telemetry:search:${q}|${traceId}|${provider}|${verdict}|${from}|${to}|${limit}`;
+      const results = await withRenderCache(cacheKey, 15, async () => {
+        const rows = await runQuery(
+          `SELECT id, trace_id, model, tokens_in, tokens_out, cost, status, provider, project_name, timestamp
+           FROM telemetry_traces ${where} ORDER BY timestamp DESC LIMIT $${idx}`,
+          [...params, limit]
+        ).catch(() => []);
+        return (rows || []).map((r: any) => ({
+          id: r.id,
+          traceId: r.trace_id,
+          model: r.model,
+          tokensIn: Number(r.tokens_in || 0),
+          tokensOut: Number(r.tokens_out || 0),
+          cost: Number(r.cost || 0),
+          status: r.status,
+          provider: r.provider,
+          projectName: r.project_name,
+          timestamp: r.timestamp,
+        }));
+      });
 
       res.json({ query: { q, traceId, provider, verdict, from, to, limit }, total: results.length, results });
     } catch (err) {
