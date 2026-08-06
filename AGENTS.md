@@ -39,7 +39,7 @@ via `POST /api/terminal/execute` (no auth required — open access):
 ```
 /ask <q>      Gemini answer (plain text auto-routes here)
 /code <req>   Gemini writes production-grade code (Kudbee conventions)
-/swarm        Agent fleet tree (10 agents)
+/swarm        Agent fleet tree (11 agents)
 /shield       P·L·R·I shield metrics
 /roadmap      Phases to production (11 committed)
 /security     Security posture report
@@ -70,6 +70,25 @@ git push https://git.heroku.com/kudbee-fuel-gage.git main:main
   fails without it (react 19 / react-native peer conflict).
 - Staging apps: `kudbee-fuel-gage-staging` (web + hermes-worker).
 - Production: `kudbee-fuel-gage` (web + hermes-worker + monitor-worker + sentinel).
+- **Procfile dyno types:** `web` (tsx, 320MB heap), `hermes-worker` (tsx, 256MB),
+  `monitor-worker` (node, 256MB), `sentinel` (tsx, 256MB), `release` (256MB).
+
+## Deploy flow (Render)
+
+`render.yaml` defines the Blueprint — push to main or connect via Render Dashboard.
+
+- **Web service** (`kudbee-fuel-gage`): `plan: starter` (512MB), heap capped at 200MB via
+  `NODE_OPTIONS`. Free plan OOMs because the server imports 6K+ lines of
+  middleware including express, ioredis, pg, Gemini SDK, and 10+ middleware
+  guards. Start command uses `npx tsx` (not `node`) because server.js
+  imports `.ts` files directly.
+- **Hermes worker** (`kudbee-hermes`): `plan: free` (512MB), heap 128MB. Runs
+  `npx tsx worker.js`.
+- Build command: `npm ci --legacy-peer-deps --include=dev` — `--include=dev`
+  is needed because `tsx` is a devDependency and Render sets `NODE_ENV=production`.
+- Health check: `/health` (exempt from rate limiter in server.js).
+- All env vars matching Heroku's INV-019 required set are declared with `sync: false`
+  (prompted on first Blueprint deploy in Render Dashboard).
 
 ## Security posture (Engineering OS v2.2)
 
@@ -108,12 +127,14 @@ node scripts/agent-bootstrap.mjs loop # tap in anywhere, learn, contribute
 
 - **Canonical server entrypoint:** `services/ingestion/server.js` — do NOT
   create `server.ts` or duplicate entrypoints.
-- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*`. All `npm install` must run at root.
+- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*` (except `!apps/mobile` — mobile is excluded from workspaces and built separately). All `npm install` must run at root.
 - **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`. `packages/opencode` uses **bun**.
 - **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
-- **Redis:** `REDIS_URL` (Fast Brain) / `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`). Monthly quota 500k — the circuit breaker protects it.
-- **Gemini:** `GEMINI_API_KEY` (on Heroku staging) + model `gemini-flash-latest` (2.0/2.5 deprecated for new keys). Provider factory: `packages/utils/src/llm/providers.ts`.
+- **Redis:** `REDIS_URL` (Fast Brain — UI telemetry, SSE, state). `REDIS_WORKER_URL` (Slow Brain — governance workers, HERMES, JobQueue; falls back to `REDIS_URL` when not set). `REDIS_SLOW_URL` is a legacy alias also supported in `services/lib/redis.js`. Monthly quota 500k — the circuit breaker protects it.
+- **Gemini:** `GEMINI_API_KEY` (on Heroku staging) + model `gemini-flash-latest` (2.0/2.5 deprecated for new keys). Provider factory: `packages/utils/src/llm/providers.ts`. Also supports Groq (`GROQ_API_KEY`) and vLLM (`VLLM_BASE_URL` / `VLLM_API_KEY`).
+- **Test runner:** `bun test` runs all unit tests. CI runs `bun test` after typecheck + lint.
 - **Roadmap:** `services/terminal/roadmap.mjs` — machine-readable phases, mission statement, `/roadmap` command.
+- **Plugin Rack:** `apps/web/src/plugins/` — 4 OSPlugins (AgenticRag, VectorStore, CommunityLedger, LiveTelemetry). Plugin contract: `apps/web/src/core/pluginRegistry.ts`. Plugins are React components registered via `id/name/icon/category/component/defaultRoute`.
 
 ## CI Gates (must pass)
 
@@ -123,8 +144,12 @@ node scripts/agent-bootstrap.mjs loop # tap in anywhere, learn, contribute
 4. `npm run verify:learning-protocol` — THINK/DTHINK loop + safety rules.
 5. `npm run typecheck` — Turbo-routed TS strict check.
 6. `npm run lint` — Turbo-routed linting.
-7. `node scripts/verify-e2e.mjs --smoke` — bounded smoke (no provider URLs).
-8. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full E2E only with opt-in.
+7. `bun test` — all unit tests (46 tests in current baseline).
+8. `node scripts/verify-e2e.mjs --smoke` — bounded smoke (no provider URLs).
+9. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full E2E only with opt-in.
+
+CI installs with `npm ci --legacy-peer-deps --ignore-scripts`. Bounded CI env vars:
+`CI_MUTATION_BUDGET=20`, `MAX_REQUEST_BODY=256kb`, `E2E_ALLOW_DATABASE_WRITES=0`.
 
 All agents must run `npm run verify:typescript` before handoff. TypeScript
 contract: `npx tsc` resolves `@typescript/native` (TS 7); the TS 6 API alias
@@ -134,10 +159,12 @@ is for typescript-eslint only. Never introduce TS 5.x or lower.
 
 ```bash
 npm ci                              # root only, never inside workspace packages
+npm ci --legacy-peer-deps --ignore-scripts  # CI install (non-Heroku)
 npm run typecheck                   # Turbo-routed TS7 strict check
 npm run verify:typescript           # TS7 native compiler + TS6 API alias gate
 npm run lint                        # Turbo-routed linting
 npm run build                       # Turbo build (dependsOn typecheck + lint)
+bun test                            # All unit tests (46 in current baseline)
 cd apps/web && npm run build        # Vite prod build for Control Tower
 cd apps/mobile && npx tsc --noEmit  # Mobile type-check
 node scripts/system-status.mjs check  # CI + tests + build + E2E + pipelines

@@ -3883,6 +3883,13 @@ app.get('/health', apiLimiter, async (_req, res) => {
         redis: redisOk ? 'healthy' : 'unhealthy',
       },
     };
+    // Render Postgres hot cache probe (optional — reported, never fatal).
+    try {
+      const { renderCacheHealth } = await import('../lib/renderCache.ts');
+      payload.dependencies.render_cache = await renderCacheHealth();
+    } catch {
+      payload.dependencies.render_cache = { enabled: false, status: 'disabled' };
+    }
     // Resilient-First: the server is serving, so report 200 even when degraded
     // (a missing/unreachable dependency is not a fatal outage). 503 is reserved
     // for hard probe failures caught below.

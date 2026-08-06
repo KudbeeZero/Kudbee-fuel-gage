@@ -1,16 +1,124 @@
-# Exported from Render on 2026-08-06T12:50:20Z
+# Render Blueprint — Kudbee (synced from main)
+# Service name MUST stay "Kudbee-fuel-gage" to update the existing service in place.
 version: "1"
 projects:
-- name: Think Box
-  environments:
-  - name: Production
-    services:
-    - type: web
-      name: Kudbee-fuel-gage
-      runtime: node
-      repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
-      plan: starter
-      region: ohio
-      buildCommand: bun install
-      startCommand: bun run start
-      autoDeployTrigger: commit
+  - name: Think Box
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: Kudbee-fuel-gage
+            runtime: node
+            repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
+            plan: starter
+            region: ohio
+            buildCommand: npm ci --legacy-peer-deps --include=dev
+            startCommand: npx tsx services/ingestion/server.js
+            autoDeployTrigger: commit
+            healthCheckPath: /health
+            envVars:
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=200
+              - key: NODE_ENV
+                value: production
+              - key: CORS_ALLOW_ORIGINS
+                value: "*"
+              - key: REACT_APP_API_URL
+                value: ""
+              - key: SENTINEL_MODE
+                value: monitor
+              - key: MONTHLY_BUDGET_USD
+                value: "50"
+              - key: CRUCIBLE_ENABLED
+                value: "false"
+              # Render Postgres hot cache (1GB free tier — internal URL preferred)
+              - key: RENDER_PG_URL
+                sync: false
+              # Secrets — prompted in Render Dashboard on first Blueprint sync
+              - key: DATABASE_URL
+                sync: false
+              - key: REDIS_URL
+                sync: false
+              - key: REDIS_WORKER_URL
+                sync: false
+              - key: GEMINI_API_KEY
+                sync: false
+              - key: STREAM_SECRET
+                sync: false
+              - key: SESSION_SECRET
+                sync: false
+              - key: GROQ_API_KEY
+                sync: false
+              - key: GROQ_BASE_URL
+                sync: false
+              - key: DEEPSEEK_API
+                sync: false
+              - key: GROK_API
+                sync: false
+              - key: API_KEY
+                sync: false
+              - key: INCEPTION_API
+                sync: false
+              - key: INCEPTION_URL
+                sync: false
+              - key: UPSTASH_REDIS_REST_URL
+                sync: false
+              - key: UPSTASH_REDIS_REST_TOKEN
+                sync: false
+              - key: UPSTASH_BOX_API_KEY
+                sync: false
+              - key: QSTASH_TOKEN
+                sync: false
+              - key: QSTASH_URL
+                sync: false
+              - key: QSTASH_CURRENT_SIGNING_KEY
+                sync: false
+              - key: QSTASH_NEXT_SIGNING_KEY
+                sync: false
+              - key: EDGE_AGENT_PASS
+                sync: false
+              - key: SENTINEL_AGENT_PASS
+                sync: false
+              - key: LANGCACHE_ENDPOINT
+                sync: false
+              - key: LANGCACHE_API_KEY
+                sync: false
+
+          - type: worker
+            name: Kudbee-hermes
+            runtime: node
+            repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
+            plan: free
+            region: ohio
+            buildCommand: npm ci --legacy-peer-deps --include=dev
+            startCommand: npx tsx worker.js
+            autoDeployTrigger: commit
+            envVars:
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=128
+              - key: NODE_ENV
+                value: production
+              - key: DATABASE_URL
+                sync: false
+              - key: REDIS_URL
+                sync: false
+              - key: REDIS_WORKER_URL
+                sync: false
+              - key: GEMINI_API_KEY
+                sync: false
+              - key: DEEPSEEK_API
+                sync: false
+              - key: GROK_API
+                sync: false
+              - key: INCEPTION_API
+                sync: false
+              - key: INCEPTION_URL
+                sync: false
+              - key: QSTASH_TOKEN
+                sync: false
+              - key: QSTASH_URL
+                sync: false
+              - key: QSTASH_CURRENT_SIGNING_KEY
+                sync: false
+              - key: QSTASH_NEXT_SIGNING_KEY
+                sync: false
