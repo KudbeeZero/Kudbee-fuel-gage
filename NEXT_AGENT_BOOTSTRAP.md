@@ -51,12 +51,27 @@ OPS-CI-002 — Lifecycle-Aware CI Triggers (pending approval)
 npm ci --legacy-peer-deps          # install all workspaces (root only)
 cp config/.env.example .env        # then fill GEMINI_API_KEY + DATABASE_URL
 node scripts/local-setup-check.mjs # verify the environment is testable
-npm run dev:server                 # boot server on :3000
+npm run dev:server                 # boot ONLY the web process on :3000
 # Terminal:  http://localhost:3000/terminal.html
 # Web app:   cd apps/web && npm run dev
 ```
 The server degrades gracefully without keys — the terminal and dashboard
 still render; only AI (`/ask`) and persistence need the real values.
+
+### Full local fleet (agents ONLINE)
+The agent fleet is 4 processes (Procfile). The web server alone shows agents
+OFFLINE. Run all of them:
+```bash
+# Option 1 — Docker Redis (agents fully online):
+docker run -d --name kudbee-redis -p 6379:6379 redis:7
+echo 'REDIS_URL="redis://127.0.0.1:6379"' >> .env
+
+# Option 2 — use your Upstash REDIS_URL in .env (no local Redis needed)
+
+npm run dev:fleet                  # web + hermes + monitor + sentinel
+```
+The workers require `REDIS_URL`; without it they boot but stay degraded
+(circuit breaker + backoff). Sentinel listens on :3001.
 
 ## First Thing to Verify
 Git state: `git branch --show-current`, `git status --short`, `git log --oneline -3`

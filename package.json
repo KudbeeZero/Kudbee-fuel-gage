@@ -56,6 +56,7 @@
     "intelligence:decisions": "node scripts/decision-ledger.mjs list",
     "setup:check": "node scripts/local-setup-check.mjs",
     "dev:server": "npx tsx services/ingestion/server.js",
+    "dev:fleet": "bash scripts/dev-fleet.sh",
     "verify:quick": "node scripts/verify-quick.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
