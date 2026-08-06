@@ -1,22 +1,36 @@
 import * as React from 'react';
 import type { OSPlugin } from '../../core/pluginRegistry';
 
+interface GraphState {
+  nodes: number;
+  edges: number;
+  source: string;
+  error: string | null;
+}
+
+interface GraphResponse {
+  nodes?: number;
+  edges?: number;
+  source?: string;
+}
+
 // Stream Lab wired: reads the knowledge-graph store via the bridge so the
 // plugin shows live node/edge/orphan counts — not a static stub.
 const VectorStoreView = () => {
-  const [state, setState] = React.useState<any>({ nodes: 0, edges: 0, source: 'loading', error: null });
+  const [state, setState] = React.useState<GraphState>({ nodes: 0, edges: 0, source: 'loading', error: null });
+
   React.useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function load(): Promise<void> {
       try {
         const res = await fetch('/api/system/knowledge-graph', { cache: 'no-store' });
-        const d = await res.json();
-        if (!cancelled) setState({ nodes: d.nodes ?? d.nodeCount ?? 0, edges: d.edges ?? d.edgeCount ?? 0, source: 'graph', error: null });
+        const d = (await res.json()) as GraphResponse;
+        if (!cancelled) setState({ nodes: d.nodes ?? 0, edges: d.edges ?? 0, source: d.source ?? 'graph', error: null });
       } catch (e) {
-        if (!cancelled) setState((s: any) => ({ ...s, error: e instanceof Error ? e.message : String(e) }));
+        if (!cancelled) setState((s) => ({ ...s, error: e instanceof Error ? e.message : String(e) }));
       }
     }
-    load();
+    void load();
     return () => { cancelled = true; };
   }, []);
 
@@ -29,11 +43,13 @@ const VectorStoreView = () => {
       : React.createElement(
           'div',
           { style: { display: 'flex', gap: 24, marginTop: 8 } },
-          React.createElement('div', null, React.createElement('div', { style: { fontSize: 26, fontWeight: 800, color: '#60a5fa' } }, String(state.nodes)),
+          React.createElement('div', null,
+            React.createElement('div', { style: { fontSize: 26, fontWeight: 800, color: '#60a5fa' } }, String(state.nodes)),
             React.createElement('div', { style: { fontSize: 11, color: '#64748b' } }, 'nodes')),
-          React.createElement('div', null, React.createElement('div', { style: { fontSize: 26, fontWeight: 800, color: '#a78bfa' } }, String(state.edges)),
-            React.createElement('div', { style: { fontSize: 11, color: '#64748b' } }, 'edges')))
-    ),
+          React.createElement('div', null,
+            React.createElement('div', { style: { fontSize: 26, fontWeight: 800, color: '#a78bfa' } }, String(state.edges)),
+            React.createElement('div', { style: { fontSize: 11, color: '#64748b' } }, 'edges'))
+      ),
     React.createElement('p', { style: { color: '#64748b', fontSize: 11, marginTop: 12 } }, `source: ${state.source}`)
   );
 };

@@ -583,6 +583,42 @@ app.get('/api/system/guardian-status', (_req, res) => {
   res.json({ checks: g.checks ?? {}, source: 'guardian' });
 });
 
+// --- Phone tree + voicemail surfaces (interactive calls, read-only reads) ---
+app.get('/api/system/calls', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const c = readJsonStore('.kilo/memory/call-log.json', { calls: [] });
+  res.json({ calls: c.calls ?? [], total: c.totalCalls ?? (c.calls ?? []).length, source: 'call-log' });
+});
+
+app.get('/api/system/phone-tree', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const t = readJsonStore('.kilo/memory/phone-tree.json', {});
+  res.json({ tree: t, source: 'phone-tree' });
+});
+
+app.get('/api/system/voicemails', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'voicemails');
+  const vms = [];
+  try {
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+      try {
+        const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        if (Array.isArray(d)) vms.push(...d);
+        else vms.push(d);
+      } catch {}
+    }
+  } catch {}
+  vms.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+  res.json({ voicemails: vms, count: vms.length, source: 'voicemails' });
+});
+
+app.get('/api/system/dthink', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const d = readJsonStore('.kilo/memory/dthink/index.json', { entries: [] });
+  res.json({ entries: d.entries ?? [], source: 'dthink' });
+});
+
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
 // the Phase 6 context factory. We extract the raw intent from the body, tag it
