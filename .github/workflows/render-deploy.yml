@@ -19,5 +19,20 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          curl -s -X POST -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_DEPLOY_HOOK }}" | grep -q 200
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK secret is not set."
+            echo "Add it: GitHub repo Settings → Secrets and variables → Actions →"
+            echo "New repository secret: RENDER_DEPLOY_HOOK = https://api.render.com/deploy/srv-d9q84567bikc738lgag0?key=<YOUR_KEY>"
+            echo "(Note: Render Blueprint auto-sync already triggers deploys on push —"
+            echo "this workflow is an optional secondary trigger.)"
+            exit 1
+          fi
+          code=$(curl -s -X POST -o /dev/null -w "%{http_code}" "$RENDER_DEPLOY_HOOK")
+          if [ "$code" != "200" ] && [ "$code" != "202" ]; then
+            echo "::error::Render deploy hook returned HTTP $code"
+            exit 1
+          fi
+          echo "Render deploy triggered (HTTP $code)"
