@@ -1,0 +1,23 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'services/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'render.yaml'
+      - '.npmrc'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          curl -s -X POST -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_DEPLOY_HOOK }}" | grep -q 200
