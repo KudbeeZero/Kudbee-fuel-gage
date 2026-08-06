@@ -8,27 +8,8 @@
     <meta name="apple-mobile-web-app-title" content="Kudbee Workspace" />
     <meta name="theme-color" content="#020617" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="kudbee-version" content="v293" />
-    <meta name="kudbee-commit" content="a2ae80b3c3f0cc5149c26e5d5aa9eb1ddc70dfba" />
-    <meta name="kudbee-build-time" content="2026-07-29T05:00Z" />
-    <title>Kudbee Fuel Gauge — AI Cost Intelligence</title>
+    <title>Kudbee — Engineering OS</title>
     <style>
-      #boot-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020617;color:#e2e8f0;font-family:ui-monospace,monospace}
-      #boot-splash h1{font-size:1.4rem;font-weight:700;margin:0 0 .15rem;color:#34d399;letter-spacing:-.02em}
-      #boot-splash .sub{font-size:.65rem;color:#64748b;margin-bottom:1.5rem}
-      .boot-steps{display:flex;flex-direction:column;gap:.3rem;min-width:280px}
-      .boot-step{display:flex;align-items:center;gap:.6rem;padding:.25rem .5rem;font-size:.7rem;color:#64748b;border-radius:.3rem;transition:background .2s}
-      .boot-step .icon{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:2px solid #1e293b;transition:all .3s}
-      .boot-step .icon.ok{background:#34d399;border-color:#34d399;box-shadow:0 0 6px #34d399}
-      .boot-step .icon.err{background:#f87171;border-color:#f87171}
-      .boot-step .icon.wait{border-color:#64748b;animation:pulse 1.5s infinite}
-      @keyframes pulse{0%,100%{border-color:#64748b}50%{border-color:#34d399}}
-      .boot-step .label{flex:1;font-size:.7rem}
-      .boot-step .status{font-size:.6rem;min-width:70px;text-align:right}
-      .boot-step .status.ok{color:#34d399}
-      .boot-step .status.err{color:#f87171}
-      .boot-step .status.wait{color:#64748b}
-      .boot-done #boot-splash{opacity:0;pointer-events:none;transition:opacity .4s}
       #deploy-footer{position:fixed;bottom:0;left:0;right:0;z-index:99998;background:#0f172aaa;backdrop-filter:blur(8px);border-top:1px solid #1e293b;padding:.25rem .75rem;display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:.6rem;color:#475569}
       #deploy-footer.ok{color:#34d399}
       #deploy-footer.degraded{color:#eab308}
@@ -36,121 +17,12 @@
     </style>
   </head>
   <body>
-    <div id="boot-splash">
-      <h1>KUDBEE Fuel Gauge</h1>
-      <div class="sub">AI Cost Intelligence Platform</div>
-      <div class="boot-steps" id="boot-steps">
-        <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing API Gateway…</span><span class="status wait">—</span></div>
-        <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing database…</span><span class="status wait">—</span></div>
-        <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing Redis…</span><span class="status wait">—</span></div>
-        <div class="boot-step"><div class="icon wait"></div><span class="label">Initializing agent swarm…</span><span class="status wait">—</span></div>
-        <div class="boot-step"><div class="icon wait"></div><span class="label">Preparing application…</span><span class="status wait">—</span></div>
-      </div>
-    </div>
     <div id="root"></div>
     <div id="deploy-footer">Connecting to Heroku…</div>
     <script>
-      var _kud = { loaded: false, ver: null, health: null, degraded: [] };
-      var BOOT_DEADLINE_MS = 10000;
-      var BOOT_STARTED = Date.now();
-
-      function setBootStep(i, ok, label, detail) {
-        var steps = document.querySelectorAll('#boot-steps .boot-step');
-        if (i >= steps.length) return;
-        var step = steps[i];
-        var icon = step.querySelector('.icon');
-        var status = step.querySelector('.status');
-        icon.className = 'icon ' + (ok === null ? 'wait' : ok ? 'ok' : 'err');
-        status.className = 'status ' + (ok === null ? 'wait' : ok ? 'ok' : 'err');
-        status.textContent = detail || (ok === true ? 'OK' : ok === false ? 'FAIL' : '…');
-        step.querySelector('.label').textContent = label;
-        if (ok === false) _kud.degraded.push(label);
-      }
-
-      function fetchTimed(url, ms) {
-        return Promise.race([
-          fetch(url).then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP '+r.status); }),
-          new Promise(function(_,r){ setTimeout(function(){ r(new Error('timeout')); }, ms); })
-        ]);
-      }
-
-      (function boot() {
-        var deadline = BOOT_STARTED + BOOT_DEADLINE_MS;
-        var remaining = Math.max(0, deadline - Date.now());
-
-        // Phase 0: API Gateway
-        setBootStep(0, null, 'Initializing API Gateway…');
-        fetchTimed('/health', Math.min(3000, remaining)).then(function(d){
-          var ok = d.status === 'ok' || d.status === 'degraded';
-          setBootStep(0, ok, 'API Gateway', ok ? d.status : 'Unreachable');
-          return ok;
-        }).catch(function(){ setBootStep(0, false, 'API Gateway', 'Unreachable'); return false; })
-        .then(function(apiOk){
-          if (!apiOk) { finishBoot('FAILED'); return; }
-          remaining = Math.max(0, deadline - Date.now());
-
-          // Phase 1: Database
-          setBootStep(1, null, 'Initializing database…');
-          return fetchTimed('/api/gastown/dashboard', Math.min(3000, remaining)).then(function(d){
-            var dbOk = !!d.database && !!d.database.totalSize;
-            setBootStep(1, dbOk, 'Database', dbOk ? d.database.totalSize : 'Unreachable');
-            return dbOk;
-          }).catch(function(){ setBootStep(1, false, 'Database', 'Unreachable'); return false; });
-        }).then(function(dbOk){
-          remaining = Math.max(0, deadline - Date.now());
-
-          // Phase 2: Redis
-          setBootStep(2, null, 'Initializing Redis…');
-          return fetchTimed('/health', Math.min(2000, remaining)).then(function(d){
-            var redisOk = d.dependencies && d.dependencies.redis === 'healthy';
-            setBootStep(2, redisOk, 'Redis', redisOk ? 'Connected' : 'Degraded');
-            return redisOk;
-          }).catch(function(){ setBootStep(2, false, 'Redis', 'Unreachable'); return false; });
-        }).then(function(redisOk){
-          remaining = Math.max(0, deadline - Date.now());
-
-          // Phase 3: Agents
-          setBootStep(3, null, 'Initializing agent swarm…');
-          return fetchTimed('/api/gastown/dashboard', Math.min(3000, remaining)).then(function(d){
-            var agentsOk = d.swarm && d.swarm.online > 0;
-            setBootStep(3, agentsOk, 'Agent Swarm', agentsOk ? d.swarm.online+'/'+d.swarm.agents : 'Offline');
-            return agentsOk;
-          }).catch(function(){ setBootStep(3, false, 'Agent Swarm', 'Offline'); return false; });
-        }).then(function(agentsOk){
-          // Phase 4: Application
-          setBootStep(4, true, 'Application', 'Initializing…');
-          finishBoot(_kud.degraded.length ? 'DEGRADED' : 'READY');
-        }).catch(function(){ finishBoot('FAILED'); });
-      })();
-
-      function finishBoot(state) {
-        if (_kud.loaded) return;
-        _kud.loaded = true;
-        _kud.bootState = state;
-        _kud.bootDuration = Date.now() - BOOT_STARTED;
-        var title = state === 'READY' ? 'All Systems Ready'
-          : state === 'DEGRADED' ? 'System Degraded'
-          : 'Boot Failed';
-        var h1 = document.querySelector('#boot-splash h1');
-        if (h1) h1.textContent = title;
-        if (h1) h1.style.color = state === 'READY' ? '#34d399' : state === 'DEGRADED' ? '#eab308' : '#f87171';
-
-        setTimeout(function(){
-          document.documentElement.classList.add('boot-done');
-        }, state === 'READY' ? 600 : 1500);
-      }
-
-      window.addEventListener('kudbee:loaded', function(e) {
-        if (!_kud.loaded) finishBoot('READY');
-        _kud.ver = e.detail && e.detail.version;
-      });
-
       fetch('/api/system/deploy-status').then(function(r){return r.json()}).then(function(d){
-        var expected = (document.querySelector('meta[name="kudbee-commit"]')||{}).content||'';
-        var running = (d.herokuRelease||'').slice(0,7);
-        var stale = expected && running && !expected.startsWith(running) && !running.startsWith(expected.slice(0,7));
         var f = document.getElementById('deploy-footer');
-        if (f) { f.className = stale ? 'error' : d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.herokuRelease||'—') + ' | ' + d.status + ' | ' + (stale?'STALE — expected ' + expected.slice(0,7):d.uptimeSec+'s'); }
+        if (f) { f.className = d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.herokuRelease||'—') + ' | ' + d.status + ' | ' + (d.uptimeSec||0) + 's'; }
       }).catch(function(){var f=document.getElementById('deploy-footer');if(f){f.className='error';f.textContent='Backend unreachable';}});
     </script>
     <script type="module" src="/src/main.tsx"></script>
