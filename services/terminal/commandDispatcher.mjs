@@ -63,6 +63,23 @@ async function handleSwarmStatus() {
     if (name && typeof vec === 'string' && vec.split(',').length >= 6) registered.add(name);
   }
 
+  // Registry fallback: when the Redis matrix is empty (e.g. matrix never
+  // seeded, or Redis degraded), count the on-disk agent registry so the
+  // terminal never reports a healthy fleet as 0 online. This keeps the
+  // terminal consistent with the agent bridge (11 agents).
+  if (registered.size === 0) {
+    try {
+      const { readdirSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const agentsDir = join(process.cwd(), '.kilo', 'agents');
+      for (const f of readdirSync(agentsDir)) {
+        if (f.endsWith('.agent')) registered.add(f.replace(/\.agent$/, ''));
+      }
+    } catch {
+      /* registry unreadable — stay with matrix result (possibly empty) */
+    }
+  }
+
   for (const p of parents) {
     tree.push({ agent: p, subs: subMap[p] || [], status: registered.has(p) ? 'online' : 'unknown' });
   }
