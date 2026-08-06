@@ -73,6 +73,23 @@ git push https://git.heroku.com/kudbee-fuel-gage.git main:main
 - **Procfile dyno types:** `web` (tsx, 320MB heap), `hermes-worker` (tsx, 256MB),
   `monitor-worker` (node, 256MB), `sentinel` (tsx, 256MB), `release` (256MB).
 
+## Deploy flow (Render)
+
+`render.yaml` defines the Blueprint — push to main or connect via Render Dashboard.
+
+- **Web service** (`kudbee-fuel-gage`): `plan: starter` (512MB), heap capped at 200MB via
+  `NODE_OPTIONS`. Free plan OOMs because the server imports 6K+ lines of
+  middleware including express, ioredis, pg, Gemini SDK, and 10+ middleware
+  guards. Start command uses `npx tsx` (not `node`) because server.js
+  imports `.ts` files directly.
+- **Hermes worker** (`kudbee-hermes`): `plan: free` (512MB), heap 128MB. Runs
+  `npx tsx worker.js`.
+- Build command: `npm ci --legacy-peer-deps --include=dev` — `--include=dev`
+  is needed because `tsx` is a devDependency and Render sets `NODE_ENV=production`.
+- Health check: `/health` (exempt from rate limiter in server.js).
+- All env vars matching Heroku's INV-019 required set are declared with `sync: false`
+  (prompted on first Blueprint deploy in Render Dashboard).
+
 ## Security posture (Engineering OS v2.2)
 
 - **Password-based access control is DISENGAGED** — no bearerAuth, no synapse
