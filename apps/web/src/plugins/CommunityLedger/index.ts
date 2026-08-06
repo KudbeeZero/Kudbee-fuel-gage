@@ -64,7 +64,7 @@ const CommunityLedgerPlugin: OSPlugin = {
   description: 'Decision ledger — live decisions + provenance',
   icon: 'dollar-sign',
   category: 'ledger',
-  component: () => CommunityLedgerView,
+  component: CommunityLedgerView,
   defaultRoute: '/os/community-ledger',
 };
 export default CommunityLedgerPlugin;

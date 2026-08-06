@@ -31,7 +31,7 @@ const LiveTelemetryPlugin: OSPlugin = {
   description: 'Real-time agent fleet + telemetry (Stream Lab bridge)',
   icon: 'activity',
   category: 'telemetry',
-  component: () => LiveTelemetryView,
+  component: LiveTelemetryView,
   defaultRoute: '/os/live-telemetry',
 };
 export default LiveTelemetryPlugin;

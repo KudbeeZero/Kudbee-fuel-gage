@@ -60,7 +60,7 @@ const VectorStorePlugin: OSPlugin = {
   description: 'pgvector knowledge graph — live node/edge state',
   icon: 'database',
   category: 'memory',
-  component: () => VectorStoreView,
+  component: VectorStoreView,
   defaultRoute: '/os/vector-store',
 };
 export default VectorStorePlugin;
