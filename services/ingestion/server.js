@@ -1023,30 +1023,26 @@ function recordThroughput() {
 }
 
 const DEDUP_WINDOW_MS = 5_000;
-const _dedupStore = new Map();
-let _dedupCleanupTimer = null;
-
-function startDedupCleanup() {
-  if (_dedupCleanupTimer) return;
-  _dedupCleanupTimer = setInterval(() => {
-    const cutoff = Date.now() - DEDUP_WINDOW_MS;
-    for (const [key, ts] of _dedupStore) {
-      if (ts < cutoff) _dedupStore.delete(key);
-    }
-  }, DEDUP_WINDOW_MS);
-  if (typeof _dedupCleanupTimer.unref === 'function') _dedupCleanupTimer.unref();
+// Serverless-safe dedup: Redis-backed (shared across instances) with an
+// in-memory fallback when Redis is unavailable. Replaces the old in-process
+// Map, which broke under multi-instance/serverless scaling.
+import { createDedupStore } from '../lib/dedupStore.ts';
+let _dedupStoreInstance = null;
+function getDedupStore() {
+  if (!_dedupStoreInstance) {
+    _dedupStoreInstance = createDedupStore({ windowMs: DEDUP_WINDOW_MS, redis });
+  }
+  return _dedupStoreInstance;
 }
 
-function isDuplicateTrace(traceId) {
+async function isDuplicateTrace(traceId) {
   const key = String(traceId || '');
   if (!key) return false;
-  const now = Date.now();
-  if (_dedupStore.has(key) && now - _dedupStore.get(key) < DEDUP_WINDOW_MS) {
-    return true;
-  }
-  _dedupStore.set(key, now);
-  startDedupCleanup();
-  return false;
+  return getDedupStore().isDuplicate(key);
+}
+
+async function clearDedup(traceId) {
+  await getDedupStore().clear(String(traceId || ''));
 }
 
 app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
@@ -1104,7 +1100,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
       });
     }
 
-    if (!agentId && isDuplicateTrace(trace_id)) {
+      if (!agentId && await isDuplicateTrace(trace_id)) {
       return res.status(200).json({
         success: true,
         id: null,
@@ -1337,7 +1333,7 @@ app.post('/api/telemetry/ingest/batch', async (req, res) => {
         filtered++;
         continue;
       }
-      if (!agentId && isDuplicateTrace(trace_id)) {
+    if (!agentId && await isDuplicateTrace(trace_id)) {
         deduped++;
         continue;
       }
