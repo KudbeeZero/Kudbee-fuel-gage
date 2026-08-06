@@ -230,6 +230,21 @@ async function main() {
   } catch (e) { auditOk = false; auditDetail = `audit module unreadable: ${e.message}`; }
   check('INV-017 tamper-evident audit chain', auditOk, auditOk ? auditDetail : auditDetail);
 
+  // 15. INV-018 Supply-chain guardian — dependencies are measurable.
+  // Verify the module exists, fixtures exist, and the live audit gates.
+  let supplyOk = true; let supplyDetail = '';
+  try {
+    const supplyModule = existsSync(join(REPO_ROOT, 'scripts', 'supply-chain-guardian.mjs'));
+    const supplyTests = existsSync(join(REPO_ROOT, 'scripts', 'supply-chain.test.mjs'));
+    const { auditSupplyChain } = await import('../scripts/supply-chain-guardian.mjs');
+    const supply = auditSupplyChain();
+    supplyOk = supplyModule && supplyTests && (supply.verdict === 'PASS' || supply.verdict === 'BLOCK');
+    supplyDetail = supplyOk
+      ? `supply-chain active (${supply.totalPackages} deps, verdict ${supply.verdict}, avg ${supply.avgScore})`
+      : `incomplete: module=${supplyModule} tests=${supplyTests}`;
+  } catch (e) { supplyOk = false; supplyDetail = `supply-chain unreadable: ${e.message}`; }
+  check('INV-018 supply-chain guardian', supplyOk, supplyOk ? supplyDetail : supplyDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {
