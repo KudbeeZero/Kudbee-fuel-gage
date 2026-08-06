@@ -134,6 +134,46 @@ async function main() {
   }
   check('pipeline integrity (dev/staging/prod)', pipelineOk, pipelineOk ? 'all 3 apps exist' : pipelineDetail);
 
+  // 10. INV-013 Keystone trust boundary — governance files may never be
+  // modified by an executing cloud agent. The keystone is a write-enforcement
+  // boundary: an agent's attempt to write a governance path is refused by the
+  // keystone module (governanceViolations). The guardian's job is to verify
+  // the keystone is intact and enforceable — not to block legitimate human-
+  // approved PRs that intentionally evolve governance.
+  let keystoneOk = true; let keystoneDetail = '';
+  try {
+    const { GOVERNANCE_PATHS, assertGovernancePathsProtected, governanceViolations } = await import('../services/lib/governanceKeystone.ts');
+    const assertErr = assertGovernancePathsProtected();
+    if (assertErr) { keystoneOk = false; keystoneDetail = assertErr; }
+    else {
+      // Prove the enforcement boundary works: a simulated agent write set
+      // touching a governance file must be flagged as a violation.
+      const simulated = governanceViolations(['src/agent-work.ts', 'AGENTS.md', 'MODEL_CONTRACT.md']);
+      const enforceWorks = simulated.length === 2 && simulated.includes('AGENTS.md') && simulated.includes('MODEL_CONTRACT.md');
+      if (!enforceWorks) { keystoneOk = false; keystoneDetail = 'keystone enforcement broken (governance writes not refused)'; }
+      else { keystoneDetail = `${GOVERNANCE_PATHS.length} paths agent-read-only; enforcement verified`; }
+    }
+  } catch (e) { keystoneOk = false; keystoneDetail = `keystone module unreadable: ${e.message}`; }
+  check('INV-013 keystone trust boundary', keystoneOk, keystoneOk ? keystoneDetail : keystoneDetail);
+
+  // 11. INV-014 Terminal authorization boundary — privileged terminal
+  // execution must be gated whenever agent auth is provisioned.
+  // The gate is wired when server.js references terminalAuthGate on the
+  // execute route, and provisioning is signaled by AGENT_REGISTRY_PATH.
+  let terminalOk = true; let terminalDetail = '';
+  try {
+    const server = readFileSync(join(REPO_ROOT, 'services/ingestion/server.js'), 'utf8');
+    const gateWired = server.includes("app.post('/api/terminal/execute', terminalAuthGate");
+    const provisionFlag = server.includes('TERMINAL_AUTH_PROVISIONED');
+    const missing401 = server.includes("res.status(401).json({ error: 'unauthorized'");
+    const invalid403 = server.includes("res.status(403).json({ error: 'forbidden'");
+    terminalOk = gateWired && provisionFlag && missing401 && invalid403;
+    terminalDetail = terminalOk
+      ? 'execute gated (401 missing / 403 invalid / 200 valid when provisioned)'
+      : `wiring incomplete: gate=${gateWired} flag=${provisionFlag} 401=${missing401} 403=${invalid403}`;
+  } catch (e) { terminalOk = false; terminalDetail = `server.js unreadable: ${e.message}`; }
+  check('INV-014 terminal authorization boundary', terminalOk, terminalOk ? terminalDetail : terminalDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {

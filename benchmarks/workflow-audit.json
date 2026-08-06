@@ -1,0 +1,27 @@
+[
+  {
+    "file": "autonomous-maintenance.yml",
+    "name": "autonomous-maintenance",
+    "action": "KEEP"
+  },
+  {
+    "file": "box-test.yml",
+    "name": "box-test",
+    "action": "KEEP"
+  },
+  {
+    "file": "codeql.yml",
+    "name": "codeql",
+    "action": "KEEP"
+  },
+  {
+    "file": "docs.yml",
+    "name": "docs",
+    "action": "KEEP"
+  },
+  {
+    "file": "verify.yml",
+    "name": "verify",
+    "action": "KEEP"
+  }
+]

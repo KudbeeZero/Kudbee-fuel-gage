@@ -200,6 +200,24 @@ check fails — STOP. Do not implement. Report.**
   commandDispatcher.mjs), fix immediately via repair branch, never on main.
 - **One terminal owner:** `apps/web/terminal.html`. Other terminals are
   archive/experimental — never duplicate production terminals.
+- **INV-013 Keystone trust boundary:** governance files (AGENTS.md,
+  MODEL_CONTRACT.md, engineering_state.yaml, REPOSITORY_MANIFEST.json,
+  kilo.json, repository-guardian.mjs, governanceKeystone.ts,
+  bearerAuthMiddleware.ts, verify-secret-hygiene.mjs, verify-quick.mjs,
+  .github/workflows/verify.yml, .github/workflows/codeql.yml) may never be
+  modified by an executing cloud agent. Any agent write to a listed path is
+  refused via `services/lib/governanceKeystone.ts`. Governance changes happen
+  only through human-approved PRs. `node scripts/repository-guardian.mjs`
+  verifies the keystone is intact and enforcement works.
+- **INV-014 Terminal authorization boundary:** `/api/terminal/execute` is
+  gated whenever agent auth is provisioned (`AGENT_REGISTRY_PATH` set):
+  missing `X-Agent-Pass` → 401, invalid → 403, valid → 200. Without
+  provisioning the single-user workflow is unchanged (Mode A).
+- **One trust boundary per security PR:** every new security control must
+  protect exactly one trust boundary. Multiple trust boundaries may never be
+  introduced in the same PR. The security release train is SEC-001 keystone →
+  SEC-002 terminal auth → SEC-003 prompt-injection firewall → SEC-004 output
+  redaction → SEC-005 tamper-evident audit.
 - **Build artifacts are never hand-edited.** Source → build → artifact →
   deploy.
 - **Dirty tree = blocked.** If `git status` is dirty when starting a

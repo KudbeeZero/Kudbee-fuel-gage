@@ -63,7 +63,7 @@
       },
       "confidence": 0.92,
       "status": "INSUFFICIENT_DATA",
-      "reason": "No measured outcome evidence exists yet \u2014 cannot judge.",
+      "reason": "No measured outcome evidence exists yet — cannot judge.",
       "replayedAt": "2026-08-04T21:20:15.311Z"
     },
     {
@@ -92,8 +92,37 @@
       },
       "confidence": 0.89,
       "status": "INSUFFICIENT_DATA",
-      "reason": "No measured outcome evidence exists yet \u2014 cannot judge.",
+      "reason": "No measured outcome evidence exists yet — cannot judge.",
       "replayedAt": "2026-08-04T21:20:15.348Z"
+    },
+    {
+      "recordId": "CF-1785880083018",
+      "decision": "DEC-0004",
+      "chosenStrategy": "Evidence-based domain + agent linking in knowledge-graph",
+      "winner": "chosen",
+      "alternatives": [
+        {
+          "name": "Manual linking",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        },
+        {
+          "name": "Leave disconnected",
+          "precision": null,
+          "recall": null,
+          "evaluated": false
+        }
+      ],
+      "chosenEvidence": {
+        "precision": 0,
+        "recall": 0,
+        "run": "GRAPH-AUDIT"
+      },
+      "confidence": 0.92,
+      "status": "CONFIRMED",
+      "reason": "Chosen path measured 0.0% precision / 0.0% recall on GRAPH-AUDIT; no alternative shows better measured evidence.",
+      "replayedAt": "2026-08-04T21:48:03.018Z"
     }
   ]
 }

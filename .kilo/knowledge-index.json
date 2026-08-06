@@ -67,6 +67,23 @@
         "DEC-0002"
       ],
       "evidence": "Draft from local-optimum finding (OPT-1)"
+    },
+    {
+      "id": "DEC-0004",
+      "type": "decision",
+      "owner": "STAB-002",
+      "created": "2026-08-04",
+      "verified": null,
+      "review_after": "2026-11-02",
+      "expires": null,
+      "confidence": 0.9,
+      "status": "ACTIVE",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [
+        "CF-1785880083018"
+      ],
+      "evidence": "Graph edges 34→108, orphans 39→5"
     }
   ],
   "transitions": [
@@ -124,6 +141,20 @@
       "from": "DRAFT",
       "to": "VERIFIED",
       "at": "2026-08-04T21:24:38.083Z",
+      "by": "knowledge-lifecycle"
+    },
+    {
+      "id": "DEC-0004",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-04T21:48:03.055Z",
+      "by": "STAB-002"
+    },
+    {
+      "id": "DEC-0004",
+      "from": "DRAFT",
+      "to": "ACTIVE",
+      "at": "2026-08-04T21:48:03.086Z",
       "by": "knowledge-lifecycle"
     }
   ]

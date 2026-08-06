@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T21:35:06.004Z",
+  "missions": [
+    {
+      "mission": "STAB-002",
+      "objective": "Connect orphan knowledge nodes to incidents/decisions/benchmarks",
+      "owner": "KILO",
+      "branch": "feature/stab-002",
+      "estimated_files": 4,
+      "estimated_loc": 220,
+      "rollback": "git revert <commit>",
+      "verification": [
+        "knowledge:audit",
+        "graph:audit"
+      ],
+      "success_metrics": [
+        "orphan_nodes < 5",
+        "graph_edges increased"
+      ],
+      "evidence": [
+        "GRAPH-AUDIT",
+        "KNOWLEDGE-AUDIT"
+      ],
+      "priority": 83.1,
+      "reason": "39 orphan nodes (77 total) reduce retrieval quality",
+      "state": "COMPLETE",
+      "createdAt": "2026-08-04T21:35:06.004Z",
+      "transitions": [
+        {
+          "from": null,
+          "to": "PROPOSED",
+          "at": "2026-08-04T21:35:06.004Z",
+          "by": "KILO"
+        },
+        {
+          "from": "PROPOSED",
+          "to": "APPROVED",
+          "at": "2026-08-04T21:35:12.373Z",
+          "by": "KILO"
+        },
+        {
+          "from": "APPROVED",
+          "to": "BRANCH_CREATED",
+          "at": "2026-08-04T21:35:19.439Z",
+          "by": "KILO"
+        },
+        {
+          "from": "BRANCH_CREATED",
+          "to": "IMPLEMENTING",
+          "at": "2026-08-04T21:35:25.540Z",
+          "by": "KILO"
+        },
+        {
+          "from": "IMPLEMENTING",
+          "to": "VERIFYING",
+          "at": "2026-08-04T21:35:31.818Z",
+          "by": "KILO"
+        },
+        {
+          "from": "VERIFYING",
+          "to": "READY_FOR_PR",
+          "at": "2026-08-04T21:40:30.918Z",
+          "by": "KILO"
+        },
+        {
+          "from": "READY_FOR_PR",
+          "to": "MERGED",
+          "at": "2026-08-04T21:40:46.630Z",
+          "by": "KILO"
+        },
+        {
+          "from": "MERGED",
+          "to": "OBSERVING",
+          "at": "2026-08-04T21:40:46.772Z",
+          "by": "KILO"
+        },
+        {
+          "from": "OBSERVING",
+          "to": "COMPLETE",
+          "at": "2026-08-04T21:40:46.937Z",
+          "by": "KILO"
+        }
+      ],
+      "immutable": true,
+      "verification_passed": true,
+      "verificationResults": [
+        {
+          "cmd": "knowledge:audit",
+          "ok": true
+        },
+        {
+          "cmd": "graph:audit",
+          "ok": true
+        }
+      ],
+      "lastVerification": {
+        "at": "2026-08-04T21:40:30.914Z",
+        "commands": [
+          "knowledge:audit",
+          "graph:audit"
+        ],
+        "passed": true
+      },
+      "pr_merged": true
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-08-04T21:28:41.718Z",
+  "builtAt": "2026-08-04T21:48:09.743Z",
   "nodes": [
     {
       "id": "DEC-0001",
@@ -21,6 +21,12 @@
       "confidence": 88
     },
     {
+      "id": "DEC-0004",
+      "type": "decision",
+      "mission": "STAB-002",
+      "confidence": 90
+    },
+    {
       "id": "REV-0001",
       "type": "review",
       "status": "SUCCESS"
@@ -36,6 +42,11 @@
       "status": "PARTIAL"
     },
     {
+      "id": "REV-0004",
+      "type": "review",
+      "status": "SUCCESS"
+    },
+    {
       "id": "CF-1785878408521",
       "type": "counterfactual",
       "status": "CONFIRMED"
@@ -49,6 +60,11 @@
       "id": "CF-1785878415348",
       "type": "counterfactual",
       "status": "INSUFFICIENT_DATA"
+    },
+    {
+      "id": "CF-1785880083018",
+      "type": "counterfactual",
+      "status": "CONFIRMED"
     },
     {
       "id": "tk-adversarial-sim-015",
@@ -383,6 +399,10 @@
       "type": "benchmark"
     },
     {
+      "id": "GRAPH-AUDIT",
+      "type": "benchmark"
+    },
+    {
       "id": "RUN-003",
       "type": "benchmark"
     },
@@ -396,6 +416,10 @@
     },
     {
       "id": "COVERAGE-001",
+      "type": "benchmark"
+    },
+    {
+      "id": "KNOWLEDGE-AUDIT",
       "type": "benchmark"
     }
   ],
@@ -416,6 +440,11 @@
       "relation": "verified_by"
     },
     {
+      "from": "REV-0004",
+      "to": "DEC-0004",
+      "relation": "verified_by"
+    },
+    {
       "from": "CF-1785878408521",
       "to": "DEC-0001",
       "relation": "derived_from"
@@ -428,6 +457,11 @@
     {
       "from": "CF-1785878415348",
       "to": "DEC-0003",
+      "relation": "derived_from"
+    },
+    {
+      "from": "CF-1785880083018",
+      "to": "DEC-0004",
       "relation": "derived_from"
     },
     {
@@ -448,6 +482,11 @@
     {
       "from": "DEC-0003",
       "to": "BMK-0002",
+      "relation": "references"
+    },
+    {
+      "from": "DEC-0004",
+      "to": "GRAPH-AUDIT",
       "relation": "references"
     },
     {
@@ -476,13 +515,43 @@
       "relation": "generated"
     },
     {
+      "from": "REV-0004",
+      "to": "GRAPH-AUDIT",
+      "relation": "generated"
+    },
+    {
+      "from": "REV-0004",
+      "to": "KNOWLEDGE-AUDIT",
+      "relation": "generated"
+    },
+    {
       "from": "tk-agent-collab-009",
       "to": "DEC-0001",
       "relation": "supports"
     },
     {
+      "from": "tk-agent-collab-009",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-diagnostic-022",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-anomaly-ep-012",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
       "from": "tk-black-screen-title-001",
       "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-curation-007",
+      "to": "DEC-0004",
       "relation": "supports"
     },
     {
@@ -506,6 +575,321 @@
       "relation": "supports"
     },
     {
+      "from": "tk-adversarial-sim-015",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-adversarial-sim-015",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-diagnostic-022",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-anomaly-feed-014",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-anomaly-feed-014",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-attention-router-033",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-attention-router-033",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-attention-router-033",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-batch-protocol-039",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-batch-protocol-039",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-auth-002",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-auth-002",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-auth-002",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-auth-002",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-loading-003",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-loading-003",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-loading-003",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-loading-003",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-title-001",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-title-001",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-crossorigin-root-030",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-crossorigin-root-030",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-crossorigin-root-030",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-crossorigin-root-030",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-curation-007",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deployment-v254-006",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deployment-v254-006",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deployment-v254-006",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deployment-v260-017",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deployment-v260-017",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deq-infinity-038",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-deq-infinity-038",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-e2e-ci-019",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-e2e-ci-019",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-einstein-protocol-040",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-einstein-protocol-040",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-enterprise-math-035",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-enterprise-math-035",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-global-workspace-telepathy-041",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-global-workspace-telepathy-041",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-innovation-032",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-innovation-032",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-pr213-merged-027",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-pr213-merged-027",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-pr213-merged-027",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-pr214-merged-028",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-pr214-merged-028",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sor-router-016",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sor-router-016",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-splash-mobile-018",
+      "to": "DEC-0002",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-splash-mobile-018",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sse-ticket-010",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sse-ticket-010",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-struggle-energy-031",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-struggle-energy-031",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sub-swarm-036",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-session-020",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-session-020",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-final-029",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-final-029",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-vector10-reward-034",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-vector10-reward-034",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-vector10-reward-034",
+      "to": "DEC-0004",
+      "relation": "supports"
+    },
+    {
       "from": "skill:ci-watcher",
       "to": "mission:ci-watcher",
       "relation": "supports"
@@ -518,6 +902,86 @@
     {
       "from": "skill:pipeline-guardian",
       "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-collab-009",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-collab-009",
+      "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-collab-009",
+      "to": "mission:knowledge-curator",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-diagnostic-022",
+      "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-agent-diagnostic-022",
+      "to": "mission:knowledge-curator",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-anomaly-ep-012",
+      "to": "mission:sentinel",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-anomaly-feed-014",
+      "to": "mission:sentinel",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-curation-007",
+      "to": "mission:knowledge-curator",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-e2e-ci-019",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-einstein-protocol-040",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-global-workspace-telepathy-041",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-guardian-scan-008",
+      "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sentinel-pub-013",
+      "to": "mission:sentinel",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sub-swarm-036",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-session-020",
+      "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-vector10-reward-034",
+      "to": "mission:ci-watcher",
       "relation": "supports"
     },
     {
@@ -561,6 +1025,61 @@
       "relation": "depends_on"
     },
     {
+      "from": "mission:ci-watcher",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:pipeline-guardian",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:knowledge-curator",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:gastown",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:gateway-router",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:hermes",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:ledger-keeper",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:monitor",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:sentinel",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:token-forge",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
+      "from": "mission:web-doctor",
+      "to": "bootstrap:verify:typescript",
+      "relation": "depends_on"
+    },
+    {
       "from": "CF-1785878408521",
       "to": "DEC-0001",
       "relation": "confirmed_by"
@@ -569,6 +1088,448 @@
       "from": "DEC-0001",
       "to": "skill:kudbee",
       "relation": "enabled"
+    },
+    {
+      "from": "CF-1785880083018",
+      "to": "DEC-0004",
+      "relation": "confirmed_by"
+    },
+    {
+      "from": "DEC-0004",
+      "to": "skill:kudbee",
+      "relation": "enabled"
+    }
+  ],
+  "evidence": [
+    {
+      "edge": "tk-adversarial-sim-015->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-adversarial-sim-015->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-agent-collab-009->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-agent-collab-009->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning,swarm"
+    },
+    {
+      "edge": "tk-agent-diagnostic-022->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-agent-diagnostic-022->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning,swarm"
+    },
+    {
+      "edge": "tk-anomaly-feed-014->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-anomaly-feed-014->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-attention-router-033->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security,git,learning"
+    },
+    {
+      "edge": "tk-attention-router-033->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-attention-router-033->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security,learning,swarm"
+    },
+    {
+      "edge": "tk-batch-protocol-039->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-batch-protocol-039->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-auth-002->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-black-screen-auth-002->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-auth-002->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-auth-002->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-black-screen-loading-003->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-black-screen-loading-003->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-loading-003->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-loading-003->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-black-screen-title-001->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-black-screen-title-001->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-crossorigin-root-030->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-crossorigin-root-030->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-crossorigin-root-030->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-crossorigin-root-030->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-curation-007->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-curation-007->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-deployment-v254-006->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-deployment-v254-006->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-deployment-v254-006->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend,git"
+    },
+    {
+      "edge": "tk-deployment-v260-017->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-deployment-v260-017->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-deq-infinity-038->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-deq-infinity-038->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-e2e-ci-019->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-e2e-ci-019->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-einstein-protocol-040->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-einstein-protocol-040->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-enterprise-math-035->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-enterprise-math-035->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-global-workspace-telepathy-041->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-global-workspace-telepathy-041->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning,swarm"
+    },
+    {
+      "edge": "tk-innovation-032->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-innovation-032->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-pr213-merged-027->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security,git,learning"
+    },
+    {
+      "edge": "tk-pr213-merged-027->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-pr213-merged-027->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security,learning"
+    },
+    {
+      "edge": "tk-pr214-merged-028->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-pr214-merged-028->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-sor-router-016->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git,learning"
+    },
+    {
+      "edge": "tk-sor-router-016->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-sor-router-016->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-splash-mobile-018->DEC-0002",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-splash-mobile-018->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:frontend"
+    },
+    {
+      "edge": "tk-sse-ticket-010->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-sse-ticket-010->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:security"
+    },
+    {
+      "edge": "tk-struggle-energy-031->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-struggle-energy-031->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-sub-swarm-036->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:swarm"
+    },
+    {
+      "edge": "tk-training-session-020->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git,learning"
+    },
+    {
+      "edge": "tk-training-session-020->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-training-session-020->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-training-final-029->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git,learning"
+    },
+    {
+      "edge": "tk-training-final-029->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-training-final-029->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning,swarm"
+    },
+    {
+      "edge": "tk-vector10-reward-034->DEC-0001",
+      "relation": "supports",
+      "evidence": "domain:git,learning"
+    },
+    {
+      "edge": "tk-vector10-reward-034->DEC-0003",
+      "relation": "supports",
+      "evidence": "domain:git"
+    },
+    {
+      "edge": "tk-vector10-reward-034->DEC-0004",
+      "relation": "supports",
+      "evidence": "domain:learning"
+    },
+    {
+      "edge": "tk-agent-collab-009->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
+    },
+    {
+      "edge": "tk-agent-collab-009->mission:pipeline-guardian",
+      "relation": "supports",
+      "evidence": "agent:pipeline-guardian"
+    },
+    {
+      "edge": "tk-agent-collab-009->mission:knowledge-curator",
+      "relation": "supports",
+      "evidence": "agent:knowledge-curator"
+    },
+    {
+      "edge": "tk-agent-diagnostic-022->mission:pipeline-guardian",
+      "relation": "supports",
+      "evidence": "agent:pipeline-guardian"
+    },
+    {
+      "edge": "tk-agent-diagnostic-022->mission:knowledge-curator",
+      "relation": "supports",
+      "evidence": "agent:knowledge-curator"
+    },
+    {
+      "edge": "tk-anomaly-ep-012->mission:sentinel",
+      "relation": "supports",
+      "evidence": "agent:sentinel"
+    },
+    {
+      "edge": "tk-anomaly-feed-014->mission:sentinel",
+      "relation": "supports",
+      "evidence": "agent:sentinel"
+    },
+    {
+      "edge": "tk-curation-007->mission:knowledge-curator",
+      "relation": "supports",
+      "evidence": "agent:knowledge-curator"
+    },
+    {
+      "edge": "tk-e2e-ci-019->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
+    },
+    {
+      "edge": "tk-einstein-protocol-040->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
+    },
+    {
+      "edge": "tk-global-workspace-telepathy-041->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
+    },
+    {
+      "edge": "tk-guardian-scan-008->mission:pipeline-guardian",
+      "relation": "supports",
+      "evidence": "agent:pipeline-guardian"
+    },
+    {
+      "edge": "tk-sentinel-pub-013->mission:sentinel",
+      "relation": "supports",
+      "evidence": "agent:sentinel"
+    },
+    {
+      "edge": "tk-sub-swarm-036->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
+    },
+    {
+      "edge": "tk-training-session-020->mission:pipeline-guardian",
+      "relation": "supports",
+      "evidence": "agent:pipeline-guardian"
+    },
+    {
+      "edge": "tk-vector10-reward-034->mission:ci-watcher",
+      "relation": "supports",
+      "evidence": "agent:ci-watcher"
     }
   ]
 }

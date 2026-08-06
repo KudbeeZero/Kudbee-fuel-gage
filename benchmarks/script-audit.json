@@ -1,0 +1,692 @@
+[
+  {
+    "file": "scripts/agent-bootstrap.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/agent-bridge.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/agent-expiry-guard.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/agent-monitor.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/agents.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/auto-commit.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/boot-verify.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/box-web-verify.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/browser-verifier.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/bus-debouncer.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/bus-to-cache.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/canary-probe.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/challenge-agent.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/ci-monitor.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/ci-self-hosted.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/cleanup-traces.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/cloud-agent.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/complexity-index.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/consolidation-audit.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/cost-guard.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/counterfactual-engine.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/dashboard-load-sim.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/decision-ledger.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/decision-outcome.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/decision-replay.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/deploy-check.ts",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/deploy-log.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/diagnose-groq.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/diagnose-redis.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/dthink-pipeline.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/dyno-manager.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/edisbox-deploy.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/edisbox-pipeline.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/engineering-health.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/extract-codebase-knowledge.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/failure-forecaster.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/gemini-token-trainer.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/generate-countermeasures.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/graph-audit.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/graph-builder.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/handoff.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/ingest-topology.ts",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/init-project-memory.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/inject-knowledge-tokens.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/install-git-hooks.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/intelligence-planner.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/kiloh-report.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/knowledge-audit.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/knowledge-graph.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/knowledge-lifecycle.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/learning-cycle.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/log-session.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/mint-root-token.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/mission-contract.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/mission-executor.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/mission-planner.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/mission-score.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/mission-supervisor.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/model-task-packet.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/monitor-db-budget.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/nightly-review.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/phase-governor.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/phone-tree.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/protocol-guard.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/redis-memory-bus.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/repository-guardian.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/self-heal.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/serial-bus.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/session-bootstrap.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/session-checkpoint.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/skill-auto-import.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/snippet-agent.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/snippet-manager.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/stab003-inventory.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/stab003-measure.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/struggle-log.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/supervisor-audit.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/system-status.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/terminal-cache.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/terminal-diagnostic.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/think-compact.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/think-forge-bridge.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/token-scorecard.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/traffic-sim.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-adversarial-challenge.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-agent-contracts.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-agents.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-browser-matrix.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-ci-smoke.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-config-vars.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-crucible-interceptor.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-crypto-runtime.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-drift.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-e2e.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-energy-mesh.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-flow.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-gates.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-governance-loop.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-integrations.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-invariants.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-learning-protocol.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-middleware-chaos.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-next-phase.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-operating-model.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-phone-tree.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-quick.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-receptor-gating.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-resilience.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-secret-hygiene.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-stack.mjs",
+    "wired": true,
+    "ageDays": 0,
+    "action": "KEEP"
+  },
+  {
+    "file": "scripts/verify-system-integrity.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-think-loop.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-typescript-version.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/verify-vector-search.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  },
+  {
+    "file": "scripts/workspace-sync.mjs",
+    "wired": false,
+    "ageDays": 0,
+    "action": "MERGE"
+  }
+]

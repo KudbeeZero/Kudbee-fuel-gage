@@ -5777,7 +5777,36 @@ app.get('/api/system/deploy-status', (_req, res) => {
 });
 
 // --- Interactive Terminal Command Dispatcher ---
-app.post('/api/terminal/execute', async (req, res) => {
+// SEC-002 / INV-014: privileged terminal execution requires authorization
+// whenever agent auth is provisioned (Mode B). When no agent registry is
+// configured, the single-user workflow passes through (Mode A).
+//
+//   Mode A (dev):   AGENT_REGISTRY_PATH unset → execute allowed
+//   Mode B (prot.): AGENT_REGISTRY_PATH set   → X-Agent-Pass required (401),
+//                   invalid pass → 403, valid pass → 200
+//
+// "Provisioned" is signaled by AGENT_REGISTRY_PATH (the registry that
+// authenticates X-Agent-Pass). This reuses the existing middleware and
+// authenticates via authenticateAgentPass — no new auth framework.
+const TERMINAL_AUTH_PROVISIONED = !!(process.env.AGENT_REGISTRY_PATH && process.env.AGENT_REGISTRY_PATH.trim());
+
+async function terminalAuthGate(req, res, next) {
+  if (!TERMINAL_AUTH_PROVISIONED) return next(); // Mode A — single-user
+  const { authenticateAgentPass } = await import('../lib/bearerAuthMiddleware.ts');
+  const header = req.header('X-Agent-Pass');
+  if (!header) {
+    res.setHeader('WWW-Authenticate', 'Bearer realm="kudbee"');
+    return res.status(401).json({ error: 'unauthorized', message: 'X-Agent-Pass required for terminal execution' });
+  }
+  const agentId = authenticateAgentPass(header);
+  if (!agentId) {
+    return res.status(403).json({ error: 'forbidden', message: 'Invalid X-Agent-Pass' });
+  }
+  (req).agentId = agentId;
+  return next();
+}
+
+app.post('/api/terminal/execute', terminalAuthGate, async (req, res) => {
   try {
     const { command } = req.body || {};
     if (!command || typeof command !== 'string') {

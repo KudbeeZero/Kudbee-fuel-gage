@@ -1,0 +1,15 @@
+{
+  "stores": 5,
+  "duplicateIds": [
+    {
+      "id": "STAB-002",
+      "occurrences": 2
+    }
+  ],
+  "duplicateRefs": [
+    {
+      "ref": "BMK-0011",
+      "occurrences": 2
+    }
+  ]
+}

@@ -1,14 +1,27 @@
 engineering_state:
-  version: "2.2"
-  rc: "RC0"
+  version: "2.3"
+  rc: "RC1"
+  phase: "stabilization-candidate"
+  freeze: "new-capabilities-frozen"
   alpha: false
   ci: green
   release: staging
   branch: main
   commit: 21d755d
-  current_mission: OPS-CI-002
+  current_mission: STAB-002
   next_mission: THINKBOX-016
   blockers: []
+  rules:
+    - "5:1 rule — every new subsystem must remove/simplify five existing things"
+    - "no new subsystems without improving reliability, evidence quality, productivity, or cost"
+    - "every mission follows Supervisor → Executor → Verifier → Review lifecycle"
+  complexity_index:
+    composite: 77
+    scripts: 112
+    commands: 46
+    graph_nodes: 82
+    target: "flat or decreasing"
+  consolidation_targets: 91
   risks:
     - duplicate frontend mock data
     - release promotion
@@ -17,3 +30,4 @@ engineering_state:
     - hardcoded passkey
     - 45% CI failure rate
     - direct pushes to main
+  mission_state: COMPLETE

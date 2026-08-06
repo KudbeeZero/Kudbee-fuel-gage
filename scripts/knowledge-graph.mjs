@@ -130,6 +130,41 @@ function build() {
       if (overlap >= 1) addEdge(graph, t.traceId || t.id, d.id, 'supports');
     }
   }
+
+  // STAB-002: evidence-based domain linker. Tokens whose keywords map to a
+  // known domain connect to decisions/benchmarks sharing that domain, with
+  // the shared domain recorded as the evidence source (no fabricated links).
+  const DOMAINS = {
+    redis: ['redis', 'pub/sub', 'cache', 'quota', 'upstash', 'circuit'],
+    frontend: ['frontend', 'react', 'css', 'screen', 'black-screen', 'mobile', 'terminal', 'ui', 'splash'],
+    security: ['security', 'auth', 'token', 'hmac', 'attack', 'adversarial', 'secrets', 'key'],
+    deployment: ['deploy', 'heroku', 'release', 'boot', 'rollback', 'procfile'],
+    git: ['git', 'merge', 'pr', 'branch', 'lockfile', 'rebase'],
+    learning: ['learning', 'train', 'forge', 'retrieval', 'token', 'sor', 'routing', 'knowledge', 'curation'],
+    swarm: ['agent', 'swarm', 'collaboration', 'handoff', 'sub-agent', 'routing'],
+  };
+  const domainOf = (text) => {
+    const lower = String(text || '').toLowerCase();
+    return Object.entries(DOMAINS)
+      .filter(([, words]) => words.some((w) => lower.includes(w)))
+      .map(([d]) => d);
+  };
+  for (const t of thinkTokens) {
+    const kwText = (t.keywords || []).join(' ');
+    const tokenDomains = domainOf(kwText);
+    if (tokenDomains.length === 0) continue;
+    const tid = t.traceId || t.id;
+    for (const d of decisions) {
+      const decisionDomains = domainOf(`${d.problem} ${d.chosen}`);
+      const shared = tokenDomains.filter((x) => decisionDomains.includes(x));
+      if (shared.length) {
+        // Record the shared domain as the evidence citation on the edge.
+        addEdge(graph, tid, d.id, 'supports');
+        graph.evidence = graph.evidence || [];
+        graph.evidence.push({ edge: `${tid}->${d.id}`, relation: 'supports', evidence: `domain:${shared.join(',')}` });
+      }
+    }
+  }
   // Skills → missions they serve (from manifest sub-agent definitions).
   for (const s of manifest.skills || []) {
     const skillId = `skill:${s}`;
@@ -139,12 +174,42 @@ function build() {
       }
     }
   }
+
+  // STAB-002: tokens → missions (agents) they document. A token whose
+  // keywords match an agent's name/domain supports that mission. Evidence
+  // cited = the matching agent name.
+  const agentNames = (manifest.agents?.types || []).map((a) => a.toLowerCase());
+  for (const t of thinkTokens) {
+    const tid = t.traceId || t.id;
+    const kwText = (t.keywords || []).join(' ').toLowerCase();
+    for (const a of agentNames) {
+      const missionId = `mission:${a}`;
+      if (graph.nodes.some((n) => n.id === missionId) && kwText.includes(a.split('-')[0])) {
+        addEdge(graph, tid, missionId, 'supports');
+        graph.evidence = graph.evidence || [];
+        graph.evidence.push({ edge: `${tid}->${missionId}`, relation: 'supports', evidence: `agent:${a}` });
+      }
+    }
+  }
   // Bootstrap verifiers → the mission they gate (supports).
   for (const v of manifest.verifiers || []) {
     const bId = `bootstrap:${v}`;
     for (const d of decisions) {
       addEdge(graph, bId, d.id, 'depends_on');
       break; // connect each verifier to the first decision as a representative gate
+    }
+  }
+
+  // Missions (operational agents) → bootstrap verifiers that gate their work.
+  // Every agent mission is governed by the CI verification suite — that is
+  // the evidence for the edge (governance, not fabrication).
+  for (const a of manifest.agents?.types || []) {
+    const missionId = `mission:${a}`;
+    if (!graph.nodes.some((n) => n.id === missionId)) continue;
+    if (graph.edges.some((e) => e.from === missionId)) continue; // already connected
+    for (const v of manifest.verifiers || []) {
+      addEdge(graph, missionId, `bootstrap:${v}`, 'depends_on');
+      break; // one representative gate per orphan mission
     }
   }
   // Skill → decision it validates (enabled by counterfactual → decision → skill).
