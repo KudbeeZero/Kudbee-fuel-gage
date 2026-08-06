@@ -215,6 +215,21 @@ async function main() {
   } catch (e) { redactOk = false; redactDetail = `redactor unreadable: ${e.message}`; }
   check('INV-016 output redaction layer', redactOk, redactOk ? redactDetail : redactDetail);
 
+  // 14. INV-017 Tamper-evident audit chain — records are hash-chained.
+  // Verify the module exists, fixtures exist, and the chain verifies intact.
+  let auditOk = true; let auditDetail = '';
+  try {
+    const auditModule = existsSync(join(REPO_ROOT, 'scripts', 'audit-chain.mjs'));
+    const auditTests = existsSync(join(REPO_ROOT, 'scripts', 'audit-chain.test.mjs'));
+    const { verifyChain } = await import('../scripts/audit-chain.mjs');
+    const chainState = verifyChain();
+    auditOk = auditModule && auditTests && chainState.valid;
+    auditDetail = auditOk
+      ? `audit chain active (${chainState.records} records, integrity INTACT)`
+      : `chain broken: module=${auditModule} tests=${auditTests} valid=${chainState.valid}`;
+  } catch (e) { auditOk = false; auditDetail = `audit module unreadable: ${e.message}`; }
+  check('INV-017 tamper-evident audit chain', auditOk, auditOk ? auditDetail : auditDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {

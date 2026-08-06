@@ -90,6 +90,29 @@
       "reviewDate": null,
       "outcome": null,
       "supersedes": null
+    },
+    {
+      "id": "DEC-0005",
+      "mission": "SEC-005",
+      "problem": "Make audit history cryptographically tamper-evident",
+      "alternatives": [
+        "Plain append-only log",
+        "Merkle tree",
+        "Centralized DB audit"
+      ],
+      "chosen": "SHA-256 hash-chained append-only audit log with cascade invalidation",
+      "evidence": "7/7 fixtures: tamper/removal/cascade all detected; live demo TAMPERED→INTACT",
+      "benchmarksConsulted": [
+        "AUDIT-FIXTURES"
+      ],
+      "risksAccepted": "Chain file is a single point; genisis reset allowed",
+      "rollbackPlan": "git revert 04a80d8",
+      "confidence": 90,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-06T03:34:00.806Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
     }
   ]
 }

@@ -28,7 +28,7 @@
     "verify:stack": "node scripts/verify-stack.mjs",
     "verify:typescript": "npm run typecheck",
     "verify:crypto": "node scripts/verify-crypto-runtime.mjs",
-    "verify:secrets": "node scripts/verify-secret-hygiene.mjs && bun test scripts/secret-hygiene.test.mjs && bun test scripts/keystone.test.mjs && bun test scripts/terminal-auth.test.mjs && bun test scripts/xpia.test.mjs && bun test scripts/output-redaction.test.mjs",
+    "verify:secrets": "node scripts/verify-secret-hygiene.mjs && bun test scripts/secret-hygiene.test.mjs && bun test scripts/keystone.test.mjs && bun test scripts/terminal-auth.test.mjs && bun test scripts/xpia.test.mjs && bun test scripts/output-redaction.test.mjs && bun test scripts/audit-chain.test.mjs && node scripts/audit-chain.mjs verify",
     "verify:config-vars": "node scripts/verify-config-vars.mjs --heroku production",
     "verify:agent-contracts": "echo 'Agent contracts verified (stub)' && exit 0",
     "verify:integrations": "echo 'Integrations verified (stub)' && exit 0",
