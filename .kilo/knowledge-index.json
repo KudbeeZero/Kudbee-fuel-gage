@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T21:23:51.903Z",
+  "objects": [
+    {
+      "id": "DEC-0001",
+      "type": "decision",
+      "owner": "INT-001",
+      "created": "2026-08-04",
+      "verified": null,
+      "review_after": "2026-11-02",
+      "expires": null,
+      "confidence": 0.86,
+      "status": "ACTIVE",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [
+        "BMK-0011"
+      ],
+      "evidence": "RUN-003: precision +8.3%, recall +25.0%"
+    },
+    {
+      "id": "DEC-0002",
+      "type": "decision",
+      "owner": "INT-011",
+      "created": "2026-08-04",
+      "verified": null,
+      "review_after": "2026-11-02",
+      "expires": null,
+      "confidence": 0.9,
+      "status": "ACTIVE",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [
+        "BMK-0011"
+      ],
+      "evidence": "OPT-1/OPT-2: 18 candidates, 0 winners"
+    },
+    {
+      "id": "DEC-0003",
+      "type": "decision",
+      "owner": "INT-018",
+      "created": "2026-08-04",
+      "verified": null,
+      "review_after": "2026-11-02",
+      "expires": null,
+      "confidence": 0.88,
+      "status": "ACTIVE",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Coverage report: performance 0%, security 10%"
+    },
+    {
+      "id": "BMK-DRAFT-0013",
+      "type": "benchmark",
+      "owner": "INT-018",
+      "created": "2026-08-04",
+      "verified": "2026-08-04",
+      "review_after": "2026-11-02",
+      "expires": null,
+      "confidence": 0.7,
+      "status": "VERIFIED",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [
+        "DEC-0002"
+      ],
+      "evidence": "Draft from local-optimum finding (OPT-1)"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "DEC-0001",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-04T21:23:51.904Z",
+      "by": "INT-001"
+    },
+    {
+      "id": "DEC-0001",
+      "from": "DRAFT",
+      "to": "ACTIVE",
+      "at": "2026-08-04T21:23:51.940Z",
+      "by": "knowledge-lifecycle"
+    },
+    {
+      "id": "DEC-0002",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-04T21:23:51.973Z",
+      "by": "INT-011"
+    },
+    {
+      "id": "DEC-0002",
+      "from": "DRAFT",
+      "to": "ACTIVE",
+      "at": "2026-08-04T21:23:52.014Z",
+      "by": "knowledge-lifecycle"
+    },
+    {
+      "id": "DEC-0003",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-04T21:23:52.046Z",
+      "by": "INT-018"
+    },
+    {
+      "id": "DEC-0003",
+      "from": "DRAFT",
+      "to": "ACTIVE",
+      "at": "2026-08-04T21:23:52.078Z",
+      "by": "knowledge-lifecycle"
+    },
+    {
+      "id": "BMK-DRAFT-0013",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-04T21:24:38.041Z",
+      "by": "INT-018"
+    },
+    {
+      "id": "BMK-DRAFT-0013",
+      "from": "DRAFT",
+      "to": "VERIFIED",
+      "at": "2026-08-04T21:24:38.083Z",
+      "by": "knowledge-lifecycle"
+    }
+  ]
+}

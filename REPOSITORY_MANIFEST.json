@@ -56,8 +56,11 @@
     "path": ".kilo/",
     "memory_files": 667,
     "snippets": 9,
-    "graph_nodes": 10,
-    "graph_edges": 13
+    "graph_nodes": 77,
+    "graph_edges": 34,
+    "graph_source": ".kilo/knowledge-graph.json (INT-041)",
+    "graph_orphans": 39,
+    "lifecycle_objects": 4
   },
   "terminal": {
     "canonical": "apps/web/src/components/thinkbox/LiveTerminal.tsx",
@@ -80,8 +83,9 @@
   },
   "engineering_graph": {
     "status": "operational",
-    "nodes": 10,
-    "edges": 13
+    "nodes": 77,
+    "edges": 34,
+    "source": ".kilo/knowledge-graph.json"
   },
   "skills": [
     "kudbee",

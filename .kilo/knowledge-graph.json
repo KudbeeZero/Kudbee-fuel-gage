@@ -1,0 +1,574 @@
+{
+  "version": 1,
+  "builtAt": "2026-08-04T21:28:41.718Z",
+  "nodes": [
+    {
+      "id": "DEC-0001",
+      "type": "decision",
+      "mission": "INT-001",
+      "confidence": 86
+    },
+    {
+      "id": "DEC-0002",
+      "type": "decision",
+      "mission": "INT-011",
+      "confidence": 90
+    },
+    {
+      "id": "DEC-0003",
+      "type": "decision",
+      "mission": "INT-018",
+      "confidence": 88
+    },
+    {
+      "id": "REV-0001",
+      "type": "review",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "REV-0002",
+      "type": "review",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "REV-0003",
+      "type": "review",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "CF-1785878408521",
+      "type": "counterfactual",
+      "status": "CONFIRMED"
+    },
+    {
+      "id": "CF-1785878415311",
+      "type": "counterfactual",
+      "status": "INSUFFICIENT_DATA"
+    },
+    {
+      "id": "CF-1785878415348",
+      "type": "counterfactual",
+      "status": "INSUFFICIENT_DATA"
+    },
+    {
+      "id": "tk-adversarial-sim-015",
+      "type": "think_token",
+      "kd": 94,
+      "status": "CHALLENGED"
+    },
+    {
+      "id": "tk-agent-collab-009",
+      "type": "think_token",
+      "kd": 98,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-agent-diagnostic-022",
+      "type": "think_token",
+      "kd": 96,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-anomaly-ep-012",
+      "type": "think_token",
+      "kd": 88,
+      "status": "CHALLENGED"
+    },
+    {
+      "id": "tk-anomaly-feed-014",
+      "type": "think_token",
+      "kd": 91,
+      "status": "CHALLENGED"
+    },
+    {
+      "id": "tk-attention-router-033",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-audit-channel-011",
+      "type": "think_token",
+      "kd": 95,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-batch-protocol-039",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-black-screen-auth-002",
+      "type": "think_token",
+      "kd": 90,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-black-screen-loading-003",
+      "type": "think_token",
+      "kd": 85,
+      "status": "PRUNED"
+    },
+    {
+      "id": "tk-black-screen-title-001",
+      "type": "think_token",
+      "kd": 95,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-boot-verify-005",
+      "type": "think_token",
+      "kd": 98,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-crossorigin-root-030",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-curation-007",
+      "type": "think_token",
+      "kd": 92,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-deployment-v254-006",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-deployment-v260-017",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-deq-infinity-038",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-e2e-ci-019",
+      "type": "think_token",
+      "kd": 90,
+      "status": "CHALLENGED"
+    },
+    {
+      "id": "tk-einstein-protocol-040",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-enterprise-math-035",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-error-boundary-004",
+      "type": "think_token",
+      "kd": 98,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-global-workspace-telepathy-041",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-guardian-scan-008",
+      "type": "think_token",
+      "kd": 95,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-innovation-032",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-pr213-merged-027",
+      "type": "think_token",
+      "kd": 97,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-pr214-merged-028",
+      "type": "think_token",
+      "kd": 98,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-quantum-acceleration-037",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-sentinel-pub-013",
+      "type": "think_token",
+      "kd": 93,
+      "status": "CHALLENGED"
+    },
+    {
+      "id": "tk-sor-router-016",
+      "type": "think_token",
+      "kd": 96,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-splash-mobile-018",
+      "type": "think_token",
+      "kd": 97,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-sse-ticket-010",
+      "type": "think_token",
+      "kd": 99,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-struggle-energy-031",
+      "type": "think_token",
+      "kd": 99,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-sub-swarm-036",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-training-session-020",
+      "type": "think_token",
+      "kd": 96,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-training-final-029",
+      "type": "think_token",
+      "kd": 96,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-v269-diagnostic-021",
+      "type": "think_token",
+      "kd": 99,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "tk-vector10-reward-034",
+      "type": "think_token",
+      "kd": 100,
+      "status": "VERIFIED"
+    },
+    {
+      "id": "BMK-DRAFT-0013",
+      "type": "benchmark",
+      "status": "VERIFIED",
+      "owner": "INT-018"
+    },
+    {
+      "id": "skill:kudbee",
+      "type": "skill"
+    },
+    {
+      "id": "skill:ci-watcher",
+      "type": "skill"
+    },
+    {
+      "id": "skill:knowledge-curator",
+      "type": "skill"
+    },
+    {
+      "id": "skill:pipeline-guardian",
+      "type": "skill"
+    },
+    {
+      "id": "bootstrap:verify:typescript",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:crypto",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:secrets",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:agent-contracts",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:integrations",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:learning-protocol",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:stack",
+      "type": "bootstrap"
+    },
+    {
+      "id": "bootstrap:verify:ci-smoke",
+      "type": "bootstrap"
+    },
+    {
+      "id": "mission:ci-watcher",
+      "type": "mission"
+    },
+    {
+      "id": "mission:pipeline-guardian",
+      "type": "mission"
+    },
+    {
+      "id": "mission:knowledge-curator",
+      "type": "mission"
+    },
+    {
+      "id": "mission:gastown",
+      "type": "mission"
+    },
+    {
+      "id": "mission:gateway-router",
+      "type": "mission"
+    },
+    {
+      "id": "mission:hermes",
+      "type": "mission"
+    },
+    {
+      "id": "mission:ledger-keeper",
+      "type": "mission"
+    },
+    {
+      "id": "mission:monitor",
+      "type": "mission"
+    },
+    {
+      "id": "mission:sentinel",
+      "type": "mission"
+    },
+    {
+      "id": "mission:token-forge",
+      "type": "mission"
+    },
+    {
+      "id": "mission:web-doctor",
+      "type": "mission"
+    },
+    {
+      "id": "BMK-0011",
+      "type": "benchmark"
+    },
+    {
+      "id": "BMK-0001",
+      "type": "benchmark"
+    },
+    {
+      "id": "BMK-0002",
+      "type": "benchmark"
+    },
+    {
+      "id": "RUN-003",
+      "type": "benchmark"
+    },
+    {
+      "id": "OPT-1",
+      "type": "benchmark"
+    },
+    {
+      "id": "OPT-2",
+      "type": "benchmark"
+    },
+    {
+      "id": "COVERAGE-001",
+      "type": "benchmark"
+    }
+  ],
+  "edges": [
+    {
+      "from": "REV-0001",
+      "to": "DEC-0001",
+      "relation": "verified_by"
+    },
+    {
+      "from": "REV-0002",
+      "to": "DEC-0002",
+      "relation": "verified_by"
+    },
+    {
+      "from": "REV-0003",
+      "to": "DEC-0003",
+      "relation": "verified_by"
+    },
+    {
+      "from": "CF-1785878408521",
+      "to": "DEC-0001",
+      "relation": "derived_from"
+    },
+    {
+      "from": "CF-1785878415311",
+      "to": "DEC-0002",
+      "relation": "derived_from"
+    },
+    {
+      "from": "CF-1785878415348",
+      "to": "DEC-0003",
+      "relation": "derived_from"
+    },
+    {
+      "from": "DEC-0001",
+      "to": "BMK-0011",
+      "relation": "references"
+    },
+    {
+      "from": "DEC-0002",
+      "to": "BMK-0011",
+      "relation": "references"
+    },
+    {
+      "from": "DEC-0003",
+      "to": "BMK-0001",
+      "relation": "references"
+    },
+    {
+      "from": "DEC-0003",
+      "to": "BMK-0002",
+      "relation": "references"
+    },
+    {
+      "from": "BMK-DRAFT-0013",
+      "to": "DEC-0002",
+      "relation": "references"
+    },
+    {
+      "from": "REV-0001",
+      "to": "RUN-003",
+      "relation": "generated"
+    },
+    {
+      "from": "REV-0002",
+      "to": "OPT-1",
+      "relation": "generated"
+    },
+    {
+      "from": "REV-0002",
+      "to": "OPT-2",
+      "relation": "generated"
+    },
+    {
+      "from": "REV-0003",
+      "to": "COVERAGE-001",
+      "relation": "generated"
+    },
+    {
+      "from": "tk-agent-collab-009",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-black-screen-title-001",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-guardian-scan-008",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-sor-router-016",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-session-020",
+      "to": "DEC-0003",
+      "relation": "supports"
+    },
+    {
+      "from": "tk-training-final-029",
+      "to": "DEC-0001",
+      "relation": "supports"
+    },
+    {
+      "from": "skill:ci-watcher",
+      "to": "mission:ci-watcher",
+      "relation": "supports"
+    },
+    {
+      "from": "skill:knowledge-curator",
+      "to": "mission:knowledge-curator",
+      "relation": "supports"
+    },
+    {
+      "from": "skill:pipeline-guardian",
+      "to": "mission:pipeline-guardian",
+      "relation": "supports"
+    },
+    {
+      "from": "bootstrap:verify:typescript",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:crypto",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:secrets",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:agent-contracts",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:integrations",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:learning-protocol",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:stack",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "bootstrap:verify:ci-smoke",
+      "to": "DEC-0001",
+      "relation": "depends_on"
+    },
+    {
+      "from": "CF-1785878408521",
+      "to": "DEC-0001",
+      "relation": "confirmed_by"
+    },
+    {
+      "from": "DEC-0001",
+      "to": "skill:kudbee",
+      "relation": "enabled"
+    }
+  ]
+}

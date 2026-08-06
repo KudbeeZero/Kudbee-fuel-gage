@@ -1,5 +1,44 @@
 # MODEL CONTRACT
 
+## Knowledge Governance (INT-040)
+
+Every durable knowledge object (THINK Token, Benchmark, Decision, Skill,
+Bootstrap, Forge Optimization) must have a complete lifecycle.
+
+### Lifecycle States (only these)
+
+```
+DRAFT → VERIFIED → ACTIVE → STALE → SUPERSEDED → ARCHIVED
+```
+
+### Knowledge Rules
+
+Every knowledge object must answer:
+
+- **Who owns me?** — `owner` field, non-empty.
+- **Why do I exist?** — `evidence` or `references` field.
+- **What supports me?** — linked benchmarks/decisions in `references`.
+- **When was I last verified?** — `verified` date.
+- **When should I be reviewed again?** — `review_after` (auto-computed).
+- **What supersedes me?** — `superseded_by` / `supersedes` fields.
+
+### Governance Rules
+
+- No knowledge object is ever deleted — retirement is a state change.
+- No two objects may share an ID.
+- ACTIVE knowledge past its `review_after` date is a governance violation.
+- SUPERSEDED knowledge must not remain ACTIVE.
+- Every benchmark draft must have a lifecycle record (no orphans).
+- `npm run knowledge:audit` must return PASS before merge.
+
+### Lifecycle Engine
+
+```bash
+node scripts/knowledge-lifecycle.mjs register <type> <id> --owner <owner>
+node scripts/knowledge-lifecycle.mjs transition <id> <state>
+node scripts/knowledge-audit.mjs          # or npm run knowledge:audit
+```
+
 ## GPT-5.6 — Principal Engineer
 **Role:** Architecture, planning, prioritization, review  
 **Allowed:** Architecture decisions, planning, prioritization, review, audits  
