@@ -245,6 +245,26 @@ async function main() {
   } catch (e) { supplyOk = false; supplyDetail = `supply-chain unreadable: ${e.message}`; }
   check('INV-018 supply-chain guardian', supplyOk, supplyOk ? supplyDetail : supplyDetail);
 
+  // 16. INV-019 Required config vars — critical vars must be present on the
+  // deploy targets. This is the guard that prevents the prod-Redis-OFFLINE
+  // class of incident (a missing REDIS_URL must block, never degrade).
+  let configOk = true; let configDetail = '';
+  try {
+    const verifier = existsSync(join(REPO_ROOT, 'scripts', 'verify-config-vars.mjs'));
+    if (!process.env.HEROKU_API_KEY) {
+      configOk = verifier;
+      configDetail = `verifier present (${verifier}); HEROKU_API_KEY unset — live check skipped`;
+    } else {
+      const { execFileSync: runSync } = await import('node:child_process');
+      const out = runSync(process.execPath, ['scripts/verify-config-vars.mjs', '--heroku', 'production'], {
+        encoding: 'utf8', cwd: REPO_ROOT, timeout: 60000, stdio: 'pipe',
+      });
+      configOk = out.includes('[PASS] INV-019');
+      configDetail = configOk ? 'INV-019 required vars PASS on production' : 'INV-019 FAILED — missing critical config var on production';
+    }
+  } catch (e) { configOk = false; configDetail = `INV-019 check error: ${e.message}`; }
+  check('INV-019 required config vars', configOk, configOk ? configDetail : configDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {
