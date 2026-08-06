@@ -44,6 +44,7 @@ export default defineConfig(() => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           terminal: path.resolve(__dirname, 'terminal.html'),
+          tower: path.resolve(__dirname, 'tower.html'),
         },
         output: {
           manualChunks(id) {

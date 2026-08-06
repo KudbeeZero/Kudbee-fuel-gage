@@ -181,7 +181,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  const isTerminalPage = req.path === '/terminal.html' || req.path.startsWith('/terminal.html/');
+  const isTerminalPage = req.path === '/terminal.html' || req.path.startsWith('/terminal.html/') || req.path === '/tower.html' || req.path.startsWith('/tower.html/');
   res.setHeader(
     'Content-Security-Policy',
     isTerminalPage
