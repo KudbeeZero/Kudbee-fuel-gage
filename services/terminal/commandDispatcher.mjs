@@ -142,21 +142,25 @@ async function handleAsk(prompt) {
   }
 
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!geminiKey) return { type: 'terminal:error', message: 'Gemini API key not configured. Add GEMINI_API_KEY to env.' };
+  if (!geminiKey && !process.env.GROK_API && !process.env.DEEPSEEK_API) {
+    return { type: 'terminal:error', message: 'No LLM provider configured. Set GEMINI_API_KEY (or GROK_API/DEEPSEEK_API) in env.' };
+  }
 
   try {
-    const { createProvider } = await import('@kudbee/utils/llm/providers');
-    const client = createProvider({ kind: 'gemini', model: 'gemini-flash-latest', apiKey: geminiKey, temperature: 0.3, maxTokens: 512 });
-    
-    const t0 = Date.now();
-    const resp = await client.complete({
-      systemPrompt: 'You are the Kudbee Control Tower assistant. Be concise. Answer the user directly.',
-      userPrompt: prompt,
-      temperature: 0.3,
-      maxTokens: 512,
-    });
-    const latency = Date.now() - t0;
-    const tokens = (resp.usage?.promptTokens ?? 0) + (resp.usage?.completionTokens ?? 0);
+    const { askWithFailover } = await import('../lib/askFailover.ts');
+    const result = await askWithFailover(prompt);
+
+    if (!result.ok) {
+      return {
+        type: 'ask:error',
+        prompt,
+        message: 'All LLM providers failed',
+        errors: result.errors,
+      };
+    }
+
+    const { answer, model, provider, latencyMs, usage } = result;
+    const tokens = (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0);
     
     // Budget tracking is best-effort (non-blocking if DB is slow)
     let budget = null;
@@ -171,16 +175,17 @@ async function handleAsk(prompt) {
     // Echo: record this interaction so the prompt library can improve itself
     try {
       const { record } = await import('./echoLibrary.mjs');
-      record({ kind: 'ask', prompt, response: resp.text, tokens, latency, outcome: 'success' });
+      record({ kind: 'ask', prompt, response: answer, tokens, latency: latencyMs, outcome: 'success', provider });
     } catch {}
 
     return {
       type: 'ask:response',
       prompt,
-      answer: resp.text,
-      model: resp.model,
-      latencyMs: latency,
-      usage: resp.usage,
+      answer,
+      model,
+      provider,
+      latencyMs,
+      usage,
       costUsd: tokens > 0 ? (tokens / 1000000) * 0.50 : null,
       budget,
       timestamp: new Date().toISOString(),
@@ -201,49 +206,52 @@ async function handleCode(prompt) {
   }
 
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!geminiKey) return { type: 'terminal:error', message: 'Gemini API key not configured.' };
+  if (!geminiKey && !process.env.GROK_API && !process.env.DEEPSEEK_API) {
+    return { type: 'terminal:error', message: 'No LLM provider configured.' };
+  }
 
   try {
-    const { createProvider } = await import('@kudbee/utils/llm/providers');
-    const client = createProvider({
-      kind: 'gemini', model: 'gemini-flash-latest', apiKey: geminiKey,
-      temperature: 0.2, maxTokens: 2048,
-    });
-
-    const t0 = Date.now();
-    const resp = await client.complete({
+    const { askWithFailover } = await import('../lib/askFailover.ts');
+    // Reuse the failover chain with a code-focused system prompt.
+    const result = await askWithFailover(prompt, {
       systemPrompt:
         'You are the Kudbee engineering agent, trained to write production-grade code. ' +
         'Follow Kudbee conventions: single quotes, trailing commas, printWidth 100, LF line endings. ' +
         'For Node scripts use ESM (.mjs/.ts) with node: prefix for builtins. ' +
         'Return ONLY the code and a brief 1-2 sentence explanation. Never invent APIs — use standard libraries.',
-      userPrompt: prompt,
-      temperature: 0.2,
       maxTokens: 2048,
+      temperature: 0.2,
     });
-    const latency = Date.now() - t0;
-    const tokens = (resp.usage?.promptTokens ?? 0) + (resp.usage?.completionTokens ?? 0);
+
+    if (!result.ok) {
+      return { type: 'terminal:error', message: `All providers failed: ${(result.errors || []).join('; ')}`, timestamp: new Date().toISOString() };
+    }
+
+    const { answer, model, provider, latencyMs, usage } = result;
+    const latency = latencyMs;
+    const tokens = (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0);
 
     // Record the learning — every code generation feeds DTHINK so the
     // system learns what was produced and why.
     try {
       const { execFile } = await import('node:child_process');
       execFile('node', ['scripts/dthink-pipeline.mjs', 'feed', 'code:generated',
-        `${prompt.slice(0, 80)} — ${tokens} tokens, ${latency}ms`],
+        `${prompt.slice(0, 80)} — ${tokens} tokens, ${latency}ms (${provider})`],
         { cwd: process.cwd(), timeout: 15000 }, () => {});
     } catch {}
 
     return {
       type: 'code:response',
       prompt,
-      code: resp.text,
-      model: resp.model,
+      code: answer,
+      model,
+      provider,
       latencyMs: latency,
-      usage: resp.usage,
+      usage,
       timestamp: new Date().toISOString(),
     };
   } catch (e) {
-    return { type: 'terminal:error', message: `Gemini code call failed: ${e.message}`, timestamp: new Date().toISOString() };
+    return { type: 'terminal:error', message: `Code call failed: ${e.message}`, timestamp: new Date().toISOString() };
   }
 }
 

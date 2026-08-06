@@ -492,12 +492,96 @@ app.get('/api/ci/status', async (_req, res) => {
   res.json(_ciResults);
 });
 
-app.post('/api/ci/status', (req, res) => {
-  _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
-  console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
+ app.post('/api/ci/status', (req, res) => {
+   _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
+   console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
   res.json({ ok: true });
 });
 
+// --- PR status (read-only, GitHub-backed, cached) ---------------------------
+// Powers the vanilla dashboard's PR panel. Same pattern as /api/ci/status:
+// fetch GitHub open PRs, cache briefly, degrade to empty on unreachability.
+const _prsCache = { at: 0, data: null };
+const PRS_CACHE_MS = 30_000;
+
+app.get('/api/prs/status', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const now = Date.now();
+  if (_prsCache.data && now - _prsCache.at < PRS_CACHE_MS) {
+    return res.json(_prsCache.data);
+  }
+  try {
+    const gh = await fetch('https://api.github.com/repos/KudbeeZero/Kudbee-fuel-gage/pulls?state=open&per_page=10', {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'kudbee-control-tower' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (gh.status === 403) {
+      // Rate-limited — return cached or empty rather than erroring the UI.
+      return res.json(_prsCache.data || { prs: [], source: 'cached', rateLimited: true });
+    }
+    const body = await gh.json();
+    const prs = (Array.isArray(body) ? body : []).map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      branch: pr.head?.ref ?? null,
+      state: pr.state,
+      updatedAt: pr.updated_at ?? null,
+      url: pr.html_url ?? null,
+    }));
+    const data = { prs, count: prs.length, source: 'github', fetchedAt: new Date().toISOString() };
+    _prsCache = { at: now, data };
+    return res.json(data);
+  } catch {
+    return res.json(_prsCache.data || { prs: [], source: 'cached', error: 'github-unreachable' });
+  }
+});
+
+// --- Read-only evidence-store endpoints (Stream Lab dashboard + plugins) -----
+// Serverless-aligned: stateless reads of the same .kilo/ JSON stores the
+// terminal uses. No writes, no cache (no-store), fresh on every poll.
+function readJsonStore(relPath, fallback) {
+  try {
+    const p = path.join(__dirname, '..', '..', relPath);
+    if (!fs.existsSync(p)) return fallback;
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch { return fallback; }
+}
+
+app.get('/api/system/knowledge-graph', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const g = readJsonStore('.kilo/knowledge-graph.json', { nodes: [], edges: [] });
+  res.json({ nodes: g.nodes?.length ?? 0, edges: g.edges?.length ?? 0, source: 'knowledge-graph' });
+});
+
+app.get('/api/system/decision-ledger', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const d = readJsonStore('benchmarks/decisions/ledger.json', { decisions: [] });
+  res.json({ decisions: d.decisions ?? [], source: 'decision-ledger' });
+});
+
+app.get('/api/system/intelligence-index', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const idx = readJsonStore('.kilo/intelligence-index.json', { days: [] });
+  const last = idx.days?.[idx.days.length - 1] ?? null;
+  res.json({
+    overall: last?.overall ?? 0,
+    categories: last?.categories ?? { outcome: 0, knowledge: 0, operational: 0 },
+    recommendation: last?.recommendation ?? null,
+    source: 'intelligence-index',
+  });
+});
+
+app.get('/api/system/mission-queue', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const q = readJsonStore('.kilo/mission-queue.json', { missions: [] });
+  res.json({ missions: q.missions ?? [], source: 'mission-queue' });
+});
+
+app.get('/api/system/guardian-status', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const g = readJsonStore('.kilo/guardian-last.json', { checks: {} });
+  res.json({ checks: g.checks ?? {}, source: 'guardian' });
+});
 
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
