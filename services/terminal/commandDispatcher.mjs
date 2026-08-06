@@ -607,12 +607,200 @@ async function handleCrucible(mode = 'status') {
   }
 }
 
+// ── /alerts — Enterprise RAID notifications feed ──────────────────────────
+// Calls /api/system/notifications (aggregates guardian, council blockers,
+// CI failures, degraded deps, stale funnel) and renders severity-tiered.
+// /alerts ack <dedupe> marks an alert acknowledged — repeated acks feed the
+// self-learning noise reduction so the same alert becomes low-priority over time.
+async function handleAlerts(args) {
+  try {
+    const port = process.env.PORT || 5000;
+    const base = process.env.APP_URL || `http://127.0.0.1:${port}`;
+    const sub = (args?.[0] || '').toLowerCase();
+    if (sub === 'ack' && args?.[1]) {
+      const dedupe = args[1];
+      const r = await fetch(`${base}/api/system/notifications/ack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dedupe, actor: 'terminal' }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) return { type: 'terminal:error', message: data.message || `ack failed: ${r.status}` };
+      return { type: 'alerts:acked', dedupe, totalAcks: data.totalAcks, message: `✓ acknowledged ${dedupe} (${data.totalAcks}x lifetime)`, timestamp: new Date().toISOString() };
+    }
+    const sev = (args?.[0] || '').toUpperCase();
+    const url = (sev === 'CRITICAL' || sev === 'HIGH' || sev === 'INFO')
+      ? `${base}/api/system/notifications?severity=${sev}`
+      : `${base}/api/system/notifications`;
+    const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return { type: 'terminal:error', message: `alerts endpoint returned ${r.status}` };
+    const data = await r.json();
+    const sym = { CRITICAL: '◆', HIGH: '▲', INFO: '·' };
+    const lines = [
+      `Alerts · CRITICAL ${data.counts?.CRITICAL ?? 0} · HIGH ${data.counts?.HIGH ?? 0} · INFO ${data.counts?.INFO ?? 0} · active ${data.counts?.active ?? 0}${data.acksLast24h ? ` · ${data.acksLast24h} acked/24h` : ''}`,
+      '',
+      ...(data.items ?? []).slice(0, 20).map((n) => {
+        const flag = n.acked ? '✓' : sym[n.severity] || '·';
+        const noise = n.noise ? ' (noise)' : '';
+        return `  ${flag} ${String(n.severity).padEnd(8)} ${String(n.source).padEnd(8)} ${n.title.slice(0, 70)}${noise}`;
+      }),
+      '',
+      data.items?.length ? 'Use /alerts ack <dedupe> to acknowledge. dedupe keys are in /api/system/notifications JSON.' : '(no active alerts)',
+    ];
+    return { type: 'alerts:list', counts: data.counts, total: data.total, lines: lines.join('\n'), timestamp: new Date().toISOString() };
+  } catch (e) {
+    return { type: 'terminal:error', message: `alerts unavailable: ${e.message}` };
+  }
+}
+
+// ── /counsel — Agent Council deliberation on a mission ─────────────────────
+// Calls the /api/system/council endpoint (the 11-agent council that closes
+// the loop between PROPOSED missions and APPROVED). Each agent casts a
+// domain vote; consensus >= 7/11 endorse and no high-weight blocker
+// → mission is eligible to promote. Also: /counsel promote <id> to act,
+// /counsel history to see what the council has learned.
+async function handleCounsel(args) {
+  try {
+    const port = process.env.PORT || 5000;
+    const base = process.env.APP_URL || `http://127.0.0.1:${port}`;
+    const subcommand = args?.[0]?.toLowerCase();
+    const missionId = args?.[1];
+
+    // /counsel history — show the self-learning audit trail
+    if (subcommand === 'history' || subcommand === 'learn' || subcommand === 'audit') {
+      const r = await fetch(`${base}/api/system/council/history`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return { type: 'terminal:error', message: `Council history returned ${r.status}` };
+      const data = await r.json();
+      const accLines = (data.accuracy ?? [])
+        .filter((a) => a.total > 0)
+        .map((a) => `  ${a.id.padEnd(20)} ${a.correct}/${a.total}  (${Math.round((a.successRate ?? 0) * 100)}%)`)
+        .join('\n') || '  (no outcomes yet — council has not acted)';
+      const recent = (data.outcomes ?? []).slice(0, 5)
+        .map((o) => `  ${o.at.slice(0, 19)}Z  ${o.decision.padEnd(8)} ${o.mission}  by ${o.actor}`)
+        .join('\n') || '  (none)';
+      return {
+        type: 'council:history',
+        totalDeliberations: data.totalDeliberations,
+        totalOutcomes: data.totalOutcomes,
+        accuracyTable: accLines,
+        recentOutcomes: recent,
+        message: `Council has held ${data.totalDeliberations} deliberations and ${data.totalOutcomes} outcomes. Agent weights adapt from accuracy.`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // /counsel promote <mission-id> — act on a council decision
+    if (subcommand === 'promote' || subcommand === 'act' || subcommand === 'execute') {
+      if (!missionId) return { type: 'terminal:error', message: 'Usage: /counsel promote <mission-id>' };
+      const r = await fetch(`${base}/api/system/council/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ mission: missionId, actor: 'terminal' }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 404) return { type: 'terminal:error', message: `Mission not found: ${missionId}` };
+      if (r.status === 400) return { type: 'terminal:error', message: data.message ?? 'invalid mission id' };
+      if (r.status === 409) {
+        return {
+          type: 'council:blocked',
+          mission: missionId,
+          message: data.message,
+          council: data.council,
+          hint: 'Council does not endorse. Address blockers, then re-deliberate.',
+          timestamp: new Date().toISOString(),
+        };
+      }
+      if (!r.ok) return { type: 'terminal:error', message: `Promote failed: ${data.message ?? r.status}` };
+      return {
+        type: 'council:promoted',
+        success: true,
+        mission: missionId,
+        decision: data.decision,
+        endorse: data.council?.tally?.endorse,
+        endorsePct: data.council?.endorsePct,
+        message: `✓ ${missionId} promoted by council. ${data.note ?? ''}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // /counsel [mission-id] — read-only deliberation
+    const url = missionId
+      ? `${base}/api/system/council?mission=${encodeURIComponent(missionId)}`
+      : `${base}/api/system/council`;
+    const r = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.status === 404) {
+      return { type: 'terminal:error', message: `Mission not found: ${missionId}. Try /counsel to list all proposed.` };
+    }
+    if (!r.ok) {
+      return { type: 'terminal:error', message: `Council endpoint returned ${r.status}` };
+    }
+    const data = await r.json();
+    if (data.proposed) {
+      // List view
+      const rows = data.proposed.map((p) => {
+        const flag = p.eligible ? '✓' : ' ';
+        return `${flag} ${String(p.id).padEnd(18)} endorse=${p.endorse}/11 (${p.endorsePct}%)  pri=${p.priority?.toFixed(1) ?? '—'}  ${p.recommendation}`;
+      }).join('\n');
+      const learn = data.adaptiveLearning?.totalOutcomes ?? 0;
+      return {
+        type: 'council:summary',
+        eligible: data.eligible,
+        totalProposed: data.totalProposed,
+        rows,
+        message: `${data.eligible}/${data.totalProposed} missions eligible to promote. ${learn > 0 ? `Council has learned from ${learn} outcomes. ` : ''}Use /counsel <mission-id> to inspect, /counsel promote <id> to act.`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    // Per-mission view
+    const c = data.council;
+    const lines = [
+      `Council on ${data.mission.id} — ${data.mission.title ?? 'untitled'}`,
+      `State: ${data.mission.state} · Priority: ${data.mission.priority?.toFixed(1) ?? '—'}`,
+      `Tally: ${c.tally.endorse} endorse / ${c.tally.challenge} challenge / ${c.tally.abstain} abstain  (weight ${c.weight.endorse}/${c.weight.total})`,
+      `Consensus: ${c.consensus ? 'YES' : 'NO'} · ${c.endorsePct}% endorse · avg conf ${c.avgConfidence}`,
+      c.blockers.length ? `Blockers: ${c.blockers.join(', ')}` : null,
+      `→ ${c.recommendation}`,
+      c.eligible ? `→ Action: /counsel promote ${data.mission.id}` : null,
+      '',
+      'Votes:',
+      ...c.votes.map((v) => {
+        const adj = v.adaptive ? ' (adaptive)' : '';
+        return `  ${v.vote === 'ENDORSE' ? '✓' : v.vote === 'CHALLENGE' ? '✗' : '·'} ${v.id.padEnd(20)} ${v.vote.padEnd(9)} conf=${v.confidence} w=${v.weight}${adj}  ${v.reasoning}`;
+      }),
+    ].filter(Boolean);
+    return {
+      type: 'council:deliberation',
+      mission: data.mission.id,
+      consensus: c.consensus,
+      eligible: c.eligible,
+      recommendation: c.recommendation,
+      tally: c.tally,
+      endorsePct: c.endorsePct,
+      blockers: c.blockers,
+      lines: lines.join('\n'),
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) {
+    return { type: 'terminal:error', message: `Council unavailable: ${e.message}` };
+  }
+}
+
 // ─── Main Dispatcher ─────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
   'KUDBEE Terminal — command reference',
   '',
   '  /ask <question>     Ask Gemini (plain text also works)',
+  '  /counsel [id|promote <id>|history]   11-agent council deliberation, act, audit',
+  '  /alerts [CRITICAL|HIGH|INFO|ack <key>]  Enterprise RAID notifications feed',
   '  /swarm [status]     Agent fleet tree',
   '  /shield [monitor]   P·L·R·I shield metrics',
   '  /roadmap            Phases to production',
@@ -717,6 +905,12 @@ async function dispatchCommand(input) {
       return { type: 'terminal:error', message: '/ask requires a question. Usage: /ask <your question>' };
     }
     return handleAsk(prompt);
+  }
+  if (cmd === '/counsel' || cmd === '/council') {
+    return handleCounsel(parts.slice(1));
+  }
+  if (cmd === '/alerts' || cmd === '/notifications' || cmd === '/notif') {
+    return handleAlerts(parts.slice(1));
   }
   if (cmd === '/code') {
     const prompt = raw.replace(/^\/code\s+/i, '').trim();
