@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-04T21:16:15.174Z",
+  "reviews": [
+    {
+      "reviewId": "REV-0001",
+      "decision": "DEC-0001",
+      "status": "SUCCESS",
+      "reviewDate": "2026-08-04T21:16:15.175Z",
+      "expected": {
+        "precision_delta": 0.083,
+        "recall_delta": 0.25
+      },
+      "actual": {
+        "precision_delta": 0.083,
+        "recall_delta": 0.25
+      },
+      "confidenceBefore": 0.86,
+      "confidenceAfter": 0.88,
+      "benchmarkRuns": [
+        "RUN-003"
+      ],
+      "notes": "Hypothesis confirmed — evidence-based ranking beats baseline.",
+      "supersedes": null,
+      "calibrationDelta": 0.02
+    },
+    {
+      "reviewId": "REV-0002",
+      "decision": "DEC-0002",
+      "status": "SUCCESS",
+      "reviewDate": "2026-08-04T21:16:22.487Z",
+      "expected": {},
+      "actual": {},
+      "confidenceBefore": 0.9,
+      "confidenceAfter": 0.92,
+      "benchmarkRuns": [
+        "OPT-1",
+        "OPT-2"
+      ],
+      "notes": "Plateau rule confirmed the suite was the bottleneck.",
+      "supersedes": null,
+      "calibrationDelta": 0.02
+    },
+    {
+      "reviewId": "REV-0003",
+      "decision": "DEC-0003",
+      "status": "PARTIAL",
+      "reviewDate": "2026-08-04T21:16:22.535Z",
+      "expected": {},
+      "actual": {},
+      "confidenceBefore": 0.88,
+      "confidenceAfter": 0.89,
+      "benchmarkRuns": [
+        "COVERAGE-001"
+      ],
+      "notes": "Draft flow works; suite growth in progress.",
+      "supersedes": null,
+      "calibrationDelta": 0.01
+    }
+  ]
+}

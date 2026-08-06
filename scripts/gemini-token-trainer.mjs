@@ -14,7 +14,7 @@
  */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-const GEMINI_MODEL = 'gemini-2.0-flash'; // free tier model
+const GEMINI_MODEL = 'gemini-flash-latest'; // free-tier-capable model
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
 async function analyzeTokens(tokens) {
@@ -23,7 +23,7 @@ async function analyzeTokens(tokens) {
     return tokens;
   }
 
-  const batch = tokens.slice(0, 5).map(t => ({
+  const batch = tokens.slice(0, 3).map(t => ({
     id: t.traceId,
     kd: t.kd,
     status: t.status,
@@ -38,7 +38,8 @@ async function analyzeTokens(tokens) {
 
 Tokens: ${JSON.stringify(batch)}
 
-Respond in JSON format: {"promotions":[], "prunes":[], "alpha_adjustment": 0, "beta_adjustment": 0, "threshold_adjustment": 0, "reasoning": "..."}`;
+Respond with ONLY valid JSON, no markdown code fences, no prose, no trailing text. Keep reasoning under 30 words. The JSON must have exactly this shape and be complete:
+{"promotions":[],"prunes":[],"alpha_adjustment":0,"beta_adjustment":0,"threshold_adjustment":0,"reasoning":"..."}`;
 
   try {
     const res = await fetch(GEMINI_ENDPOINT, {
@@ -46,14 +47,23 @@ Respond in JSON format: {"promotions":[], "prunes":[], "alpha_adjustment": 0, "b
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.3 },
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.3 },
       }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('[Gemini] Analysis complete —', text.slice(0, 100));
-    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
+    console.log('[Gemini] Analysis complete —', text.slice(0, 120));
+    // Strip markdown fences if present, then extract the JSON object.
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    // Only accept a well-formed analysis with a reasoning field.
+    if (!parsed.reasoning) {
+      console.error('[Gemini] Analysis JSON missing reasoning — treating as failed parse');
+      return null;
+    }
+    return parsed;
   } catch (e) {
     console.error('[Gemini] API error:', e.message);
     return null;
