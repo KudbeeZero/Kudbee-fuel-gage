@@ -49,7 +49,7 @@ function scanServer() {
 function scanRouters() {
   const routes = [];
   const dir = join(REPO_ROOT, 'services', 'ingestion', 'routes');
-  const prefixes = { system: '/api/system', governance: '/api/governance', telemetry: '/api/telemetry', audit: '/api/audit', thinkbox: '/api/thinkbox', tools: '/api/tools' };
+  const prefixes = { system: '/api/system', governance: '/api/governance', telemetry: '/api/telemetry', audit: '/api/audit', thinkbox: '/api/thinkbox', tools: '/api/tools', ops: '/api/ops' };
   for (const [name, prefix] of Object.entries(prefixes)) {
     const f = join(dir, name + '.ts');
     if (!existsSync(f)) continue;
@@ -77,6 +77,8 @@ function classify(path, method) {
   else if (path.startsWith('/api/telemetry/ingest')) auth = 'public';
   // SEC-hardened mutation endpoints (requireAgentAuth gate).
   else if (['/api/telemetry/purge', '/api/agents/dispatch', '/api/audit/vault/anchor', '/api/audit/vault/verify', '/api/memory/remember', '/api/router/reset', '/api/think/archive', '/api/vector/sync'].includes(path)) auth = 'agent-auth';
+  // Ops router mutations (router state + model gateway).
+  else if (path.startsWith('/api/ops/') && method !== 'GET') auth = 'agent-auth';
   // Tools router is agent-auth gated (requireAgent on the router).
   else if (path.startsWith('/api/tools/')) auth = 'agent-auth';
 
@@ -89,11 +91,13 @@ function classify(path, method) {
   // Category
   let category = 'misc';
   if (path.startsWith('/api/system') || path === '/health' || path === '/api/health-check') category = 'system';
+  else if (path.startsWith('/api/ops')) category = 'ops';
   else if (path.startsWith('/api/telemetry') || path.startsWith('/api/think')) category = 'telemetry';
   else if (path.startsWith('/api/governance')) category = 'governance';
   else if (path.startsWith('/api/agents')) category = 'agents';
   else if (path.startsWith('/api/memory')) category = 'memory';
   else if (path.startsWith('/api/terminal')) category = 'terminal';
+  else if (path.startsWith('/api/tools')) category = 'tools';
 
   return { auth, rateLimit, category };
 }

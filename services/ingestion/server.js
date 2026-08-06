@@ -53,6 +53,7 @@ import { createAuditRouter } from './routes/audit.ts';
 import { createGovernanceRouter } from './routes/governance.ts';
 import { createTelemetryRouter } from './routes/telemetry.ts';
 import { createSystemRouter } from './routes/system.ts';
+import { createOpsRouter } from './routes/ops.ts';
 import { createToolsRouter } from './routes/tools.ts';
 import { createThinkboxRouter } from './routes/thinkbox.ts';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
@@ -415,6 +416,13 @@ const systemRouter = createSystemRouter({
   getMiddlewareStats: () => getAllGuardStats(),
 });
 app.use('/api/system', systemRouter);
+// Ops router: consolidated operational surface (ci, prs, news, router state,
+// model gateway). Mutations agent-auth gated via requireAgentAuth.
+// redis resolved lazily (declared below) — getter avoids TDZ at mount time.
+app.use('/api/ops', createOpsRouter({
+  get redis() { return redis; },
+  requireAgentAuth,
+}));
 // Workspace filesystem and shell tools are agent-only operations. Keep the
 // router behind the required auth gate so the frontend cannot expose them to
 // anonymous browser traffic.

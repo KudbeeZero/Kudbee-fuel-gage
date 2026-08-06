@@ -1,32 +1,34 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-06T07:11:23.311Z",
-  "total": 146,
+  "generatedAt": "2026-08-06T07:21:34.639Z",
+  "total": 153,
   "summary": {
     "byMethod": {
-      "GET": 83,
-      "POST": 59,
+      "GET": 87,
+      "POST": 62,
       "DELETE": 1,
       "PUT": 1,
       "PATCH": 2
     },
     "byCategory": {
-      "misc": 48,
+      "misc": 44,
       "agents": 7,
       "governance": 30,
       "system": 29,
       "memory": 4,
+      "ops": 7,
       "telemetry": 27,
-      "terminal": 1
+      "terminal": 1,
+      "tools": 4
     },
     "byAuth": {
-      "public": 108,
-      "agent-auth": 37,
+      "public": 112,
+      "agent-auth": 40,
       "gated-when-provisioned": 1
     },
     "byRateLimit": {
-      "global": 64,
-      "api": 77,
+      "global": 67,
+      "api": 81,
       "exempt": 3,
       "ingest": 2
     }
@@ -559,6 +561,62 @@
       "auth": "public",
       "rateLimit": "api",
       "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ops/chat/completions",
+      "handler": "ops.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "ops"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ops/ci/status",
+      "handler": "ops.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "ops"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ops/news/headlines",
+      "handler": "ops.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "ops"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ops/prs/status",
+      "handler": "ops.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "ops"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ops/router/reset",
+      "handler": "ops.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "ops"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ops/router/select",
+      "handler": "ops.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "ops"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ops/router/status",
+      "handler": "ops.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "ops"
     },
     {
       "method": "GET",
@@ -1118,7 +1176,7 @@
       "handler": "tools.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
-      "category": "misc"
+      "category": "tools"
     },
     {
       "method": "POST",
@@ -1126,7 +1184,7 @@
       "handler": "tools.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
-      "category": "misc"
+      "category": "tools"
     },
     {
       "method": "POST",
@@ -1134,7 +1192,7 @@
       "handler": "tools.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
-      "category": "misc"
+      "category": "tools"
     },
     {
       "method": "POST",
@@ -1142,7 +1200,7 @@
       "handler": "tools.ts",
       "auth": "agent-auth",
       "rateLimit": "global",
-      "category": "misc"
+      "category": "tools"
     },
     {
       "method": "POST",
