@@ -54,6 +54,8 @@
     "stab003:inventory": "node scripts/stab003-inventory.mjs",
     "intelligence:decide": "node scripts/decision-ledger.mjs",
     "intelligence:decisions": "node scripts/decision-ledger.mjs list",
+    "setup:check": "node scripts/local-setup-check.mjs",
+    "dev:server": "npx tsx services/ingestion/server.js",
     "verify:quick": "node scripts/verify-quick.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",

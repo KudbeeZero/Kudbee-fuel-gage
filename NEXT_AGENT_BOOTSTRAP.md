@@ -41,10 +41,22 @@ OPS-CI-002 — Lifecycle-Aware CI Triggers (pending approval)
 - Stop
 
 ## Authoritative Sources
-- `ENGINEERING_OS_BASELINE_v2.2.md` — canonical baseline
 - `engineering_state.yaml` — single source of truth
 - `REPOSITORY_MANIFEST.json` — repository map
-- `MODEL_CONTRACT.md` — model responsibilities
+- `MODEL_CONTRACT.md` — model responsibilities + security ownership table
+- `AGENTS.md` — engineering rules + invariants (INV-013 keystone, INV-014 terminal auth)
+
+## Local Development (laptop setup)
+```bash
+npm ci --legacy-peer-deps          # install all workspaces (root only)
+cp config/.env.example .env        # then fill GEMINI_API_KEY + DATABASE_URL
+node scripts/local-setup-check.mjs # verify the environment is testable
+npm run dev:server                 # boot server on :3000
+# Terminal:  http://localhost:3000/terminal.html
+# Web app:   cd apps/web && npm run dev
+```
+The server degrades gracefully without keys — the terminal and dashboard
+still render; only AI (`/ask`) and persistence need the real values.
 
 ## First Thing to Verify
 Git state: `git branch --show-current`, `git status --short`, `git log --oneline -3`
