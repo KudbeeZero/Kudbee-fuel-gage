@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-06T03:32:53.467Z",
+  "records": [
+    {
+      "timestamp": "2026-08-06T03:32:53.467Z",
+      "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "actor": "SEC-005",
+      "mission": "cloud-agent",
+      "action": "clean chain after tamper test",
+      "currentHash": "c5668fcb77e61355357768a7d6d1d6605db881947582d21156d8631e43ef77fc"
+    }
+  ]
+}
