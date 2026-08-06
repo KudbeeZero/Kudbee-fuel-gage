@@ -31,6 +31,9 @@ projects:
                 value: "50"
               - key: CRUCIBLE_ENABLED
                 value: "false"
+              # Render Postgres hot cache (1GB free tier — internal URL preferred)
+              - key: RENDER_PG_URL
+                sync: false
               # Secrets — prompted in Render Dashboard on first Blueprint sync
               - key: DATABASE_URL
                 sync: false
