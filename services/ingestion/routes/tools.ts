@@ -15,9 +15,41 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || '/teamspace/studios/this_studio';
+// SEC hardening (route-map audit 2026-08-06):
+//   - WORKSPACE_ROOT resolves to the repo root (Heroku cwd), not a studio path.
+//   - shell/exec requires AGENT_PASS (agent-auth) and ONLY runs allowlisted
+//     commands — arbitrary shell execution is never public.
+//   - fs/read + fs/write are agent-auth gated; traversal sandbox retained.
+const execFileP = promisify(execFile);
+
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || process.cwd();
+
+// Allowlisted commands for shell/exec. Anything else → 403.
+// Only read-only inspection commands are permitted; writes go through /fs/write.
+const SHELL_ALLOWLIST: Array<{ cmd: string; args?: string[]; note: string }> = [
+  { cmd: 'git', args: ['status', '--short'], note: 'git status' },
+  { cmd: 'git', args: ['log', '--oneline', '-10'], note: 'git log' },
+  { cmd: 'ls', args: ['-la'], note: 'directory listing' },
+  { cmd: 'pwd', note: 'print working directory' },
+  { cmd: 'node', args: ['--version'], note: 'node version' },
+];
+
+// Agent-auth gate: requires a valid X-Agent-Pass when auth is provisioned.
+async function requireAgent(req: any, res: any, next: () => void) {
+  if (!process.env.AGENT_REGISTRY_PATH) return next(); // Mode A — single-user
+  try {
+    const { authenticateAgentPass } = await import('../lib/bearerAuthMiddleware.ts');
+    const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+    if (!agentId) return res.status(403).json({ error: 'forbidden', message: 'agent-auth required for tool endpoints' });
+    (req as any).agentId = agentId;
+    return next();
+  } catch {
+    return res.status(403).json({ error: 'forbidden', message: 'agent-auth unavailable' });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 1. PATH SANDBOX
@@ -35,6 +67,9 @@ function validateWorkspacePath(requestedPath: string): string {
 // ---------------------------------------------------------------------------
 export function createToolsRouter() {
   const router = express.Router();
+
+  // All tool endpoints are agent-auth gated (production grade).
+  router.use(requireAgent);
 
   // POST /fs/read — reads a file from workspace
   // CodeQL [js/missing-rate-limiting] suppressed: tool endpoint is for internal workspace operations.
@@ -116,18 +151,36 @@ export function createToolsRouter() {
     }
   });
 
-  // POST /shell/exec — executes a shell command
-  // CodeQL [js/missing-rate-limiting] suppressed: tool endpoint is for internal workspace operations.
+  // POST /shell/exec — allowlisted read-only commands only (agent-auth).
+  // Arbitrary shell execution is NOT exposed. execFile avoids shell
+  // interpolation (no command injection via args).
   router.post('/shell/exec', async (req, res) => {
     try {
       const command = req.body?.command;
-      const cwdRaw = req.body?.cwd;
-
       if (!command || typeof command !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid "command" field.' });
       }
 
+      // Normalize: strip leading slash/dirs, split into command + args.
+      const parts = command.trim().split(/\s+/);
+      const bin = parts[0] || '';
+      const args = parts.slice(1);
+
+      const allowed = SHELL_ALLOWLIST.find((e) => e.cmd === bin);
+      if (!allowed) {
+        return res.status(403).json({
+          error: 'forbidden',
+          message: `Command "${bin}" is not allowlisted. Read-only inspection commands only.`,
+          allowed: SHELL_ALLOWLIST.map((e) => e.cmd),
+        });
+      }
+      // Extra args beyond the allowlisted ones are rejected.
+      if (allowed.args && args.join(' ') !== allowed.args.join(' ')) {
+        return res.status(403).json({ error: 'forbidden', message: `Only the allowlisted invocation is permitted: ${allowed.cmd} ${(allowed.args || []).join(' ')}` });
+      }
+
       let validatedCwd = WORKSPACE_ROOT;
+      const cwdRaw = req.body?.cwd;
       if (cwdRaw && typeof cwdRaw === 'string') {
         try {
           validatedCwd = validateWorkspacePath(cwdRaw);
@@ -136,19 +189,18 @@ export function createToolsRouter() {
         }
       }
 
-      const stdout = execSync(command, {
+      const { stdout } = await execFileP(allowed.cmd, allowed.args || [], {
         cwd: validatedCwd,
-        timeout: 30_000,
+        timeout: 15_000,
         encoding: 'utf-8',
       });
 
       return res.json({ stdout, stderr: '', exitCode: 0 });
     } catch (err: any) {
-      // execSync throws on non-zero exit or timeout
       return res.json({
         stdout: err.stdout ?? '',
         stderr: err.stderr ?? err.message,
-        exitCode: err.status ?? 1,
+        exitCode: err.code === 'ETIMEDOUT' ? 124 : (err.status ?? 1),
       });
     }
   });

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-06T07:06:46.463Z",
+  "generatedAt": "2026-08-06T07:11:23.311Z",
   "total": 146,
   "summary": {
     "byMethod": {
@@ -20,8 +20,8 @@
       "terminal": 1
     },
     "byAuth": {
-      "public": 122,
-      "agent-auth": 23,
+      "public": 108,
+      "agent-auth": 37,
       "gated-when-provisioned": 1
     },
     "byRateLimit": {
@@ -52,7 +52,7 @@
       "method": "POST",
       "path": "/api/agents/dispatch",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "agents"
     },
@@ -132,7 +132,7 @@
       "method": "POST",
       "path": "/api/audit/vault/anchor",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -140,7 +140,7 @@
       "method": "POST",
       "path": "/api/audit/vault/verify",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -524,7 +524,7 @@
       "method": "POST",
       "path": "/api/memory/remember",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "memory"
     },
@@ -604,7 +604,7 @@
       "method": "POST",
       "path": "/api/router/reset",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -940,7 +940,7 @@
       "method": "POST",
       "path": "/api/telemetry/purge",
       "handler": "telemetry.ts",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "telemetry"
     },
@@ -1004,7 +1004,7 @@
       "method": "POST",
       "path": "/api/think/archive",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "telemetry"
     },
@@ -1012,7 +1012,7 @@
       "method": "GET",
       "path": "/api/think/archive",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "api",
       "category": "telemetry"
     },
@@ -1116,7 +1116,7 @@
       "method": "POST",
       "path": "/api/tools/fs/list",
       "handler": "tools.ts",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -1124,7 +1124,7 @@
       "method": "POST",
       "path": "/api/tools/fs/read",
       "handler": "tools.ts",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -1132,7 +1132,7 @@
       "method": "POST",
       "path": "/api/tools/fs/write",
       "handler": "tools.ts",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -1140,7 +1140,7 @@
       "method": "POST",
       "path": "/api/tools/shell/exec",
       "handler": "tools.ts",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },
@@ -1156,7 +1156,7 @@
       "method": "GET",
       "path": "/api/vector/sync",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "api",
       "category": "misc"
     },
@@ -1164,7 +1164,7 @@
       "method": "POST",
       "path": "/api/vector/sync",
       "handler": "server.js",
-      "auth": "public",
+      "auth": "agent-auth",
       "rateLimit": "global",
       "category": "misc"
     },

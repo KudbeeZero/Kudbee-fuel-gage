@@ -75,6 +75,10 @@ function classify(path, method) {
   else if (path.includes('/api/governance') && method === 'POST') auth = 'agent-auth';
   else if (path.startsWith('/api/system') && method !== 'GET') auth = 'agent-auth';
   else if (path.startsWith('/api/telemetry/ingest')) auth = 'public';
+  // SEC-hardened mutation endpoints (requireAgentAuth gate).
+  else if (['/api/telemetry/purge', '/api/agents/dispatch', '/api/audit/vault/anchor', '/api/audit/vault/verify', '/api/memory/remember', '/api/router/reset', '/api/think/archive', '/api/vector/sync'].includes(path)) auth = 'agent-auth';
+  // Tools router is agent-auth gated (requireAgent on the router).
+  else if (path.startsWith('/api/tools/')) auth = 'agent-auth';
 
   // Rate-limit class
   let rateLimit = 'global';

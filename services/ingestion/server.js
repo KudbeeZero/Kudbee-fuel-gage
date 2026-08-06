@@ -2445,7 +2445,10 @@ app.post('/api/telemetry/inject-csv', async (req, res) => {
 });
 
 app.post('/api/telemetry/purge', async (req, res) => {
+  // SEC hardening (route-map audit): full-table DELETE must be agent-auth
+  // gated — never public. Mode A (no registry) remains open for single-user.
   try {
+    if (!(await requireAgentAuth(req, res))) return;
     await runQuery(`DELETE FROM telemetry_traces`);
     return res.json({
       status: 'success',
@@ -3358,6 +3361,7 @@ app.get('/api/groq/archives', async (req, res) => {
 });
 app.post('/api/agents/dispatch', async (req, res) => {
   try {
+    if (!(await requireAgentAuth(req, res))) return;
     const { task, agentId } = req.body || {};
     if (!task) return res.status(400).json({ error: 'Task required' });
     const id = agentId || `agent-${Date.now()}`;
@@ -5787,6 +5791,7 @@ function hashTraceRow(row) {
 
 app.post('/api/audit/vault/anchor', async (req, res) => {
   try {
+    if (!(await requireAgentAuth(req, res))) return;
     const ctx = req.tenantCtx || requireRole(req, res, 'ADMIN');
     if (!ctx) return;
 
@@ -5910,6 +5915,25 @@ app.get('/api/system/deploy-status', (_req, res) => {
 // authenticates X-Agent-Pass). This reuses the existing middleware and
 // authenticates via authenticateAgentPass — no new auth framework.
 const TERMINAL_AUTH_PROVISIONED = !!(process.env.AGENT_REGISTRY_PATH && process.env.AGENT_REGISTRY_PATH.trim());
+
+// Shared agent-auth gate for high-risk mutation endpoints. Returns true when
+// authorized (or Mode A single-user); writes a 403 and returns false otherwise.
+async function requireAgentAuth(req, res) {
+  if (!TERMINAL_AUTH_PROVISIONED) return true; // Mode A — single-user open
+  try {
+    const { authenticateAgentPass } = await import('../lib/bearerAuthMiddleware.ts');
+    const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
+    if (!agentId) {
+      res.status(403).json({ error: 'forbidden', message: 'agent-auth required' });
+      return false;
+    }
+    req.agentId = agentId;
+    return true;
+  } catch {
+    res.status(403).json({ error: 'forbidden', message: 'agent-auth unavailable' });
+    return false;
+  }
+}
 
 async function terminalAuthGate(req, res, next) {
   if (!TERMINAL_AUTH_PROVISIONED) return next(); // Mode A — single-user
