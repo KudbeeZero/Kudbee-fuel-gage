@@ -1,0 +1,1204 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-06T07:06:46.463Z",
+  "total": 146,
+  "summary": {
+    "byMethod": {
+      "GET": 83,
+      "POST": 59,
+      "DELETE": 1,
+      "PUT": 1,
+      "PATCH": 2
+    },
+    "byCategory": {
+      "misc": 48,
+      "agents": 7,
+      "governance": 30,
+      "system": 29,
+      "memory": 4,
+      "telemetry": 27,
+      "terminal": 1
+    },
+    "byAuth": {
+      "public": 122,
+      "agent-auth": 23,
+      "gated-when-provisioned": 1
+    },
+    "byRateLimit": {
+      "global": 64,
+      "api": 77,
+      "exempt": 3,
+      "ingest": 2
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/{*path}",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/crucible/run",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "agents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/dispatch",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "agents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/evaluate",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "agents"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/evaluate",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "agents"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/fleet",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "agents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/fleet",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "agents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/verify",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "agents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/alerts/configure",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/alerts/history",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit/export",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit/vault",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/audit/vault/anchor",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/audit/vault/verify",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/stream-ticket",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ci/status",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ci/status",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard/summary",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/events",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/approve",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/contract/active",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/contract/sign",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/contract/verify/:id",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/dispatch",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/failed",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/failed/discard",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/failed/retry",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/feed",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/feedback",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/feedback",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/health",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/hermes-logs",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/mint-think-token",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/pending",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/policies",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/policies",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/policies/evaluate",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/probation/docket",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/proposed",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/reject",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/resolve",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/tasks/enqueue",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/tenants",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/tune",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/tune",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/tune/apply",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/governance/union/active",
+      "handler": "governance.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/union/form",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/governance/union/negotiate",
+      "handler": "governance.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "governance"
+    },
+    {
+      "method": "POST",
+      "path": "/api/grok/evaluate-critical",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/groq/archives",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/health",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-check",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interceptor/revalidate/:id",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/interceptor/threat-heatmap",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/interceptor/triage",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/interceptor/triage/:id",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interceptor/verify",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/kilo/telemetry",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/memory/dictionary/lookup",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "memory"
+    },
+    {
+      "method": "GET",
+      "path": "/api/memory/recall",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "memory"
+    },
+    {
+      "method": "POST",
+      "path": "/api/memory/remember",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "memory"
+    },
+    {
+      "method": "GET",
+      "path": "/api/memory/think-tokens",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "memory"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics/community-value",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/metrics/cost-ledger",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/news/headlines",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/os-stream",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "exempt",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/proxy/pending",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/proxy/resolve",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/prs/status",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reasoning/ledger",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/router/reset",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/router/select",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/router/status",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session-history",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings/preferences",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/preferences",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/settings/tenant/:id",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/tenant/:id",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sse/stream",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "exempt",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/agent-status",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/alerts",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/alerts/:id/ack",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/alerts/:id/mitigate",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/audit-history",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/calls",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/compare-providers",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/decision-ledger",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/deploy-status",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/diagnose-breadcrumb",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/diagnostics",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/dthink",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/file",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/guardian-status",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/health-deep",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/intelligence-index",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/knowledge-graph",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/last-event",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/lifecycle",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/mission-queue",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/phone-tree",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/rate-limit-stats",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/route-latencies",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/synapse-status",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/test-connections",
+      "handler": "system.ts",
+      "auth": "agent-auth",
+      "rateLimit": "global",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/vector-status",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/voicemails",
+      "handler": "system.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "system"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/edge-ingest",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/ingest",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "ingest",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/ingest/batch",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "ingest",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/inject-csv",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/logs",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/poll",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/purge",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/search",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/stats",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/stream",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/telemetry/thoughts",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/telemetry/throughput",
+      "handler": "telemetry.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/terminal/execute",
+      "handler": "server.js",
+      "auth": "gated-when-provisioned",
+      "rateLimit": "global",
+      "category": "terminal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/think/anomalies",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/think/archive",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/think/archive",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/think/energy-mesh",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/think/metrics",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/think/synthesize",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/think/trajectories",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/think/trajectories/:hash/status",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/dashboard",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/thinkbox/detect",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/health",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/intelligence/:workspaceId",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/mission/current",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/pr/active",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/thinkbox/workspaces",
+      "handler": "thinkbox.ts",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "telemetry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/fs/list",
+      "handler": "tools.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/fs/read",
+      "handler": "tools.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/fs/write",
+      "handler": "tools.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/shell/exec",
+      "handler": "tools.ts",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/vector/recall",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/vector/sync",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "api",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/api/vector/sync",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "exempt",
+      "category": "system"
+    },
+    {
+      "method": "GET",
+      "path": "/metrics",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "GET",
+      "path": "/middleware/health",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "handler": "server.js",
+      "auth": "public",
+      "rateLimit": "global",
+      "category": "misc"
+    }
+  ]
+}
