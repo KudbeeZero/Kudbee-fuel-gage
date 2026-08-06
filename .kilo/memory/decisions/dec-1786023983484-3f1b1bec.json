@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983484-3f1b1bec",
+  "agentId": "gateway-router",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: gateway-router\ncategory: orchestration\ndescription: Inter-agent call dispatcher with priority and dead-letter handling\ntriggers: route, phone-tree, voicemail, dead-letter, priority\nschedule: on-demand\nactions: recall, route, update, decode\nuuid: route-001\nmemoryId: gateway-router\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[GatewayRouter] Inter-agent call dispatcher\"\n  echo \"  Role: Message routing, priority queuing, dead-letter handling\"\n  echo \"  Rate limit endpoint: /api/system/rate-limit-stats\"\n  echo \"  Phone tree: 6 agents, full mesh, 2-hop max\"\n  echo \"  Status: active — 7 routes registered\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.484Z",
+  "decoded": false
+}

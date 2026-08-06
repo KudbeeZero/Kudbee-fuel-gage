@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983517-37bfe183",
+  "agentId": "sentinel",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: sentinel\ncategory: security\ndescription: Edge anomaly and egress-health observer\ntriggers: anomaly, edge, egress, security, alert\nschedule: on-deploy\nactions: recall, observe, escalate, update\nuuid: sec-001\nmemoryId: sentinel\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[Sentinel] Edge anomaly detection running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Channel: kudbee:stream:audit\"\n  echo \"  Publisher: services/sentinel/src/redisPublisher.ts\"\n  echo \"  Status: $(curl -s --max-time 3 https://kudbee-fuel-gage-330ade653a62.herokuapp.com/api/edge/anomalies/count 2>/dev/null | node -p 'JSON.parse(require(\"fs\").readFileSync(0,\"utf8\")).totalAlerts || \"0\"' 2>/dev/null || echo \"offline\") alerts\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.517Z",
+  "decoded": false
+}

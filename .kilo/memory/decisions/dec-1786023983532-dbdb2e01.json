@@ -1,0 +1,12 @@
+{
+  "id": "dec-1786023983532-dbdb2e01",
+  "agentId": "knowledge-curator",
+  "decision": "run:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "action": "execute",
+    "task": "Render deploy verified + swarm full-power sweep",
+    "triggeredBy": "manual"
+  },
+  "timestamp": "2026-08-06T13:46:23.532Z",
+  "decoded": false
+}

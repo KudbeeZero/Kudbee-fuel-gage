@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983502-6bf64bab",
+  "agentId": "hermes",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: hermes\ncategory: governance\ndescription: Governance queue auditor and approval evidence keeper\ntriggers: governance, approval, queue, DLQ, audit\nschedule: on-deploy\nactions: recall, audit, update, decode\nuuid: gov-001\nmemoryId: hermes\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[Hermes] Governance auditor running on Heroku dyno\"\n  echo \"  Type: Basic | Scaling: 1\"\n  echo \"  Brain: Slow Redis (REDIS_WORKER_URL)\"\n  echo \"  Task: Polling kudbee-governance-tasks via BRPOP\"\n  echo \"  DLQ: kudbee-governance-tasks-failed\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.502Z",
+  "decoded": false
+}

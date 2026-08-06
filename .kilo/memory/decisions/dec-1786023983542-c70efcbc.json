@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983542-c70efcbc",
+  "agentId": "token-forge",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: token-forge\ncategory: training\ndescription: Structured THINK token lifecycle manager\ntriggers: think, token, forge, promote, prune, efficacy\nschedule: on-demand\nactions: recall, mint, challenge, update\nuuid: mem-002\nmemoryId: token-forge\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[TokenForge] Think token lifecycle manager\"\n  echo \"  Tokens forged: 17 | VERIFIED: 16 | PRUNED: 1\"\n  echo \"  SOR routing: IQR Tukey fence evaluation\"\n  echo \"  Quality gate: KD >= 96 → PROMOTE, KD < 85 → PRUNE\"\n  echo \"  DTHINK pipeline: 9 entries, 2.3 KB\"\n  echo \"  Status: active — token ecosystem healthy\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.542Z",
+  "decoded": false
+}

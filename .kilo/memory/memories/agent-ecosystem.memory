@@ -2,80 +2,11 @@
   "id": "agent-ecosystem",
   "recalls": [
     {
-      "query": "audit pr #220: check deep-equilibrium.ts for critical errors, verify anderson mixing math, validate deq solver",
-      "timestamp": "2026-07-29T06:34:23.372Z",
-      "score": 8
-    },
-    {
-      "query": "audit pr #224: verify scheduler scripts, gemini trainer, terminal dispatcher",
-      "timestamp": "2026-07-29T07:57:34.218Z",
-      "score": 6
-    },
-    {
-      "query": "eca-1: workstream h: mission dashboard. display actionable work only: blocked/investigating/ready/waiting/completed/confidence-below-threshold. no informational noise.",
-      "timestamp": "2026-07-30T05:36:08.331Z",
-      "score": 5
-    },
-    {
-      "query": "wfo-1 engineering division: manage mission planning, patch generation, verification. establish worker profiles: engineering worker (patch generation), verification worker (tests), architecture worker (repo analysis). each worker has defined role. integrate with dyno manager for auto-provisioning.",
-      "timestamp": "2026-07-30T08:59:22.160Z",
-      "score": 23
-    },
-    {
-      "query": "secret safe box redis credential workflow",
-      "timestamp": "2026-07-31T03:50:13.911Z",
-      "score": 6
-    },
-    {
-      "query": "72 hour database connection budget neon monitor",
-      "timestamp": "2026-07-31T04:52:04.345Z",
-      "score": 8
-    },
-    {
-      "query": "ds-03 durable writes idempotency worker lease redis cache token budget",
-      "timestamp": "2026-07-31T07:25:00.328Z",
-      "score": 20
-    },
-    {
-      "query": "ds-03 cache reuse redis command amplification token provider cost idempotency ttl lease heartbeat free-tier safety",
-      "timestamp": "2026-07-31T07:25:30.390Z",
-      "score": 17
-    },
-    {
-      "query": "audit all 11 middleware layers for thinkbox-009",
-      "timestamp": "2026-08-02T06:54:05.762Z",
-      "score": 13
-    },
-    {
-      "query": "thinkbox continuous learning engineering",
-      "timestamp": "2026-08-02T06:54:31.133Z",
-      "score": 5
-    },
-    {
-      "query": "verify all middleware for ops-013",
-      "timestamp": "2026-08-02T07:18:23.480Z",
-      "score": 11
-    },
-    {
-      "query": "scan 11 middleware layers for degradation",
-      "timestamp": "2026-08-04T02:38:37.003Z",
-      "score": 10
-    },
-    {
-<<<<<<< ours
-      "query": "audit middleware layers for production readiness",
-      "timestamp": "2026-08-04T05:03:28.752Z",
-      "score": 12
+      "query": "render deploy verified + swarm full-power sweep",
+      "timestamp": "2026-08-06T13:46:23.599Z",
+      "score": 2
     }
   ],
-  "lastRecall": "2026-08-04T05:03:28.752Z",
-=======
-      "query": "audit middleware after hermes circuit breaker deploy",
-      "timestamp": "2026-08-04T05:15:38.628Z",
-      "score": 15
-    }
-  ],
-  "lastRecall": "2026-08-04T05:15:38.628Z",
->>>>>>> theirs
-  "recallCount": 13
+  "lastRecall": "2026-08-06T13:46:23.599Z",
+  "recallCount": 1
 }

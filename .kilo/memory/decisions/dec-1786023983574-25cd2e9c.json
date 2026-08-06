@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983574-25cd2e9c",
+  "agentId": "ledger-keeper",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: ledger-keeper\ncategory: finance\ndescription: Budget and provider-operation evidence tracker\ntriggers: budget, quota, spend, connection, cost\nschedule: hourly\nactions: recall, measure, update, report\nuuid: fin-001\nmemoryId: ledger-keeper\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[LedgerKeeper] Budget & spend tracker\"\n  echo \"  Redis keys: kudbee:budget:month, kudbee:budget:spend\"\n  echo \"  Quota limit: 500,000 requests/month\"\n  echo \"  Current usage: ~4,000 (0.8%)\"\n  echo \"  Alert threshold: 80% (400,000)\"\n  echo \"  Status: active — spend within budget\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.574Z",
+  "decoded": false
+}

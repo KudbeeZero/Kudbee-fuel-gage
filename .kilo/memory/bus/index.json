@@ -1,5 +1,5 @@
 {
-  "sequence": 62,
+  "sequence": 73,
   "events": [
     {
       "id": "evt-1785175818158-0e2057",
@@ -434,6 +434,83 @@
       "source": "cli",
       "sequence": 62,
       "timestamp": "2026-08-06T08:44:09.588Z"
+    },
+    {
+      "id": "evt-1786023971563-55d136",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 63,
+      "timestamp": "2026-08-06T13:46:11.564Z"
+    },
+    {
+      "id": "evt-1786023971631-faf6e9",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 64,
+      "timestamp": "2026-08-06T13:46:11.631Z"
+    },
+    {
+      "id": "evt-1786023971651-b79f3e",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 65,
+      "timestamp": "2026-08-06T13:46:11.653Z"
+    },
+    {
+      "id": "evt-1786023971739-a6e7a0",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 66,
+      "timestamp": "2026-08-06T13:46:11.740Z"
+    },
+    {
+      "id": "evt-1786023971772-ee358f",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 67,
+      "timestamp": "2026-08-06T13:46:11.773Z"
+    },
+    {
+      "id": "evt-1786023971776-e20b48",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 68,
+      "timestamp": "2026-08-06T13:46:11.776Z"
+    },
+    {
+      "id": "evt-1786023971780-39f0c1",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 69,
+      "timestamp": "2026-08-06T13:46:11.786Z"
+    },
+    {
+      "id": "evt-1786023971848-692a88",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 70,
+      "timestamp": "2026-08-06T13:46:11.848Z"
+    },
+    {
+      "id": "evt-1786023971865-413b1c",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 71,
+      "timestamp": "2026-08-06T13:46:11.866Z"
+    },
+    {
+      "id": "evt-1786023971943-8c4333",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 72,
+      "timestamp": "2026-08-06T13:46:11.944Z"
+    },
+    {
+      "id": "evt-1786023971949-309c8d",
+      "topic": "agent:registered",
+      "source": "cli",
+      "sequence": 73,
+      "timestamp": "2026-08-06T13:46:11.949Z"
     }
   ],
   "topicCounts": {
@@ -470,6 +547,6 @@
     "system:ci": 1,
     "workspace:created": 5,
     "workspace:detected": 5,
-    "agent:registered": 2
+    "agent:registered": 13
   }
 }

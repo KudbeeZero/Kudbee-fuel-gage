@@ -120,8 +120,13 @@
       "query": "scan 11 middleware layers for degradation",
       "timestamp": "2026-08-04T02:38:37.005Z",
       "score": 8
+    },
+    {
+      "query": "render deploy verified + swarm full-power sweep",
+      "timestamp": "2026-08-06T13:46:23.598Z",
+      "score": 5
     }
   ],
-  "lastRecall": "2026-08-04T02:38:37.005Z",
-  "recallCount": 24
+  "lastRecall": "2026-08-06T13:46:23.598Z",
+  "recallCount": 25
 }

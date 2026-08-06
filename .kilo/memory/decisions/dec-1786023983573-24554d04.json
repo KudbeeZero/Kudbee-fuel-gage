@@ -1,0 +1,10 @@
+{
+  "id": "dec-1786023983573-24554d04",
+  "agentId": "web-doctor",
+  "decision": "error:Render deploy verified + swarm full-power sweep",
+  "context": {
+    "error": "Command failed: ---\nid: web-doctor\ncategory: observability\ndescription: Web health and browser-capability diagnostics specialist\ntriggers: browser, screenshot, frontend, staging, responsive\nschedule: on-demand\nactions: recall, probe, report, update\nuuid: web-001\nmemoryId: web-doctor\ncreated: 2026-07-31\nstatus: active\nscript: |\n  echo \"[WebDoctor] Frontend health specialist\"\n  echo \"  Polls: /health, /api/system/deploy-status, /api/system/error-report\"\n  echo \"  Interval: 30s\"\n  echo \"  Detects: regressions, black screens, Content-Type mismatches\"\n  echo \"  Alerts: SSE fanout via kudbee:stream:audit\"\n  echo \"  Status: active — all endpoints responding\"\n\n/bin/sh: 0: Illegal option --\n"
+  },
+  "timestamp": "2026-08-06T13:46:23.573Z",
+  "decoded": false
+}
