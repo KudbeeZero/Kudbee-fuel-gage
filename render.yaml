@@ -1,0 +1,16 @@
+# Exported from Render on 2026-08-06T12:50:20Z
+version: "1"
+projects:
+- name: Think Box
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: Kudbee-fuel-gage
+      runtime: node
+      repo: https://github.com/KudbeeZero/Kudbee-fuel-gage
+      plan: starter
+      region: ohio
+      buildCommand: bun install
+      startCommand: bun run start
+      autoDeployTrigger: commit
