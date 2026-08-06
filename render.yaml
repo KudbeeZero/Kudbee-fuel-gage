@@ -1,5 +1,13 @@
 # Render Blueprint — Kudbee (synced from main)
 # Service name MUST stay "Kudbee-fuel-gage" to update the existing service in place.
+# Preview environments: requires Pro plan. Add [render preview] to a PR title to
+# spin up a disposable copy. Auto-expires after 3 days of inactivity (cost safety).
+# NOTE: sync:false secrets are NOT copied to previews — create an environment
+# group (Dashboard → New → Environment Group) with shared secrets and reference
+# it via fromGroup when upgrading to Pro.
+previews:
+  generation: manual
+  expireAfterDays: 3
 version: "1"
 projects:
   - name: Think Box
