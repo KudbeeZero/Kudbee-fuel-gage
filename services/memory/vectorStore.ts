@@ -489,9 +489,10 @@ export async function storeMemoryText(text: string, metadata: TopologyMetadata):
   const { screenXpia } = await import('../../scripts/xpia-screen.mjs');
   const screening = screenXpia(text);
   if (screening.verdict === 'BLOCK') {
-    const audit = { blocked: true, categories: screening.categories, at: new Date().toISOString() };
+    // The failure variant is strictly { ok:false; error } — audit is logged,
+    // not returned, to keep the StoreChunkResult union valid.
     console.warn(`[XPIA] BLOCKED knowledge write (${screening.categories.join(',')}): ${String(text).slice(0, 60)}`);
-    return { ok: false, id: '', error: 'knowledge:blocked', audit };
+    return { ok: false, error: 'knowledge:blocked' };
   }
   const screened = { ...metadata, xpia: screening.verdict, xpiaCategories: screening.categories, xpiaScreenedAt: screening.audit?.screenedAt };
   const { embedText } = await import('./embedText.ts');

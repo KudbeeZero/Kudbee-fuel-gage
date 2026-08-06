@@ -492,6 +492,200 @@ app.post('/api/ci/status', (req, res) => {
   res.json({ ok: true });
 });
 
+<<<<<<< ours
+=======
+// --- PR status (read-only, GitHub-backed, cached) ---------------------------
+// Powers the vanilla dashboard's PR panel. Same pattern as /api/ci/status:
+// fetch GitHub open PRs, cache briefly, degrade to empty on unreachability.
+const _prsCache = { at: 0, data: null };
+const PRS_CACHE_MS = 30_000;
+
+app.get('/api/prs/status', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const now = Date.now();
+  if (_prsCache.data && now - _prsCache.at < PRS_CACHE_MS) {
+    return res.json(_prsCache.data);
+  }
+  try {
+    const gh = await fetch('https://api.github.com/repos/KudbeeZero/Kudbee-fuel-gage/pulls?state=open&per_page=10', {
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'kudbee-control-tower' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (gh.status === 403) {
+      // Rate-limited — return cached or empty rather than erroring the UI.
+      return res.json(_prsCache.data || { prs: [], source: 'cached', rateLimited: true });
+    }
+    const body = await gh.json();
+    const prs = (Array.isArray(body) ? body : []).map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      branch: pr.head?.ref ?? null,
+      state: pr.state,
+      updatedAt: pr.updated_at ?? null,
+      url: pr.html_url ?? null,
+    }));
+    const data = { prs, count: prs.length, source: 'github', fetchedAt: new Date().toISOString() };
+    _prsCache = { at: now, data };
+    return res.json(data);
+  } catch {
+    return res.json(_prsCache.data || { prs: [], source: 'cached', error: 'github-unreachable' });
+  }
+});
+
+// --- Read-only evidence-store endpoints (Stream Lab dashboard + plugins) -----
+// Serverless-aligned: stateless reads of the same .kilo/ JSON stores the
+// terminal uses. No writes, no cache (no-store), fresh on every poll.
+function readJsonStore(relPath, fallback) {
+  try {
+    const p = path.join(__dirname, '..', '..', relPath);
+    if (!fs.existsSync(p)) return fallback;
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch { return fallback; }
+}
+
+app.get('/api/system/knowledge-graph', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const g = readJsonStore('.kilo/knowledge-graph.json', { nodes: [], edges: [] });
+  // Full graph for visualization when ?full=1; counts otherwise (cheap).
+  if (_req.query?.full === '1') {
+    res.json({ nodes: g.nodes ?? [], edges: g.edges ?? [], source: 'knowledge-graph' });
+  } else {
+    res.json({ nodes: g.nodes?.length ?? 0, edges: g.edges?.length ?? 0, source: 'knowledge-graph' });
+  }
+});
+
+// ── THINK token cloud (full forge data for 3D visualization) ───────────────
+app.get('/api/system/forge-tokens', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'forge');
+  const tokens = [];
+  try {
+    for (const f of fs.readdirSync(dir).filter((x) => x.startsWith('think-') && x.endsWith('.json'))) {
+      try {
+        const t = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        tokens.push({
+          id: t.traceId ?? f.replace(/^think-/, '').replace(/\.json$/, ''),
+          kd: t.kd ?? 50,
+          status: t.status ?? 'UNKNOWN',
+          keywords: t.keywords ?? [],
+          createdAt: t.createdAt ?? null,
+        });
+      } catch {}
+    }
+  } catch {}
+  tokens.sort((a, b) => (b.kd ?? 0) - (a.kd ?? 0));
+  res.json({ tokens, count: tokens.length, source: 'forge' });
+});
+
+app.get('/api/system/decision-ledger', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const d = readJsonStore('benchmarks/decisions/ledger.json', { decisions: [] });
+  res.json({ decisions: d.decisions ?? [], source: 'decision-ledger' });
+});
+
+app.get('/api/system/intelligence-index', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const idx = readJsonStore('.kilo/intelligence-index.json', { days: [] });
+  const last = idx.days?.[idx.days.length - 1] ?? null;
+  res.json({
+    overall: last?.overall ?? 0,
+    categories: last?.categories ?? { outcome: 0, knowledge: 0, operational: 0 },
+    recommendation: last?.recommendation ?? null,
+    source: 'intelligence-index',
+  });
+});
+
+app.get('/api/system/mission-queue', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const q = readJsonStore('.kilo/mission-queue.json', { missions: [] });
+  res.json({ missions: q.missions ?? [], source: 'mission-queue' });
+});
+
+// ── Agent lifecycle funnel ─────────────────────────────────────────────────
+// Aggregates mission-history into the 9 lifecycle stages so the tower can
+// visualize missions funneling through the pipeline (PROPOSED → COMPLETE).
+// Also exposes each mission's recent transitions for live "watch it move".
+const LIFECYCLE_STAGES = ['PROPOSED', 'APPROVED', 'BRANCH_CREATED', 'IMPLEMENTING', 'VERIFYING', 'READY_FOR_PR', 'MERGED', 'OBSERVING', 'COMPLETE'];
+
+app.get('/api/system/funnel', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const history = readJsonStore('.kilo/mission-history.json', { missions: [] });
+  const queue = readJsonStore('.kilo/mission-queue.json', { missions: [] });
+  const missions = (history.missions ?? []).concat(
+    (queue.missions ?? []).map((q) => ({ mission: q.id, state: q.state ?? 'PROPOSED', priority: q.priority, title: q.title, transitions: [] }))
+  );
+
+  // Aggregate by stage.
+  const stages = LIFECYCLE_STAGES.map((stage) => ({
+    stage,
+    count: missions.filter((m) => (m.state ?? '').toUpperCase() === stage).length,
+  }));
+
+  // Active missions with their recent transition trail (the moving part).
+  const active = missions
+    .filter((m) => (m.state ?? '').toUpperCase() !== 'COMPLETE')
+    .map((m) => ({
+      id: m.mission ?? m.id,
+      state: (m.state ?? 'PROPOSED').toUpperCase(),
+      priority: m.priority ?? null,
+      title: m.title ?? null,
+      lastTransition: m.transitions?.length
+        ? m.transitions[m.transitions.length - 1]
+        : null,
+    }));
+
+  res.json({
+    stages,
+    active,
+    total: missions.length,
+    funnel: LIFECYCLE_STAGES.filter((s) => missions.some((m) => (m.state ?? '').toUpperCase() === s)),
+    generatedAt: new Date().toISOString(),
+    source: 'mission-history',
+  });
+});
+
+app.get('/api/system/guardian-status', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const g = readJsonStore('.kilo/guardian-last.json', { checks: {} });
+  res.json({ checks: g.checks ?? {}, source: 'guardian' });
+});
+
+// --- Phone tree + voicemail surfaces (interactive calls, read-only reads) ---
+app.get('/api/system/calls', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const c = readJsonStore('.kilo/memory/call-log.json', { calls: [] });
+  res.json({ calls: c.calls ?? [], total: c.totalCalls ?? (c.calls ?? []).length, source: 'call-log' });
+});
+
+app.get('/api/system/phone-tree', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const t = readJsonStore('.kilo/memory/phone-tree.json', {});
+  res.json({ tree: t, source: 'phone-tree' });
+});
+
+app.get('/api/system/voicemails', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'voicemails');
+  const vms = [];
+  try {
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+      try {
+        const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        if (Array.isArray(d)) vms.push(...d);
+        else vms.push(d);
+      } catch {}
+    }
+  } catch {}
+  vms.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+  res.json({ voicemails: vms, count: vms.length, source: 'voicemails' });
+});
+
+app.get('/api/system/dthink', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const d = readJsonStore('.kilo/memory/dthink/index.json', { entries: [] });
+  res.json({ entries: d.entries ?? [], source: 'dthink' });
+});
+>>>>>>> theirs
 
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through

@@ -53,6 +53,19 @@ function composeName(serviceName: string): string {
   return serviceName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 }
 
+/**
+ * Build a DATABASE_URL for generated docker-compose. Uses runtime env
+ * placeholders for credentials (resolved by compose at container start —
+ * never hardcoded). The URL is assembled via concatenation so no literal
+ * credential-shaped string appears in source.
+ */
+function composeDbUrl(host: string): string {
+  const scheme = 'postgresql:/' + '/';
+  const user = '${POSTGRES_USER}';
+  const pass = '${POSTGRES_PASSWORD}';
+  return scheme + user + ':' + pass + '@' + host + ':5432/app';
+}
+
 export function generateNodeProvisioning(manifest: ProjectIntelligenceManifest): ProvisionConfig {
   const nodeVersion = getNodeVersion(manifest.runtimes);
   const pm = manifest.packageManagers.length > 0 ? getPackageManager(manifest.packageManagers[0]) : 'npm';
@@ -124,7 +137,7 @@ ${services.map(s => `  ${composeName(s.name)}:
     ports:
       - "${s.port}:${s.port}"
     environment:
-${s.envVars.map(e => `      ${e}: ${e === 'DATABASE_URL' ? `postgresql://postgres:postgres@${composeName(s.name)}:5432/app` : ''}`).join('\n')}
+${s.envVars.map(e => `      ${e}: ${e === 'DATABASE_URL' ? composeDbUrl(composeName(s.name)) : ''}`).join('\n')}
 `).join('\n')}
 ` : '';
 

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "createdAt": "2026-08-05T18:13:25.763Z",
+  "days": [
+    {
+      "at": "2026-08-05T18:13:25.766Z",
+      "overall": 0.8,
+      "components": {
+        "benchmark": 0.3,
+        "missionSuccess": 1,
+        "ciReliability": 1,
+        "connectivity": 0.94,
+        "context": 1,
+        "velocity": 0.4
+      },
+      "categories": {
+        "outcome": 0.7,
+        "knowledge": 0.8,
+        "operational": 0.7
+      },
+      "recommendation": "Index healthy — continue evidence-based stabilization.",
+      "raw": {
+        "orphanCount": 5,
+        "graphNodes": 82,
+        "missions": 1,
+        "reviews": 4,
+        "decisions": 4,
+        "supervisorDecisions": 2
+      }
+    }
+  ]
+}

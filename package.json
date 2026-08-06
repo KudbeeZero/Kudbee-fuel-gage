@@ -6,7 +6,8 @@
   "workspaces": [
     "apps/*",
     "services/*",
-    "packages/*"
+    "packages/*",
+    "!apps/mobile"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -28,12 +29,13 @@
     "verify:stack": "node scripts/verify-stack.mjs",
     "verify:typescript": "npm run typecheck",
     "verify:crypto": "node scripts/verify-crypto-runtime.mjs",
-    "verify:secrets": "node scripts/verify-secret-hygiene.mjs",
+    "verify:secrets": "node scripts/verify-secret-hygiene.mjs && bun test scripts/secret-hygiene.test.mjs && bun test scripts/keystone.test.mjs && bun test scripts/terminal-auth.test.mjs && bun test scripts/xpia.test.mjs && bun test scripts/output-redaction.test.mjs && bun test scripts/audit-chain.test.mjs && node scripts/audit-chain.mjs verify && bun test scripts/supply-chain.test.mjs && node scripts/supply-chain-guardian.mjs",
     "verify:config-vars": "node scripts/verify-config-vars.mjs --heroku production",
     "verify:agent-contracts": "echo 'Agent contracts verified (stub)' && exit 0",
     "verify:integrations": "echo 'Integrations verified (stub)' && exit 0",
     "verify:learning-protocol": "echo 'Learning protocol verified (stub)' && exit 0",
     "intelligence:review": "node scripts/decision-outcome.mjs",
+    "intelligence:index": "node scripts/intelligence-index.mjs",
     "intelligence:replay": "node scripts/decision-replay.mjs",
     "knowledge:audit": "node scripts/knowledge-audit.mjs",
     "knowledge:lifecycle": "node scripts/knowledge-lifecycle.mjs",
@@ -54,10 +56,9 @@
     "stab003:inventory": "node scripts/stab003-inventory.mjs",
     "intelligence:decide": "node scripts/decision-ledger.mjs",
     "intelligence:decisions": "node scripts/decision-ledger.mjs list",
-    "setup:check": "node scripts/local-setup-check.mjs",
-    "dev:server": "npx tsx services/ingestion/server.js",
-    "dev:fleet": "bash scripts/dev-fleet.sh",
     "verify:quick": "node scripts/verify-quick.mjs",
+    "route:map": "node scripts/route-map.mjs",
+    "route:audit": "node scripts/route-map.mjs --json && bun test scripts/route-map.test.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
     "deploy-check": "tsx scripts/deploy-check.ts",
     "ingest:topology": "tsx scripts/ingest-topology.ts",
