@@ -565,7 +565,35 @@ function readJsonStore(relPath, fallback) {
 app.get('/api/system/knowledge-graph', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const g = readJsonStore('.kilo/knowledge-graph.json', { nodes: [], edges: [] });
-  res.json({ nodes: g.nodes?.length ?? 0, edges: g.edges?.length ?? 0, source: 'knowledge-graph' });
+  // Full graph for visualization when ?full=1; counts otherwise (cheap).
+  if (_req.query?.full === '1') {
+    res.json({ nodes: g.nodes ?? [], edges: g.edges ?? [], source: 'knowledge-graph' });
+  } else {
+    res.json({ nodes: g.nodes?.length ?? 0, edges: g.edges?.length ?? 0, source: 'knowledge-graph' });
+  }
+});
+
+// ── THINK token cloud (full forge data for 3D visualization) ───────────────
+app.get('/api/system/forge-tokens', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'forge');
+  const tokens = [];
+  try {
+    for (const f of fs.readdirSync(dir).filter((x) => x.startsWith('think-') && x.endsWith('.json'))) {
+      try {
+        const t = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        tokens.push({
+          id: t.traceId ?? f.replace(/^think-/, '').replace(/\.json$/, ''),
+          kd: t.kd ?? 50,
+          status: t.status ?? 'UNKNOWN',
+          keywords: t.keywords ?? [],
+          createdAt: t.createdAt ?? null,
+        });
+      } catch {}
+    }
+  } catch {}
+  tokens.sort((a, b) => (b.kd ?? 0) - (a.kd ?? 0));
+  res.json({ tokens, count: tokens.length, source: 'forge' });
 });
 
 app.get('/api/system/decision-ledger', (_req, res) => {

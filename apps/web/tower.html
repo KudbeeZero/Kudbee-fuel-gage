@@ -112,6 +112,30 @@ body{background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(96,165,250,.07)
   <!-- PLUGIN GRID -->
   <div class="grid" id="grid"></div>
 
+  <!-- VISUAL LAYER: 3D THINK tokens + knowledge graph (real data, graceful fallback) -->
+  <div class="grid" style="margin-top:12px">
+    <div class="plugin" id="plugin-think3d">
+      <header>THINK Token Cloud · 3D<span class="pstat">loading</span></header>
+      <div class="body" style="padding:0;height:280px;position:relative">
+        <canvas id="think3d" style="width:100%;height:100%;display:block"></canvas>
+        <div id="think3d-inspect" style="position:absolute;bottom:8px;left:12px;right:12px;background:rgba(11,17,32,.85);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10px;display:none"></div>
+      </div>
+    </div>
+    <div class="plugin" id="plugin-graph2d">
+      <header>Knowledge Graph · 82 nodes / 135 edges<span class="pstat">loading</span></header>
+      <div class="body" style="padding:0;height:280px;position:relative">
+        <canvas id="graph2d" style="width:100%;height:100%;display:block"></canvas>
+        <div id="graph2d-inspect" style="position:absolute;bottom:8px;left:12px;right:12px;background:rgba(11,17,32,.85);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10px;display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITY INVARIANTS -->
+  <div class="plugin" style="margin-top:12px" id="plugin-security">
+    <header>Security Posture · Invariants<span class="pstat">loading</span></header>
+    <div class="body" id="security-body"><div class="row"><span class="k">loading…</span></div></div>
+  </div>
+
   <!-- TERMINAL -->
   <div class="term">
     <header>KUDBEE THINK Terminal · tab to complete · ctrl+k palette · ↑↓ history</header>
@@ -361,12 +385,210 @@ registerPlugin({
   note: () => 'LIVE',
 });
 
+// ── Visual layer: 3D THINK cloud + knowledge graph + security ───────────────
+
+// Security invariants (live from guardian-status, falls back to known list)
+const INV_LIST = [
+  ['INV-003', 'Secrets hygiene'], ['INV-013', 'Keystone'], ['INV-014', 'Terminal auth'],
+  ['INV-015', 'Injection firewall'], ['INV-016', 'Output redaction'], ['INV-017', 'Audit chain'],
+  ['INV-018', 'Supply chain'], ['INV-019', 'Config vars'],
+];
+async function loadSecurity() {
+  const body = $('security-body');
+  const stat = document.querySelector('#plugin-security .pstat');
+  try {
+    const d = await fetch('/api/system/guardian-status', { cache: 'no-store' }).then((r) => r.json());
+    const checks = d.checks ?? {};
+    const rows = INV_LIST.map(([code, name]) => {
+      const st = checks[code];
+      const ok = st === true || st === 'pass' || st === 'PASS';
+      const cls = ok ? 'g' : st === undefined ? '' : 'r';
+      return `<div class="row"><span class="k">${code} · ${name}</span><span class="v ${cls}">${ok ? 'PASS' : st === undefined ? '—' : 'FAIL'}</span></div>`;
+    }).join('');
+    body.innerHTML = rows || '<div class="row"><span class="k">no posture data</span></div>';
+    stat.textContent = 'LIVE'; stat.className = 'pstat ok';
+  } catch (e) {
+    body.innerHTML = `<div class="err">✗ ${e.message}</div>`;
+    stat.textContent = 'ERR'; stat.className = 'pstat err';
+  }
+}
+
+// 2D knowledge graph — vanilla canvas, force-directed, draggable.
+let graphNodes = [], graphEdges = [], graphDrag = null;
+async function loadGraph2D() {
+  const canvas = $('graph2d');
+  const stat = document.querySelector('#plugin-graph2d .pstat');
+  const ctx = canvas.getContext('2d');
+  try {
+    const d = await fetch('/api/system/knowledge-graph?full=1', { cache: 'no-store' }).then((r) => r.json());
+    graphNodes = (d.nodes ?? []).map((n, i) => ({ id: n.id, type: n.type, x: Math.random() * canvas.width, y: Math.random() * canvas.height, vx: 0, vy: 0 }));
+    graphEdges = d.edges ?? [];
+    stat.textContent = `${graphNodes.length} nodes`; stat.className = 'pstat ok';
+    drawGraph(ctx, canvas);
+  } catch (e) {
+    stat.textContent = 'ERR'; stat.className = 'pstat err';
+    ctx.fillStyle = '#f87171'; ctx.font = '11px monospace';
+    ctx.fillText('graph unavailable: ' + e.message, 10, 20);
+  }
+}
+function drawGraph(ctx, canvas) {
+  // Simple force simulation (repulsion + edge attraction).
+  for (let iter = 0; iter < 40; iter++) {
+    for (const a of graphNodes) {
+      a.vx = 0; a.vy = 0;
+      for (const b of graphNodes) {
+        if (a === b) continue;
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d2 = Math.max(1, dx * dx + dy * dy);
+        const f = 4 / d2;
+        a.vx += dx * f; a.vy += dy * f;
+      }
+      for (const e of graphEdges) {
+        const a2 = graphNodes.find((n) => n.id === e.from), b2 = graphNodes.find((n) => n.id === e.to);
+        if (!a2 || !b2) continue;
+        const dx = b2.x - a2.x, dy = b2.y - a2.y;
+        const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+        const f = (d - 40) * 0.01;
+        if (a === a2) { a.vx += dx * f; a.vy += dy * f; }
+      }
+    }
+    for (const n of graphNodes) { n.x += Math.max(-2, Math.min(2, n.vx)); n.y += Math.max(-2, Math.min(2, n.vy)); }
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const e of graphEdges) {
+    const a = graphNodes.find((n) => n.id === e.from), b = graphNodes.find((n) => n.id === e.to);
+    if (!a || !b) continue;
+    ctx.strokeStyle = 'rgba(96,165,250,.15)'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  const colorByType = { decision: '#60a5fa', review: '#34d399', counterfactual: '#a78bfa', think_token: '#f59e0b', benchmark: '#22d3ee', mission: '#f87171' };
+  for (const n of graphNodes) {
+    ctx.beginPath(); ctx.arc(n.x, n.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = colorByType[n.type] || '#64748b';
+    ctx.fill();
+  }
+}
+function setupGraphInteraction() {
+  const canvas = $('graph2d');
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    graphDrag = graphNodes.find((n) => Math.abs(n.x - x) < 8 && Math.abs(n.y - y) < 8) || null;
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (!graphDrag) return;
+    const rect = canvas.getBoundingClientRect();
+    graphDrag.x = e.clientX - rect.left; graphDrag.y = e.clientY - rect.top;
+    drawGraph(canvas.getContext('2d'), canvas);
+  });
+  canvas.addEventListener('mouseup', () => { graphDrag = null; });
+}
+
+// 3D THINK token cloud — Three.js from CDN, graceful fallback to 2D.
+let think3d = null;
+function loadThink3D() {
+  const canvas = $('think3d');
+  const stat = document.querySelector('#plugin-think3d .pstat');
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
+  script.onload = () => {
+    fetch('/api/system/forge-tokens', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => initThink3D(canvas, d.tokens ?? []))
+      .catch((e) => { stat.textContent = 'ERR'; stat.className = 'pstat err'; drawThink2D(canvas, []); });
+  };
+  script.onerror = () => { stat.textContent = '2D'; stat.className = 'pstat ok'; drawThink2D(canvas, []); };
+  document.head.appendChild(script);
+}
+function initThink3D(canvas, tokens) {
+  const stat = document.querySelector('#plugin-think3d .pstat');
+  stat.textContent = `${tokens.length} tokens`; stat.className = 'pstat ok';
+  const { Scene, PerspectiveCamera, WebGLRenderer, SphereGeometry, MeshBasicMaterial, Mesh, Group, Color } = window.THREE;
+  const scene = new Scene();
+  const camera = new PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+  camera.position.z = 22;
+  const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const group = new Group();
+  const statusColor = { VERIFIED: '#34d399', PROVEN: '#34d399', CHALLENGED: '#f59e0b', PRUNED: '#f87171', ARCHIVED: '#64748b' };
+  const meshByToken = [];
+  tokens.forEach((t, i) => {
+    const size = Math.max(0.3, Math.min(2.2, (t.kd ?? 50) / 40));
+    const geo = new SphereGeometry(size, 12, 12);
+    const mat = new MeshBasicMaterial({ color: new Color(statusColor[t.status] || '#94a3b8'), transparent: true, opacity: 0.9 });
+    const mesh = new Mesh(geo, mat);
+    const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+    const r = 6 + Math.random() * 8;
+    mesh.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+    mesh.userData = t;
+    group.add(mesh);
+    meshByToken.push(mesh);
+  });
+  scene.add(group);
+
+  // Raycaster for click-to-inspect.
+  const raycaster = new window.THREE.Raycaster();
+  const mouse = new window.THREE.Vector2();
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hit = raycaster.intersectObjects(meshByToken)[0];
+    const inspect = $('think3d-inspect');
+    if (hit) {
+      const t = hit.object.userData;
+      inspect.style.display = 'block';
+      inspect.innerHTML = `<b style="color:var(--green)">${t.id}</b> · KD ${t.kd} · ${t.status}<br><span style="color:var(--muted)">${(t.keywords || []).slice(0, 8).join(' · ')}</span>`;
+    } else {
+      inspect.style.display = 'none';
+    }
+  });
+
+  let raf;
+  const animate = () => {
+    group.rotation.y += 0.003;
+    group.rotation.x += 0.001;
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(animate);
+  };
+  animate();
+  think3d = { renderer, raf };
+  window.addEventListener('resize', () => {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  });
+}
+// 2D fallback for the token cloud (no Three.js / degraded).
+function drawThink2D(canvas, tokens) {
+  const stat = document.querySelector('#plugin-think3d .pstat');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#64748b'; ctx.font = '11px monospace';
+  ctx.fillText(tokens.length ? '2D token view' : 'THINK tokens unavailable', 10, 20);
+  const statusColor = { VERIFIED: '#34d399', CHALLENGED: '#f59e0b', PRUNED: '#f87171' };
+  tokens.forEach((t, i) => {
+    const x = 20 + (i % 8) * 34, y = 40 + Math.floor(i / 8) * 30;
+    ctx.beginPath(); ctx.arc(x, y, Math.max(2, Math.min(8, (t.kd ?? 50) / 10)), 0, Math.PI * 2);
+    ctx.fillStyle = statusColor[t.status] || '#94a3b8';
+    ctx.fill();
+  });
+}
+
 // ── Boot ────────────────────────────────────────────────────────────────────
 async function boot() {
   void checkHealth();
   void loadThinkCore();
   for (const p of plugins) startPlugin(p);
   setInterval(() => { void checkHealth(); void loadThinkCore(); }, REFRESH);
+  // Visual layer
+  void loadSecurity();
+  void loadGraph2D();
+  setupGraphInteraction();
+  setInterval(() => { void loadSecurity(); }, 20000);
+  loadThink3D();
   $('term-input').focus();
 }
 boot();
