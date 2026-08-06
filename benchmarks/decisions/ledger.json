@@ -90,6 +90,29 @@
       "reviewDate": null,
       "outcome": null,
       "supersedes": null
+    },
+    {
+      "id": "DEC-0005",
+      "mission": "SEC-003",
+      "problem": "Prevent prompt injection from entering permanent knowledge",
+      "alternatives": [
+        "LLM-based moderation",
+        "Adaptive ML classifier",
+        "No firewall"
+      ],
+      "chosen": "Deterministic 5-category XPIA firewall with PASS/REVIEW/BLOCK at storeMemoryText",
+      "evidence": "53/53 fixtures: 100% malicious blocked, 0 legit blocked; vectorStore choke point wired",
+      "benchmarksConsulted": [
+        "XPIA-FIXTURES"
+      ],
+      "risksAccepted": "REVIEW items persist flagged; patterns are regex not semantic",
+      "rollbackPlan": "git revert f3196f8",
+      "confidence": 91,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-06T02:56:38.856Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
     }
   ]
 }
