@@ -194,6 +194,27 @@ async function main() {
   } catch (e) { xpiaOk = false; xpiaDetail = `xpia unreadable: ${e.message}`; }
   check('INV-015 prompt-injection firewall', xpiaOk, xpiaOk ? xpiaDetail : xpiaDetail);
 
+  // 13. INV-016 Output redaction layer — nothing leaves the system
+  // unsanitized. Verify the redactor exists, is wired as middleware, and
+  // masks a known credential class.
+  let redactOk = true; let redactDetail = '';
+  try {
+    const redactorExists = existsSync(join(REPO_ROOT, 'services', 'lib', 'outputRedactor.ts'));
+    const testsExist = existsSync(join(REPO_ROOT, 'scripts', 'output-redaction.test.mjs'));
+    const wired = readFileSync(join(REPO_ROOT, 'services', 'ingestion', 'server.js'), 'utf8').includes('outputRedactionMiddleware');
+    const { redactString } = await import('../services/lib/outputRedactor.ts');
+    // Probe built at runtime so no literal credential-shaped string appears
+    // in source (keeps the secret-hygiene gate semantic, per STAB-005).
+    const probePrefix = ['sk', 'proj'].join('-');
+    const probe = redactString(`key=${probePrefix}-abcdefghijklmnopqrstuvwxyz123456`);
+    const masks = probe.count > 0 && !probe.redacted.includes(probePrefix);
+    redactOk = redactorExists && testsExist && wired && masks;
+    redactDetail = redactOk
+      ? 'redactor active (module + middleware + fixtures + probe masked)'
+      : `incomplete: module=${redactorExists} tests=${testsExist} wired=${wired} masks=${masks}`;
+  } catch (e) { redactOk = false; redactDetail = `redactor unreadable: ${e.message}`; }
+  check('INV-016 output redaction layer', redactOk, redactOk ? redactDetail : redactDetail);
+
   // ── Report ──
   const failed = checks.filter(c => !c.pass);
   if (process.argv.includes('--json')) {

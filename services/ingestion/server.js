@@ -69,6 +69,7 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
 import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
+import { outputRedactionMiddleware } from '../lib/outputRedactor.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
 import { ecpSingleflight, ecpGuard } from '../lib/ecpMiddleware.ts';
 import { kiloBridgeBudget, budgetGuard } from '../lib/kiloBridgeMiddleware.ts';
@@ -194,6 +195,11 @@ app.use((req, res, next) => {
 // Parse JSON before inline POST routes and mounted routers. Without this,
 // dictionary, lifecycle, governance, and telemetry requests see an empty body.
 app.use(express.json({ limit: '10mb' }));
+
+// --- SEC-004 / INV-016: Output Redaction Layer ---
+// Everything leaving the system passes Redaction → Audit → Output. Wraps
+// res.json/res.send so no API/terminal/SSE response can leak credentials.
+app.use(outputRedactionMiddleware());
 
 // --- Phase 45: Request duration tracking and structured logging ---
 // Also records per-route latencies for the Middleware Inspector console.
