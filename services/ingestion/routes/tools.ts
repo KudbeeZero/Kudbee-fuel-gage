@@ -41,7 +41,7 @@ const SHELL_ALLOWLIST: Array<{ cmd: string; args?: string[]; note: string }> = [
 async function requireAgent(req: any, res: any, next: () => void) {
   if (!process.env.AGENT_REGISTRY_PATH) return next(); // Mode A — single-user
   try {
-    const { authenticateAgentPass } = await import('../lib/bearerAuthMiddleware.ts');
+    const { authenticateAgentPass } = await import('../../lib/bearerAuthMiddleware.ts');
     const agentId = authenticateAgentPass(req.header('X-Agent-Pass'));
     if (!agentId) return res.status(403).json({ error: 'forbidden', message: 'agent-auth required for tool endpoints' });
     (req as any).agentId = agentId;
