@@ -51,7 +51,7 @@
       "cost": 35,
       "learning": 75,
       "confidence": 84,
-      "reason": "2 counterfactuals are INSUFFICIENT_DATA — need measured deltas",
+      "reason": "2 counterfactuals are INSUFFICIENT_DATA \u2014 need measured deltas",
       "evidenceRefs": [
         "COUNTERFACTUALS"
       ],
@@ -224,7 +224,9 @@
         "cost": 0.05,
         "learning": 0.15,
         "confidence": 0.1
-      }
+      },
+      "status": "RESOLVED",
+      "resolvedBy": "PR #319"
     },
     {
       "id": "RISK-7",
@@ -261,7 +263,9 @@
         "cost": 0.05,
         "learning": 0.15,
         "confidence": 0.1
-      }
+      },
+      "status": "RESOLVED",
+      "resolvedBy": "PR #319"
     },
     {
       "id": "RISK-8",
