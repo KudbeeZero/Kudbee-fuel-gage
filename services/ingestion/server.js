@@ -4482,6 +4482,46 @@ app.post('/api/auth/stream-ticket', (req, res) => {
   res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
 });
 
+// --- Admin session verification (replaces the hardcoded client-side
+// passkey in apps/web LoginView). Validates against ADMIN_PASS env var
+// (falls back to EDGE_AGENT_PASS for existing single-user setups) and
+// returns a short-lived HMAC-signed session token. The passkey is NEVER
+// shipped in frontend code.
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+
+function adminPass() {
+  return process.env.ADMIN_PASS || process.env.EDGE_AGENT_PASS || '';
+}
+
+function signAdminSession() {
+  const issued = Date.now();
+  const token = `admin_${crypto.randomUUID()}`;
+  const sig = crypto
+    .createHmac('sha256', SESSION_SECRET)
+    .update(`${token}:${issued}`)
+    .digest('hex');
+  return { token, sig, issued, expiresAt: issued + ADMIN_SESSION_TTL_MS };
+}
+
+app.post('/api/admin/verify-pass', (req, res) => {
+  const expected = adminPass();
+  if (!expected) {
+    // No admin pass configured — deny rather than fall back to an open door.
+    return res.status(503).json({ error: 'ADMIN_PASS not configured on server' });
+  }
+  const provided = String((req.body && req.body.passkey) || '');
+  if (!provided || provided.length > 512) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  // Constant-time comparison to avoid timing side-channels.
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!ok) return res.status(401).json({ error: 'Unauthorized' });
+  const session = signAdminSession();
+  res.json({ authenticated: true, session });
+});
+
 function validateStreamTicket(ticket) {
   if (!ticket) return false;
   const exp = STREAM_TICKETS.get(ticket);
