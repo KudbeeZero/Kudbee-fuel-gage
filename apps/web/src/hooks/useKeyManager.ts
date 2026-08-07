@@ -17,10 +17,10 @@ export function useKeyManager() {
   });
 
   useEffect(() => {
-    const openaiKey = localStorage.getItem('kudbee_openai_key') || '';
-    const anthropicKey = localStorage.getItem('kudbee_anthropic_key') || '';
-    const geminiKey = localStorage.getItem('kudbee_gemini_key') || '';
-    const otelPort = localStorage.getItem('kudbee_otel_port') || '8000';
+    const openaiKey = sessionStorage.getItem('kudbee_openai_key') || '';
+    const anthropicKey = sessionStorage.getItem('kudbee_anthropic_key') || '';
+    const geminiKey = sessionStorage.getItem('kudbee_gemini_key') || '';
+    const otelPort = sessionStorage.getItem('kudbee_otel_port') || '8000';
 
     setKeys(prev => ({
       ...prev,
@@ -43,10 +43,10 @@ export function useKeyManager() {
   }, []);
 
   const saveKeys = useCallback(() => {
-    localStorage.setItem('kudbee_openai_key', keys['openai']!.value);
-    localStorage.setItem('kudbee_anthropic_key', keys['anthropic']!.value);
-    localStorage.setItem('kudbee_gemini_key', keys['gemini']!.value);
-    localStorage.setItem('kudbee_otel_port', keys['local']!.value);
+    sessionStorage.setItem('kudbee_openai_key', keys['openai']!.value);
+    sessionStorage.setItem('kudbee_anthropic_key', keys['anthropic']!.value);
+    sessionStorage.setItem('kudbee_gemini_key', keys['gemini']!.value);
+    sessionStorage.setItem('kudbee_otel_port', keys['local']!.value);
     return true;
   }, [keys]);
 
