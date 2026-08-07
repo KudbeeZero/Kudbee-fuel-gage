@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-06T13:56:50.128Z",
+  "generatedAt": "2026-08-07T01:46:51.824Z",
   "identity": {
     "agent": "cloud-agent",
     "role": "Production Rollout",
     "session": null
   },
   "location": {
-    "branch": "main",
-    "sha": "e831eaf",
-    "dirtyCount": 0
+    "branch": "session/agent_389d8e37-5409-46ae-aca9-40ba9feafb5e",
+    "sha": "2fcb861",
+    "dirtyCount": 2
   },
   "mission": {
     "mission": "Kudbee is a self-improving Engineering OS. We operate 24/7 on our own servers, learning from every decision, failure, and success. We observe → decide → act → verify → learn, feeding every outcome back into our memory, our terminals, and our next mission. We never stop improving; we never rely on a human to tell us what to do next.",
@@ -23,11 +23,11 @@
   "system": {
     "fleet": 11,
     "lastEvents": [
+      "01:46:51 agent:decision     system          PLATFORM DECISION: Heroku remains the live Control Tower. Re",
       "13:47:08 agent:decision     system          LESSON LEARNED: Render OOM was NOT memory — bun run start ch",
       "13:47:08 agent:decision     system          SWARM FULL-POWER: 11 agents + 30 sub-agents active. PR #316",
       "13:46:29 agent:decision     ci-watcher      ci-watcher: verification_complete",
-      "13:46:23 agent:decision     knowledge-curat knowledge-curator: curation_complete",
-      "13:46:23 agent:decision     pipeline-guardi pipeline-guardian: layer_scan_complete"
+      "13:46:23 agent:decision     knowledge-curat knowledge-curator: curation_complete"
     ],
     "links": {
       "staging": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com",
