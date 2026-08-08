@@ -1,254 +1,107 @@
 # Kudbee AGENTS.md
 
-## ⚠️ CRITICAL: Run this FIRST — before reading any other files
+## Mandatory boot sequence — run BEFORE reading any other file
 
 ```bash
-node scripts/handoff.mjs --stamp
+node scripts/handoff.mjs --stamp    # situational awareness (branch, mission, phase, recent events)
+node scripts/session-bootstrap.mjs  # deep context (pipelines, agents, bus, journal, CI status)
 ```
 
-**This is the mandatory HANDOFF BRIEFING.** It tells you instantly — no matter
-what branch you're on or what you were doing:
-- **WHO you are** (agent id, current role)
-- **WHERE you are** (git branch, HEAD SHA, dirty file count)
-- **WHAT the mission is** (current phase, progress %, mission statement)
-- **WHAT to do next** (first action recommendation)
-- **WHAT happened recently** (last 5 DTHINK events)
-- **WHERE the system lives** (staging/prod/terminal/github links)
+State your role + first action to the human, then proceed.
 
-The manifest is stamped to `.kilo/handoff.json` (machine-readable). If any
-field is missing or wrong, the mission lock or roadmap is out of sync —
-resolve that BEFORE starting work. State your role + first action to the
-human, then move.
+## Architecture (facts not obvious from filenames)
 
-Then load deep context:
+- **Canonical server entrypoint:** `services/ingestion/server.js` — never create `server.ts` or duplicate entrypoints.
+- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*` (except `!apps/mobile` — excluded, built separately).
+  All `npm install` must run at root.
+- **`apps/web`** — React 19 + Vite + Tailwind 4 + React Router 8 + zustand. Build entries: `index.html`, `terminal.html`, `tower.html`. Serves from `dist/`.
+- **`apps/mobile`** — React Native (Expo 52). Excluded from workspace, type-checked separately.
+- **`services/lib`** — shared middleware, circuit breaker, guards, LLM clients.
+- **`packages/opencode`** uses **bun** as package manager; everything else uses npm.
+- **Database:** Neon Postgres + pgvector (1536-dim embeddings). Migrations auto-run on server boot.
+- **Redis:** `REDIS_URL` (Fast Brain) and `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`).
+  `REDIS_SLOW_URL` is a legacy alias. Circuit breaker protects against quota exhaustion (500k/month).
+- **LLM provider:** `GEMINI_API_KEY` + `gemini-flash-latest`. Provider factory at `packages/utils/src/llm/providers.ts`.
+  Also supports Groq (`GROQ_API_KEY`), vLLM (`VLLM_BASE_URL`/`VLLM_API_KEY`), DeepSeek, Grok.
+- **Test runner:** `bun test`. CI runs `bun test` after typecheck + lint.
+- **Interactive terminal:** runs server-side via `POST /api/terminal/execute`, served at `/terminal.html`.
+
+## Local development commands
 
 ```bash
-node scripts/session-bootstrap.mjs
+npm ci                              # root only
+npm run typecheck && npm run lint   # Turbo-routed
+bun test                            # all unit tests
+npm run build                       # Turbo build (dependsOn typecheck + lint)
 ```
 
-This loads: integration pipelines, terminal agents with decision history,
-knowledge snippets, serial bus events, phone tree, current CI status, and
-the memory journal.
+## CI gates (enforced in order by `.github/workflows/verify.yml`)
 
-## Interactive Terminal — the control plane
+1. `verify:typescript` — TS 7 compliance (dual compiler: `@typescript/native` TS 7 + `typescript` TS 6 alias for eslint)
+2. `verify:crypto` + `verify:secrets` — runtime crypto + secret hygiene
+3. `verify-config-vars` — INV-019 env var check
+4. `typecheck` + `lint` — Turbo-routed strict checks
+5. `bun test` — all unit tests
+6. `build` — Turbo build
 
-The interactive terminal (`services/terminal/commandDispatcher.mjs`) is the
-primary interface for operating the system. Commands are executed server-side
-via `POST /api/terminal/execute` (no auth required — open access):
+CI install command: `npm ci --legacy-peer-deps --ignore-scripts`.
+CI env: `CI=true`, `MAX_REQUEST_BODY=256kb`, `CI_MUTATION_BUDGET=20`, `E2E_ALLOW_DATABASE_WRITES=0`.
 
-```
-/ask <q>      Gemini answer (plain text auto-routes here)
-/code <req>   Gemini writes production-grade code (Kudbee conventions)
-/swarm        Agent fleet tree (11 agents)
-/shield       P·L·R·I shield metrics
-/roadmap      Phases to production (11 committed)
-/security     Security posture report
-/echo         Echo Prompt Library — self-improving prompts
-/forecast     Failure Forecaster — predicts next failure
-/handoff      Instant situational awareness (same as handoff.mjs)
-/status       System + fleet summary
-/help         Full command reference
-```
+## Deploy
 
-The terminal UI is served at `/terminal.html` (vanilla HTML/CSS/JS, no React).
-AgentTerminal dock: `apps/web/src/components/studio/AgentTerminal.tsx`.
-
-## Deploy flow (Heroku)
+### Heroku
 
 ```bash
-# Deploy staging or production — git push triggers build + BootVerify
 git push https://git.heroku.com/kudbee-fuel-gage-staging.git main:main
 git push https://git.heroku.com/kudbee-fuel-gage.git main:main
 ```
 
-- **Procfile release command:** `node scripts/boot-verify.mjs` — boots the
-  server on port 9900 and waits for `/health` before releasing. If it times
-  out, the release FAILS and the previous release stays active.
-- **Express 5 gotcha:** the SPA catch-all route must be `app.get('/{*path}')`.
-  `app.get('*')` throws `PathError: Missing parameter name` on boot.
-- **`.npmrc` is required** (`legacy-peer-deps=true`) — Heroku's plain `npm ci`
-  fails without it (react 19 / react-native peer conflict).
-- Staging apps: `kudbee-fuel-gage-staging` (web + hermes-worker).
-- Production: `kudbee-fuel-gage` (web + hermes-worker + monitor-worker + sentinel).
-- **Procfile dyno types:** `web` (tsx, 320MB heap), `hermes-worker` (tsx, 256MB),
-  `monitor-worker` (node, 256MB), `sentinel` (tsx, 256MB), `release` (256MB).
+| Dyno | Command | Heap |
+|------|---------|------|
+| web | `npx tsx services/ingestion/server.js` | 320MB |
+| hermes-worker | `npx tsx worker.js` | 256MB |
+| monitor-worker | `node services/monitor/agent.js` | 256MB |
+| sentinel | `npx tsx services/sentinel/src/index.ts` | 256MB |
+| release | `node scripts/boot-verify.mjs` | 256MB |
 
-## Deploy flow (Render)
+### Render
 
-`render.yaml` defines the Blueprint — push to main or connect via Render Dashboard.
+`render.yaml` Blueprint. Web service needs `plan: starter` (512MB) — free plan OOMs.
+Build command must include `--include=dev` because `tsx` is a devDependency and Render sets `NODE_ENV=production`.
 
-- **Web service** (`kudbee-fuel-gage`): `plan: starter` (512MB), heap capped at 200MB via
-  `NODE_OPTIONS`. Free plan OOMs because the server imports 6K+ lines of
-  middleware including express, ioredis, pg, Gemini SDK, and 10+ middleware
-  guards. Start command uses `npx tsx` (not `node`) because server.js
-  imports `.ts` files directly.
-- **Hermes worker** (`kudbee-hermes`): `plan: free` (512MB), heap 128MB. Runs
-  `npx tsx worker.js`.
-- Build command: `npm ci --legacy-peer-deps --include=dev` — `--include=dev`
-  is needed because `tsx` is a devDependency and Render sets `NODE_ENV=production`.
-- Health check: `/health` (exempt from rate limiter in server.js).
-- All env vars matching Heroku's INV-019 required set are declared with `sync: false`
-  (prompted on first Blueprint deploy in Render Dashboard).
+## Critical gotchas
 
-## Security posture (Engineering OS v2.2)
+- **Express 5 SPA catch-all:** must use `app.get('/{*path}')`. `app.get('*')` throws `PathError: Missing parameter name`.
+- **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension required).
+- **express hoisting:** `services/telemetry/degradation-monitor.ts` imports express — express must be a ROOT dependency or the server fails to boot.
+- **`.npmrc`** (`legacy-peer-deps=true`) is mandatory. Heroku/CI `npm ci` fails without it (React 19 / react-native peer conflict).
+- **`.env` loading in scripts:** standalone `.mjs` scripts need `try { process.loadEnvFile('.env'); } catch {}` at the top.
+- **Secret scanner semantics:** placeholders (`${VAR}`, `process.env.X`, `env.X`) are templates, NOT secrets. When a scanner false-positives on a template, fix the scanner invariant — never contort generated code.
+- **`think_tokens` ≠ `vector_memory`:** minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
+- **TS 7 dual setup:** `npx tsc` resolves `@typescript/native` (actual TS 7 compiler). `typescript` at root is a TS 6 alias for typescript-eslint only. Never introduce TS 5.x or lower.
+- **Dependency cascade:** merging multiple lockfile-touching PRs corrupts `package-lock.json`. Regenerate incrementally (install on top of existing lockfile, never `rm package-lock.json`).
 
-- **Password-based access control is DISENGAGED** — no bearerAuth, no synapse
-  gate, no X-Agent-Pass required, no login. Single-user directive.
-- Invisible defense-in-depth remains ACTIVE: security headers (CSP, HSTS,
-  nosniff, X-Frame-Options DENY), strict CORS allowlist (staging + prod
-  origins, no wildcard), global rate limit 100 req/min/IP (health/SSE/static
-  exempt), 10mb body limit.
-- `/security` in the terminal reports the live posture.
+## Code style
 
-## Self-healing & self-improvement
+- **Prettier:** `semi`, `singleQuote`, `trailingComma: es5`, `printWidth: 100`, `LF`.
+- **Imports:** server.js and lib files use `node:` prefix for builtins.
+- **`// kilocode_change` markers** are required in `apps/web/src/hooks/useToolInterceptor.ts` and `services/agent/cli.ts`.
+
+## Repository protection
+
+- **Run the guardian before implementing:** `node scripts/repository-guardian.mjs`. If any check fails — STOP, report, do not implement.
+- **Dirty tree = blocked.** Resolve before starting any work.
+- **Never edit main directly.** mission → branch → push → PR → merge.
+- **INV-013 Keystone:** this file, `kilo.json`, governance files, and CI workflows may never be modified by an executing cloud agent. Changes require human-approved PRs.
+- **Terminal auth:** `POST /api/terminal/execute` is gated by `AGENT_REGISTRY_PATH`: unset = open access (Mode A), set = `X-Agent-Pass` required (Mode B).
+- **One terminal owner:** `apps/web/terminal.html`. Never duplicate.
+
+## Self-healing
 
 ```bash
-node scripts/self-heal.mjs check      # run gates (typecheck/crypto/secrets)
+node scripts/self-heal.mjs check      # run gates
 node scripts/self-heal.mjs diagnose   # + Gemini diagnosis on failure
 node scripts/self-heal.mjs heal       # recall-first loop, mints THINK token
-node scripts/failure-forecaster.mjs   # predict next failing gate
-node scripts/agent-bootstrap.mjs loop # tap in anywhere, learn, contribute
 ```
 
-- **THINK token loop:** failures are signature-matched against
-  `.kilo/memory/heal-patterns.json` BEFORE calling Gemini. Known patterns are
-  fixed from memory (zero LLM cost); new patterns are Gemini-diagnosed then
-  minted. Every fix feeds DTHINK + a snippet card.
-- **Echo Prompt Library** (`services/terminal/echoLibrary.mjs`): every Gemini
-  interaction is scored; prompts auto-improve after 5+ interactions.
-- **Circuit breaker** (`services/lib/circuitBreaker.ts`): CLOSED→OPEN→HALF_OPEN
-  with local-state fallback — survives Redis quota exhaustion. Use
-  `breaker.execute(fn, fallback)` to protect any call site. Hermes heartbeats
-  write to `.kilo/memory/local-state/` when Redis is unavailable.
-- **Scheduled self-heal:** `.github/workflows/autonomous-maintenance.yml` runs
-  every 6 hours (gates + Gemini diagnosis on failure).
-
-## Architecture (facts not obvious from filenames)
-
-- **Canonical server entrypoint:** `services/ingestion/server.js` — do NOT
-  create `server.ts` or duplicate entrypoints.
-- **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*` (except `!apps/mobile` — mobile is excluded from workspaces and built separately). All `npm install` must run at root.
-- **package manager:** `npm@10.9.8`, **Node:** `>=22.0.0`. `packages/opencode` uses **bun**.
-- **Database:** Neon Postgres + pgvector. Migrations auto-run on boot. Embeddings always 1536-dim.
-- **Redis:** `REDIS_URL` (Fast Brain — UI telemetry, SSE, state). `REDIS_WORKER_URL` (Slow Brain — governance workers, HERMES, JobQueue; falls back to `REDIS_URL` when not set). `REDIS_SLOW_URL` is a legacy alias also supported in `services/lib/redis.js`. Monthly quota 500k — the circuit breaker protects it.
-- **Gemini:** `GEMINI_API_KEY` (on Heroku staging) + model `gemini-flash-latest` (2.0/2.5 deprecated for new keys). Provider factory: `packages/utils/src/llm/providers.ts`. Also supports Groq (`GROQ_API_KEY`) and vLLM (`VLLM_BASE_URL` / `VLLM_API_KEY`).
-- **Test runner:** `bun test` runs all unit tests. CI runs `bun test` after typecheck + lint.
-- **Roadmap:** `services/terminal/roadmap.mjs` — machine-readable phases, mission statement, `/roadmap` command.
-- **Plugin Rack:** `apps/web/src/plugins/` — 4 OSPlugins (AgenticRag, VectorStore, CommunityLedger, LiveTelemetry). Plugin contract: `apps/web/src/core/pluginRegistry.ts`. Plugins are React components registered via `id/name/icon/category/component/defaultRoute`.
-
-## CI Gates (must pass)
-
-1. `npm run verify:typescript` — TS 7.0.2 direct-constraint + lockfile gate.
-2. `npm run verify:agent-contracts` — all discovered agents have metadata.
-3. `npm run verify:integrations` — command/package availability only.
-4. `npm run verify:learning-protocol` — THINK/DTHINK loop + safety rules.
-5. `npm run typecheck` — Turbo-routed TS strict check.
-6. `npm run lint` — Turbo-routed linting.
-7. `bun test` — all unit tests (46 tests in current baseline).
-8. `node scripts/verify-e2e.mjs --smoke` — bounded smoke (no provider URLs).
-9. `E2E_ALLOW_DATABASE_WRITES=1 node scripts/verify-e2e.mjs` — full E2E only with opt-in.
-
-CI installs with `npm ci --legacy-peer-deps --ignore-scripts`. Bounded CI env vars:
-`CI_MUTATION_BUDGET=20`, `MAX_REQUEST_BODY=256kb`, `E2E_ALLOW_DATABASE_WRITES=0`.
-
-All agents must run `npm run verify:typescript` before handoff. TypeScript
-contract: `npx tsc` resolves `@typescript/native` (TS 7); the TS 6 API alias
-is for typescript-eslint only. Never introduce TS 5.x or lower.
-
-## Key Commands
-
-```bash
-npm ci                              # root only, never inside workspace packages
-npm ci --legacy-peer-deps --ignore-scripts  # CI install (non-Heroku)
-npm run typecheck                   # Turbo-routed TS7 strict check
-npm run verify:typescript           # TS7 native compiler + TS6 API alias gate
-npm run lint                        # Turbo-routed linting
-npm run build                       # Turbo build (dependsOn typecheck + lint)
-bun test                            # All unit tests (46 in current baseline)
-cd apps/web && npm run build        # Vite prod build for Control Tower
-cd apps/mobile && npx tsc --noEmit  # Mobile type-check
-node scripts/system-status.mjs check  # CI + tests + build + E2E + pipelines
-node scripts/agents.mjs status     # Agent fleet dashboard
-node scripts/snippet-agent.mjs health  # Knowledge store health
-```
-
-## Critical Gotchas
-
-- **Secret scanners detect real secrets, not placeholder syntax.** Security
-  invariants validate actual security violations, not template syntax used
-  for code generation. Placeholder credentials (`${VAR}`, `<TOKEN>`, `%ENV%`,
-  `process.env.X`, `env.X`) are templates, not secrets. When a scanner
-  false-positives on a template, fix the invariant (make it semantic) — never
-  contort generated code to dodge a regex. Fixtures:
-  `scripts/secret-hygiene.test.mjs` (PASS placeholders / FAIL literal creds /
-  WARN unknown env vars).
-- **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension).
-- **.env loading in scripts:** standalone `.mjs` scripts should call
-  `try { process.loadEnvFile('.env'); } catch {}` at the top.
-- **`think_tokens` ≠ `vector_memory`:** minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.
-- **.env* is gitignored** except `.env.example`, `config/template.env`, `config/.env.example`.
-- **Dependency version cascade:** merging multiple lockfile-touching PRs in
-  quick succession corrupts `package-lock.json`. Regenerate from a green
-  baseline incrementally (install on top of the existing lockfile, never
-  `rm package-lock.json` blindly). CI `paths` filters must include
-  `package-lock.json` + `.npmrc`.
-- **express hoisting:** `services/telemetry/degradation-monitor.ts` imports
-  express — express must be a ROOT dependency or the server fails to boot.
-
-## Code Style
-
-- **Prettier:** single quotes, trailing commas (es5), printWidth 100, LF.
-- **Imports:** server.js and lib files use `node:` prefix for builtins.
-- **`// kilocode_change` markers:** required in `apps/web/src/hooks/useToolInterceptor.ts` and `services/agent/cli.ts`.
-
-## PR Workflow (Standard Operating Procedure)
-
-1. One objective per PR; prefer <15 files, <250-500 lines.
-2. Commit locally, verify typecheck + build BEFORE pushing.
-3. PR body: **Problem → Fix → Verified** + rollback plan.
-4. Wait for CI (verify + CodeQL + box-test + docs-check all green).
-5. Merge with squash + delete branch. Pull main. Clean tree.
-6. Deploy staging first, verify, then production. Record DTHINK events.
-7. `/ask` is rate-limited (10/min default; `/threshold set askRateLimit N`).
-
-## OPS-GIT-002 — Repository Protection Protocol
-
-**The Guardian is the gate.** Every agent runs `/guardian` (or
-`node scripts/repository-guardian.mjs`) BEFORE any implementation. It checks:
-clean tree, no merge markers, lockfile valid, stack valid, terminal
-integrity, handoff current, bootstrap current, active mission. **If any
-check fails — STOP. Do not implement. Report.**
-
-- **Never edit main directly.** Every change: mission → branch → push →
-  draft PR → CI → merge queue → main. No exceptions except emergency hotfixes.
-- **Merge markers never reach GitHub.** Conflict markers (`<<<<<<<`,
-  `=======`, `>>>>>>>`) in any tracked source file fail the push. If you
-  find them committed (this happened twice: package-lock.json and
-  commandDispatcher.mjs), fix immediately via repair branch, never on main.
-- **One terminal owner:** `apps/web/terminal.html`. Other terminals are
-  archive/experimental — never duplicate production terminals.
-- **INV-013 Keystone trust boundary:** governance files (AGENTS.md,
-  MODEL_CONTRACT.md, engineering_state.yaml, REPOSITORY_MANIFEST.json,
-  kilo.json, repository-guardian.mjs, governanceKeystone.ts,
-  bearerAuthMiddleware.ts, verify-secret-hygiene.mjs, verify-quick.mjs,
-  .github/workflows/verify.yml, .github/workflows/codeql.yml) may never be
-  modified by an executing cloud agent. Any agent write to a listed path is
-  refused via `services/lib/governanceKeystone.ts`. Governance changes happen
-  only through human-approved PRs. `node scripts/repository-guardian.mjs`
-  verifies the keystone is intact and enforcement works.
-- **INV-014 Terminal authorization boundary:** `/api/terminal/execute` is
-  gated whenever agent auth is provisioned (`AGENT_REGISTRY_PATH` set):
-  missing `X-Agent-Pass` → 401, invalid → 403, valid → 200. Without
-  provisioning the single-user workflow is unchanged (Mode A).
-- **One trust boundary per security PR:** every new security control must
-  protect exactly one trust boundary. Multiple trust boundaries may never be
-  introduced in the same PR. The security release train is SEC-001 keystone →
-  SEC-002 terminal auth → SEC-003 prompt-injection firewall → SEC-004 output
-  redaction → SEC-005 tamper-evident audit.
-- **Build artifacts are never hand-edited.** Source → build → artifact →
-  deploy.
-- **Dirty tree = blocked.** If `git status` is dirty when starting a
-  mission, resolve it before anything else.
-- **Repair mode:** on corruption, create a repair branch, restore the last
-  known-good version, replay intended changes, open a repair PR, verify,
-  then merge. Never improvise on main.
+Failures are signature-matched against `.kilo/memory/heal-patterns.json` BEFORE calling Gemini (known patterns = zero LLM cost). .github/workflows/autonomous-maintenance.yml runs every 6 hours.
