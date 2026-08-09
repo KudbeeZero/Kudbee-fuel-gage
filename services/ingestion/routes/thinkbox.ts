@@ -3,6 +3,9 @@
  *
  * THINKBOX API — serves workspace listing, detection, and intelligence
  * manifests to the Control Tower frontend. Mounted under /api/thinkbox.
+ *
+ * Dashboard aggregates real data from Redis (agent fleet, CI status),
+ * Postgres (think tokens, telemetry), and filesystem (git info).
  */
 
 import express from 'express';
@@ -10,11 +13,13 @@ import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-interface ThinkingDeps {
+interface ThinkboxDeps {
   runQuery: (sql: string, params?: unknown[]) => Promise<any[]>;
+  redis: any;
 }
 
-export function createThinkboxRouter(_deps: ThinkingDeps) {
+export function createThinkboxRouter(deps: ThinkboxDeps) {
+  const { runQuery, redis } = deps;
   const router = express.Router();
 
   router.get('/health', (_req, res) => {
@@ -34,60 +39,217 @@ export function createThinkboxRouter(_deps: ThinkingDeps) {
     }
   }
 
-  router.get('/dashboard', (_req, res) => {
-    // Live workspace view model for THINKBOX mobile/desktop dashboards.
-    // Aggregates mission, health, agents, execution, timeline, and deployments.
-    res.json({
-      workspace: { id: 'kudbee-main', name: 'Kudbee Fuel Gauge', sourceType: 'git', state: 'active', createdAt: new Date().toISOString(), lastActivity: new Date().toISOString() },
-      mission: { id: 'THINKBOX-016', title: 'Daily Engineering Experience', objective: 'Mobile-first Engineering OS — every change visible on iPhone within minutes', status: 'active', priority: 'P0', progress: 75, confidence: 0.94 },
-      intelligence: { languages: ['TypeScript'], frameworks: ['React', 'Vite', 'TailwindCSS'], packageManagers: ['npm'], runtimes: [{ kind: 'node', version: '22.2.0' }], dependencies: [{ manager: 'npm', totalCount: 1343, lockfilePresent: true, direct: 58, transitive: 1285 }], services: [{ kind: 'database', name: 'Neon Postgres', sdk: 'pg' }, { kind: 'cache', name: 'Upstash Redis', sdk: 'ioredis' }, { kind: 'ai', name: 'Groq', sdk: 'fetch' }], env: [{ name: 'DATABASE_URL', required: true, category: 'database' }, { name: 'REDIS_URL', required: true, category: 'cache' }], ci: ['GitHub Actions'], deploy: ['Heroku'], totalFiles: 10300, packageCount: 1343, confidence: 0.94 },
-      engineeringGraph: { nodes: [], edges: [], rootId: '' },
-      execution: { status: 'running', totalCommands: 12, completedCount: 9, failedCount: 0, currentCommand: 'deploy-review-app', pendingApprovals: 0, simulation: false },
-      timeline: [
-        { id: 't1', type: 'deploy', timestamp: new Date(Date.now() - 120000).toISOString(), message: 'Development deploy triggered', severity: 'info', agentId: null },
-        { id: 't2', type: 'ci', timestamp: new Date(Date.now() - 300000).toISOString(), message: 'CI pipeline passed', severity: 'success', agentId: null },
-        { id: 't3', type: 'agent', timestamp: new Date(Date.now() - 600000).toISOString(), message: 'Agent swarm reports optimal health', severity: 'success', agentId: 'ci-watcher' },
-      ],
-      agents: [
-        { name: 'KILOH', role: 'engineer', status: 'online', task: 'Mobile-first UI', progress: 85, lastEvent: '2m ago', health: 'optimal' },
-        { name: 'ci-watcher', role: 'verification', status: 'online', task: 'CI gates', progress: 100, lastEvent: '5m ago', health: 'optimal' },
-        { name: 'pipeline-guardian', role: 'middleware', status: 'online', task: 'Pipeline scan', progress: 100, lastEvent: '7m ago', health: 'optimal' },
-        { name: 'knowledge-curator', role: 'memory', status: 'online', task: 'Knowledge health', progress: 100, lastEvent: '12m ago', health: 'optimal' },
-      ],
-      notifications: [],
-      memory: [],
-      health: { readyScore: 94, grade: 'A', busConnected: true, sseConnected: true, agentsOnline: 11, agentsTotal: 11, lastEventTimestamp: new Date().toISOString(), apiLatencyMs: 42 },
-      costs: { estimatedMonthly: 127.5, currency: 'USD', breakdown: [{ category: 'compute', amount: 75 }, { category: 'database', amount: 32.5 }, { category: 'redis', amount: 20 }] },
-      deployments: [
-        { target: 'production', status: 'healthy', lastDeploy: new Date(Date.now() - 3600000).toISOString(), version: 'v2.2.0-rc0' },
-        { target: 'staging', status: 'healthy', lastDeploy: new Date(Date.now() - 7200000).toISOString(), version: 'v2.2.0-rc0' },
-      ],
-    });
+  function gitInfo(): { sha: string; branch: string } {
+    try {
+      const sha = execSync('git rev-parse --short HEAD', { encoding: 'utf8', timeout: 5000 }).trim();
+      const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', timeout: 5000 }).trim();
+      return { sha, branch };
+    } catch {
+      return { sha: '', branch: '' };
+    }
+  }
+
+  // --- Dashboard — real data aggregation ------------------------------------
+  router.get('/dashboard', async (_req, res) => {
+    try {
+      const now = Date.now();
+      const git = gitInfo();
+
+      // Agent fleet from Redis
+      let agents: any[] = [];
+      let agentsOnline = 0;
+      let agentsTotal = 0;
+      try {
+        const agentState = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {};
+        agents = Object.entries(agentState).map(([id, raw]: [string, any]) => {
+          let parsed: any = {};
+          try { parsed = JSON.parse(raw); } catch {}
+          const online = parsed.status === 'online' || parsed.status === 'active' || parsed.status === 'processing';
+          return {
+            name: id,
+            role: parsed.category || 'general',
+            status: online ? 'online' : 'offline',
+            task: parsed.memory?.lastAction || parsed.task || 'idle',
+            progress: parsed.progress || 0,
+            lastEvent: parsed.updatedAt || null,
+            health: online ? 'optimal' : 'offline',
+          };
+        });
+        agentsOnline = agents.filter((a) => a.status === 'online').length;
+        agentsTotal = agents.length;
+      } catch {}
+
+      // Recent telemetry timeline from Postgres
+      let timeline: any[] = [];
+      try {
+        const rows = await runQuery(
+          'SELECT trace_id, provider, model, event_type, timestamp FROM telemetry_traces ORDER BY timestamp DESC LIMIT 20',
+          []
+        ).catch(() => []);
+        timeline = (rows || []).map((r: any) => ({
+          id: r.trace_id || `ev-${Math.random().toString(36).slice(2, 10)}`,
+          type: r.event_type || 'telemetry',
+          timestamp: r.timestamp,
+          message: `${r.provider || 'system'}${r.model ? '/' + r.model : ''} event`,
+          severity: 'info',
+          agentId: null,
+        }));
+      } catch {}
+
+      // Recent think tokens from Postgres
+      let memory: any[] = [];
+      try {
+        const tokenRows = await runQuery(
+          'SELECT id, topic, summary, token_cost, created_at FROM think_tokens ORDER BY created_at DESC LIMIT 20',
+          []
+        ).catch(() => []);
+        memory = (tokenRows || []).map((r: any) => ({
+          id: r.id,
+          type: 'think_token',
+          title: r.topic || r.summary?.slice(0, 60) || 'Think Token',
+          content: r.summary || '',
+          timestamp: r.created_at,
+          agent: null,
+        }));
+      } catch {}
+
+      // CI status from Redis cache
+      let ciStatus = { status: 'unknown', lastRun: null };
+      try {
+        if (redis) {
+          const raw = await redis.get('kudbee:ci:latest');
+          if (raw) ciStatus = JSON.parse(raw);
+        }
+      } catch {}
+
+      // Engineering readiness score
+      const healthScore = agentsOnline > 0 ? Math.min(100, Math.round((agentsOnline / Math.max(agentsTotal, 1)) * 100)) : 0;
+
+      res.json({
+        workspace: {
+          id: 'kudbee-main',
+          name: 'Kudbee Fuel Gauge',
+          sourceType: 'git',
+          state: 'active',
+          createdAt: new Date().toISOString(),
+          lastActivity: new Date().toISOString(),
+        },
+        mission: {
+          id: 'PHASE-7',
+          title: 'THINKBOX Product Layer',
+          objective: 'Dependency Resolution Engine + user-facing features',
+          status: 'active',
+          priority: 'P0',
+          progress: agentsOnline > 0 ? Math.round((agentsTotal > 0 ? (agentsOnline / agentsTotal) * 100 : 0)) : 0,
+          confidence: agentsTotal > 0 ? 0.94 : 0.5,
+        },
+        intelligence: {
+          languages: ['TypeScript'],
+          frameworks: ['React', 'Vite', 'TailwindCSS'],
+          packageManagers: ['npm'],
+          runtimes: [{ kind: 'node', version: '22.x' }],
+          dependencies: [{ manager: 'npm', totalCount: 0, lockfilePresent: true, direct: 0, transitive: 0 }],
+          services: [
+            { kind: 'database', name: 'Neon Postgres', sdk: 'pg' },
+            { kind: 'cache', name: 'Upstash Redis', sdk: 'ioredis' },
+          ],
+          env: [
+            { name: 'DATABASE_URL', required: true, category: 'database' },
+            { name: 'REDIS_URL', required: true, category: 'cache' },
+            { name: 'GEMINI_API_KEY', required: false, category: 'ai' },
+          ],
+          ci: ['GitHub Actions'],
+          deploy: ['Heroku'],
+          totalFiles: 0,
+          packageCount: 0,
+          confidence: 0.94,
+        },
+        engineeringGraph: { nodes: [], edges: [], rootId: '' },
+        execution: {
+          status: 'running',
+          totalCommands: 0,
+          completedCount: 0,
+          failedCount: 0,
+          currentCommand: null,
+          pendingApprovals: 0,
+          simulation: false,
+        },
+        timeline,
+        agents,
+        notifications: [],
+        memory,
+        health: {
+          readyScore: healthScore,
+          grade: healthScore >= 90 ? 'A' : healthScore >= 70 ? 'B' : 'C',
+          busConnected: !!redis,
+          sseConnected: false,
+          agentsOnline,
+          agentsTotal,
+          lastEventTimestamp: new Date().toISOString(),
+          apiLatencyMs: 0,
+        },
+        costs: { estimatedMonthly: 0, currency: 'USD', breakdown: [] },
+        deployments: [
+          {
+            target: 'staging',
+            status: 'unknown',
+            lastDeploy: null,
+            version: git.sha || '',
+          },
+          {
+            target: 'production',
+            status: 'unknown',
+            lastDeploy: null,
+            version: git.sha || '',
+          },
+        ],
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Dashboard aggregation failed' });
+    }
   });
 
+  // --- Mission — returns live mission from handoff manifest ------------------
   router.get('/mission/current', (_req, res) => {
+    try {
+      const handoffPath = join(process.cwd(), '.kilo', 'handoff.json');
+      if (existsSync(handoffPath)) {
+        const raw = readFileSync(handoffPath, 'utf8');
+        const handoff = JSON.parse(raw);
+        res.json({
+          id: handoff.mission?.phase || 'PHASE-7',
+          title: handoff.mission?.mission || 'THINKBOX Product Layer',
+          objective: handoff.mission?.mission || 'Build the product layer',
+          status: 'active',
+          progress: handoff.mission?.percentComplete || 0,
+          nextTask: handoff.firstAction || 'Proceed with next phase',
+          blockers: [],
+        });
+        return;
+      }
+    } catch {}
     res.json({
-      id: 'THINKBOX-016',
-      title: 'Daily Engineering Experience',
-      objective: 'Mobile-first Engineering OS — every change visible on iPhone within minutes',
+      id: 'PHASE-7',
+      title: 'THINKBOX Product Layer',
+      objective: 'Build the product layer',
       status: 'active',
-      progress: 75,
-      nextTask: 'Frontend live integrations',
-      blockers: [{ id: 'b1', description: 'None — CI GREEN on main', severity: 'low' }],
+      progress: 0,
+      nextTask: 'Implement panel components',
+      blockers: [],
     });
   });
 
   router.get('/pr/active', (_req, res) => {
     res.json({
-      number: 267,
-      title: 'Mobile-First Founder Mode',
-      status: 'open',
-      branch: 'feature/thinkbox-016-mobile-first',
-      ciStatus: 'pass',
-      testsPassed: 46,
-      testsTotal: 46,
-      e2ePassed: 38,
-      e2eTotal: 38,
+      number: 0,
+      title: 'No active PR',
+      status: 'unknown',
+      branch: gitInfo().branch || 'main',
+      ciStatus: 'unknown',
+      testsPassed: 0,
+      testsTotal: 0,
+      e2ePassed: 0,
+      e2eTotal: 0,
     });
   });
 

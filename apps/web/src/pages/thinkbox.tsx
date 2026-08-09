@@ -535,7 +535,7 @@ export function ThinkboxPage() {
             </div>
           </div>
 
-          {/* PHASE-7: THINKBOX Product Layer panels */}
+          {/* PHASE-7: THINKBOX Product Layer — live panels */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
             <AgentSwarm />
             <MissionCenter />
