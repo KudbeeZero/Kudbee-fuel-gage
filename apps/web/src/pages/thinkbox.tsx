@@ -21,6 +21,13 @@ import { apiGet, apiPost } from '../lib/apiClient';
 import { LiveTerminal } from '../components/thinkbox/LiveTerminal';
 import { AgentSwarm } from '../components/thinkbox/AgentSwarm';
 import { TimelinePanel } from '../components/thinkbox/TimelinePanel';
+import { MissionCenter } from '../components/thinkbox/MissionCenter';
+import { NotificationCenter } from '../components/thinkbox/NotificationCenter';
+import { MemoryPanel } from '../components/thinkbox/MemoryPanel';
+import { ExecutionPanel } from '../components/thinkbox/ExecutionPanel';
+import { WorkspaceExplorer } from '../components/thinkbox/WorkspaceExplorer';
+import { WorkspaceInspector } from '../components/thinkbox/WorkspaceInspector';
+import { PluginManager } from '../components/thinkbox/PluginManager';
 import { WorkspaceStatusBar } from '../components/thinkbox/WorkspaceStatusBar';
 import { DashboardHealthOverlay } from '../components/thinkbox/DashboardHealthOverlay';
 import { useDashboardSync } from '../hooks/useDashboardSync';
@@ -526,6 +533,25 @@ export function ThinkboxPage() {
               <span>Workspace: {manifest.workspaceId.slice(0, 8)}</span>
               <span>Confidence: {Math.round(manifest.confidence * 100)}%</span>
             </div>
+          </div>
+
+          {/* PHASE-7: THINKBOX Product Layer panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <AgentSwarm />
+            <MissionCenter />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <NotificationCenter />
+            <MemoryPanel />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <ExecutionPanel />
+            <TimelinePanel />
+            <WorkspaceExplorer />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <WorkspaceInspector />
+            <PluginManager />
           </div>
         </>
       ) : loading ? (
