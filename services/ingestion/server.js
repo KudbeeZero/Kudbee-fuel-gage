@@ -429,9 +429,13 @@ app.use('/api/ops', createOpsRouter({
 app.use('/api/tools', createToolsRouter());
 
 <<<<<<< ours
+<<<<<<< ours
 const thinkboxRouter = createThinkboxRouter({ runQuery });
 app.use('/api/thinkbox', thinkboxRouter);
 
+=======
+// THINKBOX router mounted after Redis initialization (see below).
+>>>>>>> theirs
 =======
 // THINKBOX router mounted after Redis initialization (see below).
 >>>>>>> theirs
