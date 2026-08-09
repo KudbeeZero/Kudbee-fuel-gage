@@ -101,23 +101,23 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
         {/* Status footer */}
         <div className="px-3 py-3 border-t border-slate-800/60 space-y-1.5">
           <div className="flex items-center gap-2 text-[10px] font-mono">
-            <span className={`relative flex h-1.5 w-1.5 ${osConnected && os.services.postgres.ok ? '' : 'opacity-50'}`}>
-              <span className={`absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.postgres.ok ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'} opacity-75`} />
-              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${osConnected && os.services.postgres.ok ? 'bg-emerald-500' : 'bg-slate-600'}`} />
+            <span className={`relative flex h-1.5 w-1.5 ${osConnected && os.services?.postgres?.ok ? '' : 'opacity-50'}`}>
+              <span className={`absolute inline-flex h-full w-full rounded-full ${osConnected && os.services?.postgres?.ok ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'} opacity-75`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${osConnected && os.services?.postgres?.ok ? 'bg-emerald-500' : 'bg-slate-600'}`} />
             </span>
             <span className="text-slate-500">PG</span>
-            <span className={osConnected && os.services.postgres.ok ? 'text-emerald-400' : 'text-slate-600'}>
-              {osConnected && os.services.postgres.ok ? `${os.services.postgres.latencyMs ?? '—'}ms` : 'OFF'}
+            <span className={osConnected && os.services?.postgres?.ok ? 'text-emerald-400' : 'text-slate-600'}>
+              {osConnected && os.services?.postgres?.ok ? `${os.services.postgres.latencyMs ?? '—'}ms` : 'OFF'}
             </span>
           </div>
           <div className="flex items-center gap-2 text-[10px] font-mono">
-            <span className={`relative flex h-1.5 w-1.5 ${osConnected && os.services.redis.ok ? '' : 'opacity-50'}`}>
-              <span className={`absolute inline-flex h-full w-full rounded-full ${osConnected && os.services.redis.ok ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'} opacity-75`} />
-              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${osConnected && os.services.redis.ok ? 'bg-emerald-500' : 'bg-slate-600'}`} />
+            <span className={`relative flex h-1.5 w-1.5 ${osConnected && os.services?.redis?.ok ? '' : 'opacity-50'}`}>
+              <span className={`absolute inline-flex h-full w-full rounded-full ${osConnected && os.services?.redis?.ok ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'} opacity-75`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${osConnected && os.services?.redis?.ok ? 'bg-emerald-500' : 'bg-slate-600'}`} />
             </span>
             <span className="text-slate-500">RD</span>
-            <span className={osConnected && os.services.redis.ok ? 'text-emerald-400' : 'text-slate-600'}>
-              {osConnected && os.services.redis.ok ? `${os.services.redis.latencyMs ?? '—'}ms` : 'OFF'}
+            <span className={osConnected && os.services?.redis?.ok ? 'text-emerald-400' : 'text-slate-600'}>
+              {osConnected && os.services?.redis?.ok ? `${os.services.redis.latencyMs ?? '—'}ms` : 'OFF'}
             </span>
           </div>
           <div className="flex items-center gap-2 text-[10px] font-mono">
