@@ -428,7 +428,7 @@ app.use('/api/ops', createOpsRouter({
 // anonymous browser traffic.
 app.use('/api/tools', createToolsRouter());
 
-const thinkboxRouter = createThinkboxRouter({ runQuery });
+const thinkboxRouter = createThinkboxRouter({ runQuery, redis });
 app.use('/api/thinkbox', thinkboxRouter);
 
 // Synapse Protection status endpoint
