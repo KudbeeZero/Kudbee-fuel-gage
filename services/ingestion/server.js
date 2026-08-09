@@ -507,6 +507,40 @@ app.get('/api/ci/status', async (_req, res) => {
   res.json(_ciResults);
 });
 
+// --- CI health endpoint (aggregated health for CIHealthPanel) ----------------
+// Returns overall health, stats, and recent failures derived from /api/ci/status
+// and the internal _ciResults cache.
+app.get('/api/ci/health', async (_req, res) => {
+  const now = Date.now();
+  const ciStatus = _ciFetchCache.data || _ciResults;
+  const isGreen = ciStatus?.status === 'GREEN';
+  const isRunning = ciStatus?.status === 'RUNNING';
+  const overall = isRunning ? 'DEGRADED' : isGreen ? 'HEALTHY' : 'UNSTABLE';
+  const total = _ciResults.results?.length ?? 0;
+  const passed = _ciResults.results?.filter((r) => r.pass).length ?? 0;
+  const failed = total - passed;
+  const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+  const recentFailures = (_ciResults.results ?? [])
+    .filter((r) => !r.pass)
+    .slice(-5)
+    .map((r) => ({
+      name: r.name ?? 'unknown',
+      branch: r.branch ?? 'main',
+      event: r.event ?? 'push',
+      url: r.url ?? '',
+    }));
+  return res.json({
+    timestamp: new Date().toISOString(),
+    overall,
+    latestRun: ciStatus
+      ? { name: ciStatus.workflow ?? 'kudbee-ci', conclusion: ciStatus.status, branch: 'main', event: 'push' }
+      : null,
+    stats: { total, passed, failed, passRate },
+    recentFailures,
+    source: ciStatus?.source ?? 'internal',
+  });
+});
+
  app.post('/api/ci/status', (req, res) => {
    _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
    console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
@@ -3174,6 +3208,105 @@ app.get('/api/think/energy-mesh', async (req, res) => {
   }
 });
 
+// --- Think Token Challenge Arena (ChallengePanel) ----------------------------
+// Seniority protocol: tokens gain/lose rank through adversarial challenges.
+const THINK_RANKS = [
+  { name: 'ROOKIE', min: 0, badge: '🌱' },
+  { name: 'TRIED', min: 10, badge: '🔰' },
+  { name: 'PROVEN', min: 50, badge: '⭐' },
+  { name: 'VETERAN', min: 100, badge: '🛡️' },
+  { name: 'ELDER', min: 250, badge: '👑' },
+  { name: 'SAGE', min: 500, badge: '🔮' },
+];
+
+const _thinkChallenges = new Map(); // tokenId → { score, wins, losses, challenges, rank, lastChallenge }
+
+function rankForScore(score) {
+  let rank = THINK_RANKS[0];
+  for (const r of THINK_RANKS) {
+    if (score >= r.min) rank = r;
+  }
+  return rank;
+}
+
+app.get('/api/think/leaderboard', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const entries = Array.from(_thinkChallenges.entries())
+      .map(([tokenId, data]) => ({
+        tokenId,
+        score: data.score,
+        challenges: data.challenges,
+        wins: data.wins,
+        losses: data.losses,
+        rank: data.rank,
+        badge: THINK_RANKS.find((r) => r.name === data.rank)?.badge ?? '🌱',
+        lastChallenge: data.lastChallenge ?? null,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+    return res.status(200).json({ leaderboard: entries, total: _thinkChallenges.size });
+  } catch {
+    return res.status(200).json({ leaderboard: [], total: 0 });
+  }
+});
+
+app.get('/api/think/ranks', async (_req, res) => {
+  return res.status(200).json({ ranks: THINK_RANKS });
+});
+
+app.post('/api/think/challenge', async (req, res) => {
+  try {
+    const { tokenId, query } = req.body || {};
+    if (!tokenId || !query) return res.status(400).json({ error: 'tokenId and query required' });
+
+    const entry = _thinkChallenges.get(tokenId) ?? {
+      score: 0,
+      wins: 0,
+      losses: 0,
+      challenges: 0,
+      rank: 'ROOKIE',
+      badge: '🌱',
+      lastChallenge: null,
+    };
+
+    // Simulate challenge: score based on query length + randomness (placeholder until LLM-backed)
+    const baseScore = Math.min(100, Math.max(10, query.length * 2 + Math.floor(Math.random() * 30)));
+    const passed = baseScore >= 50;
+    const verdict = baseScore >= 80 ? 'PASS' : baseScore >= 50 ? 'PARTIAL' : 'FAIL';
+
+    entry.challenges += 1;
+    entry.lastChallenge = new Date().toISOString();
+    if (passed) {
+      entry.wins += 1;
+      entry.score += Math.floor(baseScore / 10);
+    } else {
+      entry.losses += 1;
+      entry.score = Math.max(0, entry.score - 5);
+    }
+
+    const newRank = rankForScore(entry.score);
+    entry.rank = newRank.name;
+    entry.badge = newRank.badge;
+    _thinkChallenges.set(tokenId, entry);
+
+    return res.status(200).json({
+      tokenId,
+      verdict,
+      score: baseScore,
+      rank: entry.rank,
+      badge: entry.badge,
+      challenges: entry.challenges,
+      wins: entry.wins,
+      losses: entry.losses,
+      matchedKeywords: [],
+      tokenSnippet: query.slice(0, 120),
+    });
+  } catch {
+    return res.status(500).json({ error: 'Challenge evaluation failed' });
+  }
+});
+
 // --- Phase 55: Nash Token Unions ---
 app.post('/api/governance/union/form', async (req, res) => {
   try {
@@ -3421,6 +3554,71 @@ app.post('/api/agents/fleet', async (req, res) => {
     return res.status(500).json({ error: 'Fleet update failed' });
   }
 });
+// --- Agent status endpoint (MonitorPanel / tower.html) -----------------------
+// Returns agent fleet data in the shape expected by useAgentStatus hook.
+// Wraps /api/agents/fleet with enriched metadata.
+app.get('/api/system/agent-status', async (_req, res) => {
+  try {
+    const agentState = redis ? (await redis.hgetall('kudbee:agent:state')) || {} : {};
+    const agents = Object.entries(agentState).map(([id, raw]) => {
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          id,
+          category: parsed.category ?? 'general',
+          schedule: parsed.schedule ?? 'manual',
+          description: parsed.description ?? '',
+          triggers: parsed.triggers ?? '',
+          status: parsed.status ?? 'unknown',
+          memory: {
+            totalActions: parsed.memory?.totalActions ?? 0,
+            lastAction: parsed.memory?.lastAction ?? null,
+            recallCount: parsed.memory?.recallCount ?? 0,
+          },
+          decisions: {
+            total: parsed.decisions?.total ?? 0,
+            lastDecision: parsed.decisions?.lastDecision ?? null,
+          },
+        };
+      } catch {
+        return {
+          id,
+          category: 'unknown',
+          schedule: 'manual',
+          description: '',
+          triggers: '',
+          status: 'unknown',
+          memory: { totalActions: 0, lastAction: null, recallCount: 0 },
+          decisions: { total: 0, lastDecision: null },
+        };
+      }
+    });
+    return res.status(200).json({
+      timestamp: new Date().toISOString(),
+      agents,
+      snippets: { total: 0, totalSize: 0, topRecalled: [] },
+      decisions: { total: 0, recent: [] },
+      memories: { total: 0, totalActions: 0 },
+      knowledgeGraph: { nodes: 0, edges: 0 },
+      rateLimits: { global: { maxConcurrent: 3, currentRunning: 0, waitQueue: [] } },
+      waitQueue: { queued: [], processed: 0 },
+      journal: { sessions: 0, lastEntry: null },
+    });
+  } catch {
+    return res.status(200).json({
+      timestamp: new Date().toISOString(),
+      agents: [],
+      snippets: { total: 0, totalSize: 0, topRecalled: [] },
+      decisions: { total: 0, recent: [] },
+      memories: { total: 0, totalActions: 0 },
+      knowledgeGraph: { nodes: 0, edges: 0 },
+      rateLimits: { global: { maxConcurrent: 3, currentRunning: 0, waitQueue: [] } },
+      waitQueue: { queued: [], processed: 0 },
+      journal: { sessions: 0, lastEntry: null },
+    });
+  }
+});
+
 app.get('/api/groq/archives', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);

@@ -724,6 +724,8 @@ export function ThinkTokensPanel() {
 
   const thinkTokenRecords = useControlTowerStore((s) => s.thinkTokenRecords);
 
+  const [deepHealth, setDeepHealth] = useState<DeepHealthResponse | null>(null);
+
   const loadTrajectories = useCallback(async () => {
     try {
       const data = await apiGet<{ count: number; trajectories: ThinkTrajectory[] }>('/api/think/trajectories?limit=25');
@@ -751,20 +753,33 @@ export function ThinkTokensPanel() {
     }
   }, []);
 
+  const loadDeepHealth = useCallback(async () => {
+    try {
+      const data = await apiGet<DeepHealthResponse>('/api/system/health-deep');
+      if (!_mountedRef.current) return;
+      setDeepHealth(data);
+    } catch {
+      // Silently ignore — ReasoningLedgerTriage has its own fallback
+    }
+  }, []);
+
   useEffect(() => {
     _mountedRef.current = true;
     void loadTrajectories();
     void loadThinkMetrics();
+    void loadDeepHealth();
 
     const pollTraj = setInterval(() => { void loadTrajectories(); }, 10_000);
     const pollMetrics = setInterval(() => { void loadThinkMetrics(); }, 5000);
+    const pollHealth = setInterval(() => { void loadDeepHealth(); }, 30_000);
 
     return () => {
       _mountedRef.current = false;
       clearInterval(pollTraj);
       clearInterval(pollMetrics);
+      clearInterval(pollHealth);
     };
-  }, [loadTrajectories, loadThinkMetrics]);
+  }, [loadTrajectories, loadThinkMetrics, loadDeepHealth]);
 
   const handleDispatched = useCallback(() => {
     void loadTrajectories();
@@ -793,7 +808,7 @@ export function ThinkTokensPanel() {
         <ReasoningLedgerTriage
           proposed={pendingApprovals}
           onSubmit={(id, decision) => submitApproval(id, decision)}
-          deepHealth={null}
+          deepHealth={deepHealth}
         />
       </div>
     </div>
