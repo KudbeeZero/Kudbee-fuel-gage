@@ -119,10 +119,18 @@
       "agentsActive": 11,
       "snippetsAvailable": 9,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1786237451834-f72d3d9f",
+      "date": "2026-08-09T01:04:12.122Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 9,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 15
+    "sessions": 16
   },
   "health": {
     "overall": "UNKNOWN"
