@@ -14,9 +14,9 @@
     },
     {
       "agentId": "kudbee-thinkloop-verify",
-      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEANzqrbNWDxl7TKFNO7fQuTz3LMAU3oOtYLolVcCOlclY=\n-----END PUBLIC KEY-----\n",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAXQricJjABM7t/9dJ0S9CnzR8VEkBfnzHTyBgiqwo6Y8=\n-----END PUBLIC KEY-----\n",
       "status": "active",
-      "createdAt": "2026-08-01T03:00:05.830Z"
+      "createdAt": "2026-08-09T06:52:06.459Z"
     }
   ],
   "note": "Private keys are held by agents only and never committed. On-chain registry replaces this file in a later phase."
