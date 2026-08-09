@@ -142,11 +142,23 @@ export function buildArchitectureGraph(
     layerMap[layer].push(node.id);
   }
 
-  const layers: ArchitectureLayer[] = Object.entries(layerMap).map(([name, modules]) => ({
-    name,
-    modules,
-    dependencies: [], // TODO: infer from imports
-  }));
+  const layers: ArchitectureLayer[] = Object.entries(layerMap).map(([name, modules]) => {
+    const moduleSet = new Set(modules);
+    const layerDeps = new Set<string>();
+    for (const edge of edges) {
+      if (moduleSet.has(edge.from)) {
+        const targetLayer = nodes.find((n) => n.id === edge.to)?.layer || 'unknown';
+        if (targetLayer !== name && targetLayer !== 'unknown') {
+          layerDeps.add(targetLayer);
+        }
+      }
+    }
+    return {
+      name,
+      modules,
+      dependencies: Array.from(layerDeps).sort(),
+    };
+  });
 
   // Compute metrics
   const circularDeps = findCircularDependencies(edges);
