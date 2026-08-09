@@ -1,0 +1,69 @@
+# ==============================================================================
+# DTHINK NODE CONFIGURATION
+# ==============================================================================
+# THINK Protocol v1.0 — Local Node Configuration
+# Lives at ~/.dthink/config.yaml or <project>/.dthink/dthink.yaml
+# ==============================================================================
+
+version: "1.0"
+
+# ── Node Identity & Security ─────────────────────────────────────────────
+identity:
+  node_name: "kudbee-node-01"
+  data_dir: "~/.dthink/data"
+  keypair_path: "~/.dthink/keys/node_key.pem"
+  wallet_address: ""               # Thought Token rewards address
+
+# ── Local Inference Engine ───────────────────────────────────────────────
+inference:
+  backend: "gemini"                # Options: gemini, groq, vllm, deepseek, grok, ollama, llamacpp, torch
+  gpu_acceleration: "auto"         # Options: auto, cuda, metal, rocm, cpu
+  vram_budget_gb: 8                # Cap memory consumption for local workloads
+  default_model: "gemini-flash-latest"
+  models_dir: "~/.dthink/models"
+  threads: 4                       # CPU threads for local backends
+  context_size: 32768
+  flash_attention: true
+  # Cloud provider overrides (read from env if unset):
+  gemini_api_key_env: "GEMINI_API_KEY"
+  groq_api_key_env: "GROQ_API_KEY"
+  vllm_base_url_env: "VLLM_BASE_URL"
+
+# ── DThink-Mesh (P2P Networking) ─────────────────────────────────────────
+mesh:
+  enabled: true
+  listen_address: "/ip4/0.0.0.0/tcp/4001"
+  nat_hole_punching: true
+  max_peers: 50
+  bootstrap_nodes:
+    - "/dnsaddr/bootstrap.thinkprotocol.org/tcp/4001/p2p/12D3KooWEXAMPLE"
+  relay_mode: "auto"               # Options: auto, client, server
+  sharding:
+    allow_foreign_compute: true    # Allow incoming tasks from the mesh
+    max_concurrent_jobs: 2
+    min_stake_required: 1000       # Thought Token minimum stake for task verification
+
+# ── Proof-of-Thought (DThink-VM) Verification ────────────────────────────
+proof_of_thought:
+  sandbox_isolation: "process"     # Options: microvm, docker, WASM, process
+  max_execution_time_sec: 120
+  auto_submit_proofs: true
+  telemetry: "zero-knowledge"       # Only cryptographic hashes published
+  audit_endpoint: "https://api.thinkprotocol.org/v1/proof"
+  local_verifier: true              # Run local <think> trace replay before submitting
+
+# ── Wallet & Staking ─────────────────────────────────────────────────────
+wallet:
+  staking_enabled: false
+  staking_amount: 0                 # Thought Token stake amount
+  auto_claim_rewards: true
+  reward_category_preferences:      # Preferred compute allocation categories
+    - "OPEN_SCIENCE"
+    - "CLIMATE"
+
+# ── Telemetry ────────────────────────────────────────────────────────────
+telemetry:
+  log_level: "info"                 # Options: debug, info, warn, error
+  metrics_port: 9090
+  prometheus_scrape: true
+  node_heartbeat_interval_sec: 60
