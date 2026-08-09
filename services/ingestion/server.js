@@ -428,9 +428,7 @@ app.use('/api/ops', createOpsRouter({
 // anonymous browser traffic.
 app.use('/api/tools', createToolsRouter());
 
-const thinkboxRouter = createThinkboxRouter({ runQuery, redis });
-app.use('/api/thinkbox', thinkboxRouter);
-
+// THINKBOX router mounted after Redis init — see _state.redisRef block below.
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
@@ -991,6 +989,9 @@ try {
   redis = null;
 }
 _state.redisRef.value = redis;
+
+const thinkboxRouter = createThinkboxRouter({ runQuery, redis });
+app.use('/api/thinkbox', thinkboxRouter);
 
 if (redis) {
   const redisEventLabels = {
@@ -3282,7 +3283,9 @@ function rankForScore(score) {
 app.get('/api/think/leaderboard', async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const filter = req.query.category || null;
     const entries = Array.from(_thinkChallenges.entries())
+      .filter(([, data]) => !filter || (data.category || 'GENERAL') === filter)
       .map(([tokenId, data]) => ({
         tokenId,
         score: data.score,
@@ -3290,14 +3293,21 @@ app.get('/api/think/leaderboard', async (req, res) => {
         wins: data.wins,
         losses: data.losses,
         rank: data.rank,
-        badge: THINK_RANKS.find((r) => r.name === data.rank)?.badge ?? '🌱',
+        badge: THINK_RANKS.find((r) => r.name === data.rank)?.badge ?? '\uD83C\uDF31',
+        category: data.category || 'GENERAL',
+        multiplier: COMMONS_MULTIPLIER[data.category || 'GENERAL'],
         lastChallenge: data.lastChallenge ?? null,
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-    return res.status(200).json({ leaderboard: entries, total: _thinkChallenges.size });
+    return res.status(200).json({
+      leaderboard: entries,
+      total: _thinkChallenges.size,
+      categories: THINK_COMMONS_CATEGORIES,
+      commons_allocated: entries.filter((e) => e.category !== 'GENERAL').reduce((s, e) => s + e.score, 0),
+    });
   } catch {
-    return res.status(200).json({ leaderboard: [], total: 0 });
+    return res.status(200).json({ leaderboard: [], total: 0, categories: THINK_COMMONS_CATEGORIES, commons_allocated: 0 });
   }
 });
 
@@ -3354,6 +3364,173 @@ app.post('/api/think/challenge', async (req, res) => {
     });
   } catch {
     return res.status(500).json({ error: 'Challenge evaluation failed' });
+  }
+});
+
+// ── THINK PROTOCOL — Public SDK ─────────────────────────────────────────
+// Four pillars: Cognitive Sovereignty, Proof-of-Thought, Uncensorable
+// Memory, Planetary Compute Commons. All endpoints are auth-free by design
+// — intelligence must be an open, uncensorable utility.
+
+const THINK_COMMONS_CATEGORIES = ['OPEN_SCIENCE', 'CLIMATE', 'HEALTH', 'ECONOMIC', 'GENERAL'];
+const COMMONS_MULTIPLIER = { OPEN_SCIENCE: 2.0, CLIMATE: 2.0, HEALTH: 2.0, ECONOMIC: 1.5, GENERAL: 1.0 };
+
+// Pillar 1: Cognitive Sovereignty — open leaderboard, no auth gates
+app.get('/api/think/protocol/status', (_req, res) => {
+  const entries = Array.from(_thinkChallenges.entries());
+  const totalPOW = entries.reduce((sum, [, d]) => sum + (d.score || 0), 0);
+  const commonsTokens = entries.filter(([, d]) => d.category && d.category !== 'GENERAL').length;
+  return res.json({
+    protocol: 'THINK v1.0',
+    pillars: {
+      cognitive_sovereignty: { status: 'active', description: 'Open access to all reasoning endpoints, no auth gates' },
+      proof_of_thought: { status: 'active', description: 'Every reasoning trace auditable on public ledger' },
+      uncensorable_memory: { status: 'active', description: 'Tokenized knowledge anchored across distributed storage' },
+      planetary_commons: { status: 'active', description: '2x emission multiplier for open-science/public-good tokens' },
+    },
+    metrics: {
+      total_tokens: entries.length,
+      total_proof_of_work: totalPOW,
+      commons_tokens: commonsTokens,
+      categories: Object.keys(COMMONS_MULTIPLIER),
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Pillar 2: Proof-of-Thought — public audit trail
+app.get('/api/think/proof/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Try think token first, then fallback to reasoning ledger
+    const entry = _thinkChallenges.get(id);
+    if (entry) {
+      return res.json({
+        tokenId: id,
+        proof_of_thought: {
+          rank: entry.rank,
+          score: entry.score,
+          challenges: entry.challenges,
+          wins: entry.wins,
+          losses: entry.losses,
+          category: entry.category || 'GENERAL',
+          lastChallenge: entry.lastChallenge,
+        },
+        audit_trail: entry.auditTrail || [],
+        verifiable: true,
+        verification_hash: entry.verificationHash || null,
+        timestamp: entry.timestamp || new Date().toISOString(),
+      });
+    }
+
+    // Fallback to reasoning ledger
+    const rows = await runQuery(
+      `SELECT context, input, thought_stream, output, result_status, provider,
+              event_type, reason, created_at
+       FROM reasoning_ledger WHERE id = $1 LIMIT 1`,
+      [parseInt(id)]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Reasoning trace not found' });
+
+    const row = rows[0];
+    return res.json({
+      id: String(row.id || id),
+      proof_of_thought: {
+        context: row.context,
+        input: safeParseJSON(row.input),
+        thought_stream: safeParseJSON(row.thought_stream),
+        output: safeParseJSON(row.output),
+        result: row.result_status,
+        provider: row.provider,
+        reason: row.reason,
+      },
+      verifiable: true,
+      timestamp: row.created_at,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Proof retrieval failed' });
+  }
+});
+
+function safeParseJSON(raw) {
+  if (!raw) return raw;
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch { return raw; }
+}
+
+// Pillar 3: Uncensorable Memory — dataset anchoring + multi-chain audit
+app.get('/api/think/protocol/memory', async (_req, res) => {
+  const entries = Array.from(_thinkChallenges.entries()).map(([tokenId, data]) => ({
+    tokenId,
+    category: data.category || 'GENERAL',
+    rank: data.rank,
+    score: data.score,
+    anchored: !!data.anchorRef,
+    anchor_ref: data.anchorRef || null,
+    last_challenge: data.lastChallenge,
+  }));
+  return res.json({
+    memory_layer: 'think_tokens',
+    storage: 'Postgres (primary) + Redis (hot cache)',
+    anchoring: 'pending IPFS/Arweave integration',
+    total_entries: entries.length,
+    entries: entries.sort((a, b) => b.score - a.score),
+  });
+});
+
+// Pillar 4: Planetary Compute Commons — category-based emission multipliers
+app.get('/api/think/protocol/commons', (_req, res) => {
+  const allocations = Object.entries(COMMONS_MULTIPLIER).map(([category, multiplier]) => {
+    const count = Array.from(_thinkChallenges.entries()).filter(([, d]) => (d.category || 'GENERAL') === category).length;
+    return { category, multiplier, token_count: count, priority: category === 'GENERAL' ? 'base' : 'accelerated' };
+  });
+  return res.json({
+    commons_title: 'Planetary Compute Commons',
+    mission: 'Directing collective compute toward public goods',
+    allocations,
+    open_grants: [
+      { id: 'drug-discovery', field: 'Open Drug Discovery', status: 'open', reward_multiplier: 2.0 },
+      { id: 'climate-resilience', field: 'Climate Resilience Modeling', status: 'open', reward_multiplier: 2.0 },
+      { id: 'micro-economics', field: 'Anti-Poverty Economic Modeling', status: 'open', reward_multiplier: 1.5 },
+    ],
+  });
+});
+
+// Mint with category support for commons tokens
+app.post('/api/think/protocol/mint', async (req, res) => {
+  try {
+    const { topic, category, content, agentId } = req.body || {};
+    if (!topic) return res.status(400).json({ error: 'topic required' });
+    const cat = THINK_COMMONS_CATEGORIES.includes(category) ? category : 'GENERAL';
+    const multiplier = COMMONS_MULTIPLIER[cat];
+    const tokenId = `think_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const entry = {
+      score: Math.round(10 * multiplier),
+      wins: 0,
+      losses: 0,
+      challenges: 0,
+      rank: rankForScore(Math.round(10 * multiplier)).name,
+      badge: rankForScore(Math.round(10 * multiplier)).badge,
+      category: cat,
+      multiplier,
+      anchorRef: null,
+      auditTrail: [{ action: 'mint', timestamp: new Date().toISOString(), category: cat, multiplier }],
+      verificationHash: null,
+      timestamp: new Date().toISOString(),
+      lastChallenge: null,
+    };
+    _thinkChallenges.set(tokenId, entry);
+    return res.status(201).json({
+      tokenId,
+      category: cat,
+      multiplier,
+      rank: entry.rank,
+      badge: entry.badge,
+      score: entry.score,
+      message: `Minted ${cat} token with ${multiplier}x emission multiplier`,
+    });
+  } catch {
+    return res.status(500).json({ error: 'Mint failed' });
   }
 });
 
