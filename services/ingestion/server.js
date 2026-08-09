@@ -2814,6 +2814,56 @@ app.get('/api/governance/feed', async (req, res) => {
   }
 });
 
+// --- Governance Audit Trail (HermesAuditorPlugin) ----------------------------
+// Returns paginated audit events from governance_actions for the HERMES
+// auditor panel. Pagination via query params: page (0-based) and limit.
+app.get('/api/governance/audit', async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 0, 0);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
+    const offset = page * limit;
+    let events = [];
+    let total = 0;
+
+    if (redis) {
+      try {
+        const rawRows = await redis.zrange('kudbee:governance_actions', offset, offset + limit - 1, 'REV');
+        total = await redis.zcard('kudbee:governance_actions');
+        events = rawRows.map((row) => {
+          const data = JSON.parse(row);
+          return {
+            timestamp: data.timestamp || new Date().toISOString(),
+            agentId: data.agent_id || 'unknown',
+            eventType: data.type || data.action || 'governance_action',
+            details: data.note || data.action || 'Governance action recorded',
+          };
+        });
+        return res.json({ events, total });
+      } catch (e) {
+        console.error('[Redis] Governance audit fallback to Postgres:', e.message);
+      }
+    }
+
+    const countRow = await runQuery('SELECT COUNT(*) AS count FROM governance_actions');
+    total = Number(countRow[0]?.count || 0);
+
+    const rows = await runQuery(
+      'SELECT timestamp, agent_id, type, action, note FROM governance_actions ORDER BY timestamp DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+    events = rows.map((row) => ({
+      timestamp: row.timestamp || new Date().toISOString(),
+      agentId: row.agent_id || 'unknown',
+      eventType: row.type || row.action || 'governance_action',
+      details: row.note || row.action || 'Governance action recorded',
+    }));
+    return res.json({ events, total });
+  } catch (err) {
+    console.error('[Governance] Audit error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch governance audit' });
+  }
+});
+
 // --- Governance Router: Proposed / Approve / Reject -----------------------
 
 app.get('/api/governance/proposed', async (_req, res) => {
@@ -3807,6 +3857,9 @@ app.get('/api/reasoning/ledger', async (req, res) => {
 });
 
 // HERMES heartbeat sink (called by the worker via POST /api/health).
+// TTL must exceed the 5-minute worker heartbeat interval plus max-age
+// (45s) so the key does not expire before the next heartbeat arrives.
+// Using TTL=360 matches publishHeartbeat() in services/agents/hermes.js.
 app.post('/api/health', async (req, res) => {
   try {
     if (redis) {
@@ -3819,7 +3872,7 @@ app.post('/api/health', async (req, res) => {
           timestamp: new Date().toISOString(),
         }),
         'EX',
-        30
+        360
       );
     }
     return res.status(200).json({ ok: true });
