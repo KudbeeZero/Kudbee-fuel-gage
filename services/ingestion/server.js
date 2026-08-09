@@ -428,17 +428,9 @@ app.use('/api/ops', createOpsRouter({
 // anonymous browser traffic.
 app.use('/api/tools', createToolsRouter());
 
-<<<<<<< ours
-<<<<<<< ours
-const thinkboxRouter = createThinkboxRouter({ runQuery });
+const thinkboxRouter = createThinkboxRouter({ runQuery, redis });
 app.use('/api/thinkbox', thinkboxRouter);
 
-=======
-// THINKBOX router mounted after Redis initialization (see below).
->>>>>>> theirs
-=======
-// THINKBOX router mounted after Redis initialization (see below).
->>>>>>> theirs
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
@@ -999,10 +991,6 @@ try {
   redis = null;
 }
 _state.redisRef.value = redis;
-
-// THINKBOX router — needs redis available (mounted after init for real data)
-const thinkboxRouter = createThinkboxRouter({ runQuery, redis });
-app.use('/api/thinkbox', thinkboxRouter);
 
 if (redis) {
   const redisEventLabels = {
