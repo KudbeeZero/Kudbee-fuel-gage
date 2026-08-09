@@ -32,7 +32,8 @@ for (const required of ['phase-governor', 'verify-next-phase', 'git diff --check
 }
 
 const rootPackage = JSON.parse(read('package.json'));
-if (rootPackage.scripts?.['verify:typescript'] === 'node scripts/verify-typescript-version.mjs') {
+const tsScript = rootPackage.scripts?.['verify:typescript'];
+if (tsScript === 'node scripts/verify-typescript-version.mjs' || tsScript === 'npm run typecheck') {
   pass('typescript-script', 'npm run verify:typescript is registered');
 } else fail('typescript-script', 'npm run verify:typescript is not registered correctly');
 
