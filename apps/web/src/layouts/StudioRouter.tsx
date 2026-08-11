@@ -35,6 +35,9 @@ const CIHealthPanel = lazy(() =>
 const LocalDbStatus = lazy(() =>
   import('../components/studio/LocalDbStatus').then((m) => ({ default: m.default ?? m }))
 );
+const NodeConfigPanel = lazy(() =>
+  import('../components/studio/NodeConfigPanel').then((m) => ({ default: m.default ?? m }))
+);
 
 const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   monitor: '/tower/monitor',
@@ -45,6 +48,7 @@ const TAB_ID_TO_PATH: Record<StudioTabId, string> = {
   localdb: '/tower/localdb',
   telemetry: '/tower/telemetry',
   firewall: '/tower/firewall',
+  node: '/tower/node',
 };
 
 const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
@@ -56,6 +60,7 @@ const PATH_TO_TAB_ID: Record<string, StudioTabId> = {
   '/tower/localdb': 'localdb',
   '/tower/telemetry': 'telemetry',
   '/tower/firewall': 'firewall',
+  '/tower/node': 'node',
 };
 
 function PanelFallback() {
@@ -105,6 +110,7 @@ function StudioShell() {
             <Route path="/localdb" element={<LocalDbStatus />} />
             <Route path="/telemetry" element={<TelemetryPanel />} />
             <Route path="/firewall" element={<FirewallPanel />} />
+            <Route path="/node" element={<NodeConfigPanel />} />
           </Routes>
         </Suspense>
       </StudioLayout>

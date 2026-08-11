@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "main": "src/index.ts",
+  "bin": {
+    "dthink": "src/cli/dthink.mjs"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",

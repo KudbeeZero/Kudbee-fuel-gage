@@ -7,7 +7,7 @@ import { WorkspaceRecoveryBoundary } from '../components/WorkspaceRecoveryBounda
 import { PanelErrorBoundary } from '../components/PanelErrorBoundary';
 import {
   Activity, AlertTriangle, Brain,
-  Database, RefreshCw, Shield, Terminal, Radio
+  Database, RefreshCw, Shield, Terminal, Radio, Cpu
 } from 'lucide-react';
 
 interface StudioContextValue {
@@ -31,7 +31,8 @@ const STUDIO_TABS = [
   { id: 'challenge', label: 'CHALLENGE', icon: Terminal, description: 'Challenge arena & seniority protocol' },
   { id: 'localdb', label: 'LOCALDB', icon: Database, description: 'Local-first DB sync engine & storage health' },
   { id: 'telemetry', label: 'TELEMETRY', icon: Activity, description: 'Live metrics, model matrix & circuit breaker' },
-  { id: 'firewall', label: 'FIREWALL', icon: AlertTriangle, description: 'Interceptor guardrails & triage hold' }
+  { id: 'firewall', label: 'FIREWALL', icon: AlertTriangle, description: 'Interceptor guardrails & triage hold' },
+  { id: 'node', label: 'NODE', icon: Cpu, description: 'DThink-Node config, 6MB budget & P2P mesh caps' }
 ] as const;
 
 export type StudioTabId = typeof STUDIO_TABS[number]['id'];

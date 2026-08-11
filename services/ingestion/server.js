@@ -56,6 +56,7 @@ import { createSystemRouter } from './routes/system.ts';
 import { createOpsRouter } from './routes/ops.ts';
 import { createToolsRouter } from './routes/tools.ts';
 import { createThinkboxRouter } from './routes/thinkbox.ts';
+import { buildNodeStatus, loadNodeConfig } from '../thinkbox/src/cli/node-config.mjs';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
 import { grokConfigured, grokStatus } from '../lib/grokClient.ts';
@@ -428,17 +429,7 @@ app.use('/api/ops', createOpsRouter({
 // anonymous browser traffic.
 app.use('/api/tools', createToolsRouter());
 
-<<<<<<< ours
-<<<<<<< ours
-const thinkboxRouter = createThinkboxRouter({ runQuery });
-app.use('/api/thinkbox', thinkboxRouter);
-
-=======
-// THINKBOX router mounted after Redis initialization (see below).
->>>>>>> theirs
-=======
-// THINKBOX router mounted after Redis initialization (see below).
->>>>>>> theirs
+// THINKBOX router mounted after Redis init (see _state.redisRef block below).
 // Synapse Protection status endpoint
 app.get('/api/system/synapse-status', (_req, res) => {
   res.json(getSynapseStatus());
@@ -3344,6 +3335,32 @@ app.get('/api/governance/union/active', async (req, res) => {
     return res.status(200).json({ unions: await getActiveUnions() });
   } catch {
     return res.status(200).json({ unions: [] });
+  }
+});
+
+// ── DThink-Node Configuration & Status (Hardware Lab) ─────────────────────
+// Lean node schema — 4-6 MB RAM budget with strict upper bounds on peers,
+// buffers, task concurrency, and DHT depth.
+
+app.get('/api/dthink/config', (_req, res) => {
+  try {
+    const { config, source, file } = loadNodeConfig();
+    return res.json({
+      protocol: 'dThink-Node v1.0',
+      config_source: source,
+      config_file: file,
+      config,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/dthink/status', (_req, res) => {
+  try {
+    return res.json(buildNodeStatus());
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 });
 
