@@ -9,6 +9,9 @@
 import type { ProjectIntelligenceManifest } from '../intelligence/types.ts';
 import type { ProvisionConfig, ProvisionResult } from './types.ts';
 import { generateNodeProvisioning } from './node.ts';
+import { generatePythonProvisioning } from './python.ts';
+import { generateRustProvisioning } from './rust.ts';
+import { generateGoProvisioning } from './go.ts';
 
 function detectPrimaryLanguage(manifest: ProjectIntelligenceManifest): string {
   // Priority order based on ecosystem maturity
@@ -35,17 +38,14 @@ export function generateProvisioning(manifest: ProjectIntelligenceManifest): Pro
         config = generateNodeProvisioning(manifest);
         break;
       case 'python':
-        // TODO: Implement Python provisioner
-        warnings.push('Python provisioning not yet implemented');
-        return { success: false, config: null, errors, warnings };
+        config = generatePythonProvisioning(manifest);
+        break;
       case 'rust':
-        // TODO: Implement Rust provisioner
-        warnings.push('Rust provisioning not yet implemented');
-        return { success: false, config: null, errors, warnings };
+        config = generateRustProvisioning(manifest);
+        break;
       case 'go':
-        // TODO: Implement Go provisioner
-        warnings.push('Go provisioning not yet implemented');
-        return { success: false, config: null, errors, warnings };
+        config = generateGoProvisioning(manifest);
+        break;
       default:
         warnings.push(`No provisioner available for language: ${primaryLang}`);
         return { success: false, config: null, errors, warnings };
