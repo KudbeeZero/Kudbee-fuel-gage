@@ -1,13 +1,22 @@
 {
+<<<<<<< ours
+  "generatedAt": "2026-08-08T19:23:48.928Z",
+=======
   "generatedAt": "2026-08-11T10:44:54.602Z",
+>>>>>>> theirs
   "identity": {
     "agent": "cloud-agent",
     "role": "Production Rollout",
     "session": null
   },
   "location": {
+<<<<<<< ours
+    "branch": "session/agent_52d3f766-1c10-4103-84ec-87cf765187f5",
+    "sha": "1ab8264",
+=======
     "branch": "main",
     "sha": "db78253",
+>>>>>>> theirs
     "dirtyCount": 0
   },
   "mission": {

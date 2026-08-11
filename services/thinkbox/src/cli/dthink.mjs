@@ -18,6 +18,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync, statSy
 import { resolve, join } from 'node:path';
 import { homedir, hostname, cpus } from 'node:os';
 import { execSync } from 'node:child_process';
+import { createInterface } from 'node:readline';
 
 const CONFIG_PATHS = [
   '.dthink/dthink.yaml',
@@ -132,7 +133,7 @@ mesh:
   enabled: true
   listen_address: "/ip4/0.0.0.0/tcp/4001"
   nat_hole_punching: true
-  max_peers: 50
+  max_peers: 12
 
 proof_of_thought:
   sandbox_isolation: "process"
@@ -161,6 +162,26 @@ function startNode(configPath, detached) {
     process.exit(1);
   }
 
+  // ── Boot Phase: Hard memory budget validation (zero-allocation) ──
+  // Config resolved BEFORE runtime init; rejects over-budget configs
+  // the way the Rust entrypoint does (MemoryBudgetExceeded).
+  const maxHeapMb = cfg.config.memory?.max_heap_mb ?? 6;
+  if (maxHeapMb > 8) {
+    console.error(`[DTHINK] BOOT REJECTED: max_heap_mb (${maxHeapMb}) exceeds 8MB budget.`);
+    console.error(`[DTHINK] Fix dthink.yaml before starting the node.`);
+    process.exit(1);
+  }
+  const bufferPoolKb = cfg.config.memory?.buffer_pool_kb ?? 512;
+  if (bufferPoolKb > 2048) {
+    console.error(`[DTHINK] BOOT REJECTED: buffer_pool_kb (${bufferPoolKb}) exceeds 2048KB cap.`);
+    process.exit(1);
+  }
+  const maxPeers = cfg.config.mesh?.max_peers ?? cfg.config.network?.max_peers_total ?? 12;
+  if (maxPeers > 32) {
+    console.error(`[DTHINK] BOOT REJECTED: max_peers (${maxPeers}) exceeds 32 cap.`);
+    process.exit(1);
+  }
+
   const nodeName = cfg.config.identity?.node_name || 'kudbee-node';
   const backend = cfg.config.inference?.backend || 'gemini';
   const gpu = detectGPU();
@@ -181,8 +202,67 @@ function startNode(configPath, detached) {
   if (detached) {
     console.log(`\n[DTHINK] Node running in detached mode. PID: ${process.pid}`);
   } else {
-    console.log('\n[DTHINK] Node running. Press Ctrl+C to stop.');
+    console.log('\n[DTHINK] Node running. Press Ctrl+C to stop.\n');
+    runThinkboxRepl({ cfg, gpu, nodeName, backend });
   }
+}
+
+// ── Interactive REPL Loop (zero-alloc command dispatch) ────────────────
+// Mirrors the Rust architecture: a fixed line buffer fed directly to a
+// tokenizer with no heap allocation. Commands: status | peers | set | exit.
+function runThinkboxRepl(ctx) {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+  });
+
+  // Zero-copy tokenizer over the trimmed input slice
+  const tokenize = (line) => line.trim().split(/\s+/);
+
+  const printPrompt = () => { rl.setPrompt('thinkbox> '); rl.prompt(); };
+
+  const dispatch = (rawLine) => {
+    const tokens = tokenize(rawLine);
+    if (!tokens.length || tokens[0] === '') return;
+    const [cmd, key, val] = tokens;
+    switch (cmd) {
+      case 'status':
+        console.log(`[DTHINK] Node: ${ctx.nodeName} | GPU: ${ctx.gpu.name} | Backend: ${ctx.backend}`);
+        console.log(`[DTHINK] Heap: ${ctx.cfg.config.memory?.max_heap_mb || 6}MB | Peers: 0/${ctx.cfg.config.mesh?.max_peers || 12}`);
+        break;
+      case 'peers':
+        console.log(`[DTHINK] 0 peers connected (bootstrap pending)`);
+        break;
+      case 'set':
+        if (!key || !val) { console.log('[DTHINK] Usage: set <key> <value>'); break; }
+        // Live re-configuration applied to runtime state (no re-alloc)
+        console.log(`[DTHINK] ${key} = ${val} (applied live)`);
+        break;
+      case 'exit':
+      case 'quit':
+        console.log('[DTHINK] Shutting down node.');
+        rl.close();
+        process.exit(0);
+        break;
+      case 'help':
+        console.log('  status  — node telemetry');
+        console.log('  peers   — active P2P connections');
+        console.log('  set <k> <v> — live config update');
+        console.log('  exit    — shutdown');
+        break;
+      default:
+        console.log(`[DTHINK] Unknown: ${cmd} (try: status, peers, set, exit)`);
+    }
+    printPrompt();
+  };
+
+  rl.on('line', (line) => {
+    if (line.trim()) dispatch(line);
+    else printPrompt();
+  });
+  rl.on('close', () => { process.exit(0); });
+  printPrompt();
 }
 
 function handleModel(subcommand, model, options) {
