@@ -1,18 +1,7 @@
-/**
- * services/thinkbox/src/cli/node-config.mjs
- *
- * DThink-Node lean configuration module — parses dthink.toml (or falls
- * back to dthink.yaml) and computes live runtime status for the
- * hardware-lab panel. Enforces the tight 4-6 MB RAM budget:
- *   - max_heap_mb  ≤ 16 (default 6)
- *   - buffer_pool_kb ≤ 2048 (default 512)
- *   - max_peers_total ≤ 32 (default 12)
- *   - max_concurrent_tasks ≤ 4 (default 2)
- */
-
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { FluidArena, MorphProfile, validateProfiles } from './morphing.mjs';
 
 export const NODE_ROLES = ['light-worker', 'relayer', 'headless-executor'];
 export const DHT_MODES = ['off', 'client', 'full'];
@@ -184,14 +173,47 @@ export function nodeRuntimeStatus(config) {
   };
 }
 
+/** Lazy import the DHT slab table (only for full dht_mode). */
+function awaitImportDht() {
+  return import('./dht-table.mjs');
+}
+
+/** Fluid Memory Morphing — arena overlay snapshot. */
+export function morphSnapshot() {
+  try {
+    const arena = new FluidArena(MorphProfile.RoutingMesh);
+    return {
+      current: arena.snapshot(),
+      profiles: validateProfiles(),
+      transitions: arena.transitions,
+    };
+  } catch {
+    return { error: 'morph engine unavailable' };
+  }
+}
+
 /** Build the API response for GET /api/dthink/status */
 export function buildNodeStatus() {
   const { config, source, file } = loadNodeConfig();
   const status = nodeRuntimeStatus(config);
+  let dht = null;
+  if (config.discovery.dht_mode === 'full') {
+    try {
+      const { DhtRoutingTable, makeNodeId } = awaitImportDht();
+      const table = DhtRoutingTable.fromNodeId(makeNodeId(42));
+      dht = table.stats();
+    } catch {
+      dht = { error: 'DHT table unavailable' };
+    }
+  } else {
+    dht = { mode: 'client', ram_saving_mb: 2.5, note: 'client mode keeps no routing table (saves ~2.5MB)' };
+  }
   return {
     node: config.node,
     config,
     status,
+    dht,
+    morph: morphSnapshot(),
     config_source: source,
     config_file: file,
     protocol: 'dThink-Node v1.0',
