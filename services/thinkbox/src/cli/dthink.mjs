@@ -21,6 +21,7 @@ import { execSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { renderTelemetryFrame, buildNodeTelemetry, watchTelemetry } from './telemetry.mjs';
 import { DhtRoutingTable, makePeer, makeNodeId, K_BUCKET_SIZE } from './dht-table.mjs';
+import { FluidArena, MorphProfile, PROFILE_NAMES, validateProfiles } from './morphing.mjs';
 
 const CONFIG_PATHS = [
   '.dthink/dthink.yaml',
@@ -504,10 +505,38 @@ function handleWallet(subcommand, amount) {
   }
 }
 
+/** Fluid Memory Morphing — show layout, morph profiles, or auto-adapt. */
+function handleMorph(target) {
+  const arena = new FluidArena(MorphProfile.RoutingMesh);
+  if (target === 'profiles') {
+    const profiles = validateProfiles();
+    console.log('┌────────────────────────────────────────────────────────┐');
+    console.log('│ Fluid Memory Morphing — Arena Profile Map               │');
+    console.log('├────────────────────────────────────────────────────────┤');
+    for (const [name, p] of Object.entries(profiles)) {
+      console.log(`│ ${name.padEnd(20)} ${String(p.total_kb).padStart(5)} KB  exact:${p.exact ? 'yes' : 'NO'}    │`);
+    }
+    console.log('└────────────────────────────────────────────────────────┘');
+    return;
+  }
+  const map = { routing: MorphProfile.RoutingMesh, storage: MorphProfile.ChunkStorage, compute: MorphProfile.ComputePipeline, low: MorphProfile.LowPower };
+  const profile = map[target?.toLowerCase()];
+  if (profile === undefined) {
+    console.log('dthink morph <profile>   — routing | storage | compute | low');
+    console.log('dthink morph profiles    — show arena profile map');
+    const snap = arena.snapshot();
+    console.log(`Current: ${snap.mode} (${snap.allocated_kb}KB / ${snap.budget_kb}KB)`);
+    return;
+  }
+  const snap = arena.transitionProfile(profile);
+  console.log(`[DTHINK] Morphed → ${snap.mode}`);
+  console.log(`  net: ${snap.layout.net_kb}KB | dht: ${snap.layout.dht_kb}KB | cache: ${snap.layout.cache_kb}KB | compute: ${snap.layout.compute_kb}KB`);
+  console.log(`  transition: ${snap.last_transition_us}µs | peers cap: ${snap.peers_cap}`);
+}
+
 // ── Main CLI Router ──────────────────────────────────────────────────────
 
 const [verb, subcommand, ...args] = process.argv.slice(2);
-
 if (!verb || verb === '--help' || verb === '-h') {
   console.log(`DTHINK CLI — THINK Protocol Node Operator
 
@@ -518,6 +547,7 @@ VERBS:
   start        Boot inference server + P2P mesh
   status       Zero-alloc ANSI telemetry frame [--watch]
   check-config Validate config against lean schema caps
+  morph        Fluid memory morphing (routing|storage|compute|low)
   model        Manage models (pull, list, run)
   mesh         P2P network status and peers (status/peers/jobs/dht)
   prove        Verify Proof-of-Thought traces
@@ -544,6 +574,9 @@ switch (verb) {
     break;
   case 'check-config':
     handleCheckConfig();
+    break;
+  case 'morph':
+    handleMorph(subcommand);
     break;
   case 'model':
     handleModel(subcommand, args[0], args);
