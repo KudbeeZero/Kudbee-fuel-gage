@@ -1,17 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const M = async (path: string): Promise<any> => import(path);
+
 describe('Fluid Memory Morphing Engine', () => {
   test('all 4 profiles sum to exactly 8192 KB', async () => {
-    const { validateProfiles, ARENA_SIZE_KB } = await import('../src/cli/morphing.mjs');
+    const { validateProfiles, ARENA_SIZE_KB } = await M('../src/cli/morphing.mjs');
     const results = validateProfiles();
     expect(Object.keys(results).length).toBe(4);
-    for (const [name, r] of Object.entries(results)) {
+    for (const [name, r] of Object.entries(results) as [string, { exact: boolean }][]) {
       expect(r.exact, `${name} must equal ${ARENA_SIZE_KB} KB`).toBe(true);
     }
   });
 
   test('morph transition reclaims LRU into compute arena', async () => {
-    const { FluidArena, MorphProfile } = await import('../src/cli/morphing.mjs');
+    const { FluidArena, MorphProfile } = await M('../src/cli/morphing.mjs');
     const arena = new FluidArena(MorphProfile.RoutingMesh);
     const before = arena.snapshot();
     expect(before.layout.cache_kb).toBe(4096);
@@ -23,7 +26,7 @@ describe('Fluid Memory Morphing Engine', () => {
   });
 
   test('views are zero-copy subarray projections', async () => {
-    const { FluidArena, MorphProfile, ARENA_SIZE_BYTES } = await import('../src/cli/morphing.mjs');
+    const { FluidArena, MorphProfile, ARENA_SIZE_BYTES } = await M('../src/cli/morphing.mjs');
     const arena = new FluidArena(MorphProfile.ComputePipeline);
     const views = arena.projectViews();
     expect(views.net.byteLength).toBe(1024 * 1024);
@@ -74,13 +77,13 @@ describe('Micro-Task Pipelining (64-byte frames)', () => {
   });
 
   test('encode/decode round-trips with checksum validation', async () => {
-    const { encodeFrame, decodeFrame, newStreamId } = await import('../src/cli/pipeline.mjs');
+    const { encodeFrame, decodeFrame, newStreamId } = await M('../src/cli/pipeline.mjs');
     const payload = new Uint8Array(1000).fill(0x42);
     const frame = encodeFrame({ opCode: 7, streamId: newStreamId(5), frameIdx: 0, totalFrames: 1, payload });
     const { valid, header, payload: out } = decodeFrame(frame);
     expect(valid).toBe(true);
-    expect(header.opCode).toBe(7);
-    expect(out.length).toBe(1000);
+    expect(header?.opCode).toBe(7);
+    expect(out?.length).toBe(1000);
   });
 
   test('shred + pipeline across 3 hops', async () => {
@@ -110,8 +113,8 @@ describe('Micro-Task Pipelining (64-byte frames)', () => {
 
 describe('Zero-Trust Execution Proofs', () => {
   test('honest executor checkpoints are internally consistent', async () => {
-    const { executeWithCheckpoints, merkleRoot } = await import('../src/cli/proofs.mjs');
-    const stepFn = (state, i) => {
+    const { executeWithCheckpoints, merkleRoot } = await M('../src/cli/proofs.mjs');
+    const stepFn = (state: Uint8Array, i: number): Uint8Array => {
       const out = new Uint8Array(state.length);
       for (let j = 0; j < out.length; j++) out[j] = (state[j] + i) & 0xff;
       return out;
@@ -124,8 +127,8 @@ describe('Zero-Trust Execution Proofs', () => {
   });
 
   test('tampered execution produces different checkpoint than honest run', async () => {
-    const { executeWithCheckpoints } = await import('../src/cli/proofs.mjs');
-    const stepFn = (state, i) => {
+    const { executeWithCheckpoints } = await M('../src/cli/proofs.mjs');
+    const stepFn = (state: Uint8Array, i: number): Uint8Array => {
       const out = new Uint8Array(state.length);
       for (let j = 0; j < out.length; j++) out[j] = (state[j] + i) & 0xff;
       return out;
