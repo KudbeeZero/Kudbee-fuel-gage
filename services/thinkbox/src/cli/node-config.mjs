@@ -188,12 +188,30 @@ export function nodeRuntimeStatus(config) {
 export function buildNodeStatus() {
   const { config, source, file } = loadNodeConfig();
   const status = nodeRuntimeStatus(config);
+  let dht = null;
+  if (config.discovery.dht_mode === 'full') {
+    try {
+      const { DhtRoutingTable, makeNodeId } = awaitImportDht();
+      const table = DhtRoutingTable.fromNodeId(makeNodeId(42));
+      dht = table.stats();
+    } catch {
+      dht = { error: 'DHT table unavailable' };
+    }
+  } else {
+    dht = { mode: 'client', ram_saving_mb: 2.5, note: 'client mode keeps no routing table (saves ~2.5MB)' };
+  }
   return {
     node: config.node,
     config,
     status,
+    dht,
     config_source: source,
     config_file: file,
     protocol: 'dThink-Node v1.0',
   };
+}
+
+/** Lazy import the DHT slab table (only for full dht_mode) */
+function awaitImportDht() {
+  return import('./dht-table.mjs');
 }
