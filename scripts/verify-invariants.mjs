@@ -68,14 +68,14 @@ async function checkSecrets() {
 }
 
 async function checkTerminal() {
-  const t = join(REPO_ROOT, 'apps', 'web', 'terminal.html');
-  if (!existsSync(t)) return { pass: false, detail: 'terminal.html missing' };
+  const t = join(REPO_ROOT, 'apps', 'web', 'index.html');
+  if (!existsSync(t)) return { pass: false, detail: 'index.html missing' };
   const content = readFileSync(t, 'utf8');
   const hasMarkers = content.split('\n').some(l => /^\s*<<<<<<<\s/.test(l) || /^\s*>>>>>>>\s/.test(l));
   const complete = content.includes('KUDBEE') && content.includes('cmd-input') && content.includes('Engineering Health');
   return !hasMarkers && complete
-    ? { pass: true, detail: 'terminal.html clean + complete' }
-    : { pass: false, detail: hasMarkers ? 'terminal.html has markers' : 'terminal.html incomplete' };
+    ? { pass: true, detail: 'index.html clean + complete' }
+    : { pass: false, detail: hasMarkers ? 'index.html has markers' : 'index.html incomplete' };
 }
 
 async function checkTypescript7() {

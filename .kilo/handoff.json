@@ -11,8 +11,8 @@
     "dirtyCount": 2
   },
   "mission": {
-    "mission": "Kudbee is a self-improving Engineering OS. We operate 24/7 on our own servers, learning from every decision, failure, and success. We observe → decide → act → verify → learn, feeding every outcome back into our memory, our terminals, and our next mission. We never stop improving; we never rely on a human to tell us what to do next.",
-    "phase": "PHASE-6 — Production Rollout",
+    "mission": "Kudbee is a self-improving Engineering OS. We operate 24/7 on our own servers, learning from every decision, failure, and success. We observe \u2192 decide \u2192 act \u2192 verify \u2192 learn, feeding every outcome back into our memory, our terminals, and our next mission. We never stop improving; we never rely on a human to tell us what to do next.",
+    "phase": "PHASE-6 \u2014 Production Rollout",
     "percentComplete": 67,
     "nextUp": {
       "id": "PHASE-6",
@@ -24,7 +24,7 @@
     "fleet": 11,
     "lastEvents": [
       "01:46:51 agent:decision     system          PLATFORM DECISION: Heroku remains the live Control Tower. Re",
-      "13:47:08 agent:decision     system          LESSON LEARNED: Render OOM was NOT memory — bun run start ch",
+      "13:47:08 agent:decision     system          LESSON LEARNED: Render OOM was NOT memory \u2014 bun run start ch",
       "13:47:08 agent:decision     system          SWARM FULL-POWER: 11 agents + 30 sub-agents active. PR #316",
       "13:46:29 agent:decision     ci-watcher      ci-watcher: verification_complete",
       "13:46:23 agent:decision     knowledge-curat knowledge-curator: curation_complete"
@@ -32,9 +32,8 @@
     "links": {
       "staging": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com",
       "production": "https://kudbee-fuel-gage-330ade653a62.herokuapp.com",
-      "terminal": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/terminal.html",
       "github": "https://github.com/KudbeeZero/Kudbee-fuel-gage"
     }
   },
-  "firstAction": "Proceed with PHASE-6 — Production Rollout. One objective, one branch, one PR."
+  "firstAction": "Proceed with PHASE-6 \u2014 Production Rollout. One objective, one branch, one PR."
 }

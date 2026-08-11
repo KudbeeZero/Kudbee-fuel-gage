@@ -69,7 +69,19 @@
   },
   "agents": {
     "count": 11,
-    "types": ["ci-watcher", "pipeline-guardian", "knowledge-curator", "gastown", "gateway-router", "hermes", "ledger-keeper", "monitor", "sentinel", "token-forge", "web-doctor"]
+    "types": [
+      "ci-watcher",
+      "pipeline-guardian",
+      "knowledge-curator",
+      "gastown",
+      "gateway-router",
+      "hermes",
+      "ledger-keeper",
+      "monitor",
+      "sentinel",
+      "token-forge",
+      "web-doctor"
+    ]
   },
   "bus": {
     "type": "Redis pub/sub",
@@ -94,7 +106,10 @@
     "pipeline-guardian"
   ],
   "workflows": {
-    "local": [".github/workflows/verify.yml", ".github/workflows/codeql.yml"],
+    "local": [
+      ".github/workflows/verify.yml",
+      ".github/workflows/codeql.yml"
+    ],
     "remote": [
       "Deploy to Heroku Staging",
       "Session Logger",
@@ -115,5 +130,8 @@
     "alpha": false,
     "open_prs": 0,
     "dependabot_prs": 5
+  },
+  "build_entries": {
+    "main": "index.html"
   }
 }

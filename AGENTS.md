@@ -14,7 +14,7 @@ State your role + first action to the human, then proceed.
 - **Canonical server entrypoint:** `services/ingestion/server.js` — never create `server.ts` or duplicate entrypoints.
 - **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*` (except `!apps/mobile` — excluded, built separately).
   All `npm install` must run at root.
-- **`apps/web`** — React 19 + Vite + Tailwind 4 + React Router 8 + zustand. Build entries: `index.html`, `terminal.html`, `tower.html`. Serves from `dist/`.
+- **`apps/web`** — React 19 + Vite + Tailwind 4 + React Router 8 + zustand. Build entry: `index.html`. Serves from `dist/`.
 - **`apps/mobile`** — React Native (Expo 52). Excluded from workspace, type-checked separately.
 - **`services/lib`** — shared middleware, circuit breaker, guards, LLM clients.
 - **`packages/opencode`** uses **bun** as package manager; everything else uses npm.
@@ -24,7 +24,8 @@ State your role + first action to the human, then proceed.
 - **LLM provider:** `GEMINI_API_KEY` + `gemini-flash-latest`. Provider factory at `packages/utils/src/llm/providers.ts`.
   Also supports Groq (`GROQ_API_KEY`), vLLM (`VLLM_BASE_URL`/`VLLM_API_KEY`), DeepSeek, Grok.
 - **Test runner:** `bun test`. CI runs `bun test` after typecheck + lint.
-- **Interactive terminal:** runs server-side via `POST /api/terminal/execute`, served at `/terminal.html`.
+- **Interactive terminal:** runs server-side via `POST /api/terminal/execute`, served at `/` via SPA.
+- **SPA tabs:** 5 — OVERVIEW, WORKSPACE, THINKBOX, TERMINAL (OllamaChat), STUDIO (StudioRouter).
 
 ## Local development commands
 

@@ -3781,7 +3781,7 @@ app.post('/api/agents/fleet', async (req, res) => {
     return res.status(500).json({ error: 'Fleet update failed' });
   }
 });
-// --- Agent status endpoint (MonitorPanel / tower.html) -----------------------
+// --- Agent status endpoint (MonitorPanel) -----------------------
 // Returns agent fleet data in the shape expected by useAgentStatus hook.
 // Wraps /api/agents/fleet with enriched metadata.
 app.get('/api/system/agent-status', async (_req, res) => {
