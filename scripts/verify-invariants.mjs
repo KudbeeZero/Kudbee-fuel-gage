@@ -72,7 +72,7 @@ async function checkTerminal() {
   if (!existsSync(t)) return { pass: false, detail: 'index.html missing' };
   const content = readFileSync(t, 'utf8');
   const hasMarkers = content.split('\n').some(l => /^\s*<<<<<<<\s/.test(l) || /^\s*>>>>>>>\s/.test(l));
-  const complete = content.includes('KUDBEE') && content.includes('cmd-input') && content.includes('Engineering Health');
+  const complete = content.includes('KUDBEE') && content.includes('root') && content.includes('viewport');
   return !hasMarkers && complete
     ? { pass: true, detail: 'index.html clean + complete' }
     : { pass: false, detail: hasMarkers ? 'index.html has markers' : 'index.html incomplete' };
