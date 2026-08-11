@@ -186,6 +186,11 @@ export function tenantScopeMiddleware(req: any, res: any, next: any): void {
     }
 
     const membership = memberships[0];
+    if (!membership) {
+      delete req.tenantCtx;
+      res.status(403).json({ error: 'forbidden', reason: 'Invalid tenant membership' });
+      return;
+    }
     const tenant = TENANTS[membership.tenantId];
     if (!tenant) {
       delete req.tenantCtx;
@@ -224,6 +229,9 @@ export function tenantRateLimitKey(req: any): string {
 
 function ipFromRequest(req: any): string {
   const fwd = req?.headers?.['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
+  if (typeof fwd === 'string' && fwd.length > 0) {
+    const first = fwd.split(',')[0];
+    return typeof first === 'string' ? first.trim() : 'unknown';
+  }
   return req?.socket?.remoteAddress || req?.ip || 'unknown';
 }
