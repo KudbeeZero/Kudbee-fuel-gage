@@ -34,6 +34,7 @@ import {
   withTimeout,
 } from '../lib/db.js';
 import { getRedisClient, getSubscriberClient, initRedisFallbackQueue } from '../lib/redis.js';
+import { tenantScopeMiddleware } from './lib/tenants.ts';
 import { createProvider, wrapPromptForOpenWeights } from '@kudbee/utils/llm/providers';
 import { handleTelemetryIngest } from './controllers/telemetry.ts';
 import { fetchFile } from '../github/connector.ts';
