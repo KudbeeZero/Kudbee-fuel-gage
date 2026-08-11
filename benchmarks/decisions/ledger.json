@@ -113,6 +113,26 @@
       "reviewDate": null,
       "outcome": null,
       "supersedes": null
+    },
+    {
+      "id": "DEC-0006",
+      "mission": "PHASE-7/8 dThink",
+      "problem": "Complete dThink node suite + 4 innovations + provisioning engine",
+      "alternatives": [
+        "Optimize existing only",
+        "Ship standalone CLI"
+      ],
+      "chosen": "Built full dthink CLI (status/morph/check-config/mesh-dht/prove), 4 structural innovations (morphing, CW-Kad, pipelining, proofs), PR-003 provisioners (python/rust/go), NodeConfig studio panel, 5-tab mobile frontend, health-gate + canary deploy pipeline, THINK protocol endpoints",
+      "evidence": "PRs #320-333, 338+ tests passing, guardian PASS",
+      "benchmarksConsulted": [],
+      "risksAccepted": "",
+      "rollbackPlan": "git revert stacked PRs #330-333",
+      "confidence": null,
+      "status": "DECIDED",
+      "recordedAt": "2026-08-11T12:11:45.841Z",
+      "reviewDate": null,
+      "outcome": null,
+      "supersedes": null
     }
   ]
 }
