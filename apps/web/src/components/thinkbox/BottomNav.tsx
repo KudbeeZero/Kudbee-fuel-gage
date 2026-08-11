@@ -1,14 +1,14 @@
 /**
- * THINKBOX-016A — Bottom Navigation
+ * THINKBOX-016A — Bottom Navigation (PHASE-8 Mobile-First)
  *
- * Five persistent tabs. No hamburger menu for primary navigation.
+ * Five persistent tabs matching App.tsx. No hamburger.
  * Safe-area aware (Dynamic Island / Home Indicator).
- * Minimum 44x44px touch targets. Dark mode first.
+ * Minimum 56x64px touch targets. Dark mode first.
  */
 
-import { Home, Boxes, Terminal, Rocket, User } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Boxes, TerminalSquare, Monitor } from 'lucide-react';
 
-export type BottomNavTab = 'home' | 'thinkbox' | 'terminal' | 'control-tower' | 'profile';
+export type BottomNavTab = 'OVERVIEW' | 'WORKSPACE' | 'THINKBOX' | 'TERMINAL' | 'STUDIO';
 
 interface BottomNavProps {
   active: BottomNavTab;
@@ -16,17 +16,17 @@ interface BottomNavProps {
 }
 
 const TABS: Array<{ id: BottomNavTab; icon: React.ComponentType<{ className?: string }>; label: string }> = [
-  { id: 'home', icon: Home, label: 'Home' },
-  { id: 'thinkbox', icon: Boxes, label: 'THINKBOX' },
-  { id: 'terminal', icon: Terminal, label: 'Terminal' },
-  { id: 'control-tower', icon: Rocket, label: 'Tower' },
-  { id: 'profile', icon: User, label: 'Profile' },
+  { id: 'OVERVIEW', icon: LayoutDashboard, label: 'Home' },
+  { id: 'WORKSPACE', icon: Sparkles, label: 'Workspace' },
+  { id: 'THINKBOX', icon: Boxes, label: 'THINKBOX' },
+  { id: 'TERMINAL', icon: TerminalSquare, label: 'Terminal' },
+  { id: 'STUDIO', icon: Monitor, label: 'Studio' },
 ];
 
 export function BottomNav({ active, onChange }: BottomNavProps) {
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-800/60 bg-slate-950/95 backdrop-blur-md"
+      className="fixed bottom-0 inset-x-0 z-[99999] border-t border-slate-800/60 bg-slate-950/95 backdrop-blur-md"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       role="navigation"
       aria-label="Primary navigation"
@@ -47,7 +47,7 @@ export function BottomNav({ active, onChange }: BottomNavProps) {
               aria-current={isActive ? 'page' : undefined}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-400' : ''}`} />
-              <span className={`text-[8px] font-mono mt-0.5 ${isActive ? 'text-emerald-400 font-bold' : 'text-slate-600'}`}>
+              <span className={`text-[9px] font-mono mt-0.5 ${isActive ? 'text-emerald-400 font-bold' : 'text-slate-600'}`}>
                 {label}
               </span>
               {isActive && (

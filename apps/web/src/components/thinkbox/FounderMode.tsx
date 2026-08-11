@@ -55,7 +55,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
   const dashboard = useDashboardSync();
   const [mission, setMission] = useState<MissionData | null>(null);
   const [pr, setPR] = useState<PRData | null>(null);
-  const [activeTab, setActiveTab] = useState<BottomNavTab>('home');
+  const [activeTab, setActiveTab] = useState<BottomNavTab>('OVERVIEW');
   const [loading, setLoading] = useState(true);
 
   const fetchFounderData = useCallback(async () => {
@@ -98,7 +98,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
     onNavigate?.(tab);
   };
 
-  if (activeTab === 'terminal') {
+  if (activeTab === 'TERMINAL') {
     return (
       <div className="flex flex-col h-full pb-20">
         <div className="px-4 pt-4 pb-2">
@@ -112,7 +112,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
     );
   }
 
-  if (activeTab === 'control-tower') {
+  if (activeTab === 'STUDIO') {
     return (
       <div className="flex flex-col h-full pb-20">
         <div className="px-4 pt-4 pb-2">
@@ -201,7 +201,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
     );
   }
 
-  if (activeTab === 'thinkbox') {
+  if (activeTab === 'THINKBOX') {
     return (
       <div className="flex flex-col h-full pb-20">
         <div className="px-4 pt-4 pb-2">
@@ -219,7 +219,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
     );
   }
 
-  if (activeTab === 'profile') {
+  if (activeTab === 'OVERVIEW') {
     return (
       <div className="flex flex-col h-full pb-20">
         <div className="px-4 pt-4 pb-2">
@@ -267,7 +267,7 @@ export function FounderMode({ onNavigate }: FounderModeProps) {
 
         {/* 5. Continue Working — one tap */}
         <button
-          onClick={() => handleNavChange('thinkbox')}
+          onClick={() => handleNavChange('THINKBOX')}
           className="w-full min-h-[52px] rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center gap-2 text-emerald-400 font-mono text-sm font-bold active:bg-emerald-500/20 transition-colors"
         >
           <Zap className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TerminalSquare,
   LayoutDashboard,
@@ -11,6 +11,7 @@ import { StudioRouter } from './layouts/StudioRouter';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
 import { apiGet } from './lib/apiClient';
 import { SystemPower } from './components/SystemPower';
+import { BottomNav } from './components/thinkbox/BottomNav';
 
 const OverviewPage = lazy(() => import('./pages/overview').then((m) => ({ default: m.OverviewPage })));
 const WorkspacePage = lazy(() => import('./pages/workspace').then((m) => ({ default: m.WorkspacePage })));
@@ -33,6 +34,13 @@ function RouteFallback() {
 export function App() {
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [liveStats, setLiveStats] = useState<LiveStats>({ pgHealthy: false, redisHealthy: false });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const pollHealth = useCallback(async () => {
     try {
@@ -69,8 +77,8 @@ export function App() {
           <SystemPower />
         </div>
 
-        {/* Top nav — 5 tabs, mobile-friendly */}
-        <div className="sticky top-12 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800/60 px-2 py-2">
+        {/* Top nav — desktop only */}
+        <div className="sticky top-12 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800/60 px-2 py-2 hidden md:block">
           <div className="max-w-7xl mx-auto">
             <div className="flex gap-1 md:gap-2">
               {tabs.map((tab) => {
@@ -128,20 +136,30 @@ export function App() {
         </div>
       </main>
 
-      {/* Status footer */}
-      <footer className="border-t border-slate-800/60 bg-slate-900/50 px-4 py-2">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-600">
-          <div className="flex items-center gap-3">
-            <span className={liveStats.pgHealthy ? 'text-emerald-500' : 'text-rose-500'}>
-              PG: {liveStats.pgHealthy ? 'OK' : 'DOWN'}
-            </span>
-            <span className={liveStats.redisHealthy ? 'text-emerald-500' : 'text-rose-500'}>
-              RD: {liveStats.redisHealthy ? 'OK' : 'DOWN'}
-            </span>
+      {/* Status footer — hidden on mobile (space for BottomNav) */}
+      {!isMobile && (
+        <footer className="border-t border-slate-800/60 bg-slate-900/50 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-600">
+            <div className="flex items-center gap-3">
+              <span className={liveStats.pgHealthy ? 'text-emerald-500' : 'text-rose-500'}>
+                PG: {liveStats.pgHealthy ? 'OK' : 'DOWN'}
+              </span>
+              <span className={liveStats.redisHealthy ? 'text-emerald-500' : 'text-rose-500'}>
+                RD: {liveStats.redisHealthy ? 'OK' : 'DOWN'}
+              </span>
+            </div>
+            <span>KUDBEE v1.0 — THINK Protocol</span>
           </div>
-          <span>KUDBEE v1.0 — THINK Protocol</span>
-        </div>
-      </footer>
+        </footer>
+      )}
+
+      {/* Bottom navigation — mobile only */}
+      {isMobile && (
+        <BottomNav
+          active={activeTab as any}
+          onChange={(tab) => setActiveTab(tab)}
+        />
+      )}
     </div>
   );
 }

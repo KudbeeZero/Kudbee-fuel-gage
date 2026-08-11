@@ -60,7 +60,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
     <WorkspaceRecoveryBoundary panel="Studio Layout">
     <div className="flex h-full min-h-dvh bg-slate-950 text-slate-200">
       {/* VERTICAL SIDEBAR */}
-      <nav className="w-56 shrink-0 border-r border-slate-800 bg-slate-900/60 flex flex-col">
+      <nav className="w-56 shrink-0 border-r border-slate-800 bg-slate-900/60 flex-col hidden md:flex">
         {/* Studio brand header */}
         <div className="px-4 py-4 border-b border-slate-800/60">
           <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export function StudioLayout({ activeTab, onTabChange, children }: StudioLayoutP
         {/* TOP HEADER */}
         <header className="shrink-0 border-b border-slate-800 bg-slate-900/40 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto md:overflow-visible">
               {STUDIO_TABS.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;

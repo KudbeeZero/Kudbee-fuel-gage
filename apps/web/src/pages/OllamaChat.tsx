@@ -674,6 +674,8 @@ const textareaStyle: React.CSSProperties = {
 
 const sendBtnStyle = (disabled: boolean): React.CSSProperties => ({
   padding: "0 16px",
+  minHeight: 44,
+  minWidth: 44,
   background: disabled ? "#12121a" : "#1a2a4a",
   color: disabled ? "#4a4a58" : "#c8d6f0",
   border: `1px solid ${disabled ? "#1f1f2a" : "#2a3a5c"}`,
