@@ -153,3 +153,77 @@ export function requireRole(req: any, res: any, minRole: TenantRole): TenantCont
   req.tenantCtx = ctx;
   return ctx;
 }
+
+/**
+ * Tenant scoping middleware — validates any client-supplied `X-Tenant-Id`
+ * header against the authenticated principal's membership and stamps a
+ * trusted `req.tenantCtx`. Fails closed (403) on spoofing.
+ *
+ * Behavior matrix:
+ *   - Unauthenticated (Mode A / open): no identity → req.tenantCtx = null,
+ *     header ignored (no cross-tenant trust claim is possible).
+ *   - Authenticated, exactly one membership: header (if present) MUST match
+ *     the membership tenant → 403 on mismatch. Stamps req.tenantCtx.
+ *   - Authenticated, 0 or >1 memberships: fail closed → 403.
+ */
+export function tenantScopeMiddleware(req: any, res: any, next: any): void {
+  try {
+    const headerTenant = typeof req.headers['x-tenant-id'] === 'string'
+      ? req.headers['x-tenant-id'].trim()
+      : null;
+
+    // No identity (open access mode) — nothing to scope; do not block.
+    if (!req?.authenticated || typeof req.agentId !== 'string' || req.agentId.length === 0) {
+      delete req.tenantCtx;
+      return next();
+    }
+
+    const memberships = loadTenantMemberships().get(req.agentId) || [];
+    if (memberships.length !== 1) {
+      delete req.tenantCtx;
+      res.status(403).json({ error: 'forbidden', reason: 'Tenant membership required (0 or multiple memberships)' });
+      return;
+    }
+
+    const membership = memberships[0];
+    const tenant = TENANTS[membership.tenantId];
+    if (!tenant) {
+      delete req.tenantCtx;
+      res.status(403).json({ error: 'forbidden', reason: 'Unknown tenant' });
+      return;
+    }
+
+    // Header spoofing guard: if present, it must match the principal's tenant.
+    if (headerTenant && headerTenant !== tenant.id) {
+      delete req.tenantCtx;
+      res.status(403).json({
+        error: 'forbidden',
+        reason: 'X-Tenant-Id does not match the authenticated principal membership',
+        tenantId: tenant.id,
+      });
+      return;
+    }
+
+    req.tenantCtx = { agentId: req.agentId, tenantId: tenant.id, role: membership.role, name: tenant.name };
+    return next();
+  } catch {
+    delete req.tenantCtx;
+    res.status(403).json({ error: 'forbidden', reason: 'Tenant resolution failed' });
+  }
+}
+
+/**
+ * Per-tenant rate-limit key: uses the resolved tenant id when available,
+ * otherwise falls back to the client IP. Enables tenant-level quotas
+ * without breaking anonymous access.
+ */
+export function tenantRateLimitKey(req: any): string {
+  const tenant = req?.tenantCtx?.tenantId;
+  return typeof tenant === 'string' ? `tenant:${tenant}` : ipFromRequest(req);
+}
+
+function ipFromRequest(req: any): string {
+  const fwd = req?.headers?.['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
+  return req?.socket?.remoteAddress || req?.ip || 'unknown';
+}

@@ -279,21 +279,15 @@ app.use(spheroidAudit());
 // app.use(synapseProtectionMiddleware);
 // app.use(bearerAuth({ required: false }));
 // app.use(kiloBridgeBudget());
+// PHASE-9: tenant-context resolution + X-Tenant-Id header validation.
+// Safe to mount unconditionally — no-ops for unauthenticated (Mode A) requests.
+app.use(tenantScopeMiddleware);
 
 app.use('/api/qstash', qstashRouter);
 
-// --- Global API rate limit (100 req/min/IP) — abuse & DoS defense ---
+// --- Global API rate limit (100 req/min/IP, per-tenant when resolved) ---
 // Exempts health probes, SSE streams, and the SPA shell (static assets).
-app.use((req, res, next) => {
-  const p = req.path;
-  if (p === '/health' || p.startsWith('/api/os-stream') || p.startsWith('/api/events') || p.startsWith('/assets/') || p === '/' || p.endsWith('.html') || p.endsWith('.js') || p.endsWith('.css')) {
-    return next();
-  }
-  apiLimiter(req, res, next);
-});
-
-// --- Global API rate limit (100 req/min/IP) — abuse & DoS defense ---
-// Exempts health probes, SSE streams, and the SPA shell (static assets).
+// (Single instance — the duplicated block was removed during PHASE-9.)
 app.use((req, res, next) => {
   const p = req.path;
   if (p === '/health' || p.startsWith('/api/os-stream') || p.startsWith('/api/events') || p.startsWith('/assets/') || p === '/' || p.endsWith('.html') || p.endsWith('.js') || p.endsWith('.css')) {
@@ -319,10 +313,18 @@ const apiLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => ipFromRequest(req),
+  // PHASE-9: tenant-aware keying — resolved tenants get a per-tenant bucket.
+  keyGenerator: (req) => {
+    try {
+      const tenant = req?.tenantCtx?.tenantId;
+      return typeof tenant === 'string' ? `tenant:${tenant}` : ipFromRequest(req);
+    } catch {
+      return ipFromRequest(req);
+    }
+  },
   handler: (req, res) => {
-    const ip = ipFromRequest(req);
-    console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${ip}`);
+    const key = req?.tenantCtx?.tenantId || ipFromRequest(req);
+    console.warn(`[RateLimit] 429 on ${req.method} ${req.path} from ${key}`);
     res.setHeader('Retry-After', Math.ceil(60));
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   },
