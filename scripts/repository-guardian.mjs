@@ -87,11 +87,11 @@ async function main() {
   }
   check('stack valid', stackOk, stackOk ? 'all package.jsons parse' : stackDetail);
 
-  // 5. Terminal integrity — no markers + has key sections
+  // 5. Terminal integrity — SPA index.html has no markers + key sections
   let termOk = false;
   try {
-    const t = readFileSync(join(REPO_ROOT, 'apps/web/terminal.html'), 'utf8');
-    termOk = !/<<<<<<<|>>>>>>>/.test(t) && t.includes('KUDBEE') && t.includes('cmd-input');
+    const t = readFileSync(join(REPO_ROOT, 'apps/web/index.html'), 'utf8');
+    termOk = !/<<<<<<<|>>>>>>>/.test(t) && /kudbee/i.test(t) && t.includes('root') && t.includes('viewport');
   } catch { termOk = false; }
   check('terminal integrity', termOk, termOk ? 'clean + complete' : 'missing or corrupted');
 
