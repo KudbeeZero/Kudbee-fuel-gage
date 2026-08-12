@@ -1,0 +1,23 @@
+﻿{
+   name: Kudbee Fuel Gage Dev,
+  dockerComposeFile: ../docker-compose.dev.yml,
+  service: app,
+  workspaceFolder: /workspace,
+  shutdownAction: stopCompose,
+  postCreateCommand: npm install,
+  features: {
+    ghcr.io/devcontainers/features/common-utils:2: {},
+    ghcr.io/devcontainers/features/node:1: {
+      version: 22
+    }
+  },
+  customizations: {
+    vscode: {
+      extensions: [
+        ms-vscode.vscode-typescript-next,
+        esbenp.prettier-vscode,
+        dbaeumer.vscode-eslint
+      ]
+    }
+  }
+}
