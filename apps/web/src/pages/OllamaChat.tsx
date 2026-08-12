@@ -189,7 +189,7 @@ export function OllamaChat(): ReactElement {
           const savedExists = models.some((m) => m.name === saved);
           if (savedExists) return saved;
           if (exists) return prev;
-          return models.length > 0 ? models[0].name : prev;
+          return models.length > 0 ? models[0]!.name : prev;
         });
       } catch (err) {
         if (!cancelled) {

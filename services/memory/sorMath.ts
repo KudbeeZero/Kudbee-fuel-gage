@@ -125,7 +125,7 @@ export function initControlChart(lambda = 0.2, k = 0.5, h = 5): ControlChartStat
 export function feedControlChart(
   chart: ControlChartState,
   value: number
-): { alert: boolean; ewma: number; cusumHigh: number; score: number } {
+): { alert: boolean; ewma: number; cusumHigh: number; score: number; consecutiveAlerts: number } {
   // EWMA update: Z_t = λ·X_t + (1-λ)·Z_{t-1}
   chart.ewma = chart.lambda * value + (1 - chart.lambda) * chart.ewma;
 
@@ -148,6 +148,7 @@ export function feedControlChart(
     ewma: Math.round(chart.ewma * 1000) / 1000,
     cusumHigh: Math.round(chart.cusumHigh * 1000) / 1000,
     score: alertsToScore(chart.consecutiveAlerts),
+    consecutiveAlerts: chart.consecutiveAlerts,
   };
 }
 
@@ -165,7 +166,7 @@ export function mahalanobisDistance(
 ): number {
   let sum = 0;
   for (let i = 0; i < vector.length; i++) {
-    const diff = vector[i] - mean[i];
+    const diff = (vector[i] ?? 0) - (mean[i] ?? 0);
     const varInv = 1 / Math.max(0.001, covariance[i]?.[i] || 1);
     sum += diff * diff * varInv;
   }

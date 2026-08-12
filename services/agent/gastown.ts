@@ -43,13 +43,13 @@ function feedDthink(type: string, message: string): void {
 }
 
 interface ThinkToken {
-  id: string;
-  context: string;
-  decision: string;
-  outcome: string;
+  id?: string;
+  context?: string;
+  decision?: string;
+  outcome?: string;
   kd: number;
   efficacy: number;
-  timestamp: string;
+  timestamp?: string;
 }
 
 interface GastownContext {
@@ -208,10 +208,12 @@ export class GastownManager {
       await this.mintOutcomeToken(userPrompt, results);
     }
 
+    const last = this.decisions[this.decisions.length - 1]!;
     this.decisions[this.decisions.length - 1] = {
-      ...this.decisions[this.decisions.length - 1],
+      id: last.id,
       type: `complete:${successCount}s_${failCount}f`,
       summary: `${userPrompt.slice(0, 60)} → ${successCount}/${results.length} passed`,
+      ts: last.ts,
     };
 
     return {

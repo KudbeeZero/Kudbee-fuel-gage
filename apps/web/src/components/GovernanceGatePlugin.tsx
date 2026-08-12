@@ -125,6 +125,7 @@ function GovernanceGatePluginInner({ plugin }: GovernanceGatePluginProps) {
 
   const statusBadge = (status: string) => {
     const entry = STATUS_MAP[status] || STATUS_MAP.PENDING_APPROVAL;
+    if (!entry) return null;
     return (
       <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase ${entry.classes}`}>
         {entry.label}

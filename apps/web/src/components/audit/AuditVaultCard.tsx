@@ -94,20 +94,23 @@ export function AuditVaultCard() {
       const payload = {
         exportedAt: new Date().toISOString(),
         tenantId: currentTenantId,
-        anchors: anchors.map((a) => ({
-          anchorId: a.anchorId,
-          batchRoot: a.batchRoot,
-          leafCount: a.leafCount,
-          createdAt: a.createdAt,
-          verification: verifyResults[a.anchorId]
-            ? {
-                verified: verifyResults[a.anchorId].verified,
-                originalRoot: verifyResults[a.anchorId].originalRoot,
-                recomputedRoot: verifyResults[a.anchorId].recomputedRoot,
-                verifiedAt: verifyResults[a.anchorId].verifiedAt
-              }
-            : null
-        })),
+        anchors: anchors.map((a) => {
+          const vr = verifyResults[a.anchorId];
+          return {
+            anchorId: a.anchorId,
+            batchRoot: a.batchRoot,
+            leafCount: a.leafCount,
+            createdAt: a.createdAt,
+            verification: vr
+              ? {
+                  verified: vr.verified,
+                  originalRoot: vr.originalRoot,
+                  recomputedRoot: vr.recomputedRoot,
+                  verifiedAt: vr.verifiedAt
+                }
+              : null
+          };
+        }),
         verifiedCount: verifiedList.length,
         totalAnchors: anchors.length
       };

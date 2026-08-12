@@ -357,6 +357,16 @@ export class DistributedLockRegistry {
       }
     }
   }
+
+  private scheduleCircuitRecovery(): void {
+    setTimeout(() => {
+      if (this.circuitState === 'open') {
+        this.circuitFailures = 0;
+        this.circuitState = 'half_open';
+        this.localOnly = false;
+      }
+    }, 30000);
+  }
 }
 
 // Singleton for the app process

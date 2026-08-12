@@ -101,14 +101,14 @@ export function LiveTerminal({
       if (history.length === 0) return;
       const idx = historyIdx === -1 ? history.length - 1 : Math.max(0, historyIdx - 1);
       setHistoryIdx(idx);
-      setInput(history[idx]);
+      setInput(history[idx] ?? '');
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (historyIdx === -1) return;
       const idx = historyIdx + 1;
       if (idx >= history.length) { setHistoryIdx(-1); setInput(''); return; }
       setHistoryIdx(idx);
-      setInput(history[idx]);
+      setInput(history[idx] ?? '');
     }
   };
 

@@ -157,7 +157,7 @@ export function LearningCenter({ records: external, profiles: externalProfiles, 
                 <span>{p.totalTasks} tasks</span>
                 <span className="text-slate-500">
                   {p.confidenceTrend.slice(-3).map((v, i) => (
-                    <span key={i} className={i > 0 ? (v > p.confidenceTrend[p.confidenceTrend.length - 4 + i] ? 'text-emerald-400' : 'text-rose-400') : ''}>{i > 0 ? ' → ' : ''}{Math.round(v * 100)}%</span>
+                    <span key={i} className={i > 0 ? (v > (p.confidenceTrend[p.confidenceTrend.length - 4 + i] ?? 0) ? 'text-emerald-400' : 'text-rose-400') : ''}>{i > 0 ? ' → ' : ''}{Math.round(v * 100)}%</span>
                   ))}
                 </span>
               </div>

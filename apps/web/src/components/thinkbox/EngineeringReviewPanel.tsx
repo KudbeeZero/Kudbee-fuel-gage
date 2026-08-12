@@ -106,7 +106,7 @@ export function EngineeringReviewPanel({ review: external, onRefresh }: ReviewPa
       <div className="space-y-1">
         {review.agentReviews.map(ar => {
           const Icon = agentIcons[ar.agent] ?? Shield;
-          const colors = agentColors[ar.agent] ?? agentColors.KILOH;
+          const colors = (agentColors[ar.agent] ?? agentColors.KILOH)!;
           const isExpanded = expandedAgent.has(ar.agent);
           return (
             <div key={ar.agent} className={`rounded-lg border ${isExpanded ? colors.split(' ').slice(1).join(' ') : 'border-slate-800/40 bg-slate-950/40'}`}>

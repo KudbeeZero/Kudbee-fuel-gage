@@ -1,11 +1,12 @@
 {
-  "extends": "./packages/config/tsconfig.base.json",
+  "extends": "@kudbee/config/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "allowJs": true,
     "noEmit": true,
     "paths": {
-      "@/*": ["./apps/web/src/*"]
+      "@/*": ["./apps/web/src/*"],
+      "@kudbee/config": ["./packages/config"]
     }
   },
   "include": [

@@ -293,7 +293,7 @@ function GovernanceQueueTrayInner({ pending, onPromote }: GovernanceQueueTrayPro
                             disabled={isBusy}
                             onClick={() => {
                               try {
-                                JSON.parse(deepEditTokens[token.token_hash]);
+                                JSON.parse((deepEditTokens[token.token_hash] ?? ''));
                                 setEditErrors((prev) => ({ ...prev, [token.token_hash]: null }));
                                 void handlePromote(token.token_hash, token.id, 'VERIFIED');
                               } catch {

@@ -60,7 +60,7 @@ export function ExcellenceScoreCard({ score: external }: ExcellenceScoreCardProp
   };
 
   const trendDirection = score.trend.length >= 2
-    ? (score.trend[score.trend.length - 1] > score.trend[score.trend.length - 2] ? 'up' : score.trend[score.trend.length - 1] < score.trend[score.trend.length - 2] ? 'down' : 'stable')
+    ? (score.trend[score.trend.length - 1]! > score.trend[score.trend.length - 2]! ? 'up' : score.trend[score.trend.length - 1]! < score.trend[score.trend.length - 2]! ? 'down' : 'stable')
     : 'stable';
 
   return (

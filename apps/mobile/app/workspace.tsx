@@ -31,7 +31,7 @@ interface LiveState {
 
 export default function WorkspaceScreen() {
   const [sessions, setSessions] = useState(seedSessions);
-  const [activeId, setActiveId] = useState(seedSessions[0].id);
+  const [activeId, setActiveId] = useState(seedSessions[0]!.id);
   const [draft, setDraft] = useState('');
   const [live, setLive] = useState<LiveState>({
     health: 'loading',
@@ -42,7 +42,7 @@ export default function WorkspaceScreen() {
     error: null,
   });
   const commands = useCommandStore((state) => state.commands);
-  const active = useMemo(() => sessions.find((session) => session.id === activeId) ?? sessions[0], [activeId, sessions]);
+  const active = useMemo(() => sessions.find((session) => session.id === activeId) ?? sessions[0]!, [activeId, sessions]);
 
   useEffect(() => {
     let cancelled = false;

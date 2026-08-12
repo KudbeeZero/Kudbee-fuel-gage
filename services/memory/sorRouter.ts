@@ -50,8 +50,8 @@ type AuditPublishFn = (event: Record<string, unknown>) => void;
 function iqrFence(values: number[]): { lower: number; upper: number; iqr: number } {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  const q1 = sorted[Math.floor(mid / 2)];
-  const q3 = sorted[Math.floor(mid * 3 / 2)];
+  const q1 = sorted[Math.floor(mid / 2)] ?? 0;
+  const q3 = sorted[Math.floor(mid * 3 / 2)] ?? 0;
   const iqr = q3 - q1 || 0.01;
   return { lower: q1 - 1.5 * iqr, upper: q3 + 1.5 * iqr, iqr };
 }

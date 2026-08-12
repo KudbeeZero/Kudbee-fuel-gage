@@ -165,7 +165,7 @@ describe('Governance Schema', () => {
       risk_level: 'HIGH',
       status: 'PENDING'
     });
-    expect(out).toEqual<GovernanceProposal>({
+    expect(out).toEqual({
       id: 'g1',
       title: 'Deploy v2',
       description: 'Push to production',

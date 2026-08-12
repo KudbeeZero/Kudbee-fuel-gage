@@ -14,5 +14,5 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "bun-sqlite.d.ts", "bun-test.d.ts"]
 }

@@ -114,7 +114,7 @@ export function WorkspacePage() {
       return initialSessions;
     }
   });
-  const [activeSessionId, setActiveSessionId] = useState(initialSessions[0].id);
+  const [activeSessionId, setActiveSessionId] = useState(initialSessions[0]!.id);
   const [draft, setDraft] = useState('');
 
   useEffect(() => {

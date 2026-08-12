@@ -118,13 +118,12 @@ function amplifyAmplitudes<T>(
     // Mean inversion — flip amplitudes around the mean
     const meanScore = scores.reduce((s, v) => s + v.score, 0) / n;
     for (let i = 0; i < n; i++) {
-      const diff = scores[i].score - meanScore;
-      superposition.variants[i].amplitude += diff * 0.5;
-      superposition.variants[i].amplitude = Math.max(0, superposition.variants[i].amplitude);
+      const diff = (scores[i]?.score ?? 0) - meanScore;
+      superposition.variants[i]!.amplitude = Math.max(0, (superposition.variants[i]!.amplitude ?? 0) + diff * 0.5);
     }
 
     // Normalize
-    const totalAmp = superposition.variants.reduce((s, v) => s + v.amplitude, 0);
+    const totalAmp = superposition.variants.reduce((s, v) => s + (v.amplitude ?? 0), 0);
     for (const v of superposition.variants) {
       v.amplitude /= totalAmp;
     }
@@ -142,7 +141,7 @@ function collapse<T>(superposition: SuperpositionState<T>): T {
       return v.state;
     }
   }
-  return superposition.variants[superposition.variants.length - 1].state;
+  return superposition.variants[superposition.variants.length - 1]!.state;
 }
 
 // ─── Tiered Self-Healing ─────────────────────────────────────────────────────
@@ -197,7 +196,7 @@ function tieredRepair(
 
 interface AmplitudeSignal {
   magnitude: number;  // 0-1 confidence
-  phase: 0 | Math.PI; // 0 = safe, π = malicious
+  phase: 0 | 3.141592653589793; // 0 = safe, π = malicious
 }
 
 /** 4-layer interference model: P + L + R + I */

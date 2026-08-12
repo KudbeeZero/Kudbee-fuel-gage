@@ -31,7 +31,7 @@ export default function TerminalScreen() {
         {commands.map((cmd) => (
           <Pressable
             key={cmd.label}
-            style={({ pressed }) => [
+            style={({ pressed }: { pressed: boolean }) => [
               styles.button,
               pressed && styles.buttonPressed,
             ]}

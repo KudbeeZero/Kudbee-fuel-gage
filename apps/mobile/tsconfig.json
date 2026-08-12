@@ -1,5 +1,5 @@
 {
-  "extends": "../../packages/config/tsconfig.base.json",
+  "extends": "@kudbee/config/tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-native",
     "noEmit": true,
@@ -8,6 +8,7 @@
   "include": [
     "src",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "types.d.ts"
   ]
 }

@@ -49,8 +49,8 @@ type SinkRouteFn = (tokenId: string, reason: string) => Promise<void>;
 function iqrTukeyFence(data: number[]): { q1: number; q3: number; iqr: number; lower: number; upper: number } {
   const sorted = [...data].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  const q1 = sorted[Math.floor(mid / 2)];
-  const q3 = sorted[Math.floor(mid * 3 / 2)];
+  const q1 = sorted[Math.floor(mid / 2)] ?? 0;
+  const q3 = sorted[Math.floor(mid * 3 / 2)] ?? 0;
   const iqr = q3 - q1;
   return {
     q1,
@@ -64,7 +64,7 @@ function iqrTukeyFence(data: number[]): { q1: number; q3: number; iqr: number; l
 function ema(values: number[], alpha: number = 0.3): number {
   let result = values[0] ?? 0;
   for (let i = 1; i < values.length; i++) {
-    result = alpha * values[i] + (1 - alpha) * result;
+    result = alpha * (values[i] ?? 0) + (1 - alpha) * result;
   }
   return result;
 }
@@ -148,7 +148,7 @@ export class AdversarialSimulator {
   // (c) INVISIBLE NOISE ATTACK
   private buildInvisibleNoiseAttack(): AttackVector {
     const kFactors = [1.45, 1.49, 1.52];
-    const k = kFactors[Math.floor(Math.random() * kFactors.length)];
+    const k = kFactors[Math.floor(Math.random() * kFactors.length)]!;
     return {
       type: 'INVISIBLE_NOISE',
       targetSlots: [0],

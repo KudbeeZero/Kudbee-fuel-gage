@@ -1,9 +1,8 @@
 {
-  "extends": "@kudbee/config/tsconfig.base.json",
+  "extends": "../../../packages/config/tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "noUncheckedIndexedAccess": false,
-    "types": ["node", "bun"]
+    "noUncheckedIndexedAccess": false
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

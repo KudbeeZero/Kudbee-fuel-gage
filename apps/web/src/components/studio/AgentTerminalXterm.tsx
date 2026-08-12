@@ -209,7 +209,7 @@ export function AgentTerminal({ height = '100%', autoFocus = true, collapsed = f
         // Suggest similar commands on unknown-command errors.
         const sm = String(msg).match(/unknown command:? ?\/?([a-z-]+)/i);
         if (sm) {
-          const partial = sm[1].slice(0, 4);
+          const partial = sm[1]?.slice(0, 4) ?? '';
           const sug = Object.keys(COMMANDS).filter((c) => c.includes(partial));
           if (sug.length) term.writeln('\x1b[38;2;100;116;139mDid you mean: ' + sug.join(', ') + ' ?\x1b[0m');
         }

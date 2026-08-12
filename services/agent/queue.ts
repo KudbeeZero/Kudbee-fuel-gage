@@ -146,7 +146,7 @@ export class TaskQueue {
       this.pending.set(task.id, { resolve, reject });
 
       // Round-robin dispatch
-      const worker = this.workers[this.roundRobinIndex % this.poolSize];
+      const worker = this.workers[this.roundRobinIndex % this.poolSize]!;
       this.roundRobinIndex = (this.roundRobinIndex + 1) % this.poolSize;
 
       worker.postMessage(task);

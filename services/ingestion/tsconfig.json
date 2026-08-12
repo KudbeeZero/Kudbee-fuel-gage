@@ -1,10 +1,10 @@
 {
-  "extends": "@kudbee/config/tsconfig.base.json",
+  "extends": "../../../packages/config/tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "../..",
     "allowJs": true
   },
-  "include": ["server.js", "embedder.js", "controllers/telemetry.ts", "routes/*.ts", "lib/tenants.ts", "../governance/router.d.ts", "../governance/ledger.d.ts", "../telemetry/degradation-monitor.ts", "../agents/worker.ts", "../lib/*.ts"],
+  "include": ["server.js", "embedder.js", "controllers/telemetry.ts", "routes/*.ts", "lib/tenants.ts", "../governance/router.d.ts", "../governance/ledger.d.ts", "../telemetry/degradation-monitor.ts", "../agents/worker.ts", "../lib/*.ts", "bun-test.d.ts"],
   "exclude": ["**/node_modules", "../memory/**", "../../packages/**", "../github/**", "../sentinel/**"]
 }

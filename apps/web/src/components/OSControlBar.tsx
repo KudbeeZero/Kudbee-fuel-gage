@@ -619,7 +619,7 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
     let score = 0;
     let hIdx = 0;
     for (let nIdx = 0; nIdx < n.length; nIdx++) {
-      const ch = n[nIdx];
+      const ch = n[nIdx]!;
       const found = h.indexOf(ch, hIdx);
       if (found === -1) return 0;
       if (found === hIdx) score += 2;

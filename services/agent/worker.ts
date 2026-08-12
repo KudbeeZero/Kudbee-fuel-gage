@@ -40,7 +40,7 @@ function partitionThinking(raw: string): { visible: string; thinking: string } {
 
   let match: RegExpExecArray | null;
   while ((match = thinkRegex.exec(raw)) !== null) {
-    thinkParts.push(match[1].trim());
+    thinkParts.push(match[1]!.trim());
   }
 
   // Remove all think blocks from visible text
