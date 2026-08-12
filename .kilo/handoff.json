@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-08-12T10:30:48.054Z",
+  "generatedAt": "2026-08-12T18:11:10.835Z",
   "identity": {
     "agent": "cloud-agent",
     "role": "Multi-Tenant Governance",
     "session": null
   },
   "location": {
-    "branch": "detached",
-    "sha": "unknown",
+    "branch": "chore/aws-ops-devcontainer",
+    "sha": "faa6759",
     "dirtyCount": 0
   },
   "mission": {
@@ -21,7 +21,7 @@
     }
   },
   "system": {
-    "fleet": null,
+    "fleet": 11,
     "lastEvents": [],
     "links": {
       "staging": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com",
