@@ -13,7 +13,7 @@
 import { getDbPool, isDbHealthy, runInsert } from '../lib/db.js';
 import { getRedisClient } from '../lib/redis.js';
 import { publishEvent as publishUnifiedEvent } from '../lib/unifiedEvents.ts';
-import { EMBEDDING_DIM, embedTextLocal } from './embedText.ts';
+import { EMBEDDING_DIM, embedText } from './embedText.ts';
 import type { ThinkToken } from '@kudbee/types';
 
 const VECTOR_INSERT_TIMEOUT_MS = 30_000;
@@ -99,7 +99,8 @@ export async function mintThinkToken(
 
   try {
     const trajectoryText = buildTrajectoryText(payload);
-    const embedding = embedTextLocal(trajectoryText);
+    // Gemini-first: real 1536-dim embedding via GEMINI_API_KEY, graceful local fallback.
+    const embedding = await embedText(trajectoryText);
 
     if (embedding.length !== EMBEDDING_DIM) {
       return {

@@ -82,6 +82,23 @@
       "prevention": "Any new script added to verify.yml must be guarded with || true unless it exists in package.json on ALL branches. Alternatively, add continue-on-error: true to the step."
     },
     {
+      "id": "learn-kudbee-ci-010",
+      "date": "2026-08-12T20:15:00Z",
+      "pattern": "Ingestion server crashes at boot: ReferenceError: tenantScopeMiddleware is not defined",
+      "diagnosis": "server.js mounted app.use(tenantScopeMiddleware) at line 284 but never imported it from services/ingestion/lib/tenants.ts (where the middleware is exported). PHP/JS dead import — the symbol was referenced before it was wired. Server dies before listen.",
+      "fix": "Add the missing import: `import { tenantScopeMiddleware } from './lib/tenants.ts';` alongside the other ./lib imports. The handler already had full fail-closed logic (403 on spoof/mismatch) — only the import was missing.",
+      "verification": "Start the server: `node <tsx>/dist/cli.mjs services/ingestion/server.js` and confirm `[Server] ... listening on port 3000` appears instead of the ReferenceError."
+    },
+    {
+      "id": "learn-kudbee-ci-011",
+      "date": "2026-08-12T20:15:30Z",
+      "pattern": "GET /api/system/agent-status 500 'Unexpected end of JSON input' (Windows only)",
+      "diagnosis": "scripts/agent-bridge.mjs CLI guard `if (import.meta.url === \\`file://${process.argv[1]}\\`)` fails on Windows: process.argv[1] is a relative path while import.meta.url is an absolute file:/// URL, so the == check is always false and the 'state' subcommand never runs → empty stdout → JSON.parse('') throws.",
+      "fix": "Compare with pathToFileURL: `import { pathToFileURL } from 'node:url'` then `if (import.meta.url === pathToFileURL(process.argv[1]).href)`. Cross-platform robust. Also ensure the server's PATH includes the node bin dir (launcher must prepend C:\\Program Files\\nodejs) or child `exec('node scripts/...')` errors with 'node is not recognized'.",
+      "verification": "`node scripts/agent-bridge.mjs state` must print JSON (not empty) when run from the monorepo root on Windows.",
+      "prevention": "Never hardcode \\`file://${process.argv[1]}\\` for main-vs-import detection; use pathToFileURL. When spawning node from a launcher with a full node.exe path, prepend the bin dir to PATH so exec('node ...') in server code resolves."
+    },
+    {
       "id": "learn-kudbee-ci-009",
       "date": "2026-08-05T18:35:00Z",
       "pattern": "verify:secrets chains bun test on files that only exist on another release-train branch",

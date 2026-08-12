@@ -3,6 +3,12 @@ description: Full CI verification gate with breadcrumb tracing — run all gates
 ---
 Run the full verification suite with embedded breadcrumbs:
 
+> **Gate-parity note:** Gates 1-3 below (agent-contracts, integrations,
+> learning-protocol) are OPTIONAL. If a script is missing on the current branch
+> (e.g. a multi-branch release train), guard it with `|| true` — do not let a
+> missing optional script block the run. See the ci-watcher skill's pattern
+> catalog (learn-heroku-ci-008).
+
 ## Gate 1: Company Agent Contracts
 Run: `npm run verify:agent-contracts`
 This is a required operating-model gate for all discovered `.kilo/agents/*.agent` files.
