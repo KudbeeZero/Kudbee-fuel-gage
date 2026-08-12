@@ -56,11 +56,14 @@ import { createSystemRouter } from './routes/system.ts';
 import { createOpsRouter } from './routes/ops.ts';
 import { createToolsRouter } from './routes/tools.ts';
 import { createThinkboxRouter } from './routes/thinkbox.ts';
+import systemReadRouter from './routes/systemRead.ts';
+import { createGastownRouter } from './routes/gastown.ts';
 import { buildNodeStatus, loadNodeConfig } from '../thinkbox/src/cli/node-config.mjs';
 import { synthesizeThinkToken, groqConfigured } from '../lib/groqClient.ts';
 import { deepseekConfigured, deepseekHealth } from '../lib/deepseekClient.ts';
 import { grokConfigured, grokStatus } from '../lib/grokClient.ts';
 import { getSettings, saveSettings } from '../lib/settingsStore.ts';
+import { tenantScopeMiddleware } from './lib/tenants.ts';
 import { recordAudit, getAuditHistory, testAllConnections } from '../lib/agentAudit.ts';
 import { defaultEngine as receptorGate } from '../memory/src/receptorGating.ts';
 import { ftwbMiddleware as ftwbGuard } from '../lib/ftwbMiddleware.ts';
@@ -586,159 +589,10 @@ app.get('/api/prs/status', async (_req, res) => {
   }
 });
 
-// --- Read-only evidence-store endpoints (Stream Lab dashboard + plugins) -----
-// Serverless-aligned: stateless reads of the same .kilo/ JSON stores the
-// terminal uses. No writes, no cache (no-store), fresh on every poll.
-function readJsonStore(relPath, fallback) {
-  try {
-    const p = path.join(__dirname, '..', '..', relPath);
-    if (!fs.existsSync(p)) return fallback;
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch { return fallback; }
-}
-
-app.get('/api/system/knowledge-graph', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const g = readJsonStore('.kilo/knowledge-graph.json', { nodes: [], edges: [] });
-  // Full graph for visualization when ?full=1; counts otherwise (cheap).
-  if (_req.query?.full === '1') {
-    res.json({ nodes: g.nodes ?? [], edges: g.edges ?? [], source: 'knowledge-graph' });
-  } else {
-    res.json({ nodes: g.nodes?.length ?? 0, edges: g.edges?.length ?? 0, source: 'knowledge-graph' });
-  }
-});
-
-// ── THINK token cloud (full forge data for 3D visualization) ───────────────
-app.get('/api/system/forge-tokens', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'forge');
-  const tokens = [];
-  try {
-    for (const f of fs.readdirSync(dir).filter((x) => x.startsWith('think-') && x.endsWith('.json'))) {
-      try {
-        const t = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-        tokens.push({
-          id: t.traceId ?? f.replace(/^think-/, '').replace(/\.json$/, ''),
-          kd: t.kd ?? 50,
-          status: t.status ?? 'UNKNOWN',
-          keywords: t.keywords ?? [],
-          createdAt: t.createdAt ?? null,
-        });
-      } catch {}
-    }
-  } catch {}
-  tokens.sort((a, b) => (b.kd ?? 0) - (a.kd ?? 0));
-  res.json({ tokens, count: tokens.length, source: 'forge' });
-});
-
-app.get('/api/system/decision-ledger', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const d = readJsonStore('benchmarks/decisions/ledger.json', { decisions: [] });
-  res.json({ decisions: d.decisions ?? [], source: 'decision-ledger' });
-});
-
-app.get('/api/system/intelligence-index', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const idx = readJsonStore('.kilo/intelligence-index.json', { days: [] });
-  const last = idx.days?.[idx.days.length - 1] ?? null;
-  res.json({
-    overall: last?.overall ?? 0,
-    categories: last?.categories ?? { outcome: 0, knowledge: 0, operational: 0 },
-    recommendation: last?.recommendation ?? null,
-    source: 'intelligence-index',
-  });
-});
-
-app.get('/api/system/mission-queue', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const q = readJsonStore('.kilo/mission-queue.json', { missions: [] });
-  res.json({ missions: q.missions ?? [], source: 'mission-queue' });
-});
-
-// ── Agent lifecycle funnel ─────────────────────────────────────────────────
-// Aggregates mission-history into the 9 lifecycle stages so the tower can
-// visualize missions funneling through the pipeline (PROPOSED → COMPLETE).
-// Also exposes each mission's recent transitions for live "watch it move".
-const LIFECYCLE_STAGES = ['PROPOSED', 'APPROVED', 'BRANCH_CREATED', 'IMPLEMENTING', 'VERIFYING', 'READY_FOR_PR', 'MERGED', 'OBSERVING', 'COMPLETE'];
-
-app.get('/api/system/funnel', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const history = readJsonStore('.kilo/mission-history.json', { missions: [] });
-  const queue = readJsonStore('.kilo/mission-queue.json', { missions: [] });
-  const missions = (history.missions ?? []).concat(
-    (queue.missions ?? []).map((q) => ({ mission: q.id, state: q.state ?? 'PROPOSED', priority: q.priority, title: q.title, transitions: [] }))
-  );
-
-  // Aggregate by stage.
-  const stages = LIFECYCLE_STAGES.map((stage) => ({
-    stage,
-    count: missions.filter((m) => (m.state ?? '').toUpperCase() === stage).length,
-  }));
-
-  // Active missions with their recent transition trail (the moving part).
-  const active = missions
-    .filter((m) => (m.state ?? '').toUpperCase() !== 'COMPLETE')
-    .map((m) => ({
-      id: m.mission ?? m.id,
-      state: (m.state ?? 'PROPOSED').toUpperCase(),
-      priority: m.priority ?? null,
-      title: m.title ?? null,
-      lastTransition: m.transitions?.length
-        ? m.transitions[m.transitions.length - 1]
-        : null,
-    }));
-
-  res.json({
-    stages,
-    active,
-    total: missions.length,
-    funnel: LIFECYCLE_STAGES.filter((s) => missions.some((m) => (m.state ?? '').toUpperCase() === s)),
-    generatedAt: new Date().toISOString(),
-    source: 'mission-history',
-  });
-});
-
-app.get('/api/system/guardian-status', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const g = readJsonStore('.kilo/guardian-last.json', { checks: {} });
-  res.json({ checks: g.checks ?? {}, source: 'guardian' });
-});
-
-// --- Phone tree + voicemail surfaces (interactive calls, read-only reads) ---
-app.get('/api/system/calls', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const c = readJsonStore('.kilo/memory/call-log.json', { calls: [] });
-  res.json({ calls: c.calls ?? [], total: c.totalCalls ?? (c.calls ?? []).length, source: 'call-log' });
-});
-
-app.get('/api/system/phone-tree', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const t = readJsonStore('.kilo/memory/phone-tree.json', {});
-  res.json({ tree: t, source: 'phone-tree' });
-});
-
-app.get('/api/system/voicemails', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const dir = path.join(__dirname, '..', '..', '.kilo', 'memory', 'voicemails');
-  const vms = [];
-  try {
-    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
-      try {
-        const d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-        if (Array.isArray(d)) vms.push(...d);
-        else vms.push(d);
-      } catch {}
-    }
-  } catch {}
-  vms.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
-  res.json({ voicemails: vms, count: vms.length, source: 'voicemails' });
-});
-
-app.get('/api/system/dthink', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const d = readJsonStore('.kilo/memory/dthink/index.json', { entries: [] });
-  res.json({ entries: d.entries ?? [], source: 'dthink' });
-});
+// Read-only evidence + phone-system surfaces now live in routes/systemRead.ts.
+// Mounted here to keep the boot chain thin: stateless .kilo/ JSON reads,
+// no DB/Redis/provider coupling.
+app.use(systemReadRouter);
 
 // --- Agent Context Factory middleware ----------------------------------------
 // NO ORPHANED LOGIC: every request to the /api/agents router passes through
@@ -749,38 +603,8 @@ app.get('/api/system/dthink', (_req, res) => {
 // Phase 28 — The Token Forge: BEFORE the context is handed to the LLM, we query
 // the pgvector `think_tokens` store for the 3 most semantically similar past
 
-// ── Phase 45: Gastown Dashboard ─────────────────────────────────────────────
-import { getConvoyStats, listConvoys, getDatabaseMetrics } from '../agent/gastown-convoy.ts';
-app.get("/api/gastown/dashboard", bearerAuth({ required: true }), async (_req, res) => {
-  try {
-    const [convoyStats, activeConvoys, dbMetrics] = await Promise.all([
-      getConvoyStats(),
-      listConvoys({ status: "IN_FLIGHT" }),
-      getDatabaseMetrics()
-    ]);
-    res.json({
-      gastown: "v1.2.1",
-      built: "Kudbee Clone",
-      activeConvoys: convoyStats.total,
-      byStatus: convoyStats.byStatus,
-      inFlight: activeConvoys.length,
-      activeAgents: convoyStats.activeAgents,
-      database: dbMetrics || { totalSize: "unavailable", thinkTokens: { count: 0, size: "?" }, telemetryLogs: { count: 0, size: "?" }, governanceActions: { count: 0, size: "?" }, topologyEmbeddings: { count: 0, size: "?" }, auditAnchors: { count: 0, size: "?" }, sessionCount: 0 },
-      swarm: {
-        agents: 11,
-        online: 4,
-        lastDeploy: process.env.HEROKU_RELEASE_VERSION || "unknown"
-      },
-      synapse: "C4769 active",
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-app.get("/api/gastown/convoys", bearerAuth({ required: true }), (_req, res) => {
-  res.json(listConvoys());
-});
+// ── Phase 45: Gastown Dashboard (moved to routes/gastown.ts) ────────────────
+app.use(createGastownRouter(bearerAuth));
 
 // SUCCESSES and inject them as a "Past Successful Execution Context" section
 // (few-shot RAG). This grounds the agent in verified prior corrections instead

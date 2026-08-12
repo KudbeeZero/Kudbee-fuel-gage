@@ -198,12 +198,13 @@ export async function querySystemTopology(
   return { ok: true, results: ranked };
 }
 
-/** Convenience: embed text and store it in one call. */
+/** Convenience: Gemini-first embed text and store it in one call. */
 export async function storeSystemChunkText(
   text: string,
   metadata: TopologyMetadata
 ): Promise<StoreChunkResult> {
-  const embedding = embedTextLocal(text);
+  const { embedText } = await import('./embedText.ts');
+  const embedding = await embedText(text);
   return storeSystemChunk(text, metadata, embedding);
 }
 

@@ -17,6 +17,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 
+import { pathToFileURL } from 'node:url';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
 
@@ -196,7 +198,7 @@ function loadDecisions(agentId) {
 
 // ─── CLI direct execution ──────────────────────────────────────────────────
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const cmd = process.argv[2];
   const arg = process.argv[3];
 
