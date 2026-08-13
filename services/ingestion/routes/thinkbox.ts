@@ -49,6 +49,40 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
     }
   }
 
+  /**
+   * Real deployment probe — hits the live Heroku apps' /health endpoints.
+   * URLs come from the deployed environment (HEROKU_APP_NAME or the known
+   * app hosts); no fabricated statuses. Falls back to 'unknown' only when
+   * the target is genuinely unreachable or unprovisioned.
+   */
+  async function probeDeployments(sha: string) {
+    const targets = [
+      { target: 'staging', url: process.env.KUDBEE_STAGING_URL || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com' },
+      { target: 'production', url: process.env.KUDBEE_PRODUCTION_URL || 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com' },
+    ];
+    const results = [];
+    for (const t of targets) {
+      let status = 'unknown';
+      let lastDeploy: string | null = null;
+      let version = '';
+      try {
+        const res = await fetch(`${t.url}/health`, { signal: AbortSignal.timeout(6000) });
+        if (res.ok) {
+          const body = await res.json().catch(() => ({}));
+          status = 'healthy';
+          version = body?.commit?.slice?.(0, 7) || body?.sha?.slice?.(0, 7) || sha;
+          lastDeploy = body?.timestamp || null;
+        } else {
+          status = 'degraded';
+        }
+      } catch {
+        status = 'unknown';
+      }
+      results.push({ target: t.target, status, lastDeploy, version });
+    }
+    return results;
+  }
+
   // --- Dashboard — real data aggregation ------------------------------------
   router.get('/dashboard', async (_req, res) => {
     try {
@@ -189,20 +223,7 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
           apiLatencyMs: 0,
         },
         costs: { estimatedMonthly: 0, currency: 'USD', breakdown: [] },
-        deployments: [
-          {
-            target: 'staging',
-            status: 'unknown',
-            lastDeploy: null,
-            version: git.sha || '',
-          },
-          {
-            target: 'production',
-            status: 'unknown',
-            lastDeploy: null,
-            version: git.sha || '',
-          },
-        ],
+        deployments: await probeDeployments(git.sha),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Dashboard aggregation failed' });

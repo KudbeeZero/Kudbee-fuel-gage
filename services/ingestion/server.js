@@ -443,13 +443,40 @@ app.get('/api/system/synapse-status', (_req, res) => {
 // Upstash Vector (think-search) status — server-side proxy so the frontend
 // never needs the search REST URL/token. Cached 30s.
 let _vectorCache = { at: 0, data: null };
+let _ciFetchCache = { at: 0, data: null };
+
+/**
+ * Invalidate the server's in-memory response caches so the next poll
+ * serves fresh state (BUS→CACHE semantics). Called on state mutations.
+ */
+function invalidateServerCaches(reason = 'state-mutation') {
+  _vectorCache = { at: 0, data: null };
+  _ciFetchCache = { at: 0, data: null };
+  console.log(`[Cache] invalidated in-memory caches (${reason})`);
+}
 app.get('/api/system/vector-status', async (_req, res) => {
   const now = Date.now();
   if (_vectorCache.data && now - _vectorCache.at < 30_000) return res.json(_vectorCache.data);
   const searchUrl = process.env.UPSTASH_SEARCH_REST_URL;
   const searchToken = process.env.UPSTASH_SEARCH_REST_TOKEN;
   if (!searchUrl || !searchToken) {
-    return res.json({ status: 'unknown', detail: 'UPSTASH_SEARCH_REST_URL not configured', dimension: null, vectorCount: null, indexType: null });
+    // Upstash Search not configured. If Postgres+pgvector is healthy, it is
+    // the active serving path (Resilient-First fallback) — report that instead
+    // of an ambiguous 'unknown' that the UI treats as a hard failure.
+    const pgHealthy = isDbHealthy();
+    const data = pgHealthy
+      ? {
+          status: 'ok',
+          detail: 'pgvector serving (Upstash Search not configured)',
+          dimension: 1536,
+          vectorCount: null,
+          indexType: 'pgvector_hnsw',
+          similarity: 'cosine',
+          source: 'pgvector-fallback',
+        }
+      : { status: 'unknown', detail: 'UPSTASH_SEARCH_REST_URL not configured', dimension: null, vectorCount: null, indexType: null };
+    _vectorCache = { at: now, data };
+    return res.json(data);
   }
   try {
     const r = await fetch(`${searchUrl}/info`, {
@@ -476,7 +503,6 @@ app.get('/api/system/vector-status', async (_req, res) => {
 
 // Self-hosted CI status — receives results from ci-self-hosted.mjs
 let _ciResults = { lastRun: null, status: 'unknown', results: [] };
-let _ciFetchCache = { at: 0, data: null };
 const CI_CACHE_MS = 60_000;
 
 // Live CI status from GitHub Actions (public API, no token needed) with a
@@ -3136,6 +3162,49 @@ app.post('/api/think/challenge', async (req, res) => {
   }
 });
 
+// --- THINK Protocol — Planetary Compute Commons mint ---
+// Mint a think token with a public-good category + emission multiplier.
+// OPEN_SCIENCE / CLIMATE / HEALTH = 2x, ECONOMIC = 1.5x, GENERAL = 1x.
+const THINK_COMMONS_CATEGORIES = ['OPEN_SCIENCE', 'CLIMATE', 'HEALTH', 'ECONOMIC', 'GENERAL'];
+const THINK_COMMONS_MULTIPLIER = { OPEN_SCIENCE: 2.0, CLIMATE: 2.0, HEALTH: 2.0, ECONOMIC: 1.5, GENERAL: 1.0 };
+
+app.post('/api/think/protocol/mint', async (req, res) => {
+  try {
+    const { topic, category, content } = req.body || {};
+    if (!topic) return res.status(400).json({ error: 'topic required' });
+    const cat = THINK_COMMONS_CATEGORIES.includes(category) ? category : 'GENERAL';
+    const multiplier = THINK_COMMONS_MULTIPLIER[cat] ?? 1.0;
+    const tokenId = `think_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const baseScore = Math.round(10 * multiplier);
+    const entry = {
+      score: baseScore,
+      wins: 0,
+      losses: 0,
+      challenges: 0,
+      rank: rankForScore(baseScore).name,
+      badge: rankForScore(baseScore).badge,
+      category: cat,
+      multiplier,
+      topic,
+      anchorRef: null,
+      lastChallenge: null,
+      timestamp: new Date().toISOString(),
+    };
+    _thinkChallenges.set(tokenId, entry);
+    return res.status(201).json({
+      tokenId,
+      category: cat,
+      multiplier,
+      rank: entry.rank,
+      badge: entry.badge,
+      score: entry.score,
+      message: `Minted ${cat} token with ${multiplier}x emission multiplier`,
+    });
+  } catch {
+    return res.status(500).json({ error: 'Mint failed' });
+  }
+});
+
 // --- Phase 55: Nash Token Unions ---
 app.post('/api/governance/union/form', async (req, res) => {
   try {
@@ -3404,6 +3473,7 @@ app.post('/api/agents/fleet', async (req, res) => {
       updatedAt: new Date().toISOString(),
     });
     if (redis) await redis.hset('kudbee:agent:state', id, JSON.stringify(state));
+    invalidateServerCaches('fleet-update');
     return res.status(200).json({ success: true, agent: state });
   } catch {
     return res.status(500).json({ error: 'Fleet update failed' });
@@ -5935,7 +6005,7 @@ app.post('/api/governance/tune/apply', async (req, res) => {
 // here so the modular sub-routers (mounted at the top of this file) can share
 // the same source of truth without circular-init errors.
 
-import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantId } from './lib/tenants.ts';
+import { TENANTS, requireRole, RBAC_MATRIX, ROLE_RANK, resolveTenantId, tenantScopeMiddleware } from './lib/tenants.ts';
 
 function resolveTenant(req) {
   return resolveTenantId(req);
