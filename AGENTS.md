@@ -15,10 +15,10 @@ State your role + first action to the human, then proceed.
 - **Monorepo workspaces:** `apps/*`, `services/*`, `packages/*` (except `!apps/mobile` — excluded, built separately).
   All `npm install` must run at root.
 - **`apps/web`** — React 19 + Vite + Tailwind 4 + React Router 8 + zustand. Build entry: `index.html`. Serves from `dist/`.
-- **`apps/mobile`** — React Native (Expo 52). Excluded from workspace, type-checked separately.
+- **`apps/mobile`** — React Native (Expo ~57, RN 0.86). Excluded from workspace, built separately.
 - **`services/lib`** — shared middleware, circuit breaker, guards, LLM clients.
-- **`packages/opencode`** uses **bun** as package manager; everything else uses npm.
-- **Database:** Neon Postgres + pgvector (1536-dim embeddings). Migrations auto-run on server boot.
+- **`packages/opencode`** has bun test types (`bun-test.d.ts`, `"types": ["bun", "node"]`). Root `packageManager` is `npm@10.9.8`; `bun test` runs the global test suite.
+- **Database:** Neon Postgres + pgvector (1536-dim embeddings). `ensureSchema()` creates tables if missing on server boot (not a migration runner).
 - **Redis:** `REDIS_URL` (Fast Brain) and `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`).
   `REDIS_SLOW_URL` is a legacy alias. Circuit breaker protects against quota exhaustion (500k/month).
 - **LLM provider:** `GEMINI_API_KEY` + `gemini-flash-latest`. Provider factory at `packages/utils/src/llm/providers.ts`.
@@ -87,6 +87,16 @@ Build command must include `--include=dev` because `tsx` is a devDependency and 
 - **Prettier:** `semi`, `singleQuote`, `trailingComma: es5`, `printWidth: 100`, `LF`.
 - **Imports:** server.js and lib files use `node:` prefix for builtins.
 - **`// kilocode_change` markers** are required in `apps/web/src/hooks/useToolInterceptor.ts` and `services/agent/cli.ts`.
+
+## Status, PRs, and remote operations
+
+```bash
+node scripts/system-status.mjs check   # CI-style health summary
+node scripts/system-status.mjs stamp   # update timestamps in docs
+./scripts/pr-sync.sh drift             # branch divergence from main
+./scripts/pr-sync.sh sync <branch>     # rebase onto main + push
+./scripts/pr-sync.sh merge <branch>    # sync + gh pr merge --squash --delete-branch
+```
 
 ## Repository protection
 
