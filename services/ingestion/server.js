@@ -808,6 +808,18 @@ async function ensureSchema() {
 await ensureSchema();
 await ensureLedgerSchema();
 
+try {
+  const { ensureGenesisSchema } = await import('../storage/thinkTokenGenesis.js');
+  const { ensureBoxSchema } = await import('../storage/thinkBoxSpawner.js');
+  const { startLifecycleManager } = await import('../storage/agentLifecycle.js');
+  await ensureGenesisSchema();
+  await ensureBoxSchema();
+  startLifecycleManager();
+  console.log('[Genesis] THINK Token Genesis system initialized');
+} catch (err) {
+  console.warn('[Genesis] Initialization failed (non-blocking):', err instanceof Error ? err.message : String(err));
+}
+
 let redis;
 try {
   redis = getRedisClient({ label: 'ingestion', enableOfflineQueue: true });
@@ -2077,6 +2089,21 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
     };
     publishEvent('think_token_status_updated', eventData);
 
+    if (status === 'VERIFIED' || status === 'PROVEN') {
+      try {
+        const { evaluateGenesisEligibility, mintGenesisEntry } = await import('../storage/thinkTokenGenesis.js');
+        const eligibility = await evaluateGenesisEligibility(finalTokenId);
+        if (eligibility.eligible && eligibility.metadata) {
+          const genesis = await mintGenesisEntry(eligibility.metadata);
+          console.log(`[Genesis] Minted genesis entry ${genesis.genesisId} from token ${finalTokenId} (${genesis.agentArchetype}, confidence=${genesis.trainingConfidence.toFixed(2)})`);
+        } else {
+          console.log(`[Genesis] Token ${finalTokenId} not eligible: ${eligibility.reason}`);
+        }
+      } catch (genesisErr) {
+        console.warn('[Genesis] Evaluation failed (non-blocking):', genesisErr instanceof Error ? genesisErr.message : String(genesisErr));
+      }
+    }
+
     return res.json({
       success: true,
       tokenId: finalTokenId,
@@ -3089,7 +3116,7 @@ app.post('/api/think/challenge', async (req, res) => {
     const { tokenId, query } = req.body || {};
     if (!tokenId || !query) return res.status(400).json({ error: 'tokenId and query required' });
 
-    const entry = _thinkChallenges.get(tokenId) ?? {
+    const initial = _thinkChallenges.get(tokenId) ?? {
       score: 0,
       wins: 0,
       losses: 0,
@@ -3097,32 +3124,46 @@ app.post('/api/think/challenge', async (req, res) => {
       rank: 'ROOKIE',
       badge: '🌱',
       lastChallenge: null,
+      confidence: 0,
+      humanApproved: false,
     };
 
-    // Simulate challenge: score based on query length + randomness (placeholder until LLM-backed)
-    const baseScore = Math.min(100, Math.max(10, query.length * 2 + Math.floor(Math.random() * 30)));
-    const passed = baseScore >= 50;
-    const verdict = baseScore >= 80 ? 'PASS' : baseScore >= 50 ? 'PARTIAL' : 'FAIL';
+    // Real adversarial Disruptor (Gemini-backed) replaces the random placeholder.
+    // Falls back to the previous deterministic evidence base when Gemini is down.
+    const { challengeToken } = await import('../agent/confidence-engine.js').catch(() => ({ challengeToken: null }));
+    let disruption = { verdict: 'UNEVALUATED', score: 0, critique: '', empty: true };
+    let entry = initial;
 
-    entry.challenges += 1;
-    entry.lastChallenge = new Date().toISOString();
-    if (passed) {
-      entry.wins += 1;
-      entry.score += Math.floor(baseScore / 10);
+    if (typeof challengeToken === 'function') {
+      const r = await challengeToken(
+        { failure: query, lesson: query }, // token teaching *is* the queried snippet in this arena
+        initial
+      );
+      entry = r.entry;
+      disruption = r.disruption;
+      // Normalize to the legacy badge lookup the leaderboard expects.
+      const newRank = rankForScore(entry.score);
+      entry.rank = newRank.name;
+      entry.badge = newRank.badge;
     } else {
-      entry.losses += 1;
-      entry.score = Math.max(0, entry.score - 5);
+      // Degraded fallback (no confidence engine): deterministic, no randomness.
+      entry.challenges += 1;
+      entry.lastChallenge = new Date().toISOString();
+      entry.score = Math.min(100, Math.max(0, entry.score + (query.length > 10 ? 2 : 0)));
+      const newRank = rankForScore(entry.score);
+      entry.rank = newRank.name;
+      entry.badge = newRank.badge;
     }
 
-    const newRank = rankForScore(entry.score);
-    entry.rank = newRank.name;
-    entry.badge = newRank.badge;
     _thinkChallenges.set(tokenId, entry);
 
     return res.status(200).json({
       tokenId,
-      verdict,
-      score: baseScore,
+      verdict: disruption.verdict || (entry.score >= 80 ? 'PASS' : entry.score >= 50 ? 'PARTIAL' : 'FAIL'),
+      score: entry.score,
+      confidence: entry.confidence ?? entry.score,
+      humanApproved: entry.humanApproved ?? false,
+      critique: disruption.critique || '',
       rank: entry.rank,
       badge: entry.badge,
       challenges: entry.challenges,
@@ -3133,6 +3174,64 @@ app.post('/api/think/challenge', async (req, res) => {
     });
   } catch {
     return res.status(500).json({ error: 'Challenge evaluation failed' });
+  }
+});
+
+// --- Human-in-the-loop governance for trusted tokens -----------------------
+// A challenged token only becomes model-ready after human approval. This is the
+// governance gate: confident + approved = join the learned model test-set.
+app.post('/api/think/govern', async (req, res) => {
+  try {
+    const { tokenId, approved, note } = req.body || {};
+    if (!tokenId || typeof approved !== 'boolean') {
+      return res.status(400).json({ error: 'tokenId and approved (boolean) required' });
+    }
+    const entry = _thinkChallenges.get(tokenId);
+    if (!entry) return res.status(404).json({ error: 'token not found' });
+
+    const { humanApprove, isModelEligible } = await import('../agent/confidence-engine.js').catch(() => ({ humanApprove: null, isModelEligible: null }));
+    if (typeof humanApprove === 'function') {
+      humanApprove(entry, approved, note);
+    } else {
+      entry.humanApproved = approved;
+    }
+    _thinkChallenges.set(tokenId, entry);
+
+    return res.status(200).json({
+      tokenId,
+      humanApproved: entry.humanApproved,
+      modelEligible: typeof isModelEligible === 'function' ? isModelEligible(entry) : entry.humanApproved,
+      rank: entry.rank,
+      badge: entry.badge,
+      score: entry.score,
+      governedAt: entry.governedAt ?? null,
+    });
+  } catch {
+    return res.status(500).json({ error: 'Governance failed' });
+  }
+});
+
+// --- Test a model against the learned (trusted) token cohort -----------------
+app.post('/api/think/test-model', async (req, res) => {
+  try {
+    const { limit } = req.body || {};
+    const { buildTestSet, testModel, isModelEligible } = await import('../agent/confidence-engine.js').catch(() => ({ buildTestSet: null, testModel: null, isModelEligible: null }));
+    if (typeof buildTestSet !== 'function' || typeof testModel !== 'function') {
+      return res.status(500).json({ error: 'confidence-engine unavailable' });
+    }
+
+    const cohort = Array.from(_thinkChallenges.entries())
+      .map(([tokenId, entry]) => ({ tokenId, entry, token: { failure: tokenId, lesson: tokenId } }))
+      .filter((c) => typeof isModelEligible === 'function' ? isModelEligible(c.entry) : c.entry.humanApproved);
+
+    const testSet = buildTestSet(cohort, Math.min(Number(limit) || 20, 50));
+    if (testSet.length === 0) {
+      return res.status(200).json({ ok: false, reason: 'No trusted+approved tokens yet — run challenges then govern (human-in-the-loop).', tested: 0 });
+    }
+    const result = await testModel(null, testSet);
+    return res.status(200).json({ ok: true, trustedTokens: cohort.length, ...result });
+  } catch {
+    return res.status(500).json({ error: 'Model test failed' });
   }
 });
 

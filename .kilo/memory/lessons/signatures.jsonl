@@ -1,0 +1,1 @@
+{"id":"sig-msqqxhx6","ts":"2026-08-12T23:54:28.986Z","signature":"type:error:possibly:undefined:vectorstore","failure":"Type error: X is possibly undefined in vectorStore.ts","ok":true,"error":null}
