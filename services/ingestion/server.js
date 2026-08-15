@@ -153,7 +153,7 @@ if (process.env.NODE_ENV !== 'test') app.set('trust proxy', 1);
 // --- CORS Handling (must be first middleware) ---
 // Strict allowlist — never wildcard in production. Falls back to same-origin.
 const allowedOrigins = new Set(
-  (process.env.CORS_ALLOW_ORIGINS || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com,https://kudbee-fuel-gage-330ade653a62.herokuapp.com')
+  (process.env.CORS_ALLOW_ORIGINS || 'http://localhost:4173,http://localhost:4180,http://localhost:3000')
     .split(',').map(s => s.trim()).filter(Boolean)
 );
 app.use((req, res, next) => {
@@ -273,14 +273,49 @@ app.use((req, res, next) => {
 // --- Phase 66: Spheroid Audit Ledger — logs all mutating requests ---
 app.use(spheroidAudit());
 
+// ── Phase 4: Protected authentication boundary ─────────────────────────────
+// Privileged/mutating routes require authentication before execution. Health
+// and read-only surfaces stay public. Controlled by KUDBEE_AUTH_BOUNDARY:
+//   'required' (or NODE_ENV=production) → protected routes require auth (401)
+//   'dev-open' (default, non-production) → non-high-risk protected routes stay
+//     open for local dev; high-risk terminal/tools routes still require auth
+//     unless KUDBEE_DEV_OPEN=true is explicitly set.
+const KUDBEE_AUTH_BOUNDARY = process.env.KUDBEE_AUTH_BOUNDARY || (process.env.NODE_ENV === 'production' ? 'required' : 'dev-open');
+const KUDBEE_DEV_OPEN = process.env.KUDBEE_DEV_OPEN === 'true';
+const AUTH_BOUNDARY_REQUIRED = KUDBEE_AUTH_BOUNDARY === 'required';
+
+const PROTECTED_PREFIXES = ['/api/agents', '/api/governance', '/api/memory', '/api/think', '/api/interceptor', '/api/tools', '/api/terminal', '/api/admin', '/api/audit/vault'];
+const HIGH_RISK_PREFIXES = ['/api/tools', '/api/terminal'];
+
+function isProtectedPath(p) {
+  return PROTECTED_PREFIXES.some((prefix) => p === prefix || p.startsWith(prefix + '/'));
+}
+function isHighRiskPath(p) {
+  return HIGH_RISK_PREFIXES.some((prefix) => p === prefix || p.startsWith(prefix + '/'));
+}
+
+async function protectedBoundary(req, res, next) {
+  const p = req.path;
+  if (!isProtectedPath(p)) return next();
+  const mustAuth = AUTH_BOUNDARY_REQUIRED || (isHighRiskPath(p) && !KUDBEE_DEV_OPEN);
+  if (!mustAuth) return next(); // explicit dev-open exception (documented)
+  if (!req.authenticated) {
+    res.setHeader('WWW-Authenticate', 'Bearer realm="kudbee"');
+    return res.status(401).json({ error: 'unauthorized', message: 'Authentication required for this endpoint' });
+  }
+  return next();
+}
+
 // Synapse Protection Layer — C4769 quantitative threat barrier
 // Must run BEFORE bearerAuth to intercept unauthorized agents
 // before they reach auth. Triggers precipitated withdrawal for
 // threat vectors exceeding protractor threshold.
-// Synapse protection, bearer auth, and token budget gates disengaged per
-// Engineering OS v2.2 directive — no password-based access control needed.
+// Synapse protection and token budget gates remain disengaged per
+// Engineering OS v2.2 directive. Identity attachment (bearerAuth, non-blocking)
+// is re-enabled so the protected boundary can enforce authentication.
 // app.use(synapseProtectionMiddleware);
-// app.use(bearerAuth({ required: false }));
+app.use(bearerAuth({ required: false }));
+app.use(protectedBoundary);
 // app.use(kiloBridgeBudget());
 // PHASE-9: tenant-context resolution + X-Tenant-Id header validation.
 // Safe to mount unconditionally — no-ops for unauthenticated (Mode A) requests.
@@ -359,12 +394,10 @@ app.use('/api/telemetry/ingest', ingestLimiter);
 
 // --- Phase 25: Modular sub-router mounting (must run before inline routes) -
 
-// Dynamic deploy version — platform truth first, then local fallbacks.
-// Heroku sets HEROKU_SLUG_COMMIT at build time — this IS the deployed SHA.
+// Dynamic deploy version — AWS/CI platform truth first, then local fallbacks.
+// SOURCE_VERSION is set by CI (GitHub Actions) at build time — this IS the deployed SHA.
 // Static .deploy-version.json is local-development only (never override platform).
 function getDeployVersion() {
-  if (process.env.HEROKU_SLUG_COMMIT) return process.env.HEROKU_SLUG_COMMIT.slice(0, 7);
-  if (process.env.HEROKU_RELEASE_VERSION) return process.env.HEROKU_RELEASE_VERSION;
   if (process.env.SOURCE_VERSION) return process.env.SOURCE_VERSION.slice(0, 7);
   try {
     const deployFile = fs.readFileSync('.deploy-version.json', 'utf8');
@@ -6162,7 +6195,7 @@ app.get('/api/system/rate-limit-stats', (_req, res) => {
 
 // --- Deploy Status (frontend-backend communication tunnel) ---
 app.get('/api/system/deploy-status', (_req, res) => {
-  let commit = process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || process.env.SOURCE_VERSION?.slice(0, 7);
+  let commit = process.env.SOURCE_VERSION?.slice(0, 7);
   if (!commit && !process.env.IOP) {
     try {
       const dv = fs.readFileSync(path.join(__dirname, '../../.deploy-version.json'), 'utf8');
@@ -6172,7 +6205,7 @@ app.get('/api/system/deploy-status', (_req, res) => {
   if (!commit) commit = 'unknown';
   res.json({
     commit,
-    herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
+    deployVersion: getDeployVersion(),
     nodeEnv: process.env.NODE_ENV || 'production',
     status: 'ok',
     uptimeSec: process.uptime ? Math.floor(process.uptime()) : 0,
@@ -6275,9 +6308,9 @@ app.get('/api/kilo/telemetry', async (_req, res) => {
     production: {
       status: 'ok',
       uptimeMin: Math.floor(process.uptime() / 60),
-      herokuRelease: process.env.HEROKU_RELEASE_VERSION || getDeployVersion(),
-      commit: process.env.HEROKU_SLUG_COMMIT?.slice(0, 7) || 'HEAD',
-      dynos: { web: 1, sentinel: 1, hermesWorker: 1, monitorWorker: 1 },
+      deployVersion: getDeployVersion(),
+      commit: process.env.SOURCE_VERSION?.slice(0, 7) || 'HEAD',
+      workers: { web: 1, sentinel: 1, hermesWorker: 1, monitorWorker: 1 },
     },
     infrastructure: {
       nodeEnv: process.env.NODE_ENV || 'production',
@@ -6399,6 +6432,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(
     `[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`
   );
+  console.log(`[Server] Auth boundary: ${KUDBEE_AUTH_BOUNDARY}${KUDBEE_DEV_OPEN ? ' (KUDBEE_DEV_OPEN=true)' : ''} — protected routes ${AUTH_BOUNDARY_REQUIRED ? 'require' : 'conditionally require'} auth`);
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
@@ -6423,7 +6457,7 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
       `Evaluate the current system health and provide a critical status assessment.
       PostgreSQL: healthy. Redis: healthy (REST API). Synapse C4769: active, 0 violations.
       Agents: 4/11 online. Database: 25MB. Think tokens: 1648.
-      Deploy: Heroku v327, 4 dynos. Budget: $${(status.budgetUsed/100).toFixed(2)} of $${(status.budgetTotal/100).toFixed(2)} used.
+      Deploy: AWS EC2, 4 workers. Budget: $${(status.budgetUsed/100).toFixed(2)} of $${(status.budgetTotal/100).toFixed(2)} used.
       ${status.apiCalls} API calls, ${status.tokensIn} tokens in, ${status.tokensOut} out.
       Rate limit: ${status.rateLimit.requestsRemaining} req remaining, reset in ${status.rateLimit.nextResetMs}ms.
       Provide a 1-2 sentence critical assessment and a green/yellow/red status.`,
