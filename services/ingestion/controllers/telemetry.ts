@@ -34,17 +34,24 @@ export const handleTelemetryIngest = async (req: Request, res: Response): Promis
     const cost = Number(payload.cost) || 0;
     const latencyMs = Number(payload.latency_ms) || 0;
     const isRisky = cost > 0.1 || latencyMs > 2000 || payload.status === 'FAILED';
-    const tokenStatus = isRisky ? 'PENDING_APPROVAL' : 'VERIFIED';
 
+    // Phase 5M — mint always creates PENDING_APPROVAL (lifecycle invariant).
+    // Risk scoring is preserved as evidence for the later approval workflow
+    // (Phase 5L) rather than directly conferring VERIFIED state.
     void mintThinkToken({
       traceId: String(payload.trace_id || `edge-${Date.now()}`),
-      taskContext: { source: 'edge-sentinel', model: payload.model },
+      taskContext: {
+        source: 'edge-sentinel',
+        model: payload.model,
+        risk: isRisky ? 'risky' : 'ok',
+        cost,
+        latencyMs,
+      },
       failedState: isRisky ? { reason: 'high_cost_or_latency', cost, latencyMs } : {},
       correctionDelta: 'Edge Sentinel ingestion accepted via blast-radius evaluation.',
       reasoningSteps: [`status=${payload.status || 'OK'}`, `cost=${cost}`, `latencyMs=${latencyMs}`],
       cost,
       latencyMs,
-      status: tokenStatus
     }).catch(() => {
       // best-effort; never block ingestion on think token minting
     });

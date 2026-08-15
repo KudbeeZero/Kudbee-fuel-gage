@@ -170,13 +170,15 @@ async function mintTokenViaHttp(agentPass, trajectory) {
       'Content-Type': 'application/json',
       'X-Agent-Pass': agentPass
     },
+    // Phase 5M — the mint route creates PENDING_APPROVAL only (lifecycle
+    // invariant). The legacy 'VERIFIED' request is removed so the HTTP path
+    // succeeds instead of falling back to the direct primitive.
     body: JSON.stringify({
       traceId: trajectory.traceId,
       taskContext: trajectory.taskContext,
       failedState: trajectory.failedState,
       correctionDelta: trajectory.correctionDelta,
       reasoningSteps: trajectory.reasoningSteps,
-      status: 'VERIFIED',
       kd: 0.95,
       efficacy: 1.0
     })
@@ -192,6 +194,10 @@ async function mintTokenViaHttp(agentPass, trajectory) {
 }
 
 async function mintTokenDirect(trajectory) {
+  // Phase 5M — the mint primitive creates PENDING_APPROVAL only. This script
+  // can no longer manufacture VERIFIED directly. If genuine bootstrap authority
+  // is ever required, it must use an explicitly isolated administrative
+  // mechanism — not the ordinary mint primitive.
   const { mintThinkToken } = await import('../services/memory/thinkTokenGenerator.ts');
   const result = await mintThinkToken({
     traceId: trajectory.traceId,
@@ -199,7 +205,6 @@ async function mintTokenDirect(trajectory) {
     failedState: trajectory.failedState,
     correctionDelta: trajectory.correctionDelta,
     reasoningSteps: trajectory.reasoningSteps,
-    status: 'VERIFIED',
     kd: 0.95,
     efficacy: 1.0
   });

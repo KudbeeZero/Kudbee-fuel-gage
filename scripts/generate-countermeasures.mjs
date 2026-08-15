@@ -212,6 +212,10 @@ async function injectLearningTokens(redis, tokens) {
     const { runInsert } = await import('../services/lib/db.js');
 
     for (const token of tokens) {
+      // Phase 5M — lifecycle invariant: mint/insert creates PENDING_APPROVAL
+      // only. The legacy non-standard 'approved' label is normalized to
+      // PENDING_APPROVAL; promotion to a verified state is a separate,
+      // authorized transition.
       await runInsert(
         `INSERT INTO think_tokens (task_context, correction_delta, kd, efficacy, status, token_type)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -220,7 +224,7 @@ async function injectLearningTokens(redis, tokens) {
           token.correction_delta,
           token.kd,
           token.efficacy,
-          'approved',
+          'PENDING_APPROVAL',
           token.token_type,
         ]
       );

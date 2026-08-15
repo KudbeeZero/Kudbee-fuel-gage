@@ -2115,7 +2115,19 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
     }
 
     const finalTokenId = String(matched.id);
-    await runQuery(`UPDATE think_tokens SET status = $1 WHERE id = $2`, [status, finalTokenId]);
+    // Phase 5M — route through the authoritative lifecycle transition primitive
+    // (state invariant enforced at the lowest level). The route keeps its own
+    // event publish + genesis handling.
+    const { transitionThinkTokenStatus } = await import('../memory/thinkTokenGenerator.ts');
+    const transition = await transitionThinkTokenStatus({
+      tokenId: finalTokenId,
+      status,
+      reviewerNotes: reviewerNotes || null,
+      actor: agentId,
+    });
+    if (!transition.ok) {
+      return res.status(500).json({ error: transition.error });
+    }
 
     const eventData = {
       id: finalTokenId,
