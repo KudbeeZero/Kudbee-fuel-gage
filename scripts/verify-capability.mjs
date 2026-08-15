@@ -108,10 +108,33 @@ async function main() {
   r = await fetch(`${BASE}/api/audit/vault/anchor`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: '{}' });
   assert(r.status === 403, 'insufficient role → 403 (unchanged)');
 
-  // missing capability is observable, not denied
+  // ── Phase 5C: controlled enforcement on terminal/fs/shell ──
+  const adm = signedBearer('e2e-admin', ['ADMIN']);
+
+  // OPERATOR lacks execute:terminal/fs/shell → 403 (capability denial)
+  r = await fetch(`${BASE}/api/terminal/execute`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'echo x' }) });
+  assert(r.status === 403, 'OPERATOR terminal → 403 (no execute:terminal)');
+  assert((await r.text()).includes('Capability required: execute:terminal'), 'terminal denial is a capability denial');
+  r = await fetch(`${BASE}/api/tools/fs/read`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'README.md' }) });
+  assert(r.status === 403, 'OPERATOR fs → 403 (no execute:fs)');
+  r = await fetch(`${BASE}/api/tools/shell/exec`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'pwd' }) });
+  assert(r.status === 403, 'OPERATOR shell → 403 (no execute:shell)');
+
+  // ADMIN has execute:terminal/fs/shell → NOT capability-denied (reaches route)
+  r = await fetch(`${BASE}/api/terminal/execute`, { method: 'POST', headers: { Authorization: adm, 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'echo x' }) });
+  assert(!(await r.text()).includes('Capability required: execute:terminal'), 'ADMIN terminal passes capability layer');
+  r = await fetch(`${BASE}/api/tools/fs/read`, { method: 'POST', headers: { Authorization: adm, 'Content-Type': 'application/json' }, body: JSON.stringify({ path: 'README.md' }) });
+  assert(!(await r.text()).includes('Capability required: execute:fs'), 'ADMIN fs passes capability layer');
+
+  // anonymous still 401 (boundary precedes capability)
+  r = await fetch(`${BASE}/api/terminal/execute`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'echo x' }) });
+  assert(r.status === 401, 'anonymous terminal → 401 (unchanged)');
+
+  // telemetry reflects partial enforcement + denials
   const t = await (await fetch(`${BASE}/api/capability`)).json();
-  assert(t.enforcement === 'observe', 'enforcement is observe-only');
-  assert(t.denials === 0, 'denials = 0 (no capability enforcement yet)');
+  assert(t.enforcement === 'partial', 'enforcement is partial');
+  assert(t.enforcedCapabilities.includes('execute:terminal'), 'terminal is in enforced set');
+  assert(t.denials > 0, 'denials recorded (enforcement active)');
   assert(typeof t.resolutions === 'number' && t.resolutions > 0, 'resolutions are recorded');
 
   // no secrets in logs

@@ -54,6 +54,10 @@ export const WRITE_AUTHORITY_CAPABILITIES: Record<string, Capability[]> = {
 
 export const REGISTRY_VERSION = '1.0.0';
 
+// Capabilities currently ENFORCED (absence → 403). Everything else is
+// observe-only in this phase. Only the highest-risk surfaces are enforced.
+export const ENFORCED_CAPABILITIES: Capability[] = ['execute:terminal', 'execute:fs', 'execute:shell'];
+
 export interface CapabilityContext {
   agentId: string | null;
   roles: string[];

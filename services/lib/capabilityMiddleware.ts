@@ -1,12 +1,16 @@
 /**
  * services/lib/capabilityMiddleware.ts
  * ---------------------------------------------------------------------------
- * Phase 5B — capability resolution middleware (OBSERVATION ONLY, no deny).
+ * Phase 5C — capability middleware with CONTROLLED enforcement.
  *
- * Runs after authentication has established the principal. Resolves the
- * agent's capability set and attaches it to the request as
- * `req.kudbeeCapabilities` / `req.capabilityContext`. It records capability
- * decisions for observability but NEVER returns 403 in this phase.
+ * Runs after authentication. Resolves the agent's capability set and attaches
+ * it as `req.kudbeeCapabilities` / `req.capabilityContext`.
+ *
+ * Enforcement is PARTIAL: only the three highest-risk capability classes are
+ * enforced (absence → 403). Everything else remains observe-only.
+ *
+ *   ENFORCED: execute:terminal, execute:fs, execute:shell
+ *   OBSERVE:  every other capability
  *
  * It augments — and does NOT replace — bearer auth, tenant checks, RBAC, or
  * protectedBoundary.
@@ -14,11 +18,11 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { resolveCapabilities, endpointCapability } from './capabilityRegistry.ts';
+import { resolveCapabilities, endpointCapability, ENFORCED_CAPABILITIES } from './capabilityRegistry.ts';
 import { recordCapabilityDecision } from './capabilityTelemetry.ts';
 
 export function capabilityMiddleware() {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const agentId = (req as any).agentId || null;
     const roles = (req as any).roles || [];
     const ctx = resolveCapabilities({ agentId, roles });
@@ -26,18 +30,31 @@ export function capabilityMiddleware() {
     (req as any).kudbeeCapabilities = ctx.capabilities;
     (req as any).capabilityContext = ctx;
 
-    // Observability only — never deny.
     const required = endpointCapability(req.path);
     const allowed = !required || ctx.capabilities.includes(required);
+    const enforced = !!required && ENFORCED_CAPABILITIES.includes(required);
+
+    if (enforced && !allowed) {
+      // Default-deny for the high-risk surfaces. Command/fs/shell never runs.
+      recordCapabilityDecision({
+        agent: agentId,
+        route: req.path,
+        required,
+        allowed: false,
+        enforcement: 'enforce',
+        ts: Date.now(),
+      });
+      return res.status(403).json({ error: 'forbidden', message: `Capability required: ${required}` });
+    }
+
     recordCapabilityDecision({
       agent: agentId,
       route: req.path,
       required,
       allowed,
-      enforcement: 'observe',
+      enforcement: enforced ? 'enforce' : 'observe',
       ts: Date.now(),
     });
-
     return next();
   };
 }
