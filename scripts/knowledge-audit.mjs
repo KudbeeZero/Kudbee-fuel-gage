@@ -157,8 +157,12 @@ function report(result) {
   return { totalFindings, verdict };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Cross-platform entry-point guard (Windows path separators differ from
+// import.meta.url's forward slashes, so a raw === comparison silently no-ops).
+if (process.argv[1] && import.meta.url.endsWith('/' + process.argv[1].split(/[\\/]/).pop())) {
   const r = audit();
   const summary = report(r);
-  process.exitCode = summary.verdict === 'FAIL' ? 1 : 0;
+  // Default: fail only on FAIL. With --strict, also fail on WARN findings.
+  const strict = process.argv.includes('--strict');
+  process.exitCode = summary.verdict === 'FAIL' || (strict && summary.verdict === 'WARN') ? 1 : 0;
 }

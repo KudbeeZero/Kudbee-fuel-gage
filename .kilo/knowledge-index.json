@@ -84,6 +84,246 @@
         "CF-1785880083018"
       ],
       "evidence": "Graph edges 34→108, orphans 39→5"
+    },
+    {
+      "id": "LRN-1B7BAGH",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "High memory usage detected. — Monitor memory usage and consider increasing RAM or optimizing applications to reduce memory consumption."
+    },
+    {
+      "id": "LRN-J09XVH",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Moderate temperature recorded. — Ensure proper ventilation and monitor temperatures during heavy workloads to prevent overheating."
+    },
+    {
+      "id": "LRN-NLL4R5",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Sufficient free disk space available. — Maintain at least 10% free disk space for optimal performance and system stability."
+    },
+    {
+      "id": "LRN-1N65TLB",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "NVIDIA Quadro M1000M is underutilized compared to Intel HD Graphics 530. — Prioritize GPU tasks for the NVIDIA Quadro M1000M to leverage its dedicated VRAM for model inference."
+    },
+    {
+      "id": "LRN-4SN4XJ",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Potential startup programs may contribute to high memory usage during boot. — Audit and disable non-essential startup programs to reduce initial memory overhead."
+    },
+    {
+      "id": "LRN-17MMCU0",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "High memory usage detected (77% used), indicating potential optimization needs. — Monitor memory consumption and consider adjusting application settings or upgrading RAM for better performance."
+    },
+    {
+      "id": "LRN-TLTYGQ",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Sufficient free disk space (1158.8 GB) but should be maintained at least 10% for optimal stability. — Ensure at least 10% free disk space remains available to prevent performance issues."
+    },
+    {
+      "id": "LRN-SXT9UL",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "High memory usage (55%) detected, indicating potential optimization needs. — Monitor memory consumption and consider adjusting application settings or upgrading RAM for better performance."
+    },
+    {
+      "id": "LRN-1N2HOM1",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Sufficient free disk space (1158.9 GB) but should be maintained at least 10% for optimal stability. — Ensure at least 10% free disk space remains available to prevent performance issues."
+    },
+    {
+      "id": "LRN-1UD10WT",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "High memory usage (77%) detected, indicating potential optimization needs. — Monitor memory consumption and consider adjusting application settings or upgrading RAM for better performance."
+    },
+    {
+      "id": "LRN-1QXC9HV",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Persistent high memory usage (77% used) indicates potential optimization needs. — Monitor memory consumption and consider adjusting application settings or upgrading RAM for better performance."
+    },
+    {
+      "id": "LRN-KK4ECD",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Sufficient free disk space (1158.9 GB), but should be maintained at least 10% for optimal stability. — Ensure at least 10% free disk space remains available to prevent performance issues."
+    },
+    {
+      "id": "LRN-NJK5ZU",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "NVIDIA Quadro M1000M is underutilized compared to Intel HD Graphics 530, suggesting potential resource reallocation. — Prioritize GPU tasks for the NVIDIA Quadro M1000M to leverage its dedicated VRAM for model inference."
+    },
+    {
+      "id": "LRN-CSJRU5",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "Running 'qwen/qwen3-8b' on a 15.9 GB RAM system keeps memory usage elevated at 63%, as the Nvidia Quadro M1000M's limited VRAM forces model layers to be offloaded to system RAM. — Optimize local inference server parameters to limit context window size or use a more aggressively quantized model (e.g., Q4_K_S) to free up system RAM."
+    },
+    {
+      "id": "LRN-KS9KR6",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "The user temp folder size is currently down to 61 MB following recent cleanups (227 MB and 44 MB freed), showing diminishing returns for frequent automated purges. — Set temp cleanup scripts to execute conditionally only when temp directory size exceeds 1 GB to avoid redundant disk I/O operations."
+    },
+    {
+      "id": "LRN-L843K8",
+      "type": "learning",
+      "owner": "os-agent",
+      "created": "2026-08-15",
+      "verified": null,
+      "review_after": "2026-09-14",
+      "expires": null,
+      "confidence": null,
+      "status": "DRAFT",
+      "supersedes": [],
+      "superseded_by": null,
+      "references": [],
+      "evidence": "With 1158.8 GB of free disk space, disk capacity is not a bottleneck, whereas system RAM remains the primary performance constraint. — Reallocate agent background health checks to prioritize dynamic RAM reclamation and process monitoring over disk maintenance tasks."
     }
   ],
   "transitions": [
@@ -156,6 +396,118 @@
       "to": "ACTIVE",
       "at": "2026-08-04T21:48:03.086Z",
       "by": "knowledge-lifecycle"
+    },
+    {
+      "id": "LRN-1B7BAGH",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:25.711Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-J09XVH",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:25.819Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-NLL4R5",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:25.919Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-1N65TLB",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.020Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-4SN4XJ",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.103Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-17MMCU0",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.203Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-TLTYGQ",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.303Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-SXT9UL",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.403Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-1N2HOM1",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.486Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-1UD10WT",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.603Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-1QXC9HV",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.703Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-KK4ECD",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.803Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-NJK5ZU",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:26.903Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-CSJRU5",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:27.003Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-KS9KR6",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:27.103Z",
+      "by": "os-agent"
+    },
+    {
+      "id": "LRN-L843K8",
+      "from": null,
+      "to": "DRAFT",
+      "at": "2026-08-15T03:27:27.253Z",
+      "by": "os-agent"
     }
   ]
 }
