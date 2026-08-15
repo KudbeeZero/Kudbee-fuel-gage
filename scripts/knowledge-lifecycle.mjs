@@ -208,7 +208,7 @@ if (process.argv[1] && import.meta.url.endsWith('/' + process.argv[1].split(/[\\
     show <id>
     list
 
-  Types: think_token | benchmark | decision | skill | bootstrap | forge_optimization
+  Types: think_token | benchmark | decision | skill | bootstrap | forge_optimization | learning
   States: DRAFT | VERIFIED | ACTIVE | STALE | SUPERSEDED | ARCHIVED
 `);
       process.exit(1);
