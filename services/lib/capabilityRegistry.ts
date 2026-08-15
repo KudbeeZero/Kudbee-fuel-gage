@@ -63,13 +63,16 @@ export const ENFORCED_CAPABILITIES: Capability[] = [
   'execute:terminal', 'execute:fs', 'execute:shell',
   'read:governance', 'execute:governance', 'admin:governance',
   'mint:think-token',
+  'ingest:telemetry',
 ];
 
 // Explicit per-agent capability grants (Phase 5J). mint:think-token is granted
 // to gastown specifically — NOT inherited from execute:governance or
 // admin:governance. Prefer explicit grants over implicit role inheritance.
+// Phase 5L — ingest:telemetry is granted to the Edge Sentinel agent only.
 export const AGENT_CAPABILITY_GRANTS: Record<string, Capability[]> = {
   gastown: ['mint:think-token'],
+  sentinel: ['ingest:telemetry'],
 };
 
 export interface CapabilityContext {
@@ -146,6 +149,7 @@ function governanceCapability(method: string, path: string): Capability {
 
 // Endpoint → required capability (method-aware). For observability/enforcement.
 const ENDPOINT_CAPABILITY: Array<[RegExp, Capability]> = [
+  [/^\/api\/telemetry\/edge-ingest$/, 'ingest:telemetry'],
   [/^\/api\/terminal/, 'execute:terminal'],
   [/^\/api\/tools\/shell/, 'execute:shell'],
   [/^\/api\/tools\/fs/, 'execute:fs'],

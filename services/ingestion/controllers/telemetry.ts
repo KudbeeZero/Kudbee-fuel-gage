@@ -10,22 +10,26 @@ interface IngestBody {
 /**
  * Edge Sentinel telemetry ingestion webhook.
  *
- * Authenticates the request via the X-Agent-Pass header against
- * EDGE_AGENT_PASS, then accepts the payload. On successful ingestion,
- * auto-mints a Think Token when the blast-radius evaluation indicates
- * high confidence. Risky or high-latency events are tagged as
- * PENDING_APPROVAL for the Governance Queue Tray.
+ * Phase 5L — authorization is enforced by the capability middleware (agent
+ * identity + ingest:telemetry). This handler no longer trusts a static
+ * EDGE_AGENT_PASS shared secret. A defensive re-check of the resolved
+ * capability set provides defense in depth.
+ *
+ * On successful ingestion it auto-mints a PENDING_APPROVAL Think Token.
+ * Risky or high-latency events are tagged for the Governance Queue Tray.
  */
 export const handleTelemetryIngest = async (req: Request, res: Response): Promise<void> => {
   try {
-    const agentPass = req.headers['x-agent-pass'];
-    const expectedPass = process.env.EDGE_AGENT_PASS;
-
-    if (typeof agentPass !== 'string' || agentPass !== expectedPass) {
-      res.status(401).json({ error: 'Unauthorized: Invalid Sentinel Pass' });
+    // Defense in depth: the capability middleware already enforced
+    // ingest:telemetry (401 anonymous / 403 no-capability). Re-check here so
+    // this handler is safe even if middleware wiring changes.
+    const caps: string[] = (req as any).kudbeeCapabilities || [];
+    if (!caps.includes('ingest:telemetry')) {
+      res.status(403).json({ error: 'Forbidden: ingest:telemetry capability required' });
       return;
     }
 
+    const agentId = (req as any).agentId || 'edge-sentinel';
     const payload = (req.body ?? {}) as IngestBody;
 
     void payload;
@@ -39,6 +43,7 @@ export const handleTelemetryIngest = async (req: Request, res: Response): Promis
     // Risk scoring is preserved as evidence for the later approval workflow
     // (Phase 5L) rather than directly conferring VERIFIED state.
     void mintThinkToken({
+      agentId,
       traceId: String(payload.trace_id || `edge-${Date.now()}`),
       taskContext: {
         source: 'edge-sentinel',
