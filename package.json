@@ -57,6 +57,7 @@
     "intelligence:decide": "node scripts/decision-ledger.mjs",
     "intelligence:decisions": "node scripts/decision-ledger.mjs list",
     "verify:quick": "node scripts/verify-quick.mjs",
+    "verify:auth-boundary": "node scripts/verify-auth-boundary.mjs",
     "route:map": "node scripts/route-map.mjs",
     "route:audit": "node scripts/route-map.mjs --json && bun test scripts/route-map.test.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
