@@ -129,7 +129,7 @@ Explicit `confidence_score` in `task_context` overrides the derived value.
 
 | Method | Route | Description |
 |:---|:---|:---|
-| `POST` | `/api/governance/mint-think-token` | Mint a new think token with optional receptor gating |
+| `POST` | `/api/governance/mint-think-token` | Mint a new think token (PENDING_APPROVAL only; caller-supplied VERIFIED/RECYCLED is rejected) |
 | `GET` | `/api/think/trajectories` | List trajectories with confidence scoring |
 | `PATCH` | `/api/think/trajectories/:hash/status` | Update token status (VERIFIED/RECYCLED) |
 | `POST` | `/api/think/archive` | Archive chain-of-thought reasoning |
@@ -139,6 +139,16 @@ Explicit `confidence_score` in `task_context` overrides the derived value.
 | `GET` | `/api/think/anomalies` | Low-confidence anomaly tokens |
 | `GET` | `/api/think/energy-mesh` | Energy mesh heatmap |
 | `GET` | `/api/memory/think-tokens` | pgvector similarity search for past successes |
+
+### Lifecycle integrity (Phase 5I)
+
+- **Minting ≠ approval.** `POST /api/governance/mint-think-token` creates tokens in
+  `PENDING_APPROVAL` **only**. A caller-supplied `VERIFIED`/`RECYCLED` status is rejected
+  (400) — a caller can never manufacture an already-approved token.
+- **Approval is a separate authority.** Promotion to `VERIFIED` (or `RECYCLED`) happens
+  only through `PATCH /api/think/trajectories/:hash/status`.
+- **Capability ≠ approval ≠ verification ≠ authority.** A token's state does not grant
+  the caller authority; `VERIFIED` state is conferred only by the approval path.
 
 ---
 

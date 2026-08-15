@@ -2864,14 +2864,21 @@ app.post('/api/governance/mint-think-token', async (req, res) => {
     const kdValue = typeof kd === 'number' ? kd : 0;
     const efficacyValue = typeof efficacy === 'number' ? efficacy : 0;
 
+    // Phase 5I — lifecycle integrity: mint may ONLY create PENDING_APPROVAL.
+    // A caller must never be able to manufacture VERIFIED/RECYCLED directly.
+    // Approval is a separate authority (PATCH /api/think/trajectories/:hash/status).
+    if (status && status !== 'PENDING_APPROVAL') {
+      return res.status(400).json({
+        error: 'Invalid status for mint: mint creates PENDING_APPROVAL only. Use the approval path to promote to VERIFIED/RECYCLED.',
+      });
+    }
+
     const result = await mintThinkToken({
       traceId: String(traceId),
       taskContext: taskContext || {},
       failedState: failedState || {},
       correctionDelta: String(correctionDelta),
-      status: ['PENDING_APPROVAL', 'VERIFIED', 'RECYCLED'].includes(status)
-        ? status
-        : 'PENDING_APPROVAL',
+      status: 'PENDING_APPROVAL',
       kd: kdValue,
       efficacy: efficacyValue,
       locked_by: null,
