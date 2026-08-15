@@ -89,8 +89,10 @@ async function main() {
   assert(viewer.capabilities.includes('read:state') && !viewer.capabilities.includes('execute:terminal'), 'VIEWER is read-only');
   const unknown = resolveCapabilities({ agentId: 'ghost', roles: [] });
   assert(Array.isArray(unknown.capabilities) && unknown.capabilities.length === 0, 'unknown agent resolves safely (empty)');
-  assert(endpointCapability('/api/terminal/execute') === 'execute:terminal', 'endpoint→capability mapping works');
-  assert(endpointCapability('/api/tools/fs/read') === 'execute:fs', 'fs endpoint maps to execute:fs');
+  assert(endpointCapability('POST', '/api/terminal/execute') === 'execute:terminal', 'endpoint→capability mapping works');
+  assert(endpointCapability('POST', '/api/tools/fs/read') === 'execute:fs', 'fs endpoint maps to execute:fs');
+  assert(endpointCapability('POST', '/api/governance/policies') === 'admin:governance', 'POST /policies → admin:governance');
+  assert(endpointCapability('GET', '/api/governance/tenants') === 'read:governance', 'GET /tenants → read:governance');
 
   // ── Integration: isolated server ──
   const getStderr = await startServer();
@@ -129,6 +131,25 @@ async function main() {
   // anonymous still 401 (boundary precedes capability)
   r = await fetch(`${BASE}/api/terminal/execute`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'echo x' }) });
   assert(r.status === 401, 'anonymous terminal → 401 (unchanged)');
+
+  // ── Phase 5F: governance segmentation ──
+  // CRITICAL: OPERATOR + execute:governance must NOT change policy (admin:governance).
+  r = await fetch(`${BASE}/api/governance/policies`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'secret_leak_prevention', enabled: false }) });
+  assert(r.status === 403 && (await r.text()).includes('Capability required: admin:governance'), 'OPERATOR POST /policies → 403 (admin:governance required)');
+  // ADMIN passes admin:governance (not capability-denied).
+  r = await fetch(`${BASE}/api/governance/policies`, { method: 'POST', headers: { Authorization: adm, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'secret_leak_prevention', enabled: false }) });
+  assert(!(await r.text()).includes('Capability required: admin:governance'), 'ADMIN POST /policies passes capability layer');
+  // OPERATOR read:governance passes (not capability-denied).
+  r = await fetch(`${BASE}/api/governance/tenants`, { headers: { Authorization: op } });
+  assert(!(await r.text()).includes('Capability required'), 'OPERATOR GET /tenants passes read:governance');
+  // OPERATOR execute:governance passes (not capability-denied).
+  r = await fetch(`${BASE}/api/governance/feedback`, { method: 'POST', headers: { Authorization: op, 'Content-Type': 'application/json' }, body: JSON.stringify({ traceId: 't1', verdict: 'thumbs_up' }) });
+  assert(!(await r.text()).includes('Capability required'), 'OPERATOR POST /feedback passes execute:governance');
+
+  // Privilege-escalation: execute:governance does NOT imply admin:governance.
+  const opCtx = resolveCapabilities({ agentId: 'gastown', roles: ['OPERATOR'] });
+  assert(opCtx.capabilities.includes('execute:governance'), 'OPERATOR has execute:governance');
+  assert(!opCtx.capabilities.includes('admin:governance'), 'OPERATOR does NOT have admin:governance');
 
   // telemetry reflects partial enforcement + denials
   const t = await (await fetch(`${BASE}/api/capability`)).json();

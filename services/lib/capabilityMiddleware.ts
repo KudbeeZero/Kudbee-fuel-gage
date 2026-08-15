@@ -30,9 +30,11 @@ export function capabilityMiddleware() {
     (req as any).kudbeeCapabilities = ctx.capabilities;
     (req as any).capabilityContext = ctx;
 
-    const required = endpointCapability(req.path);
-    const allowed = !required || ctx.capabilities.includes(required);
-    const enforced = !!required && ENFORCED_CAPABILITIES.includes(required);
+    const required = endpointCapability(req.method, req.path);
+    // REVIEW_REQUIRED routes are observe-only until explicitly classified.
+    const reviewOnly = required === 'REVIEW_REQUIRED';
+    const allowed = !required || reviewOnly || ctx.capabilities.includes(required);
+    const enforced = !!required && !reviewOnly && ENFORCED_CAPABILITIES.includes(required);
 
     if (enforced && !allowed) {
       // Default-deny for the high-risk surfaces. Command/fs/shell never runs.

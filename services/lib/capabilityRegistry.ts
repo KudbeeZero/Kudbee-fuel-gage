@@ -1,15 +1,14 @@
 /**
  * services/lib/capabilityRegistry.ts
  * ---------------------------------------------------------------------------
- * Phase 5B — authoritative read-only capability resolver.
+ * Phase 5B–5F — authoritative read-only capability resolver.
  *
  * Maps `agent identity → role → capabilities`. This is the single source of
- * truth for capability names. It is OBSERVATION-ONLY in this phase — it never
- * denies a request. Enforcement is a later phase.
+ * truth for capability names. Enforcement is controlled by ENFORCED_CAPABILITIES.
  *
- * Capabilities are normalized identifiers (not automatic permissions). The
- * registry derives capability sets from role, `allowedIntegrations`, and
- * `writeAuthority` (the existing declarative manifest concepts).
+ * Governance is segmented (Phase 5F) so that read access, bounded operational
+ * mutation, and security/policy administration are separate capabilities.
+ * `execute:governance` NEVER implies `admin:governance`.
  *
  * This registry is NOT writable through any API route.
  * ---------------------------------------------------------------------------
@@ -19,19 +18,21 @@ export type Capability = string;
 
 // Role → base capability set.
 export const ROLE_CAPABILITIES: Record<string, Capability[]> = {
-  viewer: ['read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws'],
-  auditor: ['read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws'],
+  viewer: ['read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws', 'read:governance'],
+  auditor: ['read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws', 'read:governance'],
   operator: [
     'read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws',
+    'read:governance', 'execute:governance',
     'execute:task', 'execute:learning', 'execute:memory', 'execute:think',
-    'execute:governance', 'execute:github',
+    'execute:github',
     'model:local', 'model:gemini', 'model:inception', 'model:xai',
   ],
   admin: [
     'read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws',
+    'read:governance', 'execute:governance', 'admin:governance',
     'execute:task', 'execute:learning', 'execute:memory', 'execute:think',
-    'execute:governance', 'execute:github', 'execute:terminal', 'execute:fs',
-    'execute:shell', 'execute:aws', 'admin:agents',
+    'execute:github', 'execute:terminal', 'execute:fs', 'execute:shell',
+    'execute:aws', 'admin:agents',
     'model:local', 'model:gemini', 'model:inception', 'model:xai',
   ],
 };
@@ -47,16 +48,20 @@ export const INTEGRATION_CAPABILITIES: Record<string, Capability[]> = {
 // writeAuthority.level → capabilities.
 export const WRITE_AUTHORITY_CAPABILITIES: Record<string, Capability[]> = {
   'repository-verification-only': ['execute:fs'],
-  'orchestration-only': ['execute:task', 'execute:learning'],
+  'orchestration-only': ['execute:task', 'execute:learning', 'execute:governance'],
   'internal-bus-only': ['execute:task'],
   'read-only': [],
 };
 
-export const REGISTRY_VERSION = '1.0.0';
+export const REGISTRY_VERSION = '1.1.0';
 
 // Capabilities currently ENFORCED (absence → 403). Everything else is
-// observe-only in this phase. Only the highest-risk surfaces are enforced.
-export const ENFORCED_CAPABILITIES: Capability[] = ['execute:terminal', 'execute:fs', 'execute:shell'];
+// observe-only. High-risk surfaces (terminal/fs/shell) plus the segmented
+// governance classes are enforced. REVIEW_REQUIRED routes stay observe-only.
+export const ENFORCED_CAPABILITIES: Capability[] = [
+  'execute:terminal', 'execute:fs', 'execute:shell',
+  'read:governance', 'execute:governance', 'admin:governance',
+];
 
 export interface CapabilityContext {
   agentId: string | null;
@@ -107,7 +112,23 @@ export function resolveCapabilities(opts: {
   };
 }
 
-// Endpoint → required capability (for observability only — not enforced yet).
+// Governance route → capability class. REVIEW_REQUIRED = observe-only, not
+// enforced, until explicitly classified.
+function governanceCapability(method: string, path: string): Capability {
+  const m = method.toUpperCase();
+  // Read-only governance.
+  if (m === 'GET') return 'read:governance';
+  // Security/policy administration.
+  if (/\/policies$/.test(path) || /\/tune\/apply$/.test(path)) return 'admin:governance';
+  // Bounded operational mutation (non-policy).
+  if (/\/feedback$/.test(path) || /\/tasks\/enqueue$/.test(path) || /\/failed\/retry$/.test(path) || /\/tune$/.test(path)) {
+    return 'execute:governance';
+  }
+  // Unresolved high-impact operations — observe only until classified.
+  return 'REVIEW_REQUIRED';
+}
+
+// Endpoint → required capability (method-aware). For observability/enforcement.
 const ENDPOINT_CAPABILITY: Array<[RegExp, Capability]> = [
   [/^\/api\/terminal/, 'execute:terminal'],
   [/^\/api\/tools\/shell/, 'execute:shell'],
@@ -116,7 +137,6 @@ const ENDPOINT_CAPABILITY: Array<[RegExp, Capability]> = [
   [/^\/api\/learning/, 'execute:learning'],
   [/^\/api\/memory/, 'execute:memory'],
   [/^\/api\/think/, 'execute:think'],
-  [/^\/api\/governance/, 'execute:governance'],
   [/^\/api\/agents/, 'admin:agents'],
   [/^\/api\/github/, 'read:github'],
   [/^\/api\/audit/, 'read:audit'],
@@ -127,7 +147,8 @@ const ENDPOINT_CAPABILITY: Array<[RegExp, Capability]> = [
   [/^\/api\/aws/, 'read:aws'],
 ];
 
-export function endpointCapability(path: string): Capability | null {
+export function endpointCapability(method: string, path: string): Capability | null {
+  if (path.startsWith('/api/governance')) return governanceCapability(method, path);
   for (const [re, cap] of ENDPOINT_CAPABILITY) {
     if (re.test(path)) return cap;
   }
