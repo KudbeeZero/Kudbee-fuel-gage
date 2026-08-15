@@ -73,8 +73,20 @@ import { formUnion, negotiateAllocation, getActiveUnions } from '../lib/tokenUni
 import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../lib/agcContract.ts';
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
-import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
+import {
+  bearerAuth,
+  authGuard,
+  authenticateAgentPass,
+  createSessionToken,
+  authenticateSessionToken,
+  serializeSessionCookie,
+  serializeClearedSessionCookie,
+  getSessionToken,
+  parseCookies,
+  SESSION_COOKIE_NAME,
+} from '../lib/bearerAuthMiddleware.ts';
 import { capabilityMiddleware } from '../lib/capabilityMiddleware.ts';
+import { resolveCapabilities } from '../lib/capabilityRegistry.ts';
 import { getCapabilityTelemetry } from '../lib/capabilityTelemetry.ts';
 import { outputRedactionMiddleware } from '../lib/outputRedactor.ts';
 import { disruptionLayer } from '../lib/disruptionLayer.ts';
@@ -318,6 +330,8 @@ async function protectedBoundary(req, res, next) {
 // app.use(synapseProtectionMiddleware);
 app.use(bearerAuth({ required: false }));
 app.use(protectedBoundary);
+// Phase 5Q — CSRF protection for cookie-authenticated state-changing requests.
+app.use(csrfProtection);
 // Phase 5B — capability resolution (observe only, no deny).
 app.use(capabilityMiddleware());
 // app.use(kiloBridgeBudget());
@@ -4705,25 +4719,45 @@ app.post('/api/auth/stream-ticket', (req, res) => {
   res.json({ ticket, signature: sig, expiresIn: TICKET_TTL_MS });
 });
 
-// --- Admin session verification (replaces the hardcoded client-side
-// passkey in apps/web LoginView). Validates against ADMIN_PASS env var
-// (falls back to EDGE_AGENT_PASS for existing single-user setups) and
-// returns a short-lived HMAC-signed session token. The passkey is NEVER
-// shipped in frontend code.
-const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+// --- Phase 5Q: canonical SPA session authentication -----------------------
+// The browser authenticates via a server-issued HttpOnly session cookie. The
+// session principal is scoped to OPERATOR (least privilege for the dashboard /
+// MANUAL PULSE) — it does NOT carry terminal/fs/shell/admin authority to the
+// browser. Capabilities resolve server-side from the session role.
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+const CSRF_COOKIE = 'kudbee_csrf';
+const SESSION_PRINCIPAL_AGENT = process.env.SESSION_PRINCIPAL_AGENT || 'dashboard-operator';
+const SESSION_PRINCIPAL_ROLE = process.env.SESSION_PRINCIPAL_ROLE || 'OPERATOR';
 
 function adminPass() {
   return process.env.ADMIN_PASS || process.env.EDGE_AGENT_PASS || '';
 }
 
-function signAdminSession() {
-  const issued = Date.now();
-  const token = `admin_${crypto.randomUUID()}`;
-  const sig = crypto
-    .createHmac('sha256', SESSION_SECRET)
-    .update(`${token}:${issued}`)
-    .digest('hex');
-  return { token, sig, issued, expiresAt: issued + ADMIN_SESSION_TTL_MS };
+function issueSession(res) {
+  const identity = { agentId: SESSION_PRINCIPAL_AGENT, roles: [SESSION_PRINCIPAL_ROLE] };
+  const token = createSessionToken(identity, Date.now(), SESSION_TTL_MS);
+  res.setHeader('Set-Cookie', [
+    serializeSessionCookie(token, { maxAgeSeconds: Math.floor(SESSION_TTL_MS / 1000) }),
+    // Double-submit CSRF cookie (non-HttpOnly so the SPA can echo it).
+    `${CSRF_COOKIE}=${crypto.randomBytes(24).toString('hex')}; Path=/; SameSite=Lax`,
+  ]);
+  return identity;
+}
+
+// CSRF protection for cookie-authenticated state-changing requests
+// (double-submit: X-CSRF-Token header must match the kudbee_csrf cookie).
+function csrfProtection(req, res, next) {
+  const method = (req.method || '').toUpperCase();
+  const sessionToken = getSessionToken(req);
+  // Only cookie-authenticated state-changing requests need CSRF validation.
+  if (!sessionToken || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return next();
+  const cookies = parseCookies(typeof req.headers.cookie === 'string' ? req.headers.cookie : undefined);
+  const cookieCsrf = cookies[CSRF_COOKIE] || '';
+  const headerCsrf = req.headers['x-csrf-token'] || '';
+  if (!cookieCsrf || !headerCsrf || cookieCsrf !== headerCsrf) {
+    return res.status(403).json({ error: 'forbidden', message: 'CSRF token missing or invalid' });
+  }
+  return next();
 }
 
 app.post('/api/admin/verify-pass', (req, res) => {
@@ -4741,8 +4775,30 @@ app.post('/api/admin/verify-pass', (req, res) => {
   const b = Buffer.from(expected);
   const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
   if (!ok) return res.status(401).json({ error: 'Unauthorized' });
-  const session = signAdminSession();
-  res.json({ authenticated: true, session });
+  const identity = issueSession(res);
+  // The raw session token is never returned to frontend JavaScript.
+  res.json({ authenticated: true, principal: identity.agentId, role: identity.roles[0] });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', [
+    serializeClearedSessionCookie(),
+    `${CSRF_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`,
+  ]);
+  res.json({ authenticated: false });
+});
+
+app.get('/api/session', (req, res) => {
+  const sessionToken = getSessionToken(req);
+  const identity = sessionToken ? authenticateSessionToken(sessionToken) : null;
+  if (!identity) return res.json({ authenticated: false });
+  const ctx = resolveCapabilities({ agentId: identity.agentId, roles: identity.roles });
+  res.json({
+    authenticated: true,
+    principal: identity.agentId,
+    role: identity.roles[0] || null,
+    capabilities: ctx.capabilities,
+  });
 });
 
 function validateStreamTicket(ticket) {

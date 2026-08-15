@@ -16,19 +16,17 @@ export function LoginView({ onAuthenticate }: { onAuthenticate: () => void }) {
 
   const handleLogin = async () => {
     try {
-      const result = await apiPost<{ authenticated: boolean; session?: { token: string; expiresAt: number } }>(
+      // Phase 5Q — the server issues an HttpOnly session cookie; no raw token
+      // is exposed to frontend JavaScript.
+      const result = await apiPost<{ authenticated: boolean }>(
         '/api/admin/verify-pass',
         { passkey }
       );
-      if (!result.authenticated || !result.session) {
+      if (!result.authenticated) {
         setError(true);
         setPasskey('');
         return;
       }
-      // Session token is HMAC-signed by the server (SESSION_SECRET); keep it
-      // in sessionStorage (cleared on tab close) rather than localStorage.
-      sessionStorage.setItem('kudbee_session', result.session.token);
-      sessionStorage.setItem('kudbee_session_exp', String(result.session.expiresAt));
       setError(false);
       setIsBooting(true);
       setTimeout(() => {

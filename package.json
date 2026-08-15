@@ -66,6 +66,7 @@
     "verify:union-capability": "node scripts/verify-union-capability.mjs",
     "verify:contract-capability": "node scripts/verify-contract-capability.mjs",
     "verify:dispatch-capability": "node scripts/verify-dispatch-capability.mjs",
+    "verify:session-auth": "node scripts/verify-session-auth.mjs",
     "route:map": "node scripts/route-map.mjs",
     "route:audit": "node scripts/route-map.mjs --json && bun test scripts/route-map.test.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
