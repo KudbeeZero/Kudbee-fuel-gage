@@ -74,6 +74,8 @@ import { signContract, verifyContract, getActiveContracts, AGCSchema } from '../
 import { rateLimitCheck, DEFAULT_RATE_LIMIT, getRateLimiterStats } from '../lib/rateLimiter.ts';
 import { MiddlewareGuard, getAllGuardStats, registerGuard } from '../lib/middlewareGuard.ts';
 import { bearerAuth, authGuard, authenticateAgentPass } from '../lib/bearerAuthMiddleware.ts';
+import { capabilityMiddleware } from '../lib/capabilityMiddleware.ts';
+import { getCapabilityTelemetry } from '../lib/capabilityTelemetry.ts';
 import { outputRedactionMiddleware } from '../lib/outputRedactor.ts';
 import { disruptionLayer } from '../lib/disruptionLayer.ts';
 import { zodValidate, validationGuard } from '../lib/zodValidationMiddleware.ts';
@@ -316,6 +318,8 @@ async function protectedBoundary(req, res, next) {
 // app.use(synapseProtectionMiddleware);
 app.use(bearerAuth({ required: false }));
 app.use(protectedBoundary);
+// Phase 5B — capability resolution (observe only, no deny).
+app.use(capabilityMiddleware());
 // app.use(kiloBridgeBudget());
 // PHASE-9: tenant-context resolution + X-Tenant-Id header validation.
 // Safe to mount unconditionally — no-ops for unauthenticated (Mode A) requests.
@@ -4132,6 +4136,13 @@ app.get('/api/health-check', async (_req, res) => {
       },
     });
   }
+});
+
+// --- Phase 5B: Capability telemetry (observability only) ----------------------
+// Reports registry version, resolution/missing counts, and enforcement mode.
+// Never exposes secrets, tokens, or credentials.
+app.get('/api/capability', (_req, res) => {
+  res.json(getCapabilityTelemetry());
 });
 
 // --- Deep Health & Vitals Endpoint ------------------------------------------
