@@ -3348,7 +3348,15 @@ app.get('/api/dthink/status', (_req, res) => {
 // --- Phase 56: Assume-Guarantee Contracts ---
 app.post('/api/governance/contract/sign', async (req, res) => {
   try {
-    const parsed = AGCSchema.safeParse(req.body ?? {});
+    const agentId = req.agentId;
+    const body = req.body ?? {};
+    // Phase 5O — identity integrity: the authenticated principal is
+    // authoritative. Reject a conflicting request-body agentId (impersonation).
+    if (typeof body.agentId === 'string' && body.agentId !== agentId) {
+      return res.status(403).json({ error: 'Forbidden: contract agentId must match the authenticated principal' });
+    }
+    const contractBody = { ...body, agentId };
+    const parsed = AGCSchema.safeParse(contractBody);
     if (!parsed.success)
       return res.status(400).json({ error: 'Invalid contract body', issues: parsed.error.issues });
     const state = await signContract(parsed.data);

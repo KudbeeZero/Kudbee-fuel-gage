@@ -24,7 +24,7 @@ export const ROLE_CAPABILITIES: Record<string, Capability[]> = {
     'read:state', 'read:audit', 'read:metrics', 'read:github', 'read:aws',
     'read:governance', 'execute:governance',
     'execute:task', 'execute:learning', 'execute:memory', 'execute:think',
-    'execute:github',
+    'execute:github', 'execute:dispatch',
     'model:local', 'model:gemini', 'model:inception', 'model:xai',
   ],
   admin: [
@@ -64,6 +64,7 @@ export const ENFORCED_CAPABILITIES: Capability[] = [
   'read:governance', 'execute:governance', 'admin:governance',
   'mint:think-token',
   'ingest:telemetry',
+  'execute:union', 'execute:contract', 'read:contract', 'execute:dispatch',
 ];
 
 // Explicit per-agent capability grants (Phase 5J). mint:think-token is granted
@@ -73,6 +74,12 @@ export const ENFORCED_CAPABILITIES: Capability[] = [
 export const AGENT_CAPABILITY_GRANTS: Record<string, Capability[]> = {
   gastown: ['mint:think-token'],
   sentinel: ['ingest:telemetry'],
+  // Phase 5O — test-only principals for authorized-path verification (inert in
+  // production; no real agent uses these IDs). union/contract are otherwise
+  // default-deny with no legitimate runtime caller.
+  'kudbee-union-verify': ['execute:union'],
+  'kudbee-contract-verify': ['execute:contract', 'read:contract'],
+  'kudbee-dispatch-verify': ['execute:dispatch'],
 };
 
 export interface CapabilityContext {
@@ -143,6 +150,11 @@ function governanceCapability(method: string, path: string): Capability {
   if (/\/feedback$/.test(path) || /\/tasks\/enqueue$/.test(path) || /\/failed\/retry$/.test(path) || /\/tune$/.test(path)) {
     return 'execute:governance';
   }
+  // Phase 5O — classified governance authority surfaces (narrow capabilities).
+  if (/\/union\/form$/.test(path) || /\/union\/negotiate$/.test(path)) return 'execute:union';
+  if (/\/contract\/sign$/.test(path)) return 'execute:contract';
+  if (/\/contract\/verify/.test(path)) return 'read:contract';
+  if (/\/dispatch$/.test(path)) return 'execute:dispatch';
   // Unresolved high-impact operations — observe only until classified.
   return 'REVIEW_REQUIRED';
 }
