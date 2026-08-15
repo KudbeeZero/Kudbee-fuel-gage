@@ -53,15 +53,24 @@ export const WRITE_AUTHORITY_CAPABILITIES: Record<string, Capability[]> = {
   'read-only': [],
 };
 
-export const REGISTRY_VERSION = '1.1.0';
+export const REGISTRY_VERSION = '1.2.0';
 
 // Capabilities currently ENFORCED (absence → 403). Everything else is
-// observe-only. High-risk surfaces (terminal/fs/shell) plus the segmented
-// governance classes are enforced. REVIEW_REQUIRED routes stay observe-only.
+// observe-only. High-risk surfaces (terminal/fs/shell), the segmented
+// governance classes, and mint:think-token are enforced. REVIEW_REQUIRED
+// routes stay observe-only.
 export const ENFORCED_CAPABILITIES: Capability[] = [
   'execute:terminal', 'execute:fs', 'execute:shell',
   'read:governance', 'execute:governance', 'admin:governance',
+  'mint:think-token',
 ];
+
+// Explicit per-agent capability grants (Phase 5J). mint:think-token is granted
+// to gastown specifically — NOT inherited from execute:governance or
+// admin:governance. Prefer explicit grants over implicit role inheritance.
+export const AGENT_CAPABILITY_GRANTS: Record<string, Capability[]> = {
+  gastown: ['mint:think-token'],
+};
 
 export interface CapabilityContext {
   agentId: string | null;
@@ -102,6 +111,11 @@ export function resolveCapabilities(opts: {
       source.push(`writeAuthority:${opts.writeAuthorityLevel}`);
     }
   }
+  // Explicit per-agent grants (e.g. gastown → mint:think-token).
+  if (opts.agentId && AGENT_CAPABILITY_GRANTS[opts.agentId]) {
+    AGENT_CAPABILITY_GRANTS[opts.agentId].forEach((x) => caps.add(x));
+    source.push(`agentGrant:${opts.agentId}`);
+  }
 
   return {
     agentId: opts.agentId || null,
@@ -116,6 +130,8 @@ export function resolveCapabilities(opts: {
 // enforced, until explicitly classified.
 function governanceCapability(method: string, path: string): Capability {
   const m = method.toUpperCase();
+  // THINK-token minting — dedicated capability (Phase 5J).
+  if (/\/mint-think-token$/.test(path)) return 'mint:think-token';
   // Read-only governance.
   if (m === 'GET') return 'read:governance';
   // Security/policy administration.

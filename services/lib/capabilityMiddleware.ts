@@ -37,7 +37,7 @@ export function capabilityMiddleware() {
     const enforced = !!required && !reviewOnly && ENFORCED_CAPABILITIES.includes(required);
 
     if (enforced && !allowed) {
-      // Default-deny for the high-risk surfaces. Command/fs/shell never runs.
+      // Default-deny for enforced surfaces. Command/fs/shell/token never runs.
       recordCapabilityDecision({
         agent: agentId,
         route: req.path,
@@ -46,6 +46,10 @@ export function capabilityMiddleware() {
         enforcement: 'enforce',
         ts: Date.now(),
       });
+      // 401 = not authenticated; 403 = authenticated but lacks capability.
+      if (!agentId) {
+        return res.status(401).json({ error: 'unauthorized', message: 'Authentication required for this endpoint' });
+      }
       return res.status(403).json({ error: 'forbidden', message: `Capability required: ${required}` });
     }
 

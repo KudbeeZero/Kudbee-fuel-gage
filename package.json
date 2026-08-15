@@ -60,6 +60,7 @@
     "verify:auth-boundary": "node scripts/verify-auth-boundary.mjs",
     "verify:capability": "node --experimental-strip-types scripts/verify-capability.mjs",
     "verify:think-lifecycle": "node scripts/verify-think-lifecycle.mjs",
+    "verify:think-token-capability": "node --experimental-strip-types scripts/verify-think-token-capability.mjs",
     "route:map": "node scripts/route-map.mjs",
     "route:audit": "node scripts/route-map.mjs --json && bun test scripts/route-map.test.mjs",
     "verify:box-web": "node scripts/box-web-verify.mjs",
