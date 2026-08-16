@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-08-12T10:30:48.054Z",
+  "generatedAt": "2026-08-16T17:14:28.290Z",
   "identity": {
     "agent": "cloud-agent",
     "role": "Multi-Tenant Governance",
     "session": null
   },
   "location": {
-    "branch": "detached",
-    "sha": "unknown",
+    "branch": "feature/phase4g-docs-reconciliation",
+    "sha": "495382c",
     "dirtyCount": 0
   },
   "mission": {
@@ -21,12 +21,12 @@
     }
   },
   "system": {
-    "fleet": null,
+    "fleet": 11,
     "lastEvents": [],
     "links": {
-      "staging": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com",
-      "production": "https://kudbee-fuel-gage-330ade653a62.herokuapp.com",
-      "terminal": "https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/terminal.html",
+      "staging": "http://localhost:3000",
+      "production": "http://localhost:3000",
+      "terminal": "http://localhost:3000/terminal.html",
       "github": "https://github.com/KudbeeZero/Kudbee-fuel-gage"
     }
   },

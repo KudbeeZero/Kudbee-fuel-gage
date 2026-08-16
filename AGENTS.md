@@ -9,6 +9,25 @@ node scripts/session-bootstrap.mjs  # deep context (pipelines, agents, bus, jour
 
 State your role + first action to the human, then proceed.
 
+## AWS STATE — READ THIS BEFORE ANY AWS WORK
+
+**AWS_REMEDIATION_STATE.md** (`docs/AWS_REMEDIATION_STATE.md`) contains the authoritative, verified current state of all AWS resources.
+
+**Rules:**
+- READ this document first before any AWS work
+- DO NOT repeat completed AWS discovery documented therein
+- DO NOT spend tokens rediscovering verified state
+- USE the persistent handoff as your starting point
+- Live AWS state takes precedence over stale documentation
+
+Key verified state:
+- Account: 196856329692, Region: us-east-1
+- Production instances: i-0a8157bc8ea33b36b, i-0685561c90845986d
+- Instance Profile: EC2-SSM-MINIMAL (active)
+- Minimal Role: EC2-SSM-MINIMAL with only AmazonSSMManagedInstanceCore
+- Old Role: EC2-SSM-ROLE preserved with 0 policies (rollback anchor)
+- SSM uses: AWS-QuickSetup-SSM-DefaultEC2MgmtRole-us-east-1 (unchanged)
+
 ## Architecture (facts not obvious from filenames)
 
 - **Canonical server entrypoint:** `services/ingestion/server.js` — never create `server.ts` or duplicate entrypoints.
