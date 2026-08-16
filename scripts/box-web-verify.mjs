@@ -3,7 +3,7 @@
 try { process.loadEnvFile('.env'); } catch {}
 
 const strict = process.argv.includes('--strict');
-const target = (process.env.STAGING_URL || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com').replace(/\/$/, '');
+const target = (process.env.STAGING_URL || 'http://localhost:3000').replace(/\/$/, '');
 const apiKey = process.env.UPSTASH_BOX_API_KEY;
 
 if (!apiKey) {

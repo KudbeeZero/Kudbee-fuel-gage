@@ -572,13 +572,13 @@ export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProp
       {
         id: 'probe-deploy',
         label: 'Deployment Status',
-        description: 'Current Heroku deployment version, health, uptime',
+        description: 'Current AWS deployment version, health, uptime',
         icon: Radio,
         group: 'Probe',
-        keywords: ['deploy', 'heroku', 'version', 'release'],
+        keywords: ['deploy', 'aws', 'version', 'release'],
         perform: async () => {
           const data = await apiGet<any>('/api/system/deploy-status');
-          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Deploy Status', description: `${data?.herokuRelease || '?'} | ${data?.status} | ${data?.uptimeSec || 0}s` });
+          useCommandDispatcher.getState().enqueue({ kind: 'PLAYGROUND_RUN', label: 'Deploy Status', description: `${data?.deployVersion || '?'} | ${data?.status} | ${data?.uptimeSec || 0}s` });
         }
       },
       {

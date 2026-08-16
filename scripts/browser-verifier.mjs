@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const STAGING = (
   process.env.STAGING_URL ||
-  'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com'
+  'http://localhost:3000'
 ).replace(/\/$/, '');
 
 async function verify() {

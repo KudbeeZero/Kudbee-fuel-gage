@@ -369,15 +369,22 @@ async function init() {
   await pollTasks();
 }
 
-init().catch((err) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
-    console.error(
-      `[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`
-    );
-    setTimeout(init, applyRedisQuotaBackoff());
-    return;
-  }
-  hermes.log.error('fatal init error:', msg);
-  process.exit(1);
-});
+// Test harness: import handleTask without booting the production worker loop.
+// HERMES_TEST_HARNESS is NEVER set in production — it only enables a
+// deterministic local lifecycle test. The governance path is unchanged.
+export { handleTask };
+
+if (process.env.HERMES_TEST_HARNESS !== '1') {
+  init().catch((err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
+      console.error(
+        `[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`
+      );
+      setTimeout(init, applyRedisQuotaBackoff());
+      return;
+    }
+    hermes.log.error('fatal init error:', msg);
+    process.exit(1);
+  });
+}

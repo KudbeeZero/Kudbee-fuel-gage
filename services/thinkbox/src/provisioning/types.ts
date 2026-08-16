@@ -5,7 +5,7 @@
  * Outputs Dockerfiles, docker-compose configs, nix flakes, and runtime setup scripts.
  */
 
-export type ProvisionTarget = 'docker' | 'nix' | 'devcontainer' | 'heroku';
+export type ProvisionTarget = 'docker' | 'nix' | 'devcontainer' | 'ec2';
 
 export interface RuntimeRequirement {
   kind: 'node' | 'python' | 'rust' | 'go' | 'ruby' | 'java' | 'php' | 'dotnet';

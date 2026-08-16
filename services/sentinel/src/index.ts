@@ -4,7 +4,7 @@
  * Edge Sentinel entry point.
  *
  * 1. Binds an ultra-lightweight native HTTP health-check server to
- *    `process.env.PORT || 3001` (Heroku free-tier keep-alive boundary). It
+ *    `process.env.PORT || 3001` (EC2 keep-alive boundary). It
  *    serves strictly `200 OK - Edge Sentinel Active` on `/` and consumes
  *    near-zero compute — its only purpose is to prevent dyno termination.
  * 2. Starts the Signal-to-Noise ingestion heartbeat (see poller.ts).

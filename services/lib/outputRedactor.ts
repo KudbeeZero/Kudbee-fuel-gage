@@ -5,7 +5,7 @@
  * so no API/terminal/SSE response can leak credentials.
  *
  * Protects: API keys, bearer tokens, cookies, Authorization headers,
- * database URLs, Redis URLs, JWTs, Heroku tokens, generic secrets.
+ * database URLs, Redis URLs, JWTs, cloud-platform tokens, generic secrets.
  *
  * Pattern: Redaction → Audit → Output.
  *   - Redact: mask credential-shaped values in any response body.

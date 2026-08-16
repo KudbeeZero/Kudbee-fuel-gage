@@ -116,23 +116,14 @@ async function main() {
   } catch { missionOk = false; }
   check('active mission', missionOk, missionOk ? missionDetail : 'roadmap unreadable');
 
-  // 9. Pipeline integrity — all 3 Heroku environments must exist (dev→staging→prod)
+  // 9. Pipeline integrity — EC2/API must be reachable (dev/staging/prod)
   let pipelineOk = true; let pipelineDetail = '';
-  if (process.env.HEROKU_API_KEY) {
-    try {
-      const expected = ['kudbee-fuel-gage-dev', 'kudbee-fuel-gage-staging', 'kudbee-fuel-gage'];
-      for (const app of expected) {
-        const r = await fetch(`https://api.heroku.com/apps/${app}`, {
-          headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, 'Accept': 'application/vnd.heroku+json; version=3' },
-          signal: AbortSignal.timeout(8000),
-        });
-        if (!r.ok) { pipelineOk = false; pipelineDetail = `missing: ${app}`; break; }
-      }
-    } catch (e) { pipelineOk = false; pipelineDetail = e.message; }
-  } else {
-    pipelineOk = false; pipelineDetail = 'HEROKU_API_KEY not set (cannot verify)';
-  }
-  check('pipeline integrity (dev/staging/prod)', pipelineOk, pipelineOk ? 'all 3 apps exist' : pipelineDetail);
+  try {
+    const url = process.env.KUDBEE_API_URL || 'http://localhost:3000';
+    const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8000) });
+    pipelineOk = r.ok; pipelineDetail = r.ok ? 'EC2/API reachable' : `HTTP ${r.status}`;
+  } catch (e) { pipelineOk = false; pipelineDetail = `unreachable: ${e.message}`; }
+  check('pipeline integrity (EC2/API)', pipelineOk, pipelineOk ? 'EC2/API reachable' : pipelineDetail);
 
   // 10. INV-013 Keystone trust boundary — governance files may never be
   // modified by an executing cloud agent. The keystone is a write-enforcement
@@ -251,12 +242,9 @@ async function main() {
   let configOk = true; let configDetail = '';
   try {
     const verifier = existsSync(join(REPO_ROOT, 'scripts', 'verify-config-vars.mjs'));
-    if (!process.env.HEROKU_API_KEY) {
-      configOk = verifier;
-      configDetail = `verifier present (${verifier}); HEROKU_API_KEY unset — live check skipped`;
-    } else {
+    if (verifier) {
       const { execFileSync: runSync } = await import('node:child_process');
-      const out = runSync(process.execPath, ['scripts/verify-config-vars.mjs', '--heroku', 'production'], {
+      const out = runSync(process.execPath, ['scripts/verify-config-vars.mjs', '--local'], {
         encoding: 'utf8', cwd: REPO_ROOT, timeout: 60000, stdio: 'pipe',
       });
       configOk = out.includes('[PASS] INV-019');

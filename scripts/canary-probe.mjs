@@ -3,12 +3,12 @@
  * scripts/canary-probe.mjs — Proactive Health Probe
  * ---------------------------------------------------------------------------
  * Tests API routes, frontend render states, and database connectivity.
- * Runs every 10 minutes via Heroku Scheduler on Standard-1X dyno.
+ * Runs every 10 minutes via AWS EventBridge/EC2 cron.
  *
  * Reports: GREEN (all healthy), DEGRADED (some failures), RED (critical).
  * Publishes results to kudbee:stream:audit for AnomalyFeedPlugin.
  */
-const BASE = process.env.CANARY_BASE_URL || 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com';
+const BASE = process.env.CANARY_BASE_URL || 'http://localhost:3000';
 const CHECKS = [
   { name: 'Health endpoint', url: '/health', expect: 200 },
   { name: 'Deploy status', url: '/api/system/deploy-status', expect: 200 },

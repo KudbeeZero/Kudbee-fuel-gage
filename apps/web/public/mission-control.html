@@ -99,7 +99,7 @@ body{background:#020617;color:#e2e8f0;font:13px/1.5 ui-monospace,SFMono-Regular,
 </div>
 
 <script>
-const STAGING='https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+const STAGING='http://localhost:3000';
 const T=document.getElementById('terminal');
 let cmds=[];
 function term(s){cmds.push(`<span class="prompt">kudbee@staging:~$</span> ${s}`);T.innerHTML=cmds.slice(-8).map(c=>`<div class="line">${c}</div>`).join('');T.scrollTop=T.scrollHeight}
@@ -119,7 +119,7 @@ function handleCmd(c){
   else if(l.includes('gates')) term('  6 PASS, 1 UNKNOWN (frontend-runtime-verified). Blocked per Article VI.');
   else if(l.includes('why')&&l.includes('blocked')) term('  BLOCKED: frontend-runtime-verified gate (UNKNOWN). Requires browser observation. Evidence: EDR edr-1785391400000-v5a1, confidence 90%.');
   else if(l.includes('redis')) term('  Redis: Upstash free tier. 157B used / 64MB. Commands: ~150K/day (after REO-1 fix). Limit: 500K/month.');
-  else if(l.includes('deploy')) term('  Staging: 9c037fe (FBT-1). Last build: REO-1 (f2ec719). Deploy via Heroku Platform API.');
+  else if(l.includes('deploy')) term('  Staging: 9c037fe (FBT-1). Last build: REO-1 (f2ec719). Deploy via AWS/EC2.');
   else if(l.includes('demo')) runDemo();
   else term('  Try: status | agents | gates | why blocked | redis | deploy | demo');
 }

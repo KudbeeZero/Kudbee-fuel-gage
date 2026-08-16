@@ -18,11 +18,11 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="deploy-footer">Connecting to Heroku…</div>
+    <div id="deploy-footer">Connecting…</div>
     <script>
       fetch('/api/system/deploy-status').then(function(r){return r.json()}).then(function(d){
         var f = document.getElementById('deploy-footer');
-        if (f) { f.className = d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.herokuRelease||'—') + ' | ' + d.status + ' | ' + (d.uptimeSec||0) + 's'; }
+        if (f) { f.className = d.status === 'ok' ? 'ok' : 'degraded'; f.textContent = 'Deploy ' + (d.deployVersion||'—') + ' | ' + d.status + ' | ' + (d.uptimeSec||0) + 's'; }
       }).catch(function(){var f=document.getElementById('deploy-footer');if(f){f.className='error';f.textContent='Backend unreachable';}});
     </script>
     <script type="module" src="/src/main.tsx"></script>

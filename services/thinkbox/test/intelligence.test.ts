@@ -234,7 +234,7 @@ require (
     const m = buildManifest(ws);
 
     expect(m.ci.systems).toContain('github-actions');
-    expect(m.deploy.targets).toContain('heroku');
+    expect(m.deploy.targets).not.toContain('heroku');
   });
 
   test('detects Node runtime from engines field', () => {

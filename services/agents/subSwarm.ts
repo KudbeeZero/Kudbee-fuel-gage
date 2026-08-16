@@ -61,7 +61,7 @@ export const SUB_AGENTS: SubAgent[] = [
   { id: 'budget-auditor', parentId: 'hermes', task: 'Audit budget spending against 500k quota', priority: 'HIGH', active: true, lastRun: 0, successCount: 0, failureCount: 0 },
 
   // monitor sub-agents
-  { id: 'dyno-watcher', parentId: 'monitor', task: 'Watch all 4 Heroku dynos for status changes', priority: 'HIGH', active: true, lastRun: 0, successCount: 0, failureCount: 0 },
+  { id: 'worker-watcher', parentId: 'monitor', task: 'Watch all 4 EC2 workers for status changes', priority: 'HIGH', active: true, lastRun: 0, successCount: 0, failureCount: 0 },
   { id: 'latency-tracker', parentId: 'monitor', task: 'Track API latency across all endpoints', priority: 'MEDIUM', active: true, lastRun: 0, successCount: 0, failureCount: 0 },
   { id: 'memory-guardian', parentId: 'monitor', task: 'Monitor process memory for leaks (>20% growth)', priority: 'CRITICAL', active: true, lastRun: 0, successCount: 0, failureCount: 0 },
 

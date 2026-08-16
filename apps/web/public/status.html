@@ -146,7 +146,7 @@ async function loadWorktrees() {
   try {
     const res = await fetch('/api/system/deploy-status');
     const d = await res.json();
-    document.getElementById('rig-main').textContent = d.herokuRelease || 'v—';
+    document.getElementById('rig-main').textContent = d.deployVersion || 'v—';
     const ok = d.status === 'ok';
     const statusEl = document.getElementById('rig-main-status');
     statusEl.textContent = ok ? 'ACTIVE' : 'DEGRADED';
@@ -208,7 +208,7 @@ async function executeCommand(cmd) {
     }
     case 'deploy': {
       const d = await api('/api/system/deploy-status');
-      return d.status + ' | Release: ' + d.herokuRelease + ' | Uptime: ' + d.uptimeSec + 's';
+      return d.status + ' | Release: ' + d.deployVersion + ' | Uptime: ' + d.uptimeSec + 's';
     }
     case 'gastown': {
       const d = await api('/api/gastown/dashboard');

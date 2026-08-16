@@ -323,7 +323,7 @@ body {
       PG: <span id="sidebar-pg">—</span><br>
       Redis: <span id="sidebar-redis">—</span><br>
       Synapse: active<br>
-      Heroku: v327
+      AWS EC2: v327
     </div>
   </div>
 </div>
@@ -418,7 +418,7 @@ const COMMANDS = {
     desc: 'Deployment status',
     fn: async () => {
       const d = await apiReq('/api/system/deploy-status');
-      print(`Status: <span class="${d.status === 'ok' ? 'success' : 'error'}">${d.status}</span> | Release: ${d.herokuRelease} | Uptime: ${d.uptimeSec}s`);
+      print(`Status: <span class="${d.status === 'ok' ? 'success' : 'error'}">${d.status}</span> | Release: ${d.deployVersion} | Uptime: ${d.uptimeSec}s`);
     }
   },
 

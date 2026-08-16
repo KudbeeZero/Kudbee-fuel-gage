@@ -19,7 +19,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 // SEC hardening (route-map audit 2026-08-06):
-//   - WORKSPACE_ROOT resolves to the repo root (Heroku cwd), not a studio path.
+//   - WORKSPACE_ROOT resolves to the repo root (EC2 cwd), not a studio path.
 //   - shell/exec requires AGENT_PASS (agent-auth) and ONLY runs allowlisted
 //     commands — arbitrary shell execution is never public.
 //   - fs/read + fs/write are agent-auth gated; traversal sandbox retained.

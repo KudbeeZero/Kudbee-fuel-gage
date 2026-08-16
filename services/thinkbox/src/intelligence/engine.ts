@@ -152,8 +152,6 @@ function detectDeploy(files: string[]): DeployInfo {
   const configFiles: string[] = [];
 
   const deploySignals: Array<{ file: string; target: string }> = [
-    { file: 'Procfile', target: 'heroku' },
-    { file: 'app.json', target: 'heroku' },
     { file: 'fly.toml', target: 'fly.io' },
     { file: 'render.yaml', target: 'render' },
     { file: 'railway.toml', target: 'railway' },

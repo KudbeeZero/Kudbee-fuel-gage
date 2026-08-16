@@ -133,7 +133,7 @@ export function seedEngineeringGraph(graph: EngineeringGraph & { addNode: Functi
   const db = graph.addNode('database', 'PostgreSQL', { kind: 'database' }, 'pr-002', 0.9);
   const cache = graph.addNode('service', 'Redis', { kind: 'cache' }, 'pr-002', 0.9);
   const ci = graph.addNode('service', 'GitHub Actions', { kind: 'ci' }, 'pr-002', 1);
-  const deploy = graph.addNode('deployment', 'Heroku', {}, 'pr-002', 1);
+  const deploy = graph.addNode('deployment', 'AWS EC2', {}, 'pr-002', 1);
   const agents = ['KILOH', 'FORGE', 'DTHINK', 'GATE', 'JOURNAL', 'BUS'].map(a =>
     graph.addNode('agent', a, {}, 'system', 1, a));
 

@@ -159,7 +159,7 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
             { name: 'GEMINI_API_KEY', required: false, category: 'ai' },
           ],
           ci: ['GitHub Actions'],
-          deploy: ['Heroku'],
+          deploy: ['AWS EC2'],
           totalFiles: 0,
           packageCount: 0,
           confidence: 0.94,

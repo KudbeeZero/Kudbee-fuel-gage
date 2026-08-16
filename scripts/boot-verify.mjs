@@ -5,8 +5,8 @@
  *
  * Cold-starts the ingestion server, runs the full health matrix, and exits
  * with code 0 only when Postgres, Redis, the worker loop, and the receptor
- * lock registry are confirmed healthy. Designed as a Heroku release-phase
- * command (Procfile: `release: node scripts/boot-verify.mjs`) so every
+ * lock registry are confirmed healthy. Designed as an EC2 release-phase
+ * command (systemd/PM2: `node scripts/boot-verify.mjs`) so every
  * deploy self-verifies before receiving traffic.
  *
  * Fails fast: exits with code 1 and a diagnostic message on any failure.

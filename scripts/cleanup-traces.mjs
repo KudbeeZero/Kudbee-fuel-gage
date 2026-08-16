@@ -3,7 +3,7 @@
  * scripts/cleanup-traces.mjs — Stale Audit Log & Trace Stream Purging
  * ---------------------------------------------------------------------------
  * Cleans stale correlation audit logs and temporary Redis streams.
- * Runs daily at 12:00 AM UTC via Heroku Scheduler on Standard-1X dyno.
+ * Runs daily at 12:00 AM UTC via AWS EventBridge/EC2 cron.
  */
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;

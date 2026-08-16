@@ -4,7 +4,7 @@ import type { MiddlewareGuardStatus } from '../../hooks/useMiddlewareStatus';
 
 const GUARD_DESCRIPTIONS: Record<string, string> = {
   'rate-limiter': 'Global sliding-window rate limiter with atomic Redis EVAL',
-  'timeout': '15s request timeout guard against Heroku H27',
+  'timeout': '15s request timeout guard against platform H27',
   'bearer-auth': 'Bearer token + Agent Pass authentication',
   'zod-validator': 'Zod schema request body/query validation',
   'ecp-singleflight': 'Concurrent GET request deduplication cache',

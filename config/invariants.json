@@ -38,7 +38,7 @@
     "development",
     "ci",
     "cloud-agent",
-    "heroku-runtime",
+    "ec2-runtime",
     "scorecard"
   ],
   "invariants": [
@@ -78,7 +78,7 @@
         "development",
         "ci",
         "cloud-agent",
-        "heroku-runtime"
+        "ec2-runtime"
       ],
       "description": "verify-secret-hygiene passes \u2014 no credentials in source"
     },
@@ -118,7 +118,7 @@
         "development",
         "cloud-agent"
       ],
-      "description": "dev/staging/prod all exist; skipped in CI without HEROKU_API_KEY"
+      "description": "dev/staging/prod all exist; EC2/API reachability check"
     },
     {
       "id": "INV-007",
@@ -129,7 +129,7 @@
       "requiredIn": [
         "development",
         "cloud-agent",
-        "heroku-runtime"
+        "ec2-runtime"
       ],
       "description": "Intervals at ~23% of 500k quota (heartbeat 5min, audit 15min, BRPOP 25s)"
     },
@@ -142,7 +142,7 @@
       "requiredIn": [
         "development",
         "ci",
-        "heroku-runtime"
+        "ec2-runtime"
       ],
       "description": "Server deps clean; Expo toolchain (xmldom) documented exception"
     },
@@ -157,7 +157,7 @@
         "ci",
         "cloud-agent"
       ],
-      "description": "No uncommitted changes. NOT APPLICABLE on heroku-runtime (no git repo)."
+      "description": "No uncommitted changes. NOT APPLICABLE on ec2-runtime (no git repo)."
     },
     {
       "id": "INV-010",

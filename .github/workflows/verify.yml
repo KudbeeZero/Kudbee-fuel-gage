@@ -58,8 +58,6 @@ jobs:
         run: npm ci --legacy-peer-deps --ignore-scripts
       - name: Machine-verifiable invariants
         run: node scripts/verify-invariants.mjs
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
       - name: TypeScript 7 compliance
         run: npm run verify:typescript
       - name: Node crypto runtime
@@ -67,9 +65,7 @@ jobs:
       - name: Secret hygiene
         run: npm run verify:secrets
       - name: Required config vars (INV-019)
-        run: node scripts/verify-config-vars.mjs --heroku production
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: node scripts/verify-config-vars.mjs
       - name: Agent contracts
         run: npm run verify:agent-contracts || true
       - name: Integration capabilities

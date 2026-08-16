@@ -77,7 +77,7 @@ async function detectCapabilities(): Promise<InfraCapability> {
     }
   } catch { /* server not running */ }
   try {
-    await fetch('https://kudbee-fuel-gage.herokuapp.com/', { signal: AbortSignal.timeout(3000) });
+    await fetch(process.env.KUDBEE_API_URL || 'http://localhost:3000/', { signal: AbortSignal.timeout(3000) });
     caps.networkExternal = true;
   } catch { /* no external connectivity */ }
   return caps;

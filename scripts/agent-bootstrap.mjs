@@ -2,7 +2,7 @@
 /**
  * scripts/agent-bootstrap.mjs — Universal Agent Tap-In
  * ---------------------------------------------------------------------------
- * Lets ANY agent (local, Heroku, cloud, CI runner) plug into the Kudbee
+ * Lets ANY agent (local, AWS/EC2, cloud, CI runner) plug into the Kudbee
  * system and immediately BOTH learn from AND contribute to it.
  *
  *   agent-bootstrap.mjs discover   → detect environment + endpoints
@@ -11,7 +11,7 @@
  *   agent-bootstrap.mjs contribute → push a decision/insight into the pipeline
  *   agent-bootstrap.mjs loop       → full autonomous loop (learn→decide→contribute)
  *
- * Environment detection order: local (file-based) → Heroku API → public API.
+ * Environment detection order: local (file-based) → public API.
  * Works with ZERO configuration: every layer degrades gracefully.
  * ---------------------------------------------------------------------------
  */
@@ -27,8 +27,8 @@ const LOCAL_STATE_DIR = join(MEMORY_DIR, 'local-state');
 // ── Environment detection ────────────────────────────────────────────────────
 
 const KNOWN_ENVS = [
-  { id: 'production', url: 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com' },
-  { id: 'staging', url: 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com' },
+  { id: 'production', url: process.env.KUDBEE_API_URL || 'http://localhost:3000' },
+  { id: 'staging', url: process.env.STAGING_URL || 'http://localhost:3000' },
   { id: 'local', url: 'http://127.0.0.1:3000' },
 ];
 
@@ -36,20 +36,7 @@ async function detectEnv() {
   const explicit = process.env.KUDBEE_ENV || process.env.APP_ENV;
   if (explicit) return KNOWN_ENVS.find(e => e.id === explicit) || KNOWN_ENVS[1];
 
-  // 1. Running on Heroku?
-  if (process.env.DYNO) {
-    return process.env.DYNO.includes('staging') ? KNOWN_ENVS[1] : KNOWN_ENVS[0];
-  }
-  // 2. Heroku API key present?
-  if (process.env.HEROKU_API_KEY) {
-    try {
-      const res = await fetch('https://api.heroku.com/apps/kudbee-fuel-gage', {
-        headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, 'Accept': 'application/vnd.heroku+json; version=3' },
-      });
-      if (res.ok) return KNOWN_ENVS[0];
-    } catch {}
-  }
-  // 3. Probe which env responds
+  // 1. Probe which env responds
   for (const env of KNOWN_ENVS) {
     try {
       const res = await fetch(`${env.url}/health`, { signal: AbortSignal.timeout(5000) });

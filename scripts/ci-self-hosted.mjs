@@ -32,7 +32,7 @@ import { execFileSync, execSync } from 'child_process';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const API_BASE = process.env.KUDBEE_API_URL || 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com';
+const API_BASE = process.env.KUDBEE_API_URL || 'http://localhost:3000';
 const MEMORY_DIR = join(process.cwd(), '.kilo', 'memory');
 const CI_LOG = join(MEMORY_DIR, 'ci-self-hosted.jsonl');
 
