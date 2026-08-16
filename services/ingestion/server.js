@@ -327,7 +327,14 @@ async function protectedBoundary(req, res, next) {
 // Synapse protection and token budget gates remain disengaged per
 // Engineering OS v2.2 directive. Identity attachment (bearerAuth, non-blocking)
 // is re-enabled so the protected boundary can enforce authentication.
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 // app.use(synapseProtectionMiddleware);
+app.use(globalApiLimiter);
 app.use(bearerAuth({ required: false }));
 app.use(protectedBoundary);
 // Phase 5Q — CSRF protection for cookie-authenticated state-changing requests.
