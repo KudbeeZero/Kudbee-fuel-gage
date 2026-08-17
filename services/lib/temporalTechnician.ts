@@ -4,7 +4,7 @@
  * KUDBEE Temporal Technician — Phase I: Read-Only Forensic Engine
  *
  * Reconstructs what happened to KUDBEE over time by correlating events
- * across application logs, Heroku metadata, Synapse security records,
+ * across application logs, AWS/EC2 metadata, Synapse security records,
  * deployment history, and process lifecycle data.
  *
  * MUTATION POLICY: Phase I is READ-ONLY. No production mutations.
@@ -371,10 +371,10 @@ export function seedForensicHistory(): void {
     severity: 'P3',
     classification: 'DEPLOY_RESTART',
     confidence: 0.99,
-    observed: 'git push heroku HEAD:main deployed release f423c14. All 4 dynos received SIGTERM and restarted on v342. Health restored within 15 seconds.',
+    observed: 'git push ec2 HEAD:main deployed release f423c14. All 4 workers received SIGTERM and restarted on v342. Health restored within 15 seconds.',
     inferred: 'DEPLOY_RESTART: Normal deployment lifecycle. Expected SIGTERM during rollout. No crash. Health check passed after restart.',
     evidence: [
-      'Heroku release v342 created',
+      'EC2 release v342 created',
       'All dynos transitioned to starting → up',
       '/health returned 200 after restart',
       'PostgreSQL: healthy',
@@ -393,10 +393,10 @@ export function seedForensicHistory(): void {
     severity: 'P3',
     classification: 'SCALE_RESTART',
     confidence: 0.98,
-    observed: 'Heroku formation scaling operation by dominick.ziola@gmail.com. Dynos received SIGTERM and restarted. Health restored.',
+    observed: 'EC2 worker scaling operation by dominick.ziola@gmail.com. Workers received SIGTERM and restarted. Health restored.',
     inferred: 'SCALE_RESTART: User-initiated scaling/reconfiguration. Not a crash. Expected lifecycle interruption.',
     evidence: [
-      'Heroku log: "Scaled to hermes-worker@1 ... by user dominick.ziola@gmail.com"',
+      'EC2 log: "Scaled to hermes-worker@1 ... by user dominick.ziola@gmail.com"',
       'SIGTERM received by all dynos',
       'Processes exited gracefully',
       'Processes restarted and returned UP',
@@ -439,7 +439,7 @@ export function seedForensicHistory(): void {
     observed: 'L10 output buffer overflow — 1 message dropped during startup. Likely caused by SSE reconnection burst after deployment restart.',
     inferred: 'LOW PRIORITY: One-time startup burst. Not recurring. Monitor for recurrence.',
     evidence: [
-      'Heroku log: "Error L10 (output buffer overflow): 1 messages dropped"',
+      'EC2 log: "Error L10 (output buffer overflow): 1 messages dropped"',
       'Single occurrence observed',
       'No recurrence in subsequent observation windows',
       'SSE connections stabilized after initial burst',

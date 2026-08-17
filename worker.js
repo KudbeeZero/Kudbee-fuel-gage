@@ -30,6 +30,7 @@ import {
   resetRedisQuotaBackoff,
 } from './services/lib/redis.js';
 import { matchLogic, proposeAction } from './services/governance/router.js';
+import { isStructuredToolTask, runStructuredToolTask } from './services/lib/meshBridge.js';
 import { hermes, runAudit, publishHeartbeat, reportOffline } from './services/agents/hermes.js';
 import { registerShutdown } from './services/lib/shutdown.js';
 import { agentLog, broadcastAgentState } from './services/lib/agentLogger.ts';
@@ -140,6 +141,37 @@ async function slowBrainReason(prompt) {
 
 // --- Task handling --------------------------------------------------------
 async function handleTask(task) {
+  // Structured tool execution path (new capability, additive).
+  // A task carrying `tool` + `arguments` (or action === 'tool') is a ToolRequest
+  // routed through the local MESH bridge. HERMES never executes it directly.
+  if (isStructuredToolTask(task)) {
+    const result = await runStructuredToolTask(task);
+    hermes.log.audit(
+      `structured tool task id=${task.id || '?'} tool=${task.tool} -> ${result.decision} ` +
+        `(${result.success ? 'ok' : 'failed'})${result.reason ? ' reason=' + result.reason : ''}`
+    );
+    // Attach evidence to the existing session-history lifecycle (no new store).
+    try {
+      await redis.lpush(
+        'kudbee:session_history',
+        JSON.stringify({
+          agent: 'HERMES',
+          type: 'structured_tool',
+          task_id: task.id || null,
+          tool: task.tool,
+          decision: result.decision,
+          success: result.success,
+          reason: result.reason || null,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      await redis.ltrim('kudbee:session_history', 0, 9999);
+    } catch (err) {
+      hermes.log.error('failed to persist structured tool trace:', err.message);
+    }
+    return { route: 'STRUCTURED_TOOL', result };
+  }
+
   const prompt = task.prompt || task.action || '';
   hermes.log.info(`task picked up id=${task.id || '?'} prompt="${String(prompt).slice(0, 80)}"`);
 
@@ -337,15 +369,22 @@ async function init() {
   await pollTasks();
 }
 
-init().catch((err) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
-    console.error(
-      `[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`
-    );
-    setTimeout(init, applyRedisQuotaBackoff());
-    return;
-  }
-  hermes.log.error('fatal init error:', msg);
-  process.exit(1);
-});
+// Test harness: import handleTask without booting the production worker loop.
+// HERMES_TEST_HARNESS is NEVER set in production — it only enables a
+// deterministic local lifecycle test. The governance path is unchanged.
+export { handleTask };
+
+if (process.env.HERMES_TEST_HARNESS !== '1') {
+  init().catch((err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isUpstashMaxRequestsError(err) || isRedisQuotaError(err)) {
+      console.error(
+        `[worker:hermes] Upstash quota error during init — retrying instead of exiting: ${msg}`
+      );
+      setTimeout(init, applyRedisQuotaBackoff());
+      return;
+    }
+    hermes.log.error('fatal init error:', msg);
+    process.exit(1);
+  });
+}

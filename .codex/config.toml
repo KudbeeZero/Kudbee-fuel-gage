@@ -1,0 +1,50 @@
+[mcp_servers.aws]
+command = "npx"
+args = [
+    "-y",
+    "@aws/mcp-server",
+]
+
+[mcp_servers.aws.env]
+AWS_REGION = "us-east-1"
+
+[mcp_servers.github]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-github",
+]
+env_vars = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+
+[mcp_servers.memory]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-memory",
+]
+
+[mcp_servers.postgres]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-postgres",
+]
+env_vars = ["DATABASE_URL"]
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-sequential-thinking",
+]
+
+[mcp_servers.upstash-redis]
+command = "npx"
+args = [
+    "-y",
+    "@upstash/redis-mcp",
+]
+env_vars = [
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+]

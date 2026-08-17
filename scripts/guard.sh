@@ -15,7 +15,7 @@ ROUND=0
 FAILURES=0
 FIXES=0
 
-PROD_URL="https://kudbee-fuel-gage-330ade653a62.herokuapp.com"
+PROD_URL="${KUDBEE_API_URL:-http://localhost:3000}"
 GUARD_DIR=".kilo/memory"
 mkdir -p "$GUARD_DIR"
 GUARD_LOG="$GUARD_DIR/guard-$(date +%Y%m%d-%H%M%S).jsonl"
@@ -47,18 +47,10 @@ auto_fix_deploy() {
   # If health is down for 3+ consecutive checks, force a deploy
   FAILURES=$((FAILURES + 1))
   if [ $FAILURES -ge 3 ]; then
-    log "ACTION" "Health down for 180s — triggering force deploy"
-    local sha=$(git rev-parse HEAD 2>/dev/null || echo "")
-    if [ -n "$sha" ] && [ -n "${HEROKU_API_KEY:-}" ]; then
-      curl -s -X POST \
-        -H "Authorization: Bearer $HEROKU_API_KEY" \
-        -H "Content-Type: application/json" \
-        -H "Accept: application/vnd.heroku+json; version=3" \
-        "https://api.heroku.com/apps/kudbee-fuel-gage/builds" \
-        -d "{\"source_blob\":{\"url\":\"https://github.com/KudbeeZero/Kudbee-fuel-gage/tarball/${sha}\",\"version\":\"${sha}\"}}" \
-        -o /dev/null -w "%{http_code}" 2>/dev/null
+    log "ACTION" "Health down for 180s — triggering EC2 redeploy"
+    if bash scripts/deploy-ec2.sh 2>/dev/null; then
       FIXES=$((FIXES + 1))
-      log "FIX" "Force deploy to Heroku triggered"
+      log "FIX" "EC2 redeploy triggered"
     fi
     FAILURES=0
     sleep 120  # wait for deploy

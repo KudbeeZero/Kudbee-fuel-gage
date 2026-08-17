@@ -10,9 +10,8 @@
  *
  * Usage:
  *   node scripts/verify-config-vars.mjs                      # local only
- *   node scripts/verify-config-vars.mjs --heroku staging     # cross-reference with Heroku
- *   node scripts/verify-config-vars.mjs --heroku production  # cross-reference with Heroku
- *   HEROKU_API_KEY=xxx node scripts/verify-config-vars.mjs --heroku production
+ *
+ * (Heroku cross-reference mode was retired with the Heroku → AWS migration.)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +20,7 @@ import { execFileSync } from 'node:child_process';
 try { process.loadEnvFile('.env'); } catch {}
 
 const root = process.cwd();
-const target = process.argv.includes('--heroku') ? process.argv[process.argv.indexOf('--heroku') + 1] : null;
+const target = null; // Heroku cross-reference retired (Heroku → AWS migration)
 const strict = process.argv.includes('--strict');
 const failures = [];
 const warnings = [];
@@ -72,84 +71,7 @@ for (const file of scanFiles) {
 
 console.log(`\n[verify-config-vars] Found ${envRefs.size} unique env var references across ${scanFiles.length} source files.\n`);
 
-if (target) {
-  const herokuKey = process.env.HEROKU_API_KEY;
-  if (!herokuKey) {
-    warn('heroku', 'HEROKU_API_KEY not set — skipping Heroku cross-reference');
-  } else {
-    const appName = target === 'production' ? 'kudbee-fuel-gage' : target === 'staging' ? 'kudbee-fuel-gage-staging' : null;
-    if (!appName) { warn('heroku', `Unknown target "${target}"`); } else {
-      let herokuVars;
-      try {
-        // execFileSync avoids the shell, so the API key never appears in a
-        // command line (visible via `ps`) — it travels only in the header env.
-        const out = execFileSync(
-          'curl',
-          [
-            '-s',
-            '--max-time', '15',
-            `https://api.heroku.com/apps/${appName}/config-vars`,
-            '-H', `Authorization: Bearer ${herokuKey}`,
-            '-H', 'Accept: application/vnd.heroku+json; version=3',
-          ],
-          { maxBuffer: 1024 * 1024, timeout: 15000 }
-        );
-        herokuVars = JSON.parse(out.toString());
-      } catch (e) {
-        const detail = e && typeof e === 'object' && 'stdout' in e
-          ? String(e.stdout).slice(0, 200)
-          : String(e && e.message ? e.message : e).slice(0, 200);
-        warn('heroku', `Failed to fetch config vars for ${appName}: ${detail}`);
-        herokuVars = {};
-      }
-
-      const herokuKeys = new Set(Object.keys(herokuVars));
-      const codeKeys = new Set(envRefs.keys());
-
-      // ── INV-019: required config vars (hard gate) ──────────────────────
-      // A missing critical var (e.g. REDIS_URL) must FAIL, never degrade
-      // silently. This is the guard that prevents the prod-Redis-OFFLINE
-      // class of incident.
-      const required = REQUIRED_VARS[target] || [];
-      const missingRequired = required.filter((v) => !herokuVars[v]);
-      if (missingRequired.length) {
-        fail(`INV-019:required:${appName}`, `MISSING required config vars on ${appName}: ${missingRequired.join(', ')} — set these before deploy`);
-      } else {
-        pass(`INV-019:required:${appName}`, `${required.length} required vars present (${required.join(', ')})`);
-      }
-
-      for (const hk of herokuKeys) {
-        if (hk.startsWith('HEROKU_') || hk === 'DATABASE_URL' || hk === 'NODE_ENV') continue;
-        if (!codeKeys.has(hk)) {
-          warn(`orphan:${appName}:${hk}`, `set on Heroku but never referenced in code`);
-        }
-      }
-
-      for (const ck of codeKeys) {
-        if (!herokuKeys.has(ck)) {
-          // Advisory, not a failure: most code-referenced vars are CI-only,
-          // local-dev, or have code defaults. Only INV-019's required list
-          // is a hard gate — this heuristic is noise otherwise.
-          warn(`missing:${appName}:${ck}`, `referenced in code but NOT set on Heroku ${appName}`);
-        }
-      }
-
-      for (const hk of herokuKeys) {
-        if (hk.startsWith('HEROKU_') || hk === 'DATABASE_URL') continue;
-        for (const ck of codeKeys) {
-          if (hk !== ck && Math.abs(hk.length - ck.length) <= 3 && levenshtein(hk, ck) <= 2) {
-            warn(`typo-similar:${appName}`, `${hk} (Heroku) ≈ ${ck} (code) — possible typo (distance: ${levenshtein(hk, ck)})`);
-          }
-        }
-      }
-
-      const matched = [...codeKeys].filter(k => herokuKeys.has(k));
-      const missing = [...codeKeys].filter(k => !herokuKeys.has(k));
-      const orphans = [...herokuKeys].filter(k => !codeKeys.has(k) && !k.startsWith('HEROKU_') && k !== 'DATABASE_URL');
-      console.log(`\n[verify-config-vars] ${appName}: ${matched.length} matched, ${missing.length} missing, ${orphans.length} orphans\n`);
-    }
-  }
-}
+// Heroku cross-reference mode retired with the Heroku → AWS migration.
 
 console.log(`Config hygiene: ${failures.length ? 'BLOCKED' : 'PASS'} (${warnings.length} warnings, ${failures.length} failures)`);
 if (failures.length) process.exitCode = 1;

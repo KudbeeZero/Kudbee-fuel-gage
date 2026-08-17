@@ -411,7 +411,7 @@ async function handleSchedulerStatus() {
   return {
     type: 'scheduler:status',
     jobs: [
-      { name: 'canary-probe', schedule: 'every 10 min', description: 'Proactive health probe (Heroku Scheduler)' },
+      { name: 'canary-probe', schedule: 'every 10 min', description: 'Proactive health probe (AWS EventBridge/EC2 cron)' },
       { name: 'autonomous-maintenance', schedule: 'every 6 hours', description: 'GitHub Actions — self-heal gates + nightly review' },
       { name: 'hermes-audit', schedule: 'every 60s', description: 'Hermes worker audit pass (memory + logic findings)' },
     ],
@@ -429,7 +429,7 @@ async function handleSchedulerRun(jobName) {
     type: 'scheduler:run',
     job: jobName,
     status: 'queued',
-    note: 'Scheduler jobs are triggered externally (Heroku Scheduler / GitHub Actions). This confirms the job is recognized.',
+    note: 'Scheduler jobs are triggered externally (AWS EventBridge / GitHub Actions). This confirms the job is recognized.',
     timestamp: new Date().toISOString(),
   };
 }

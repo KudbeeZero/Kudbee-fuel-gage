@@ -3,11 +3,11 @@
  * scripts/workspace-sync.mjs — Global Workspace Tensor Synchronization
  * ---------------------------------------------------------------------------
  * Sweeps and aligns the shared consciousness centroid tensor across the
- * 40-agent mesh. Runs via Heroku Scheduler on Standard-1X dyno.
+ * 40-agent mesh. Runs via AWS EventBridge/EC2 cron.
  *
  * Frequency:
  *   /scheduler run workspace-sync    → manual trigger
- *   Heroku Scheduler every 10 minutes → auto-sync
+ *   AWS EventBridge every 10 minutes   → auto-sync
  *   Hourly full-state rollup at :0
  */
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;

@@ -21,17 +21,6 @@
       "optional": true
     },
     {
-      "id": "heroku",
-      "name": "Heroku CLI/API",
-      "commands": ["heroku", "heroku auth:whoami"],
-      "packages": [],
-      "environment": [{ "name": "HEROKU_API_KEY", "purpose": "scoped Heroku inspection/API access", "optional": true }],
-      "readCapabilities": ["app and dyno metadata", "release and log metadata", "config-var names only when explicitly approved"],
-      "writeCapabilities": ["release or config mutation only with explicit human approval"],
-      "secretSafeRules": ["Do not print config-var values", "Do not run deploy commands as part of verification", "Never persist the API key"],
-      "optional": true
-    },
-    {
       "id": "neon",
       "name": "Neon Postgres and pgvector",
       "commands": ["node"],

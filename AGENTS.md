@@ -9,6 +9,25 @@ node scripts/session-bootstrap.mjs  # deep context (pipelines, agents, bus, jour
 
 State your role + first action to the human, then proceed.
 
+## AWS STATE — READ THIS BEFORE ANY AWS WORK
+
+**AWS_REMEDIATION_STATE.md** (`docs/AWS_REMEDIATION_STATE.md`) contains the authoritative, verified current state of all AWS resources.
+
+**Rules:**
+- READ this document first before any AWS work
+- DO NOT repeat completed AWS discovery documented therein
+- DO NOT spend tokens rediscovering verified state
+- USE the persistent handoff as your starting point
+- Live AWS state takes precedence over stale documentation
+
+Key verified state:
+- Account: 196856329692, Region: us-east-1
+- Production instances: i-0a8157bc8ea33b36b, i-0685561c90845986d
+- Instance Profile: EC2-SSM-MINIMAL (active)
+- Minimal Role: EC2-SSM-MINIMAL with only AmazonSSMManagedInstanceCore
+- Old Role: EC2-SSM-ROLE preserved with 0 policies (rollback anchor)
+- SSM uses: AWS-QuickSetup-SSM-DefaultEC2MgmtRole-us-east-1 (unchanged)
+
 ## Architecture (facts not obvious from filenames)
 
 - **Canonical server entrypoint:** `services/ingestion/server.js` — never create `server.ts` or duplicate entrypoints.
@@ -22,7 +41,10 @@ State your role + first action to the human, then proceed.
 - **Redis:** `REDIS_URL` (Fast Brain) and `REDIS_WORKER_URL` (Slow Brain, falls back to `REDIS_URL`).
   `REDIS_SLOW_URL` is a legacy alias. Circuit breaker protects against quota exhaustion (500k/month).
 - **LLM provider:** `GEMINI_API_KEY` + `gemini-flash-latest`. Provider factory at `packages/utils/src/llm/providers.ts`.
-  Also supports Groq (`GROQ_API_KEY`), vLLM (`VLLM_BASE_URL`/`VLLM_API_KEY`), DeepSeek, Grok.
+  Also supports Groq (`GROQ_API_KEY`), vLLM (`VLLM_BASE_URL`/`VLLM_API_KEY`), Grok.
+  **DeepSeek = ZERO APPLICATION ROUTING.** Legacy DeepSeek provider code may remain for
+  reference, but the application router never selects it, no fallback chain selects it,
+  and no agent should invoke it through normal application routing.
 - **Test runner:** `bun test`. CI runs `bun test` after typecheck + lint.
 - **Interactive terminal:** runs server-side via `POST /api/terminal/execute`, served at `/` via SPA.
 - **SPA tabs:** 5 — OVERVIEW, WORKSPACE, THINKBOX, TERMINAL (OllamaChat), STUDIO (StudioRouter).
@@ -50,20 +72,22 @@ CI env: `CI=true`, `MAX_REQUEST_BODY=256kb`, `CI_MUTATION_BUDGET=20`, `E2E_ALLOW
 
 ## Deploy
 
-### Heroku
+### AWS / EC2 (Heroku is retired)
+
+Deployment is AWS-native. Deploy via:
 
 ```bash
-git push https://git.heroku.com/kudbee-fuel-gage-staging.git main:main
-git push https://git.heroku.com/kudbee-fuel-gage.git main:main
+bash scripts/deploy-ec2.sh          # SSH + PM2 deploy to EC2
+bash scripts/deploy-ec2-ssm.sh      # SSM-based deploy
 ```
 
-| Dyno | Command | Heap |
-|------|---------|------|
-| web | `npx tsx services/ingestion/server.js` | 320MB |
-| hermes-worker | `npx tsx worker.js` | 256MB |
-| monitor-worker | `node services/monitor/agent.js` | 256MB |
-| sentinel | `npx tsx services/sentinel/src/index.ts` | 256MB |
-| release | `node scripts/boot-verify.mjs` | 256MB |
+| Service | Command | Notes |
+|---------|---------|-------|
+| web | `npx tsx services/ingestion/server.js` | port 3000 |
+| hermes-worker | `npx tsx worker.js` | |
+| monitor-worker | `node services/monitor/agent.js` | |
+| sentinel | `npx tsx services/sentinel/src/index.ts` | |
+| release | `node scripts/boot-verify.mjs` | self-verify before traffic |
 
 ### Render
 
@@ -75,7 +99,7 @@ Build command must include `--include=dev` because `tsx` is a devDependency and 
 - **Express 5 SPA catch-all:** must use `app.get('/{*path}')`. `app.get('*')` throws `PathError: Missing parameter name`.
 - **groqClient.ts import:** must import `./budgetGate.ts` (`.ts` extension required).
 - **express hoisting:** `services/telemetry/degradation-monitor.ts` imports express — express must be a ROOT dependency or the server fails to boot.
-- **`.npmrc`** (`legacy-peer-deps=true`) is mandatory. Heroku/CI `npm ci` fails without it (React 19 / react-native peer conflict).
+- **`.npmrc`** (`legacy-peer-deps=true`) is mandatory. CI `npm ci` fails without it (React 19 / react-native peer conflict).
 - **`.env` loading in scripts:** standalone `.mjs` scripts need `try { process.loadEnvFile('.env'); } catch {}` at the top.
 - **Secret scanner semantics:** placeholders (`${VAR}`, `process.env.X`, `env.X`) are templates, NOT secrets. When a scanner false-positives on a template, fix the scanner invariant — never contort generated code.
 - **`think_tokens` ≠ `vector_memory`:** minting a think token does NOT auto-sync — call `storeMemoryText()` explicitly.

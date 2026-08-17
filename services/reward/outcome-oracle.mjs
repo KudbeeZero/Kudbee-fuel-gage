@@ -3,7 +3,7 @@
  * ---------------------------------------------------------------------------
  * Vector 10 — Outcome Oracle (Reality Check Layer).
  *
- * Monitors downstream outcomes (CI pipeline results, Heroku deployment health,
+ * Monitors downstream outcomes (CI pipeline results, AWS/EC2 deployment health,
  * E2E test passes) and computes a reward score R for each agent's task execution.
  *
  * The reward feeds into Vector 4's backpropagateReward() which adjusts the
@@ -119,13 +119,13 @@ function evaluateCiOutcome(typecheckPass, lintErrors, e2ePass, latencyMs, agentI
 }
 
 /**
- * Evaluate Heroku deployment outcome.
+ * Evaluate deployment outcome.
  */
 function evaluateDeployOutcome(healthStatus, latencyMs, agentId) {
   const success = healthStatus === 'ok' || healthStatus === 'HEALTHY';
   const errors = success ? [] : ['deploy_degraded:' + healthStatus];
 
-  return dispatchOutcome('heroku.deploy', {
+  return dispatchOutcome('deploy', {
     success,
     latencyMs,
     errors,
@@ -204,7 +204,7 @@ function wireOracleToRouter(routerModule) {
     }
   });
 
-  registerOutcome('heroku.deploy', async (envelope) => {
+  registerOutcome('deploy', async (envelope) => {
     const { agentId, reward } = envelope;
     if (!agentId || !routerModule) return;
     const { CAPABILITY_EMBEDDINGS } = routerModule;

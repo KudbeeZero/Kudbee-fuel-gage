@@ -18,13 +18,31 @@ interface ThinkboxDeps {
   redis: any;
 }
 
+export interface ProvisionConfig {
+  workspaceId: string;
+  generatedAt: string;
+  target: 'docker' | 'nix' | 'devcontainer' | 'ec2';
+  runtimes: Array<{ kind: string; version: string | null; packageManager?: string }>;
+  services: Array<{ name: string; image: string; port?: number; envVars: string[] }>;
+  installCommands: string[];
+  buildCommand: string | null;
+  startCommand: string | null;
+  testCommand: string | null;
+  devCommand: string | null;
+  environmentVariables: Array<{ name: string; required: boolean; defaultValue?: string }>;
+  files: Record<string, string>;
+}
+
+export interface ProvisionResult {
+  success: boolean;
+  config: ProvisionConfig | null;
+  errors: string[];
+  warnings: string[];
+}
+
 export function createThinkboxRouter(deps: ThinkboxDeps) {
   const { runQuery, redis } = deps;
   const router = express.Router();
-
-  router.get('/health', (_req, res) => {
-    res.json({ status: 'ok', router: 'thinkbox', timestamp: Date.now() });
-  });
 
   function thinkboxCli(args: string): string | null {
     try {
@@ -49,13 +67,16 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
     }
   }
 
-  // --- Dashboard — real data aggregation ------------------------------------
+  router.get('/health', (_req, res) => {
+    res.json({ status: 'ok', router: 'thinkbox', timestamp: Date.now() });
+  });
+
+  // --- Dashboard ------------------------------------------------------------
   router.get('/dashboard', async (_req, res) => {
     try {
       const now = Date.now();
       const git = gitInfo();
 
-      // Agent fleet from Redis
       let agents: any[] = [];
       let agentsOnline = 0;
       let agentsTotal = 0;
@@ -79,7 +100,6 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
         agentsTotal = agents.length;
       } catch {}
 
-      // Recent telemetry timeline from Postgres
       let timeline: any[] = [];
       try {
         const rows = await runQuery(
@@ -96,7 +116,6 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
         }));
       } catch {}
 
-      // Recent think tokens from Postgres
       let memory: any[] = [];
       try {
         const tokenRows = await runQuery(
@@ -113,7 +132,6 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
         }));
       } catch {}
 
-      // CI status from Redis cache
       let ciStatus = { status: 'unknown', lastRun: null };
       try {
         if (redis) {
@@ -122,94 +140,31 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
         }
       } catch {}
 
-      // Engineering readiness score
       const healthScore = agentsOnline > 0 ? Math.min(100, Math.round((agentsOnline / Math.max(agentsTotal, 1)) * 100)) : 0;
 
       res.json({
-        workspace: {
-          id: 'kudbee-main',
-          name: 'Kudbee Fuel Gauge',
-          sourceType: 'git',
-          state: 'active',
-          createdAt: new Date().toISOString(),
-          lastActivity: new Date().toISOString(),
-        },
-        mission: {
-          id: 'PHASE-7',
-          title: 'THINKBOX Product Layer',
-          objective: 'Dependency Resolution Engine + user-facing features',
-          status: 'active',
-          priority: 'P0',
-          progress: agentsOnline > 0 ? Math.round((agentsTotal > 0 ? (agentsOnline / agentsTotal) * 100 : 0)) : 0,
-          confidence: agentsTotal > 0 ? 0.94 : 0.5,
-        },
+        workspace: { id: 'kudbee-main', name: 'Kudbee Fuel Gauge', sourceType: 'git', state: 'active', createdAt: new Date().toISOString(), lastActivity: new Date().toISOString() },
+        mission: { id: 'PHASE-7', title: 'THINKBOX Product Layer', objective: 'Dependency Resolution Engine + user-facing features', status: 'active', priority: 'P0', progress: 0, confidence: 0.94 },
         intelligence: {
-          languages: ['TypeScript'],
-          frameworks: ['React', 'Vite', 'TailwindCSS'],
-          packageManagers: ['npm'],
+          languages: ['TypeScript'], frameworks: ['React', 'Vite', 'TailwindCSS'], packageManagers: ['npm'],
           runtimes: [{ kind: 'node', version: '22.x' }],
           dependencies: [{ manager: 'npm', totalCount: 0, lockfilePresent: true, direct: 0, transitive: 0 }],
-          services: [
-            { kind: 'database', name: 'Neon Postgres', sdk: 'pg' },
-            { kind: 'cache', name: 'Upstash Redis', sdk: 'ioredis' },
-          ],
-          env: [
-            { name: 'DATABASE_URL', required: true, category: 'database' },
-            { name: 'REDIS_URL', required: true, category: 'cache' },
-            { name: 'GEMINI_API_KEY', required: false, category: 'ai' },
-          ],
-          ci: ['GitHub Actions'],
-          deploy: ['Heroku'],
-          totalFiles: 0,
-          packageCount: 0,
-          confidence: 0.94,
+          services: [{ kind: 'database', name: 'Neon Postgres', sdk: 'pg' }, { kind: 'cache', name: 'Upstash Redis', sdk: 'ioredis' }],
+          env: [{ name: 'DATABASE_URL', required: true, category: 'database' }, { name: 'REDIS_URL', required: true, category: 'cache' }, { name: 'GEMINI_API_KEY', required: false, category: 'ai' }],
+          ci: ['GitHub Actions'], deploy: ['AWS EC2'], totalFiles: 0, packageCount: 0, confidence: 0.94,
         },
         engineeringGraph: { nodes: [], edges: [], rootId: '' },
-        execution: {
-          status: 'running',
-          totalCommands: 0,
-          completedCount: 0,
-          failedCount: 0,
-          currentCommand: null,
-          pendingApprovals: 0,
-          simulation: false,
-        },
-        timeline,
-        agents,
-        notifications: [],
-        memory,
-        health: {
-          readyScore: healthScore,
-          grade: healthScore >= 90 ? 'A' : healthScore >= 70 ? 'B' : 'C',
-          busConnected: !!redis,
-          sseConnected: false,
-          agentsOnline,
-          agentsTotal,
-          lastEventTimestamp: new Date().toISOString(),
-          apiLatencyMs: 0,
-        },
+        execution: { status: 'running', totalCommands: 0, completedCount: 0, failedCount: 0, currentCommand: null, pendingApprovals: 0, simulation: false },
+        timeline, agents, notifications: [], memory,
+        health: { readyScore: healthScore, grade: healthScore >= 90 ? 'A' : healthScore >= 70 ? 'B' : 'C', busConnected: !!redis, sseConnected: false, agentsOnline, agentsTotal, lastEventTimestamp: new Date().toISOString(), apiLatencyMs: 0 },
         costs: { estimatedMonthly: 0, currency: 'USD', breakdown: [] },
-        deployments: [
-          {
-            target: 'staging',
-            status: 'unknown',
-            lastDeploy: null,
-            version: git.sha || '',
-          },
-          {
-            target: 'production',
-            status: 'unknown',
-            lastDeploy: null,
-            version: git.sha || '',
-          },
-        ],
+        deployments: [{ target: 'staging', status: 'unknown', lastDeploy: null, version: git.sha || '' }, { target: 'production', status: 'unknown', lastDeploy: null, version: git.sha || '' }],
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Dashboard aggregation failed' });
     }
   });
 
-  // --- Mission — returns live mission from handoff manifest ------------------
   router.get('/mission/current', (_req, res) => {
     try {
       const handoffPath = join(process.cwd(), '.kilo', 'handoff.json');
@@ -228,50 +183,21 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
         return;
       }
     } catch {}
-    res.json({
-      id: 'PHASE-7',
-      title: 'THINKBOX Product Layer',
-      objective: 'Build the product layer',
-      status: 'active',
-      progress: 0,
-      nextTask: 'Implement panel components',
-      blockers: [],
-    });
+    res.json({ id: 'PHASE-7', title: 'THINKBOX Product Layer', objective: 'Build the product layer', status: 'active', progress: 0, nextTask: 'Implement panel components', blockers: [] });
   });
 
   router.get('/pr/active', (_req, res) => {
-    res.json({
-      number: 0,
-      title: 'No active PR',
-      status: 'unknown',
-      branch: gitInfo().branch || 'main',
-      ciStatus: 'unknown',
-      testsPassed: 0,
-      testsTotal: 0,
-      e2ePassed: 0,
-      e2eTotal: 0,
-    });
+    res.json({ number: 0, title: 'No active PR', status: 'unknown', branch: gitInfo().branch || 'main', ciStatus: 'unknown', testsPassed: 0, testsTotal: 0, e2ePassed: 0, e2eTotal: 0 });
   });
 
   router.get('/workspaces', (_req, res) => {
     try {
       const output = thinkboxCli('list');
       if (!output) return res.json([]);
-
-      const workspaces = output
-        .trim()
-        .split('\n')
-        .filter(Boolean)
-        .map((line) => {
-          const parts = line.trim().split(/\s+/);
-          return {
-            workspaceId: parts[0] ?? '',
-            name: parts[1] ?? '',
-            sourceType: parts[2]?.replace(/[\[\]]/g, '') ?? '',
-            state: parts[3] ?? '',
-          };
-        });
-
+      const workspaces = output.trim().split('\n').filter(Boolean).map((line) => {
+        const parts = line.trim().split(/\s+/);
+        return { workspaceId: parts[0] ?? '', name: parts[1] ?? '', sourceType: parts[2]?.replace(/[\[\]]/g, '') ?? '', state: parts[3] ?? '' };
+      });
       res.json(workspaces);
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Failed to list workspaces' });
@@ -282,12 +208,8 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
     try {
       const { path: projectPath } = req.body ?? {};
       const target = projectPath || '.';
-
       const output = thinkboxCli(`detect ${target}`);
-      if (!output) {
-        return res.status(500).json({ error: 'Detection failed — no output' });
-      }
-
+      if (!output) return res.status(500).json({ error: 'Detection failed — no output' });
       const result = JSON.parse(output);
       res.json(result);
     } catch (e) {
@@ -299,14 +221,32 @@ export function createThinkboxRouter(deps: ThinkboxDeps) {
     try {
       const { workspaceId } = req.params;
       const output = thinkboxCli(`intelligence ${workspaceId}`);
-      if (!output) {
-        return res.status(404).json({ error: 'Workspace not found or analysis failed' });
-      }
-
+      if (!output) return res.status(404).json({ error: 'Workspace not found or analysis failed' });
       const manifest = JSON.parse(output);
       res.json(manifest);
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Intelligence analysis failed' });
+    }
+  });
+
+  router.post('/provision/:workspaceId', (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      const { target = 'docker' } = req.body ?? {};
+      const output = thinkboxCli(`provision ${workspaceId} ${target}`);
+      if (!output) return res.status(500).json({ error: 'Provisioning failed — no output' });
+
+      let result: ProvisionResult;
+      try {
+        result = JSON.parse(output);
+      } catch {
+        result = { success: false, config: null, errors: ['Unexpected CLI output'], warnings: [output] };
+      }
+
+      if (!result.success) return res.status(400).json({ error: result.errors.join(', '), warnings: result.warnings });
+      res.json(result.config);
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Provisioning failed' });
     }
   });
 

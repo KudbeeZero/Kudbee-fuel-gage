@@ -130,6 +130,9 @@ export async function teachFromFailure({ agentId, failure, context, fixDestinati
       const reasoningSteps = [lesson.lesson];
       if (lesson.reasoning) reasoningSteps.push(lesson.reasoning);
       if (lesson.prevention) reasoningSteps.push(`prevention: ${lesson.prevention}`);
+      // Phase 5M — mint creates PENDING_APPROVAL only (lifecycle invariant).
+      // The legacy non-standard 'TEACHING' label is normalized to
+      // PENDING_APPROVAL; recall still matches PENDING_APPROVAL tokens.
       token = await mintThinkToken({
         agentId: agentId || 'gemini-teacher',
         traceId: traceId || `teach-${Date.now()}`,
@@ -137,7 +140,6 @@ export async function teachFromFailure({ agentId, failure, context, fixDestinati
         reasoningSteps,
         taskContext: { failure, context: context || '', target: lesson.target || '' },
         failedState: { fixDestination: fixDestination || '' },
-        status: 'TEACHING', // THINK token kind: a taught lesson
         kd: 1,
         cost: 0,
       });

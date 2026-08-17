@@ -255,7 +255,7 @@ async function exec() {
       }
       case '/deploy': {
         const d = await api('/api/system/deploy-status');
-        print(`Status: ${d.status} | Release: ${d.herokuRelease} | Uptime: ${d.uptimeSec}s`, 'info');
+        print(`Status: ${d.status} | Release: ${d.deployVersion} | Uptime: ${d.uptimeSec}s`, 'info');
         break;
       }
       case '/audit': {
@@ -337,7 +337,7 @@ async function updateAgentFleet() {
 async function updateFooter() {
   try {
     const deploy = await api('/api/system/deploy-status');
-    document.getElementById('footer').innerHTML = `<span>Release: ${deploy.herokuRelease}</span><span>Uptime: ${deploy.uptimeSec}s</span><span>DB: —</span><span>Tokens: —</span>`;
+    document.getElementById('footer').innerHTML = `<span>Release: ${deploy.deployVersion}</span><span>Uptime: ${deploy.uptimeSec}s</span><span>DB: —</span><span>Tokens: —</span>`;
   } catch {}
   try {
     const dash = await api('/api/gastown/dashboard');

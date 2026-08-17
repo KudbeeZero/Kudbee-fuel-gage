@@ -7,8 +7,8 @@
  * strategy → Agent executes → CI Watcher verifies → DTHINK records outcome.
  *
  * Strategies (ordered by escalation):
- *   1. RESTART_DYNO     — Heroku dyno restart (fast, low risk)
- *   2. REDEPLOY         — Force Heroku rebuild (medium)
+ *   1. RESTART_WORKER   — EC2/PM2 service restart (fast, low risk)
+ *   2. REDEPLOY         — Redeploy via scripts/deploy-ec2.sh (medium)
  *   3. ROLLBACK         — Revert to last known good release
  *   4. DB_PRUNE         — Prune stale think_tokens to free space
  *   5. CIRCUIT_BREAK    — Open circuit breaker, pause all workers
@@ -71,29 +71,22 @@ let autonomyMetrics: AutonomyMetrics = {
 function buildStrategies(): RecoveryStrategy[] {
   return [
     {
-      id: 'restart_dyno', name: 'Restart Dyno', risk: 'low', cost: 15,
+      id: 'restart_worker', name: 'Restart Worker (EC2/PM2)', risk: 'low', cost: 15,
       execute: async () => {
         try {
-          const res = await fetch(`https://api.heroku.com/apps/kudbee-fuel-gage/dynos/web.1`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, Accept: 'application/vnd.heroku+json; version=3' }
-          });
-          return { success: res.ok, detail: res.ok ? 'Dyno restart accepted' : `HTTP ${res.status}`, latency: 0 };
+          const { execSync } = await import('child_process');
+          execSync('pm2 restart kudbee-web', { timeout: 20000 });
+          return { success: true, detail: 'PM2 restart accepted', latency: 0 };
         } catch (e) { return { success: false, detail: String(e), latency: 0 }; }
       }
     },
     {
-      id: 'redeploy', name: 'Force Redeploy', risk: 'medium', cost: 90,
+      id: 'redeploy', name: 'Force Redeploy (EC2)', risk: 'medium', cost: 90,
       execute: async () => {
         try {
           const { execSync } = await import('child_process');
-          const sha = execSync('git rev-parse HEAD', { encoding: 'utf8', timeout: 5000 }).trim();
-          const res = await fetch('https://api.heroku.com/apps/kudbee-fuel-gage/builds', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, 'Content-Type': 'application/json', Accept: 'application/vnd.heroku+json; version=3' },
-            body: JSON.stringify({ source_blob: { url: `https://codeload.github.com/KudbeeZero/Kudbee-fuel-gage/legacy.tar.gz/${sha}`, version: sha } })
-          });
-          return { success: res.ok, detail: res.ok ? 'Redeploy triggered' : `HTTP ${res.status}`, latency: 0 };
+          execSync('bash scripts/deploy-ec2.sh', { timeout: 120000 });
+          return { success: true, detail: 'EC2 redeploy triggered', latency: 0 };
         } catch (e) { return { success: false, detail: String(e), latency: 0 }; }
       }
     },

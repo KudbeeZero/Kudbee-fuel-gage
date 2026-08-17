@@ -112,9 +112,9 @@ export async function buildManifest() {
       fleet: fleet ?? null,
       lastEvents: events,
       links: {
-        staging: 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com',
-        production: 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com',
-        terminal: 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com/terminal.html',
+        staging: process.env.STAGING_URL || 'http://localhost:3000',
+        production: process.env.KUDBEE_API_URL || 'http://localhost:3000',
+        terminal: `${process.env.STAGING_URL || 'http://localhost:3000'}/terminal.html`,
         github: 'https://github.com/KudbeeZero/Kudbee-fuel-gage',
       },
     },

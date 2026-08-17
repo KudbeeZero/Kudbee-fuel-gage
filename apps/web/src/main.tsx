@@ -46,7 +46,7 @@ function renderFallback(message: string) {
   // Show deploy status even in fallback
   fetch('/api/system/deploy-status').then(r => r.json()).then(d => {
     const f = document.getElementById('deploy-footer');
-    if (f) { f.textContent = 'Deploy ' + (d.commit || '?').slice(0,7) + ' | ' + d.status + ' | ' + d.herokuRelease; f.className = d.status === 'ok' ? 'ok' : 'degraded'; }
+    if (f) { f.textContent = 'Deploy ' + (d.commit || '?').slice(0,7) + ' | ' + d.status + ' | ' + d.deployVersion; f.className = d.status === 'ok' ? 'ok' : 'degraded'; }
   }).catch(() => {});
 }
 

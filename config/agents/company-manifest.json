@@ -17,7 +17,7 @@
       "directive": "Run contract, integration, protocol, and bounded smoke checks by default; run database-writing E2E only when E2E_ALLOW_DATABASE_WRITES=1.",
       "schedule": "on-deploy",
       "memoryId": "verification-patterns",
-      "allowedIntegrations": ["github", "heroku", "neon", "upstash-redis-mcp", "upstash-box"],
+      "allowedIntegrations": ["github", "neon", "upstash-redis-mcp", "upstash-box"],
       "writeAuthority": {
         "level": "repository-verification-only",
         "allowed": ["write local verification evidence", "write local memory records after review"],
@@ -74,7 +74,7 @@
       "directive": "Observe the governance queue, preserve audit evidence, and never bypass approval or convert an audit observation into a production mutation.",
       "schedule": "on-deploy",
       "memoryId": "hermes",
-      "allowedIntegrations": ["heroku", "neon", "upstash-redis-mcp"],
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
       "writeAuthority": {
         "level": "audit-record-only",
         "allowed": ["write bounded audit records", "acknowledge approved queue transitions"],
@@ -112,7 +112,7 @@
       "directive": "Report measured budget state only, distinguish configured limits from provider-metered usage, and never fabricate or alter provider accounting.",
       "schedule": "hourly",
       "memoryId": "ledger-keeper",
-      "allowedIntegrations": ["neon", "upstash-redis-mcp", "heroku"],
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
       "writeAuthority": {
         "level": "metrics-observation-only",
         "allowed": ["write local monitoring evidence"],
@@ -131,7 +131,7 @@
       "directive": "Poll bounded health signals, surface degraded dependencies, and preserve self-hosted release evidence without issuing deployment commands.",
       "schedule": "on-deploy",
       "memoryId": "monitor",
-      "allowedIntegrations": ["heroku", "neon", "upstash-redis-mcp"],
+      "allowedIntegrations": ["neon", "upstash-redis-mcp"],
       "writeAuthority": {
         "level": "local-observation-only",
         "allowed": ["write local monitoring evidence", "publish bounded internal alerts"],
@@ -169,7 +169,7 @@
       "directive": "Detect and report edge anomalies, preserve evidence, and escalate security findings without changing authentication or deployment configuration.",
       "schedule": "on-deploy",
       "memoryId": "sentinel",
-      "allowedIntegrations": ["heroku", "upstash-redis-mcp"],
+      "allowedIntegrations": ["upstash-redis-mcp"],
       "writeAuthority": {
         "level": "security-observation-only",
         "allowed": ["write bounded security evidence", "publish internal alerts"],
@@ -207,7 +207,7 @@
       "directive": "Check canonical health endpoints and optional Box browser evidence, report unavailable capabilities honestly, and never deploy or persist credentials.",
       "schedule": "on-demand",
       "memoryId": "web-doctor",
-      "allowedIntegrations": ["heroku", "github", "upstash-box"],
+      "allowedIntegrations": ["github", "upstash-box"],
       "writeAuthority": {
         "level": "diagnostic-only",
         "allowed": ["write local browser evidence when available"],

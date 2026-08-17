@@ -92,19 +92,11 @@ async function checkTypescript7() {
 }
 
 async function checkPipeline() {
-  if (!process.env.HEROKU_API_KEY) return { pass: true, detail: 'SKIPPED — HEROKU_API_KEY not set (guardian runs this with the key)' };
-  const expected = ['kudbee-fuel-gage-dev', 'kudbee-fuel-gage-staging', 'kudbee-fuel-gage'];
-  const missing = [];
-  for (const app of expected) {
-    try {
-      const r = await fetch(`https://api.heroku.com/apps/${app}`, {
-        headers: { Authorization: `Bearer ${process.env.HEROKU_API_KEY}`, 'Accept': 'application/vnd.heroku+json; version=3' },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!r.ok) missing.push(app);
-    } catch { missing.push(app); }
-  }
-  return missing.length === 0 ? { pass: true, detail: 'dev/staging/prod all exist' } : { pass: false, detail: `missing: ${missing.join(', ')}` };
+  const url = process.env.KUDBEE_API_URL || 'http://localhost:3000';
+  try {
+    const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8000) });
+    return r.ok ? { pass: true, detail: 'EC2/API reachable' } : { pass: false, detail: `HTTP ${r.status}` };
+  } catch (e) { return { pass: false, detail: `unreachable: ${e.message}` }; }
 }
 
 async function checkRedisQuota() {
@@ -169,9 +161,9 @@ async function checkActiveMission() {
 
 async function checkEnvHealth() {
   const apps = [
-    { name: 'dev', url: 'https://kudbee-fuel-gage-dev-f939f2f3535e.herokuapp.com' },
-    { name: 'staging', url: 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com' },
-    { name: 'prod', url: 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com' },
+    { name: 'dev', url: process.env.STAGING_URL || 'http://localhost:3000' },
+    { name: 'staging', url: process.env.STAGING_URL || 'http://localhost:3000' },
+    { name: 'prod', url: process.env.KUDBEE_API_URL || 'http://localhost:3000' },
   ];
   const results = [];
   for (const app of apps) {
@@ -224,7 +216,6 @@ const CHECKERS = {
 
 function detectContext() {
   if (process.argv.includes('--scorecard')) return 'scorecard';   // scorecard runs ALL checks
-  if (process.env.DYNO) return 'heroku-runtime';      // running on Heroku
   if (process.env.GITHUB_ACTIONS) return 'ci';         // running in CI
   if (process.env.KUDBEE_CLOUD_AGENT) return 'cloud-agent';
   return 'development';

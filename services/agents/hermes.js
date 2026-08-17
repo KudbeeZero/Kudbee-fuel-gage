@@ -277,8 +277,10 @@ export async function runAudit() {
   }
 
   const hasRiskyMemoryFindings = memoryFindings.length > 0;
-  const tokenStatus = hasRiskyMemoryFindings ? 'PENDING_APPROVAL' : 'VERIFIED';
 
+  // Phase 5M — Hermes is no longer an implicit approver. It mints
+  // PENDING_APPROVAL only; promotion to VERIFIED is a separate, explicitly
+  // authorized lifecycle transition. Audit findings are preserved as evidence.
   try {
     const { mintThinkToken } = await import('../memory/thinkTokenGenerator.ts');
     await mintThinkToken({
@@ -287,7 +289,8 @@ export async function runAudit() {
         audit_type: 'hermes_runAudit',
         memory_findings: memoryFindings.length,
         logic_findings: logicFindings.length,
-        promoted
+        promoted,
+        risk: hasRiskyMemoryFindings ? 'risky' : 'ok',
       },
       failedState: hasRiskyMemoryFindings ? { risk: 'memory_inefficiency', findings: memoryFindings } : {},
       correctionDelta: `Audited ${memoryFindings.length} memory + ${logicFindings.length} logic findings; promoted ${promoted}.`,
@@ -295,8 +298,7 @@ export async function runAudit() {
         `memory_findings=${memoryFindings.length}`,
         `logic_findings=${logicFindings.length}`,
         `promoted=${promoted}`
-      ],
-      status: tokenStatus
+      ]
     });
   } catch (err) {
     log.warn('think token minting failed (degraded):', err.message);

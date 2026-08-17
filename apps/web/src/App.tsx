@@ -9,9 +9,10 @@ import {
 import { lazy, Suspense } from 'react';
 import { StudioRouter } from './layouts/StudioRouter';
 import { PanelErrorBoundary } from './components/PanelErrorBoundary';
-import { apiGet } from './lib/apiClient';
+import { apiGet, apiPost } from './lib/apiClient';
 import { SystemPower } from './components/SystemPower';
 import { BottomNav } from './components/thinkbox/BottomNav';
+import { LoginView } from './components/LoginView';
 
 const OverviewPage = lazy(() => import('./pages/overview').then((m) => ({ default: m.OverviewPage })));
 const WorkspacePage = lazy(() => import('./pages/workspace').then((m) => ({ default: m.WorkspacePage })));
@@ -35,6 +36,26 @@ export function App() {
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [liveStats, setLiveStats] = useState<LiveStats>({ pgHealthy: false, redisHealthy: false });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [session, setSession] = useState<null | { authenticated: boolean; role?: string }>(null);
+
+  // Phase 5Q — SPA session gate: the backend remains authoritative; this is UX.
+  useEffect(() => {
+    apiGet<{ authenticated: boolean; role?: string }>('/api/session')
+      .then((s) => setSession(s))
+      .catch(() => setSession({ authenticated: false }));
+  }, []);
+
+  const handleLogout = async () => {
+    try { await apiPost('/api/logout', {}); } catch { /* ignore */ }
+    setSession({ authenticated: false });
+  };
+
+  if (session === null) {
+    return <div className="min-h-screen bg-slate-950 text-slate-300 font-sans flex items-center justify-center"><div className="text-slate-500 font-mono text-xs animate-pulse">Loading…</div></div>;
+  }
+  if (!session.authenticated) {
+    return <LoginView onAuthenticate={() => apiGet<{ authenticated: boolean }>('/api/session').then(setSession).catch(() => setSession({ authenticated: false }))} />;
+  }
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -149,6 +170,12 @@ export function App() {
               </span>
             </div>
             <span>KUDBEE v1.0 — THINK Protocol</span>
+            <button
+              onClick={handleLogout}
+              className="px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-rose-400 hover:border-rose-500/50 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </footer>
       )}

@@ -18,24 +18,15 @@
 
 import { IngestRequestSchema, type IngestRequest } from '@kudbee/types';
 
-// Egress topology: the Sentinel dyno is network-isolated on Heroku and CANNOT
-// reach the `web` dyno via `localhost`. Egress MUST route over the public
-// internet to our ingress. The URL is resolved from (in priority order):
+// Egress topology: on AWS/EC2 the Sentinel worker is a separate process and
+// MAY not reach the `web` service via `localhost`. Egress routes to our
+// ingress. The URL is resolved from (in priority order):
 //   KUDBEE_API_URL  – explicit override (preferred)
 //   API_BASE_URL    – generic deploy-platform variable
-//   HEROKU_APP_NAME – auto-constructed as https://<app>.herokuapp.com
 //   http://localhost:3000 – local development fallback only
 function resolveIngestUrl(): string {
   if (process.env.KUDBEE_API_URL) return process.env.KUDBEE_API_URL;
   if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
-  // Hard-coded production URL as fallback — prevents "No such app" when
-  // HEROKU_APP_NAME resolves to an incorrect Heroku domain.
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://kudbee-fuel-gage-330ade653a62.herokuapp.com';
-  }
-  if (process.env.HEROKU_APP_NAME) {
-    return `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`;
-  }
   return 'http://localhost:3000';
 }
 

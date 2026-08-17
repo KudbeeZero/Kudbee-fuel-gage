@@ -138,7 +138,7 @@ function build() {
     redis: ['redis', 'pub/sub', 'cache', 'quota', 'upstash', 'circuit'],
     frontend: ['frontend', 'react', 'css', 'screen', 'black-screen', 'mobile', 'terminal', 'ui', 'splash'],
     security: ['security', 'auth', 'token', 'hmac', 'attack', 'adversarial', 'secrets', 'key'],
-    deployment: ['deploy', 'heroku', 'release', 'boot', 'rollback', 'procfile'],
+    deployment: ['deploy', 'ec2', 'release', 'boot', 'rollback', 'systemd'],
     git: ['git', 'merge', 'pr', 'branch', 'lockfile', 'rebase'],
     learning: ['learning', 'train', 'forge', 'retrieval', 'token', 'sor', 'routing', 'knowledge', 'curation'],
     swarm: ['agent', 'swarm', 'collaboration', 'handoff', 'sub-agent', 'routing'],

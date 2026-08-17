@@ -53,10 +53,12 @@ for (const file of files) {
         'X-Agent-Pass': process.env.KUDBEE_AGENT_PASS || 'dev',
         'X-Trace-Id': `inject-${tokenId}-${Date.now()}`,
       },
+      // Phase 5M — the mint route creates PENDING_APPROVAL only (lifecycle
+      // invariant). The legacy 'PROVEN' request is removed so the script works
+      // with the enforced lifecycle; promotion is a separate authorized step.
       body: JSON.stringify({
         task_context: { source: 'codebase-knowledge-extraction', tokenId, extractedAt: new Date().toISOString() },
         correction_delta: content,
-        status: 'PROVEN',
       }),
     });
 

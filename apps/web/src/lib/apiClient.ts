@@ -5,6 +5,13 @@ const API_BASE: string =
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const POST_TIMEOUT_MS = 30_000;
+const CSRF_COOKIE = 'kudbee_csrf';
+
+// Read the double-submit CSRF cookie for cookie-authenticated state changes.
+function csrfToken(): string {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
 
 export class NetworkError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -104,6 +111,7 @@ export async function apiGet<T = unknown>(path: string, init?: RequestInit): Pro
   const url = apiUrl(path);
   const res = await fetchWithRetry(url, {
     ...init,
+    credentials: 'include',
     headers: { Accept: 'application/json', ...(init?.headers || {}) }
   }, DEFAULT_TIMEOUT_MS);
   if (!res.ok) {
@@ -123,9 +131,11 @@ export async function apiPost<T = unknown>(
   const res = await fetchWithRetry(url, {
     ...init,
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      'X-CSRF-Token': csrfToken(),
       ...(init?.headers || {})
     },
     body: JSON.stringify(body)
@@ -149,9 +159,11 @@ export async function apiPatch<T = unknown>(
   const res = await fetchWithRetry(url, {
     ...init,
     method: 'PATCH',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      'X-CSRF-Token': csrfToken(),
       ...(init?.headers || {})
     },
     body: JSON.stringify(body)

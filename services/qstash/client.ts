@@ -28,7 +28,7 @@ const qstash = new Client({
 
 export async function dispatchAgentTask(task: AgentTask): Promise<string> {
   const stagingUrl =
-    process.env.STAGING_URL || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+    process.env.STAGING_URL || 'http://localhost:3000';
 
   const { messageId } = await qstash.publishJSON({
     url: `${stagingUrl}/api/agents/${task.agentId}/task`,
@@ -45,7 +45,7 @@ export async function dispatchSwarmBroadcast(message: {
   priority?: string;
 }): Promise<string> {
   const stagingUrl =
-    process.env.STAGING_URL || 'https://kudbee-fuel-gage-staging-99f1b73b65b2.herokuapp.com';
+    process.env.STAGING_URL || 'http://localhost:3000';
 
   const { messageId } = await qstash.publishJSON({
     url: `${stagingUrl}/api/agents/broadcast`,

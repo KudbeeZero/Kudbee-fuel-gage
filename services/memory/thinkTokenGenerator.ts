@@ -87,11 +87,23 @@ export async function mintThinkToken(
     reasoningSteps = [],
     cost = 0,
     latencyMs = 0,
-    status = 'PENDING_APPROVAL',
+    status: requestedStatus,
     kd = 0,
     efficacy = 0,
     locked_by = null
   } = payload;
+
+  // Phase 5M — lifecycle authority invariant: the mint primitive may ONLY
+  // create PENDING_APPROVAL. Caller-supplied VERIFIED/RECYCLED/PROVEN (or any
+  // other privileged or non-standard state) is neutralized here, so no internal
+  // caller can bypass the HTTP capability boundary. Approval is a separate
+  // authority owned by transitionThinkTokenStatus().
+  const status = 'PENDING_APPROVAL';
+  if (requestedStatus && requestedStatus !== 'PENDING_APPROVAL') {
+    console.warn(
+      `[ThinkToken] mintThinkToken() forced caller-requested status '${requestedStatus}' → PENDING_APPROVAL (Phase 5M lifecycle invariant).`
+    );
+  }
 
   if (!correctionDelta) {
     return { ok: false, error: 'correctionDelta is required' };
@@ -183,6 +195,62 @@ export async function mintThinkToken(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn('[ThinkToken] Mint failed (degraded):', message);
+    return { ok: false, error: message };
+  }
+}
+
+export interface TransitionThinkTokenPayload {
+  tokenId: string;
+  status: 'VERIFIED' | 'RECYCLED';
+  reviewerNotes?: string | null;
+  actor?: string | null;
+}
+
+export type TransitionThinkTokenResult =
+  | { ok: true; tokenId: string; status: 'VERIFIED' | 'RECYCLED' }
+  | { ok: false; error: string };
+
+/**
+ * Phase 5M — authoritative lifecycle transition.
+ *
+ * The ONLY way a THINK token may reach VERIFIED or RECYCLED. This is a
+ * separate authority from minting: `mintThinkToken()` always creates
+ * PENDING_APPROVAL; this function performs the authorized promotion/recycle
+ * transition. It enforces the state invariant at the lowest level so no
+ * internal caller or future endpoint can manufacture a privileged state.
+ *
+ * This is a state-transition primitive only — it does not perform its own
+ * authentication. Authorization must live above it (HTTP auth → capability /
+ * RBAC → authorized route → this transition → database).
+ */
+export async function transitionThinkTokenStatus(
+  payload: TransitionThinkTokenPayload
+): Promise<TransitionThinkTokenResult> {
+  const { tokenId, status } = payload;
+  if (status !== 'VERIFIED' && status !== 'RECYCLED') {
+    return {
+      ok: false,
+      error: `Invalid transition status: ${status}. Allowed: VERIFIED, RECYCLED`,
+    };
+  }
+  if (!tokenId) {
+    return { ok: false, error: 'tokenId is required' };
+  }
+  try {
+    const pool = getDbPool();
+    if (pool && isDbHealthy()) {
+      await withTimeout(
+        pool.query('UPDATE think_tokens SET status = $1 WHERE id = $2', [status, String(tokenId)]),
+        VECTOR_INSERT_TIMEOUT_MS,
+        'think_token status transition'
+      );
+    } else {
+      await runInsert('UPDATE think_tokens SET status = $1 WHERE id = $2', [status, String(tokenId)]);
+    }
+    return { ok: true, tokenId: String(tokenId), status };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[ThinkToken] Status transition failed:', message);
     return { ok: false, error: message };
   }
 }

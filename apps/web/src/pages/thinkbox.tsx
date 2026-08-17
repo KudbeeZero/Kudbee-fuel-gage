@@ -28,6 +28,7 @@ import { WorkspaceStatusBar } from '../components/thinkbox/WorkspaceStatusBar';
 import { DashboardHealthOverlay } from '../components/thinkbox/DashboardHealthOverlay';
 import { useDashboardSync } from '../hooks/useDashboardSync';
 import { FounderMode } from '../components/thinkbox/FounderMode';
+import { ProvisioningPanel } from './thinkbox-provision';
 
 interface DependencyEntry {
   name: string;
@@ -273,6 +274,10 @@ export function ThinkboxPage() {
   ];
   const readyCount = readinessChecks.filter(c => c.done).length;
 
+  // Environment provisioning section
+  const [provisioningPanelOpen, setProvisioningPanelOpen] = useState(false);
+  const toggleProvisioning = () => setProvisioningPanelOpen(!provisioningPanelOpen);
+
   return (
     <div className={`min-h-dvh ${mobile ? 'pb-20' : ''}`} id="thinkbox-page">
        {mobile && (
@@ -305,13 +310,22 @@ export function ThinkboxPage() {
             Detect Project
           </button>
           {manifest && (
-            <button
-              onClick={() => setShowJson(!showJson)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${showJson ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-800/30 border-slate-700/30 text-slate-500 hover:text-slate-300'}`}
-            >
-              <FileJson className="w-3 h-3" />
-              Manifest
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowJson(!showJson)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${showJson ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-slate-800/30 border-slate-700/30 text-slate-500 hover:text-slate-300'}`}
+              >
+                <FileJson className="w-3 h-3" />
+                Manifest
+              </button>
+              <button
+                onClick={toggleProvisioning}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${provisioningPanelOpen ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-800/30 border-slate-700/30 text-slate-500 hover:text-slate-300'}`}
+              >
+                <Code2 className="w-3 h-3" />
+                Provision
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -564,7 +578,7 @@ export function ThinkboxPage() {
         </div>
       )}
 
-       {/* PR-008: Persistent Status Bar */}
+      {/* PR-008: Persistent Status Bar */}
       <WorkspaceStatusBar
         readyScore={dashboard.viewModel?.health?.readyScore ?? (manifest?.confidence ? Math.round(manifest.confidence * 100) : 0)}
         grade={dashboard.viewModel?.health?.grade ?? (manifest?.confidence ? (manifest.confidence > 0.8 ? 'A' : manifest.confidence > 0.6 ? 'B' : 'C') : 'F')}
@@ -578,6 +592,13 @@ export function ThinkboxPage() {
 
       {/* PR-008: Developer Health Overlay (Ctrl+Shift+D) */}
       <DashboardHealthOverlay />
+
+      {/* PR-003: Provisioning Panel */}
+      {provisioningPanelOpen && manifest && (
+        <div className="mb-6">
+          <ProvisioningPanel workspaceId={manifest.workspaceId} manifest={manifest} />
+        </div>
+      )}
       </>)}
     </div>
   );

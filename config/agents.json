@@ -8,15 +8,27 @@
     },
     {
       "agentId": "kudbee-root-minter",
-      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAWyqiw6lNjjiwNuwE+IH/LFQUAuY39A9jX1zSSsKENhY=\n-----END PUBLIC KEY-----\n",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAQtT9OJszMaFge0WW3r19OJ3ntq5wRmja3MQx2hpryBk=\n-----END PUBLIC KEY-----\n",
       "status": "active",
-      "createdAt": "2026-07-28T19:58:59.052Z"
+      "createdAt": "2026-08-15T06:12:36.928Z"
     },
     {
       "agentId": "kudbee-thinkloop-verify",
-      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAY970NDvnjDSZdnpHRFXyMPqOj1GWAD+xs8ODphnoeEo=\n-----END PUBLIC KEY-----\n",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA3qwMmh79w0PhfIgdHxUb7oz2+gWDRwpiOyLJvtslEWo=\n-----END PUBLIC KEY-----\n",
       "status": "active",
-      "createdAt": "2026-08-11T11:43:08.907Z"
+      "createdAt": "2026-08-15T05:18:30.403Z"
+    },
+    {
+      "agentId": "gastown",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAiLLiSwYMv/lC49nmDgyACsQv0TL+Y5I8O774KBNO8vk=\n-----END PUBLIC KEY-----\n",
+      "status": "active",
+      "createdAt": "2026-08-15T06:12:36.922Z"
+    },
+    {
+      "agentId": "ci-watcher",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAVnEeAPYE+LtH2IVNzZwi4g/xvxBrqj3y860ATHRqQDs=\n-----END PUBLIC KEY-----\n",
+      "status": "active",
+      "createdAt": "2026-08-15T06:12:51.475Z"
     }
   ],
   "note": "Private keys are held by agents only and never committed. On-chain registry replaces this file in a later phase."

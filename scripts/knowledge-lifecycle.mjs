@@ -35,7 +35,7 @@ const INDEX_PATH = join(REPO_ROOT, '.kilo', 'knowledge-index.json');
 
 mkdirSync(dirname(INDEX_PATH), { recursive: true });
 
-const VALID_TYPES = ['think_token', 'benchmark', 'decision', 'skill', 'bootstrap', 'forge_optimization'];
+const VALID_TYPES = ['think_token', 'benchmark', 'decision', 'skill', 'bootstrap', 'forge_optimization', 'learning'];
 const VALID_STATES = ['DRAFT', 'VERIFIED', 'ACTIVE', 'STALE', 'SUPERSEDED', 'ARCHIVED'];
 
 // Default review cadence per type (days).
@@ -46,6 +46,7 @@ const REVIEW_CADENCE = {
   skill: 60,
   bootstrap: 60,
   forge_optimization: 30,
+  learning: 30,
 };
 
 function loadIndex() {
@@ -124,7 +125,9 @@ function transition(id, toState, by = 'knowledge-lifecycle') {
 const args = process.argv.slice(2);
 const cmd = args[0];
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Cross-platform entry-point guard (Windows path separators differ from
+// import.meta.url's forward slashes, so a raw === comparison silently no-ops).
+if (process.argv[1] && import.meta.url.endsWith('/' + process.argv[1].split(/[\\/]/).pop())) {
   const flag = (name) => {
     const i = args.indexOf(name);
     return i !== -1 ? args[i + 1] : undefined;
@@ -205,7 +208,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     show <id>
     list
 
-  Types: think_token | benchmark | decision | skill | bootstrap | forge_optimization
+  Types: think_token | benchmark | decision | skill | bootstrap | forge_optimization | learning
   States: DRAFT | VERIFIED | ACTIVE | STALE | SUPERSEDED | ARCHIVED
 `);
       process.exit(1);

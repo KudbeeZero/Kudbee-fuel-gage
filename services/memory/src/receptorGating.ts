@@ -19,8 +19,8 @@
  *
  * Phase 34 — P2P Peer Discovery: the lock store is now backed by a shared
  * Redis hash (kudbee:receptor:locks) with pub/sub sync (kudbee:receptor:sync)
- * so that every sentinel dyno and worker process sees a coherent lock map.
- * Locks survive process restarts and propagate across Heroku dyno boundaries
+ * so that every sentinel and worker process sees a coherent lock map.
+ * Locks survive process restarts and propagate across EC2 worker boundaries
  * in real time. The in-memory Map is still a synchronous cache for sub-ms
  * reads, but writes fan out through Redis.
  * ---------------------------------------------------------------------------

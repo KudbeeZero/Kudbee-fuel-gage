@@ -65,7 +65,7 @@ try {
       }
     } catch (e) {
       failures++;
-      log(`FAIL: ${r.name} -> FETCH ERROR ${e.message} at ${r.path}. SUGGESTED FIX: check CORS headers (Access-Control-Allow-Origin) and that the Heroku backend is reachable at the configured REACT_APP_API_URL.`);
+      log(`FAIL: ${r.name} -> FETCH ERROR ${e.message} at ${r.path}. SUGGESTED FIX: check CORS headers (Access-Control-Allow-Origin) and that the backend is reachable at the configured REACT_APP_API_URL.`);
     }
   }
 

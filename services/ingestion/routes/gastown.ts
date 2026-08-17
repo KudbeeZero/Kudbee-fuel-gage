@@ -46,7 +46,7 @@ export function createGastownRouter(bearerAuthFactory: (opts?: { required?: bool
         swarm: {
           agents: 11,
           online: 4,
-          lastDeploy: process.env.HEROKU_RELEASE_VERSION || 'unknown',
+          lastDeploy: process.env.SOURCE_VERSION || 'unknown',
         },
         synapse: 'C4769 active',
         timestamp: new Date().toISOString(),
