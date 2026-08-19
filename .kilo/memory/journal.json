@@ -1,14 +1,6 @@
 {
   "journal": [
     {
-      "session": "ses-1785656216908-1a8fbb12",
-      "date": "2026-08-02T07:36:57.107Z",
-      "type": "bootstrap",
-      "agentsActive": 11,
-      "snippetsAvailable": 9,
-      "decisionsTotal": 10
-    },
-    {
       "session": "ses-1785657027560-926ca15b",
       "date": "2026-08-02T07:50:27.580Z",
       "type": "bootstrap",
@@ -159,10 +151,18 @@
       "agentsActive": 11,
       "snippetsAvailable": 8,
       "decisionsTotal": 10
+    },
+    {
+      "session": "ses-1787179698845-3c31f719",
+      "date": "2026-08-19T22:48:19.583Z",
+      "type": "bootstrap",
+      "agentsActive": 11,
+      "snippetsAvailable": 8,
+      "decisionsTotal": 10
     }
   ],
   "trends": {
-    "sessions": 21
+    "sessions": 22
   },
   "health": {
     "overall": "UNKNOWN"

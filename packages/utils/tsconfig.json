@@ -2,7 +2,7 @@
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "lib": ["ES2022"]
+    "types": ["node"]
   },
   "include": ["crypto-identity.ts", "src/prompts/edge-sentinel.ts", "src/prompts/agent-core.ts"]
 }
