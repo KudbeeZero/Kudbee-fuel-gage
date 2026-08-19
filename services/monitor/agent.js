@@ -13,8 +13,8 @@ const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
   privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
 });
 
-console.log(`[Agent] Identity generated: ${AGENT_ID}`);
-console.log(`[Agent] Public key: ${publicKey.slice(0, 32)}...`);
+console.console.log(`[Agent] Identity generated: ${AGENT_ID}`);
+console.console.log(`[Agent] Public key: ${publicKey.slice(0, 32)}...`);
 
 let systemContext = null;
 
@@ -31,8 +31,8 @@ async function loadSystemContext() {
       return null;
     }
     systemContext = JSON.parse(raw);
-    console.log('[Agent] System context loaded');
-    console.log(`[Agent] Active directive: ${systemContext.active_directive}`);
+    console.console.log('[Agent] System context loaded');
+    console.console.log(`[Agent] Active directive: ${systemContext.active_directive}`);
     return systemContext;
   } catch (err) {
     console.error('[Agent] Failed to load system context:', err.message);
@@ -96,7 +96,7 @@ function checkFailureRate() {
 
     redis
       .lpush('kudbee:alerts', JSON.stringify(alert))
-      .then(() => console.log(`[Alert] CRITICAL alert pushed: failure rate=${(rate * 100).toFixed(1)}%`))
+      .then(() => console.console.log(`[Alert] CRITICAL alert pushed: failure rate=${(rate * 100).toFixed(1)}%`))
       .catch((err) => console.error('[Alert] Failed to push alert:', err.message));
 
     redis.set('kudbee:throttle_factor', '5').catch((err) => console.error('[Throttle] Failed to set throttle:', err.message));
@@ -104,13 +104,13 @@ function checkFailureRate() {
     selfHeal();
   } else if (rate < RECOVERY_THRESHOLD) {
     redis.del('kudbee:throttle_factor').then(() => {
-      console.log(`[Throttle] Failure rate recovered to ${(rate * 100).toFixed(1)}% — throttle removed`);
+      console.console.log(`[Throttle] Failure rate recovered to ${(rate * 100).toFixed(1)}% — throttle removed`);
     }).catch((err) => console.error('[Throttle] Failed to remove throttle:', err.message));
   }
 }
 
 async function selfHeal() {
-  console.log('[Agent] Attempting self-healing...');
+  console.console.log('[Agent] Attempting self-healing...');
 }
 
 async function processTelemetry(telemetry) {
@@ -150,7 +150,7 @@ async function processTelemetry(telemetry) {
     await redis.incrbyfloat('kudbee:community_value_score', analysis.value_score);
     await redis.incr('kudbee:governance_count');
 
-    console.log(`[Agent] Processed trace ${traceId} | score=${analysis.value_score} | severity=${analysis.severity}`);
+    console.console.log(`[Agent] Processed trace ${traceId} | score=${analysis.value_score} | severity=${analysis.severity}`);
 
     checkFailureRate();
   } catch (err) {
@@ -163,8 +163,8 @@ async function processTelemetry(telemetry) {
 // Procfile: monitor-worker
 // Worker consumes telemetry from ingestion feed; MUST survive Upstash quota errors.
 async function runLoop() {
-  console.log('[Agent] Starting polling loop...');
-  console.log('[Agent] Listening on kudbee:telemetry_feed');
+  console.console.log('[Agent] Starting polling loop...');
+  console.console.log('[Agent] Listening on kudbee:telemetry_feed');
 
   const BASE_BACKOFF_MS = 2000;
   const MAX_BACKOFF_MS = 60_000;
@@ -244,3 +244,4 @@ async function init() {
 }
 
 init();
+

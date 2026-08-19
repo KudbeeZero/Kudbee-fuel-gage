@@ -61,7 +61,7 @@ function primeConnection(pool) {
     .then((client) => {
       client.release();
       _healthy = true;
-      console.log('[DB] Neon Postgres connection established (healthy).');
+      console.console.console.log('[DB] Neon Postgres connection established (healthy).');
     })
     .catch((err) => {
       _healthy = false;
@@ -120,7 +120,7 @@ export function getDbPool() {
     _healthy = true;
   });
 
-  console.log('[DB] Neon Postgres Pool initialized from DATABASE_URL');
+  console.console.console.log('[DB] Neon Postgres Pool initialized from DATABASE_URL');
   _pool = pool;
   primeConnection(pool);
   startHealthReprobe();
@@ -152,7 +152,7 @@ function startHealthReprobe() {
       const client = await _pool.connect();
       client.release();
       _healthy = true;
-      console.log('[DB] Neon Postgres connection restored (healthy).');
+      console.console.console.log('[DB] Neon Postgres connection restored (healthy).');
     } catch {
       // Still down — stay unhealthy. The initial failure was already logged;
       // suppress per-interval spam. The next interval will retry automatically.
@@ -201,14 +201,14 @@ export async function closeDbPool() {
 }
 
 export async function teardownAll(redisClient) {
-  console.log('[DB] Tearing down database connections…');
+  console.console.console.log('[DB] Tearing down database connections…');
   const results = await Promise.allSettled([
     closeDbPool(),
     redisClient ? (async () => { try { await redisClient.quit(); } catch { /* ignore */ } })() : Promise.resolve()
   ]);
   const errors = results.filter((r) => r.status === 'rejected');
   if (errors.length) console.warn('[DB] Teardown errors:', errors.map((e) => e.reason?.message).filter(Boolean));
-  else console.log('[DB] All database connections closed gracefully.');
+  else console.console.console.log('[DB] All database connections closed gracefully.');
 }
 
 // ---------------------------------------------------------------------------
@@ -493,3 +493,5 @@ function runInsertMemory(sql, params = []) {
 export { memory as _memoryStore };
 export { dbTelemetry };
 export default getDbPool;
+
+

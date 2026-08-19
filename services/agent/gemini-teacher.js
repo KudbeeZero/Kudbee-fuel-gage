@@ -34,7 +34,7 @@ const REPO_ROOT = path.join(__dirname, '..', '..');
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMENI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
-// Local signature log (cheap recall of exact repeats WITHOUT LLM + pgvector).
+// Local signature console.log(cheap recall of exact repeats WITHOUT LLM + pgvector).
 const TEACH_DIR = path.join(REPO_ROOT, '.kilo', 'memory', 'lessons');
 const SIG_FILE = path.join(TEACH_DIR, 'signatures.jsonl');
 
@@ -186,3 +186,4 @@ export function teachingsSummary() {
 }
 
 export default { synthesizeLesson, teachFromFailure, recallTeaching, signatureOf, teachingsSummary };
+

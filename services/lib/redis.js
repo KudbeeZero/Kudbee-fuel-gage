@@ -233,12 +233,12 @@ export function getRedisClient(opts = {}) {
 
   client.on('connect', () => {
     redisTelemetry.primaryCount += 1;
-    console.log(`[${label}] Redis connected`);
+    console.console.console.log(`[${label}] Redis connected`);
   });
   client.on('ready', () => {
     resetRedisQuotaBackoff();
     redisTelemetry.primaryCount += 1;
-    console.log(`[${label}] Redis ready`);
+    console.console.console.log(`[${label}] Redis ready`);
   });
   client.on('error', (err) => {
     redisTelemetry.errorCount += 1;
@@ -305,8 +305,8 @@ export function getSubscriberClient() {
     return;
   }
 
-  client.on('connect', () => console.log('[SSE-sub] Redis subscriber connected'));
-  client.on('ready', () => console.log('[SSE-sub] Redis subscriber ready'));
+  client.on('connect', () => console.console.console.log('[SSE-sub] Redis subscriber connected'));
+  client.on('ready', () => console.console.console.log('[SSE-sub] Redis subscriber ready'));
   client.on('error', (err) => console.error('[SSE-sub] Subscriber error:', err.message));
 
   return client;
@@ -353,11 +353,11 @@ export function getSlowRedisClient(opts = {}) {
   }
 
   client.on('connect', () => {
-    console.log(`[slow-redis] Redis connected`);
+    console.console.console.log(`[slow-redis] Redis connected`);
   });
   client.on('ready', () => {
     resetRedisQuotaBackoff();
-    console.log(`[slow-redis] Redis ready`);
+    console.console.console.log(`[slow-redis] Redis ready`);
   });
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
@@ -389,7 +389,7 @@ export function getBlockingRedisClient(opts = {}) {
   // Prefer REST client on Upstash free tier (TCP kills blocking commands)
   const restClient = getRestRedisClient('blocking-redis(rest)');
   if (restClient) {
-    console.log('[blocking-redis] Using REST API (TCP unreliable on free tier)');
+    console.console.console.log('[blocking-redis] Using REST API (TCP unreliable on free tier)');
     if (!opts.forceNew) _blockingClient = restClient;
     return restClient;
   }
@@ -418,11 +418,11 @@ export function getBlockingRedisClient(opts = {}) {
     return null;
   }
 
-  client.on('connect', () => console.log('[blocking-redis] Redis connected'));
+  client.on('connect', () => console.console.console.log('[blocking-redis] Redis connected'));
   client.on('ready', () => {
     resetRedisQuotaBackoff();
     resetRetryThrottle('blocking-redis');
-    console.log('[blocking-redis] Redis ready');
+    console.console.console.log('[blocking-redis] Redis ready');
   });
   client.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
@@ -460,7 +460,7 @@ export function getWorkerRedisClient(opts = {}) {
   // Prefer REST client on Upstash free tier (TCP kills blocking commands)
   const restClient = getRestRedisClient('worker-redis(rest)');
   if (restClient) {
-    console.log('[worker-redis] Using REST API (TCP unreliable on free tier)');
+    console.console.console.log('[worker-redis] Using REST API (TCP unreliable on free tier)');
     if (!opts.forceNew) _workerClient = restClient;
     return restClient;
   }
@@ -504,7 +504,7 @@ export function getWorkerRedisClient(opts = {}) {
   client.on('connect', () => {
     if (!fallbackTriggered) {
       clearTimeout(fallbackTimer);
-      console.log(`[${label}] Redis connected`);
+      console.console.console.log(`[${label}] Redis connected`);
     }
   });
 
@@ -512,7 +512,7 @@ export function getWorkerRedisClient(opts = {}) {
     if (!fallbackTriggered) {
       clearTimeout(fallbackTimer);
       resetRedisQuotaBackoff();
-      console.log(`[${label}] Redis ready`);
+      console.console.console.log(`[${label}] Redis ready`);
     }
   });
 
@@ -585,7 +585,7 @@ export function initRedisFallbackQueue() {
           console.warn(`[InMemoryQueue] Failed to flush item ${item.id}: ${msg}`);
         }
       }
-      console.log(`[InMemoryQueue] Flushed ${items.length} items to Redis`);
+      console.console.console.log(`[InMemoryQueue] Flushed ${items.length} items to Redis`);
     },
   });
   return inMemoryQueue;
@@ -593,3 +593,5 @@ export function initRedisFallbackQueue() {
 
 export { redisTelemetry };
 export default getRedisClient;
+
+
