@@ -133,7 +133,6 @@ export async function spawnBoxFromGenesis(genesis: ThinkTokenGenesis): Promise<T
 
   await persistBox(box);
 
-  const now = new Date().toISOString();
   const pool = (await import('../lib/db.js')).getDbPool();
   const healthy = (await import('../lib/db.js')).isDbHealthy();
 

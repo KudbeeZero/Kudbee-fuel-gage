@@ -117,7 +117,7 @@ async function pollPendingGenesis(): Promise<void> {
 async function processGenesisEntry(genesis: ThinkTokenGenesis): Promise<void> {
   const lifecycleId = `lc-${genesis.genesisId}`;
 
-  await recordLifecycleState(lifecycleId, {
+  await recordLifecycleState({
     lifecycleId,
     genesisId: genesis.genesisId,
     boxId: '',
@@ -134,7 +134,7 @@ async function processGenesisEntry(genesis: ThinkTokenGenesis): Promise<void> {
   const box = await spawnBoxFromGenesis(genesis);
   console.log(`[Lifecycle] Spawned THINK Box: ${box.boxId} (${box.agentArchetype})`);
 
-  await recordLifecycleState(lifecycleId, {
+  await recordLifecycleState({
     lifecycleId,
     genesisId: genesis.genesisId,
     boxId: box.boxId,
@@ -150,7 +150,7 @@ async function processGenesisEntry(genesis: ThinkTokenGenesis): Promise<void> {
 
   await bootAgentInBox(box);
 
-  await recordLifecycleState(lifecycleId, {
+  await recordLifecycleState({
     lifecycleId,
     genesisId: genesis.genesisId,
     boxId: box.boxId,
