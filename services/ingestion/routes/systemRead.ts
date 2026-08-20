@@ -17,11 +17,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.join(__dirname, '..', '..', '..'); // services/ingestion/routes -> repo root
 
-function readJsonStore(relPath, fallback) {
+function readJsonStore(relPath: string, fallback: any): any {
   try {
     const p = path.join(REPO_ROOT, relPath);
     if (!fs.existsSync(p)) return fallback;
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+    return JSON.parse(fs.readFileSync(p, 'utf8')) as any;
   } catch {
     return fallback;
   }
@@ -97,7 +97,7 @@ router.get('/api/system/funnel', (_req, res) => {
   const history = readJsonStore('.kilo/mission-history.json', { missions: [] });
   const queue = readJsonStore('.kilo/mission-queue.json', { missions: [] });
   const missions = (history.missions ?? []).concat(
-    (queue.missions ?? []).map((q) => ({
+    (queue.missions ?? []).map((q: any) => ({
       mission: q.id,
       state: q.state ?? 'PROPOSED',
       priority: q.priority,
@@ -107,11 +107,11 @@ router.get('/api/system/funnel', (_req, res) => {
   );
   const stages = LIFECYCLE_STAGES.map((stage) => ({
     stage,
-    count: missions.filter((m) => (m.state ?? '').toUpperCase() === stage).length,
+    count: missions.filter((m: any) => (m.state ?? '').toUpperCase() === stage).length,
   }));
   const active = missions
-    .filter((m) => (m.state ?? '').toUpperCase() !== 'COMPLETE')
-    .map((m) => ({
+    .filter((m: any) => (m.state ?? '').toUpperCase() !== 'COMPLETE')
+    .map((m: any) => ({
       id: m.mission ?? m.id,
       state: (m.state ?? 'PROPOSED').toUpperCase(),
       priority: m.priority ?? null,
@@ -122,7 +122,7 @@ router.get('/api/system/funnel', (_req, res) => {
     stages,
     active,
     total: missions.length,
-    funnel: LIFECYCLE_STAGES.filter((s) => missions.some((m) => (m.state ?? '').toUpperCase() === s)),
+    funnel: LIFECYCLE_STAGES.filter((s: any) => missions.some((m: any) => (m.state ?? '').toUpperCase() === s)),
     generatedAt: new Date().toISOString(),
     source: 'mission-history',
   });

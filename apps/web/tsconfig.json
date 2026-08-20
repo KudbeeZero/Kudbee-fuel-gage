@@ -5,7 +5,8 @@
     "allowJs": true,
     "noUncheckedIndexedAccess": false,
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "typeRoots": ["../../node_modules/@types"]
   },
   "include": ["src", "vite.config.ts"]
 }
