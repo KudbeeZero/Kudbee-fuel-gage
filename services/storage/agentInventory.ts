@@ -243,7 +243,7 @@ export async function getAgentSummary(agentId: string): Promise<AgentInventorySu
 
 export async function listAllAgentSummaries(): Promise<AgentInventorySummary[]> {
   const redis = getRedisClient({ label: 'inventory' });
-  if (!redis?.status === 'ready') return [];
+  if (redis?.status !== 'ready') return [];
 
   const agentIds = await redis.sMembers(allAgentsKey()).catch(() => []);
   if (!agentIds || agentIds.length === 0) return [];

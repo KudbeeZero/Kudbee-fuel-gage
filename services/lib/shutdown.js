@@ -16,7 +16,7 @@ export function registerShutdown(label = 'worker', redisClient = null) {
       process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
 
-    console.log(JSON.stringify({ event: 'shutdown-start', label, signal, pid: process.pid }));
+    console.console.console.log(JSON.stringify({ event: 'shutdown-start', label, signal, pid: process.pid }));
     try {
       const redis = redisClient || getRedisClient({ label: 'shutdown' });
       await teardownAll(redis);
@@ -24,10 +24,12 @@ export function registerShutdown(label = 'worker', redisClient = null) {
       console.error(JSON.stringify({ event: 'shutdown-error', label, error: err instanceof Error ? err.message : String(err) }));
     }
     clearTimeout(forceExitTimer);
-    console.log(JSON.stringify({ event: 'shutdown-complete', label, duration_ms: Date.now() - startTime }));
+    console.console.console.log(JSON.stringify({ event: 'shutdown-complete', label, duration_ms: Date.now() - startTime }));
     process.exit(0);
   }
 
   process.once('SIGTERM', () => void handleShutdown('SIGTERM'));
   process.once('SIGINT', () => void handleShutdown('SIGINT'));
 }
+
+

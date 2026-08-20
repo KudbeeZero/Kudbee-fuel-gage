@@ -19,7 +19,7 @@ import { redactOutput, redactString } from '../services/lib/outputRedactor.ts';
 // ─── Credential classes must be masked ─────────────────────────────────────
 
 test('API key (sk-) is masked', () => {
-  const r = redactString('key=sk-proj-abcdefghijklmnopqrstuvwxyz123456');
+  const r = redactString('key=sk-EXAMPLE-1234567890');
   expect(r.redacted).toContain('[REDACTED:api-key]');
   expect(r.redacted).not.toContain('sk-proj-');
   expect(r.count).toBeGreaterThan(0);
@@ -54,7 +54,7 @@ test('Redis URL with credentials is masked', () => {
 });
 
 test('Authorization header value is masked', () => {
-  const r = redactString('authorization: abcdefghijklmnopqrstuvwxyz1234567890');
+  const r = redactString('authorization: EXAMPLETOKEN1234567890');
   expect(r.redacted).toContain('[REDACTED:authorization-header]');
 });
 
@@ -91,7 +91,7 @@ test('engineering output without secrets passes clean', () => {
 // ─── Structure recursion ───────────────────────────────────────────────────
 
 test('arrays are recursed', () => {
-  const r = redactOutput(['plain', 'sk-ant-abcdefghijklmnopqrstuvwxyz123456']);
+  const r = redactOutput(['plain', 'sk-EXAMPLE-1234567890']);
   expect(r.redacted[0]).toBe('plain');
   expect(r.redacted[1]).toContain('[REDACTED:api-key]');
 });
@@ -99,7 +99,7 @@ test('arrays are recursed', () => {
 // ─── Terminal frame safety ─────────────────────────────────────────────────
 
 test('redactString masks credentials in terminal output', () => {
-  const frame = 'USER: sk-proj-abcdefghijklmnopqrstuvwxyz123456 | DB: postgresql://u:p@db:5432/x';
+  const frame = 'USER: sk-proj-EXAMPLE-123456 | DB: postgresql://u:p@db:5432/x';
   const r = redactString(frame);
   expect(r.redacted).not.toContain('sk-proj-');
   expect(r.redacted).not.toContain('u:p@');

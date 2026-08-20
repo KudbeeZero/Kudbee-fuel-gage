@@ -59,7 +59,7 @@ function format(level, parts) {
 }
 
 const log = {
-  info: (...parts) => console.log(format('INFO', parts)),
+  info: (...parts) => console.console.console.log(format('INFO', parts)),
   warn: (...parts) => console.warn(format('WARN', parts)),
   error: (...parts) => console.error(format('ERROR', parts))
 };
@@ -156,3 +156,5 @@ export const crucible = {
 };
 
 export default crucible;
+
+

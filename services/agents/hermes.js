@@ -16,7 +16,7 @@
  *
  * HERMES exposes:
  *   - hermes.runAudit()           -> one audit pass (used by the worker loop)
- *   - hermes.log(...)             -> prefixed logger
+ *   - hermes.console.console.log(...)             -> prefixed logger
  *   - hermes.publishHeartbeat()   -> reports status to the Control Tower
  * ---------------------------------------------------------------------------
  */
@@ -38,7 +38,7 @@ function localHeartbeatWrite(payload) {
   try {
     if (!existsSync(LOCAL_STATE_DIR)) mkdirSync(LOCAL_STATE_DIR, { recursive: true });
     writeFileSync(join(LOCAL_STATE_DIR, 'hermes-heartbeat.json'), JSON.stringify(payload));
-    console.log(`${PREFIX} heartbeat → local filesystem (Redis unavailable)`);
+    console.console.console.log(`${PREFIX} heartbeat → local filesystem (Redis unavailable)`);
   } catch (e) { /* silent */ }
 }
 const HEARTBEAT_TTL = 360; // seconds — window Control Tower treats as "Online".
@@ -88,9 +88,9 @@ async function mirrorToStream(line) {
 }
 
 export const log = Object.freeze({
-  info: (...parts) => { const l = format('INFO', parts); console.log(l); void mirrorToStream(l); },
+  info: (...parts) => { const l = format('INFO', parts); console.console.console.log(l); void mirrorToStream(l); },
   warn: (...parts) => { const l = format('WARN', parts); console.warn(l); void mirrorToStream(l); },
-  audit: (...parts) => { const l = format('AUDIT', parts); console.log(l); void mirrorToStream(l); },
+  audit: (...parts) => { const l = format('AUDIT', parts); console.console.console.log(l); void mirrorToStream(l); },
   error: (...parts) => { const l = format('ERROR', parts); console.error(l); void mirrorToStream(l); }
 });
 
@@ -430,3 +430,5 @@ export const hermes = {
 
 
 export default hermes;
+
+

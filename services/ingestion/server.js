@@ -264,7 +264,7 @@ app.use((req, res, next) => {
     if (durationMs > 3000) {
       console.warn(`[PERF_WARN] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
     } else if (durationMs > 1000 || res.statusCode >= 400) {
-      console.log(`[http] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
+      console.console.console.log(`[http] ${req.method} ${req.path} ${res.statusCode} ${durationMs}ms`);
     }
   });
   next();
@@ -547,7 +547,7 @@ app.get('/api/ci/health', async (_req, res) => {
 
  app.post('/api/ci/status', (req, res) => {
    _ciResults = { lastRun: req.body.timestamp, status: req.body.results?.every((r) => r.pass) ? 'GREEN' : 'FAIL', results: req.body.results, runId: req.body.runId };
-   console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
+   console.console.console.log(`[CI] Report received: ${_ciResults.status} — run ${_ciResults.runId}`);
   res.json({ ok: true });
 });
 
@@ -800,7 +800,7 @@ async function ensureSchema() {
         USING hnsw (embedding vector_cosine_ops)
         WITH (m = 16, ef_construction = 64)
     `);
-    console.log('[DB] Neon schema ensured.');
+    console.console.console.log('[DB] Neon schema ensured.');
   } catch (err) {
     console.warn('[DB] Schema ensure failed — degrading to in-memory store:', err.message);
   }
@@ -815,7 +815,7 @@ try {
   await ensureGenesisSchema();
   await ensureBoxSchema();
   startLifecycleManager();
-  console.log('[Genesis] THINK Token Genesis system initialized');
+  console.console.console.log('[Genesis] THINK Token Genesis system initialized');
 } catch (err) {
   console.warn('[Genesis] Initialization failed (non-blocking):', err instanceof Error ? err.message : String(err));
 }
@@ -912,7 +912,7 @@ async function getOrCreateCachedContent() {
         ttl: '86400s',
       },
     });
-    console.log('[Gemini] Context cache created:', cachedContent.name);
+    console.console.console.log('[Gemini] Context cache created:', cachedContent.name);
     return cachedContent;
   } catch (err) {
     console.warn('[Gemini] Failed to create cached content:', err.message);
@@ -1093,7 +1093,7 @@ function recordThroughput() {
   if (now - _metricsWindowStart >= METRICS_WINDOW_MS) {
     if (_metricsCount > 0) {
       const rate = _metricsCount / (METRICS_WINDOW_MS / 1000);
-      console.log(
+      console.console.console.log(
         `[Ingest] Throughput: ${_metricsCount} events in ${METRICS_WINDOW_MS / 1000}s (${rate.toFixed(1)}/s) — sample_rate: ${process.env.SAMPLE_RATE || '1 (all)'}`
       );
     }
@@ -1296,7 +1296,7 @@ app.post('/api/telemetry/ingest', ftwbGuard(), async (req, res) => {
     }
 
     if (agentId) {
-      console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
+      console.console.console.log(`[Identity] Fast-path bypass granted for agent ${agentId} (trace ${result.id})`);
     }
 
     const responsePayload = {
@@ -2095,9 +2095,9 @@ app.patch('/api/think/trajectories/:hash/status', async (req, res) => {
         const eligibility = await evaluateGenesisEligibility(finalTokenId);
         if (eligibility.eligible && eligibility.metadata) {
           const genesis = await mintGenesisEntry(eligibility.metadata);
-          console.log(`[Genesis] Minted genesis entry ${genesis.genesisId} from token ${finalTokenId} (${genesis.agentArchetype}, confidence=${genesis.trainingConfidence.toFixed(2)})`);
+          console.console.console.log(`[Genesis] Minted genesis entry ${genesis.genesisId} from token ${finalTokenId} (${genesis.agentArchetype}, confidence=${genesis.trainingConfidence.toFixed(2)})`);
         } else {
-          console.log(`[Genesis] Token ${finalTokenId} not eligible: ${eligibility.reason}`);
+          console.console.console.log(`[Genesis] Token ${finalTokenId} not eligible: ${eligibility.reason}`);
         }
       } catch (genesisErr) {
         console.warn('[Genesis] Evaluation failed (non-blocking):', genesisErr instanceof Error ? genesisErr.message : String(genesisErr));
@@ -2598,7 +2598,7 @@ app.post('/api/interceptor/verify', ftwbGuard(), async (req, res) => {
       });
     }
 
-    console.log(`[Governance] Agent ${agentId} VERIFIED trace ${traceId} (value_score=${score})`);
+    console.console.console.log(`[Governance] Agent ${agentId} VERIFIED trace ${traceId} (value_score=${score})`);
 
     return res.status(201).json({
       success: true,
@@ -3702,7 +3702,7 @@ app.post('/api/agents/crucible/run', async (req, res) => {
     }
     const { crucible: crucibleModule } = await import('../agents/crucible.js');
     const result = await crucibleModule.runCrucibleCycle();
-    console.log('[Crucible] runCrucibleCycle result:', JSON.stringify(result));
+    console.console.console.log('[Crucible] runCrucibleCycle result:', JSON.stringify(result));
     const response = {
       success: result?.success ?? true,
       cycle: result?.cycle ?? 0,
@@ -4399,7 +4399,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         const tokens = (response.usage?.promptTokens ?? 0) + (response.usage?.completionTokens ?? 0);
         const cost = estimateInceptionCost(tokens);
         if (cost > 0) void trackSpend(cost);
-        console.log(`[Chat] Gemini real inference — ${response.model} ${latencyMs}ms ${tokens} tokens`);
+        console.console.console.log(`[Chat] Gemini real inference — ${response.model} ${latencyMs}ms ${tokens} tokens`);
       } catch (providerErr) {
         console.warn(
           '[Chat] Gemini inference failed, falling back:',
@@ -4597,7 +4597,7 @@ if (redis) {
     const subClient = getSubscriberClient();
     subClient.subscribe(EVENTS_CHANNEL, (err) => {
       if (err) console.error('[SSE] Failed to subscribe to events channel:', err.message);
-      else console.log('[SSE] Subscribed to', EVENTS_CHANNEL);
+      else console.console.console.log('[SSE] Subscribed to', EVENTS_CHANNEL);
     });
     subClient.on('message', (_channel, message) => {
       try {
@@ -6362,7 +6362,7 @@ try {
 if (redis) {
   try {
     void receptorGate.bootstrap().then(() => {
-      console.log('[Receptor] P2P lock sync active');
+      console.console.console.log('[Receptor] P2P lock sync active');
     });
   } catch (err) {
     console.warn('[Receptor] Bootstrap deferred (Redis unavailable):', err?.message);
@@ -6372,7 +6372,7 @@ if (redis) {
 // --- Phase 40: Bootstrap Synapse Protection Layer (C4769) --------------------
 try {
   bootstrapSynapseProtection();
-  console.log('[Synapse] Protection layer active — C4769 protractor guard online');
+  console.console.console.log('[Synapse] Protection layer active — C4769 protractor guard online');
 } catch (err) {
   console.warn('[Synapse] Bootstrap failed (degraded):', err?.message);
 }
@@ -6390,20 +6390,20 @@ if (globalThis.__KUBEE_STATE__) {
 app.use(globalErrorHandler());
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
-  console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(
+  console.console.console.log(`[Server] OTel Ingestion Server listening on port ${PORT}`);
+  console.console.console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.console.console.log(
     `[Server] Database: ${pool ? 'Neon Postgres (resilient Pool)' : 'in-memory fallback (DATABASE_URL unset)'}`
   );
-  console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
-  console.log(
+  console.console.console.log(`[Server] Redis: ${redis ? 'enabled' : 'disabled'}`);
+  console.console.console.log(
     `[Server] Groq LPU: ${groqConfigured ? 'enabled (ultra-fast inference)' : 'disabled (set GROQ_API_KEY)'}`
   );
 });
 
 // Graceful shutdown: drain the Neon pool and Redis without crashing.
 async function shutdown(signal) {
-  console.log(`[Server] ${signal} received — shutting down gracefully`);
+  console.console.console.log(`[Server] ${signal} received — shutting down gracefully`);
   await teardownAll(redis);
   process.exit(0);
 }
@@ -6436,3 +6436,5 @@ app.post('/api/grok/evaluate-critical', async (req, res) => {
 });
 
 // Trigger rebuild Thu Jul 30 19:19:12 UTC 2026
+
+
