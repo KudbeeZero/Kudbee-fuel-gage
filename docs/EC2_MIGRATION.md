@@ -91,7 +91,7 @@ aws secretsmanager get-secret-value \
   --query 'SecretString' --output text | jq -r '.host'
 
 # 2. Update /etc/kudbee/.env on EC2
-#    Replace DATABASE_URL with: postgresql://postgres:<password>@<rds-endpoint>:5432/kudbee
+#    Replace DATABASE_URL with: postgresql://${DB_USER}:${DB_PASSWORD}@<rds-endpoint>:5432/kudbee
 
 # 3. Run migrations
 ssh -i think-coonnect.pem ubuntu@$EC2_HOST "cd /opt/kudbee && npx tsx services/ingestion/server.js &>/dev/null & sleep 3 && curl -s http://127.0.0.1:3000/health && pkill -f 'tsx services/ingestion/server.js'"
